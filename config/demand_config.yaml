@@ -1,0 +1,13 @@
+# TODO: Fill demand calibration settings after traffic count data is prepared.
+time_window:
+  start: "07:00"
+  end: "09:00"
+  representative_duration_min: 10
+
+traffic_count_source:
+  path: data_raw/traffic_counts/
+  description: TODO
+
+target_duration_sec: 600
+seed_list:
+  - 1

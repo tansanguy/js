@@ -1,0 +1,8 @@
+# TODO: Tune these control parameters in later simulation and result-analysis steps.
+control_distance_m: 0
+max_green_extension_sec: 0
+early_switch_enabled: false
+min_phase_hold_sec: 0
+preclearance_horizon: 0
+recovery_sec: 0
+cooldown_sec: 0

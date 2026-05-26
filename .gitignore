@@ -1,0 +1,10 @@
+# Runtime logs and debug output
+outputs/logs/*.log
+outputs/debug/*
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local OS files
+.DS_Store

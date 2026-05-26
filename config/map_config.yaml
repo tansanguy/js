@@ -1,0 +1,16 @@
+# TODO: Fill real coordinates and generated file paths in later prepare steps.
+locations:
+  jungbu_fire_station:
+    lat: 0.0
+    lon: 0.0
+  seoul_station:
+    lat: 0.0
+    lon: 0.0
+
+analysis_area:
+  ellipse_width_m: 0
+  bbox_buffer_m: 0
+
+outputs:
+  net_file: data_prepared/net/jungbu.net.xml
+  map_review_html: results/html/map_review.html

@@ -1,0 +1,10 @@
+# TODO: Fill concrete simulation settings after scenarios and demand are prepared.
+sim_duration_sec: 600
+step_length: 1.0
+emergency_depart_time_sec: 0
+emergency_vehicle_type: emergency
+
+methods:
+  - B0_baseline
+  - B1_independent_priority
+  - B2_corridor_priority
