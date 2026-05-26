@@ -1,16 +1,22 @@
-# TODO: Fill real coordinates and generated file paths in later prepare steps.
+# Step 1 spatial reference settings.
 locations:
   jungbu_fire_station:
-    lat: 0.0
-    lon: 0.0
+    name: Jungbu Fire Station
+    lat: 37.564875
+    lon: 127.015376
   seoul_station:
-    lat: 0.0
-    lon: 0.0
+    name: Seoul Station Reference
+    lat: 37.558488
+    lon: 126.971443
 
 analysis_area:
-  ellipse_width_m: 0
-  bbox_buffer_m: 0
+  shape: ellipse
+  ellipse_width_m: 1800
+  bbox_buffer_m: 800
+  ellipse_num_points: 128
 
 outputs:
+  analysis_area_meta: data_prepared/geojson/analysis_area_meta.json
+  analysis_area_geojson: data_prepared/geojson/analysis_area.geojson
   net_file: data_prepared/net/jungbu.net.xml
   map_review_html: results/html/map_review.html
