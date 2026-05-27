@@ -15,6 +15,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from common.geo_utils import geojson_feature
+
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as file:
@@ -223,3 +225,221 @@ def sumo_version() -> str:
     )
     output = (completed.stdout or completed.stderr).strip().splitlines()
     return output[0] if output else "unknown"
+
+
+def read_sumo_net(net_file: Path) -> Any:
+    try:
+        from sumolib import net
+    except ImportError as exc:
+        raise ImportError("ERROR: Python import sumolib failed; run Step 0 environment check") from exc
+
+    try:
+        return net.readNet(str(net_file))
+    except Exception as exc:  # noqa: BLE001 - sumolib exposes mixed parser errors.
+        raise RuntimeError("ERROR: failed to read SUMO net.xml with sumolib") from exc
+
+
+def convert_shape_xy_to_lonlat(sumo_net: Any, shape: list[tuple[float, float]]) -> list[list[float]]:
+    coordinates: list[list[float]] = []
+    for point in shape:
+        if len(point) < 2:
+            raise ValueError("shape point does not contain x/y coordinates")
+        lon, lat = sumo_net.convertXY2LonLat(float(point[0]), float(point[1]))
+        coordinates.append([float(lon), float(lat)])
+    return coordinates
+
+
+def edge_allows_vehicle_class(edge: Any, vehicle_class: str) -> bool:
+    try:
+        return bool(edge.allows(vehicle_class))
+    except Exception:  # noqa: BLE001 - keep export running; caller records conservative result.
+        return False
+
+
+def edge_shape_with_lane_fallback(edge: Any) -> list[tuple[float, float]]:
+    shape = edge.getShape()
+    if shape:
+        return shape
+
+    lanes = edge.getLanes()
+    for lane in lanes:
+        lane_shape = lane.getShape()
+        if lane_shape:
+            return lane_shape
+    return []
+
+
+def extract_edge_feature(sumo_net: Any, edge: Any) -> dict[str, Any]:
+    edge_id = edge.getID()
+    shape = edge_shape_with_lane_fallback(edge)
+    if not shape:
+        raise ValueError(f"WARNING: edge has no usable shape and was skipped: {edge_id}")
+
+    coordinates = convert_shape_xy_to_lonlat(sumo_net, shape)
+    if len(coordinates) < 2:
+        raise ValueError(f"WARNING: edge has too few shape points and was skipped: {edge_id}")
+
+    edge_function = edge.getFunction() or ""
+    is_internal = edge_function == "internal" or edge_id.startswith(":")
+    allows_passenger = edge_allows_vehicle_class(edge, "passenger")
+    allows_emergency = edge_allows_vehicle_class(edge, "emergency")
+
+    return geojson_feature(
+        "LineString",
+        coordinates,
+        {
+            "edge_id": edge_id,
+            "from_node": edge.getFromNode().getID() if edge.getFromNode() is not None else None,
+            "to_node": edge.getToNode().getID() if edge.getToNode() is not None else None,
+            "length_m": float(edge.getLength()),
+            "speed_mps": float(edge.getSpeed()),
+            "lane_count": int(edge.getLaneNumber()),
+            "priority": int(edge.getPriority()),
+            "is_internal": is_internal,
+            "edge_function": edge_function,
+            "allows_passenger": allows_passenger,
+            "allows_emergency_candidate": allows_emergency or allows_passenger,
+            "shape_point_count": len(coordinates),
+        },
+    )
+
+
+def parse_tllogic_counts(net_xml_path: Path) -> dict[str, dict[str, int]]:
+    counts: dict[str, dict[str, int]] = {}
+    for _event, elem in ET.iterparse(net_xml_path, events=("end",)):
+        if elem.tag == "tlLogic":
+            tls_id = elem.get("id")
+            if tls_id:
+                entry = counts.setdefault(tls_id, {"program_count": 0, "phase_count": 0})
+                entry["program_count"] += 1
+                entry["phase_count"] += sum(1 for child in elem if child.tag == "phase")
+        elem.clear()
+    return counts
+
+
+def parse_tls_connection_counts(net_xml_path: Path) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for _event, elem in ET.iterparse(net_xml_path, events=("end",)):
+        if elem.tag == "connection":
+            tls_id = elem.get("tl")
+            if tls_id:
+                counts[tls_id] = counts.get(tls_id, 0) + 1
+        elem.clear()
+    return counts
+
+
+def parse_traffic_light_junction_ids(net_xml_path: Path) -> set[str]:
+    ids: set[str] = set()
+    for _event, elem in ET.iterparse(net_xml_path, events=("end",)):
+        if elem.tag == "junction" and elem.get("type") == "traffic_light" and elem.get("id"):
+            ids.add(str(elem.get("id")))
+        elem.clear()
+    return ids
+
+
+def inside_bbox(lon: float, lat: float, bbox_wgs84: dict[str, float]) -> bool:
+    return (
+        bbox_wgs84["min_lon"] <= lon <= bbox_wgs84["max_lon"]
+        and bbox_wgs84["min_lat"] <= lat <= bbox_wgs84["max_lat"]
+    )
+
+
+def lane_position_from_tls(tls: Any) -> tuple[float, float] | None:
+    points: list[tuple[float, float]] = []
+    for connection in tls.getConnections():
+        if not connection:
+            continue
+        lane = connection[0]
+        shape = lane.getShape()
+        if shape:
+            points.append(shape[-1])
+    if not points:
+        return None
+    avg_x = sum(point[0] for point in points) / len(points)
+    avg_y = sum(point[1] for point in points) / len(points)
+    return avg_x, avg_y
+
+
+def extract_tls_features(
+    sumo_net: Any,
+    net_xml_path: Path,
+    bbox_wgs84: dict[str, float],
+) -> tuple[list[dict[str, Any]], list[str], int]:
+    warnings: list[str] = []
+    features: list[dict[str, Any]] = []
+    tllogic_counts = parse_tllogic_counts(net_xml_path)
+    connection_counts = parse_tls_connection_counts(net_xml_path)
+    junction_ids = parse_traffic_light_junction_ids(net_xml_path)
+    tls_by_id = {tls.getID(): tls for tls in sumo_net.getTrafficLights()}
+    all_tls_ids = sorted(set(tllogic_counts) | set(connection_counts) | junction_ids | set(tls_by_id))
+
+    for tls_id in all_tls_ids:
+        node_id: str | None = None
+        junction_id: str | None = None
+        position_xy: tuple[float, float] | None = None
+
+        try:
+            node = sumo_net.getNode(tls_id)
+            position_xy = node.getCoord()
+            node_id = node.getID()
+            junction_id = node.getID()
+        except Exception:  # noqa: BLE001 - fallback to controlled-lane centroid.
+            tls = tls_by_id.get(tls_id)
+            if tls is not None:
+                position_xy = lane_position_from_tls(tls)
+                junction_id = tls_id
+
+        if position_xy is None:
+            warnings.append(f"WARNING: failed to resolve TLS position and skipped: {tls_id}")
+            continue
+
+        try:
+            lon, lat = sumo_net.convertXY2LonLat(float(position_xy[0]), float(position_xy[1]))
+        except Exception:  # noqa: BLE001 - record and continue.
+            warnings.append(f"WARNING: failed to convert TLS coordinates and skipped: {tls_id}")
+            continue
+
+        counts = tllogic_counts.get(tls_id, {"program_count": 0, "phase_count": 0})
+        feature = geojson_feature(
+            "Point",
+            [float(lon), float(lat)],
+            {
+                "tls_id": tls_id,
+                "node_id": node_id,
+                "junction_id": junction_id,
+                "lon": float(lon),
+                "lat": float(lat),
+                "controlled_link_count": int(connection_counts.get(tls_id, 0)),
+                "program_count": int(counts["program_count"]),
+                "phase_count": int(counts["phase_count"]),
+                "inside_analysis_bbox": inside_bbox(float(lon), float(lat), bbox_wgs84),
+            },
+        )
+        features.append(feature)
+
+    return features, warnings, len(all_tls_ids) - len(features)
+
+
+def write_geojson(path: Path, features: list[dict[str, Any]]) -> None:
+    payload = {
+        "type": "FeatureCollection",
+        "features": features,
+    }
+    write_json(path, payload)
+
+
+def validate_feature_collection(path: Path) -> dict[str, int]:
+    payload = load_json(path)
+    if payload.get("type") != "FeatureCollection":
+        raise ValueError(f"ERROR: invalid GeoJSON FeatureCollection: {path}")
+    features = payload.get("features")
+    if not isinstance(features, list):
+        raise ValueError(f"ERROR: GeoJSON features must be a list: {path}")
+    return {"feature_count": len(features)}
+
+
+def summarize_warnings(warnings: list[str]) -> dict[str, Any]:
+    return {
+        "warning_count": len(warnings),
+        "sample": warnings[:50],
+    }

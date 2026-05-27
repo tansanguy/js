@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-05-27T01:51:28.904193+00:00",
+  "input_net_file": "data_prepared/net/jungbu_area.net.xml",
+  "input_analysis_area_geojson": "data_prepared/geojson/analysis_area.geojson",
+  "input_net_audit": "data_prepared/net/net_audit.json",
+  "output_edges_geojson": "data_prepared/geojson/sumo_edges.geojson",
+  "output_tls_geojson": "data_prepared/geojson/sumo_tls.geojson",
+  "edge_feature_count": 21599,
+  "tls_feature_count": 356,
+  "skipped_edge_count": 0,
+  "skipped_tls_count": 0,
+  "internal_edge_count": 0,
+  "passenger_allowed_edge_count": 11957,
+  "emergency_candidate_edge_count": 11981,
+  "coordinate_conversion_method": "sumolib.net.convertXY2LonLat",
+  "step2_traffic_light_count": 356,
+  "tls_count_difference_from_step2": 0,
+  "warnings_summary": {
+    "warning_count": 0,
+    "sample": []
+  },
+  "notes": [
+    "SUMO internal edges are preserved and marked with is_internal=true.",
+    "TLS features are exported from the union of tlLogic/connection IDs and traffic_light junction IDs.",
+    "allows_emergency_candidate uses emergency permission when present and falls back to passenger permission.",
+    "Step 3 does not create HTML, select incident edges, regenerate net.xml, or download OSM."
+  ]
+}
