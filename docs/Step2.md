@@ -58,6 +58,57 @@ netconvert \
 - `data_prepared/net/map_manifest.json`
 - `outputs/logs/step02_build_map.log`
 
+## 실제 수행 결과
+
+실행한 명령:
+
+```bash
+cd /Users/junlee/Desktop/js
+python3 01_prepare/01_map/step02_build_map.py
+```
+
+실행 결과:
+
+```text
+Status: PASS
+OSM file exists; reuse without download: data_raw/osm/jungbu_bbox.osm.xml
+edge_count: 21599
+junction_count: 13715
+traffic_light_count: 356
+lane_count: 64383
+```
+
+생성된 파일:
+
+- `data_raw/osm/jungbu_bbox.osm.xml` 약 8.8 MB
+- `data_prepared/net/jungbu_area.net.xml` 약 37 MB
+- `data_prepared/net/netconvert_command.txt` 약 832 B
+- `data_prepared/net/net_audit.json` 약 3.5 KB
+- `data_prepared/net/map_manifest.json` 약 1.2 KB
+- `outputs/logs/step02_build_map.log`
+
+다운로드/재사용 기록:
+
+- 최초 실행 때 Overpass HTTPS 인증서 검증 문제가 발생해 strict SSL 실패 후 fallback 처리를 구현했다.
+- OSM 파일 생성 후 재실행에서는 `auto_download_once_then_reuse` 정책에 따라 기존 `data_raw/osm/jungbu_bbox.osm.xml`을 재사용했다.
+- 마지막 manifest 기준 `force_download_used`: `false`.
+
+netconvert 실행 결과:
+
+- `netconvert_option_status`: `first_pass_draft_adjust_after_net_audit_and_sumo_gui`
+- `edge_count`: `21599`
+- `junction_count`: `13715`
+- `traffic_light_count`: `356`
+- `lane_count`: `64383`
+- warning 수: `115`
+
+검증 결과:
+
+- `net_audit.json` JSON valid.
+- `map_manifest.json` JSON valid.
+- `sumo -n data_prepared/net/jungbu_area.net.xml --no-step-log true --duration-log.disable true -e 0` 실행 exit code `0`.
+- 사용자가 `sumo-gui`에서 `data_prepared/net/jungbu_area.net.xml` 로드 확인 완료.
+
 ## 검증 기준
 
 - OSM 파일이 생성 또는 재사용되어야 한다.

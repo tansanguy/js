@@ -21,6 +21,57 @@ HTML 지도는 만들지 않는다. Step 4의 `map_review.html`이 이 단계에
 - `data_prepared/geojson/step03_geojson_audit.json`
 - `outputs/logs/step03_export_geojson.log`
 
+## 실제 수행 결과
+
+실행한 명령:
+
+```bash
+cd /Users/junlee/Desktop/js
+python3 01_prepare/01_map/step03_export_geojson.py
+```
+
+실행 결과:
+
+```text
+Status: PASS
+edge_feature_count: 21599
+tls_feature_count: 356
+skipped_edge_count: 0
+skipped_tls_count: 0
+tls_count_difference_from_step2: 0
+warnings: 0
+```
+
+생성된 파일:
+
+- `data_prepared/geojson/sumo_edges.geojson` 약 17 MB
+- `data_prepared/geojson/sumo_tls.geojson` 약 193 KB
+- `data_prepared/geojson/step03_geojson_audit.json` 약 1.2 KB
+- `outputs/logs/step03_export_geojson.log`
+
+audit 기록값:
+
+- `edge_feature_count`: `21599`
+- `tls_feature_count`: `356`
+- `skipped_edge_count`: `0`
+- `skipped_tls_count`: `0`
+- `internal_edge_count`: `0`
+- `passenger_allowed_edge_count`: `11957`
+- `emergency_candidate_edge_count`: `11981`
+- `coordinate_conversion_method`: `sumolib.net.convertXY2LonLat`
+- `step2_traffic_light_count`: `356`
+- `tls_count_difference_from_step2`: `0`
+- `warnings_summary.warning_count`: `0`
+
+검증 결과:
+
+- `sumo_edges.geojson` JSON valid.
+- `sumo_tls.geojson` JSON valid.
+- `step03_geojson_audit.json` JSON valid.
+- `sumo_edges.geojson`은 `FeatureCollection`, Feature `21599`개.
+- `sumo_tls.geojson`은 `FeatureCollection`, Feature `356`개.
+- 좌표는 `[lon, lat]` 순서로 저장됨.
+
 ## 구현 원칙
 
 - `sumolib.net.readNet`으로 `net.xml`을 읽는다.

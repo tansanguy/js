@@ -88,6 +88,49 @@ analysis_area:
 - `bbox_wgs84.max_lon`: `127.02452657850698`
 - `bbox_wgs84.max_lat`: `37.5774540549604`
 
+## 실제 수행 결과
+
+실행한 명령:
+
+```bash
+cd /Users/junlee/Desktop/js
+python3 01_prepare/01_map/step01_define_area.py
+```
+
+실행 결과:
+
+```text
+Status: PASS
+Major axis m: 3937.020
+Minor axis m: 1800.000
+Bearing deg: 259.620856
+```
+
+생성된 파일:
+
+- `data_prepared/geojson/analysis_area_meta.json` 약 1.8 KB
+- `data_prepared/geojson/analysis_area.geojson` 약 14 KB
+- `outputs/logs/step01_define_area.log`
+
+`analysis_area_meta.json` 기록값:
+
+- `generated_at`: `2026-05-26T15:48:41.405014+00:00`
+- `coordinate_crs`: `EPSG:4326`
+- `distance_method`: `haversine_distance_m; local metric approximation for ellipse polygon`
+- `major_axis_m`: `3937.020031747945`
+- `semi_major_axis_m`: `1968.5100158739724`
+- `minor_axis_m`: `1800.0`
+- `semi_minor_axis_m`: `900.0`
+- `bearing_deg`: `259.6208564968605`
+- `bbox_wgs84`: `min_lon=126.96229053834942`, `min_lat=37.54591301473934`, `max_lon=127.02452657850698`, `max_lat=37.5774540549604`
+
+검증 결과:
+
+- `analysis_area_meta.json` JSON valid.
+- `analysis_area.geojson` JSON valid.
+- `analysis_area.geojson`은 `FeatureCollection`.
+- Feature 5개 생성 확인.
+
 ## GeoJSON Feature 구성
 
 `analysis_area.geojson`은 valid `FeatureCollection`이며 Feature 5개를 포함한다.

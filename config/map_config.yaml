@@ -27,3 +27,4 @@ outputs:
   sumo_tls_geojson: data_prepared/geojson/sumo_tls.geojson
   step03_geojson_audit: data_prepared/geojson/step03_geojson_audit.json
   map_review_html: results/html/map_review.html
+  selected_edges_schema: data_prepared/manual/selected_edges.schema.json

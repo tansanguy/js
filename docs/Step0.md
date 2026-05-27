@@ -108,6 +108,41 @@ bash 00_setup/verify_env.sh
 - 필수 폴더: PASS
 - 필수 config 파일: PASS
 
+## 실제 수행 결과
+
+실행한 명령:
+
+```bash
+cd /Users/junlee/Desktop/js
+bash 00_setup/verify_env.sh
+```
+
+생성/갱신된 로그:
+
+- `outputs/logs/env_check.log`
+
+마지막 로그 기준 결과:
+
+```text
+All checks passed.
+```
+
+확인된 환경:
+
+- Python: `3.12.3`
+- SUMO_HOME: `/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO`
+- `sumo`: `Eclipse SUMO sumo 1.26.0`
+- `sumo-gui`: `Eclipse SUMO GUI 1.26.0`
+- `netconvert`: `Eclipse SUMO netconvert 1.26.0`
+- Python `traci`: import PASS
+- Python `sumolib`: import PASS
+- Python `yaml`: import PASS
+
+비고:
+
+- Step 1부터 YAML 로드가 필요해져 `verify_env.py`에 `yaml` import 체크를 추가했다.
+- PyYAML은 사용자 Python 환경에 설치되어 있다.
+
 ## GitHub 연결
 
 - 원격 저장소: `https://github.com/tansanguy/js.git`
