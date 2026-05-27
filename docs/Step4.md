@@ -83,6 +83,25 @@ Wrote schema: data_prepared/manual/selected_edges.schema.json
 }
 ```
 
+각 필드 의미:
+
+- `analysis_edges`: 분석 대상으로 볼 도로 edge.
+- `accident_candidate_edges`: 사고 발생 후보 edge.
+- `excluded_edges`: 분석에서 제외할 edge.
+- `created_from`: 선택 파일을 만든 HTML 위치.
+- `notes`: 수동 선택 메모.
+
+이 파일은 Step 5에서 CSV로 변환하고 edge_id 유효성을 검증할 예정이다.
+
+## 자주 발생하는 문제와 해결법
+
+- `file://`로 열었더니 GeoJSON이 안 뜸: 프로젝트 루트에서 `python3 -m http.server 8000`을 실행하고 localhost URL로 연다.
+- edge가 너무 많아 느림: SUMO edge 레이어를 잠시 OFF하고 필요한 이동/확대 후 다시 ON한다. 신호등도 기본 OFF로 둔다.
+- 클릭했는데 선택이 안 됨: `SUMO edge` 체크박스가 ON인지, 선택 모드가 맞는지, 클릭한 선이 debug layer가 아닌 SUMO edge인지 확인한다.
+- 신호등이 너무 많아 복잡함: `신호등` 레이어를 OFF한다.
+- debug layer가 방해됨: `디버그 정보 보기` 패널에서 debug checkbox를 끈다.
+- 색상 의미를 모르겠음: HTML의 `범례 보기` 또는 이 문서의 `지도 요소 범례`를 확인한다.
+
 ## 성능 메모
 
 `sumo_edges.geojson`은 약 17MB이며 브라우저 렌더링이 몇 초 걸릴 수 있다.
@@ -118,6 +137,82 @@ http://localhost:8000/results/html/map_review.html
 ```
 
 `open results/html/map_review.html`도 가능하지만, 레이어가 로드되지 않으면 localhost 방식으로 확인한다.
+
+## 지도 요소 범례
+
+`map_review.html`은 다음 요소를 한 지도 위에 겹쳐 보여준다.
+
+- OSM 배경지도: 실제 도로와 지명을 확인하는 기준 지도.
+- 분석권역: Step 1에서 정의한 작업 대상 영역.
+- 중부소방서-서울역 축: 분석권역 방향을 확인하는 기준선.
+- bbox/분석 경계: OSM 추출 범위와 분석 경계 확인용.
+- SUMO edge: SUMO `net.xml`에서 변환된 도로 링크.
+- internal edge: SUMO 내부 연결 edge. 일반 도로 선택과 구분한다.
+- passenger 허용 edge: 일반 차량/응급차 후보로 볼 수 있는 edge.
+- passenger 불가 edge: 일반 주행이 제한되거나 확인이 필요한 edge.
+- 신호등/TLS: SUMO traffic light system 위치.
+- debug first edge marker: 좌표/렌더링 검증용 첫 edge 위치.
+- first 10 edge debug layer: 좌표/성능 분리 진단용 샘플 edge.
+- 선택된 analysis edge: 분석 대상으로 볼 도로.
+- 선택된 accident candidate edge: 사고 발생 후보 도로.
+- 선택된 excluded edge: 분석 제외 도로.
+
+색상 의미:
+
+- 얇은 파란 선: 전체 SUMO edge 중 passenger 허용 edge.
+- 흐린 보라 선: internal edge.
+- 주황 선: passenger 불가 edge.
+- 빨강/주황 원: 신호등/TLS.
+- 파란 선과 반투명 fill: 분석권역.
+- 보라색 굵은 선: 분석축.
+- 굵은 파란 선: 선택된 analysis edge.
+- 굵은 빨간 선: 선택된 accident candidate edge.
+- 굵은 검정/진회색 선: 선택된 excluded edge.
+- 분홍/노랑/청록 계열: 디버그 layer. 일반 작업용 선택 의미가 없다.
+
+## 버튼 사용법
+
+- `분석 edge`: 분석 대상으로 포함할 edge 선택 모드.
+- `사고 후보 edge`: 사고 발생 후보 edge 선택 모드.
+- `제외 edge`: 분석에서 제외할 edge 선택 모드.
+- `분석권역`: 분석 범위 표시 ON/OFF.
+- `SUMO edge`: 전체 SUMO edge 표시 ON/OFF.
+- `passenger 허용 edge만`: 파란색 일반 주행 가능 edge만 표시한다. 검증 완료 edge 필터가 아니라 `allows_passenger=true`, `is_internal=false` 필터다.
+- `신호등`: TLS 위치 표시 ON/OFF.
+- `사용법 보기`: HTML 안의 작업 절차 패널을 연다.
+- `범례 보기`: 색상/지도 요소 설명 패널을 연다.
+- `디버그 정보 보기`: 좌표, bounds, debug layer 제어 패널을 연다.
+- `분석권역으로 이동`: 분석 경계로 지도 이동.
+- `edge 영역으로 이동`: 전체 edge bounds로 지도 이동.
+- `신호등 영역으로 이동`: TLS bounds로 지도 이동.
+- `선택 결과 다운로드`: `selected_edges.json` 저장.
+- `선택 초기화`: 현재 선택 전체 제거.
+- `디버그 첫 edge로 이동`: 첫 edge marker를 켜고 해당 위치로 이동.
+- `디버그 first 10 edges로 이동`: first 10 debug edge bounds로 이동.
+
+## Edge 선택 절차
+
+1. 프로젝트 루트에서 localhost 서버를 실행한다.
+2. 브라우저에서 `http://localhost:8000/results/html/map_review.html`을 연다.
+3. 분석권역이 의도한 위치에 표시되는지 확인한다.
+4. SUMO edge가 분석권역 위에 표시되는지 확인한다.
+5. 필요할 때만 신호등 레이어를 켠다.
+6. `분석 edge` 모드에서 주요 분석 도로 edge를 클릭한다.
+7. `사고 후보 edge` 모드에서 사고 발생 후보 edge를 클릭한다.
+8. `제외 edge` 모드에서 분석에서 제외할 edge를 클릭한다.
+9. 오른쪽 패널에서 선택 개수와 선택된 Edge ID를 확인한다.
+10. `선택 결과 다운로드`를 눌러 `selected_edges.json`을 저장한다.
+11. 저장한 `selected_edges.json`을 Step 5 입력으로 사용한다.
+
+## 오른쪽 패널
+
+- 범례: 지도 색상과 요소 의미를 확인한다. 기본으로 열려 있다.
+- 클릭한 Edge: 마지막 클릭 edge 속성을 보여준다. edge_id는 복사 버튼으로 복사할 수 있다.
+- 선택 개수: 세 선택 그룹별 개수를 보여준다.
+- 다운로드 미리보기: 저장될 JSON 내용을 보여준다.
+- 사용법: Step 4 작업 절차를 HTML 안에서 확인한다. 기본으로 접혀 있다.
+- 상태 요약: 로드 개수, 표시 중인 레이어, 마지막 클릭 edge_id, 마지막 오류를 요약한다. 기본으로 접혀 있다.
+- 디버그 정보: 좌표, bounds, `map.hasLayer(...)`, `window.__debug` 확인용이다. 기본으로 접혀 있고 debug layer checkbox도 기본 OFF다.
 
 ## Layout Fix 기록
 
