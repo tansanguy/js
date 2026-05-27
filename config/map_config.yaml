@@ -18,5 +18,9 @@ analysis_area:
 outputs:
   analysis_area_meta: data_prepared/geojson/analysis_area_meta.json
   analysis_area_geojson: data_prepared/geojson/analysis_area.geojson
-  net_file: data_prepared/net/jungbu.net.xml
+  osm_file: data_raw/osm/jungbu_bbox.osm.xml
+  net_file: data_prepared/net/jungbu_area.net.xml
+  netconvert_command: data_prepared/net/netconvert_command.txt
+  net_audit: data_prepared/net/net_audit.json
+  map_manifest: data_prepared/net/map_manifest.json
   map_review_html: results/html/map_review.html

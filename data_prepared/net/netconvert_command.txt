@@ -1,0 +1,10 @@
+# Step 2 netconvert command draft
+# These options are first-pass values, not final fixed research parameters.
+# Re-run Step 2 with adjusted options if net_audit.json or sumo-gui inspection shows issues.
+
+/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert --osm-files /Users/junlee/Desktop/js/data_raw/osm/jungbu_bbox.osm.xml --output-file /Users/junlee/Desktop/js/data_prepared/net/jungbu_area.net.xml --tls.guess true --tls.join true --junctions.join true --geometry.remove true --remove-edges.isolated true --no-turnarounds true
+
+# Notes
+- Options are first-pass values for Seoul downtown signal-network preservation.
+- Do not treat these options as final fixed parameters until net_audit and sumo-gui checks pass.
+- Step 2 does not clip by analysis_ellipse and does not apply bbox buffer again.

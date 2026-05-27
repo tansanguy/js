@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-05-27T01:25:03.927560+00:00",
+  "input_osm_file": "data_raw/osm/jungbu_bbox.osm.xml",
+  "output_net_file": "data_prepared/net/jungbu_area.net.xml",
+  "bbox_wgs84": {
+    "min_lon": 126.96229053834942,
+    "min_lat": 37.54591301473934,
+    "max_lon": 127.02452657850698,
+    "max_lat": 37.5774540549604
+  },
+  "netconvert_command": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert --osm-files /Users/junlee/Desktop/js/data_raw/osm/jungbu_bbox.osm.xml --output-file /Users/junlee/Desktop/js/data_prepared/net/jungbu_area.net.xml --tls.guess true --tls.join true --junctions.join true --geometry.remove true --remove-edges.isolated true --no-turnarounds true",
+  "netconvert_option_status": "first_pass_draft_adjust_after_net_audit_and_sumo_gui",
+  "netconvert_return_code": 0,
+  "net_file_exists": true,
+  "net_file_size_mb": 37.163804054260254,
+  "edge_count": 21599,
+  "junction_count": 13715,
+  "traffic_light_count": 356,
+  "lane_count": 64383,
+  "warnings_summary": {
+    "warning_count": 115,
+    "sample": [
+      "Warning: Value of key 'maxspeed:type' is not numeric ('urban') in edge '379730370'.",
+      "Warning: Value of key 'maxspeed:type' is not numeric ('urban') in edge '428260104'.",
+      "Warning: Value of key 'maxspeed:type' is not numeric ('urban') in edge '781179155'.",
+      "Warning: Value of key 'maxspeed:type' is not numeric ('urban') in edge '913718470'.",
+      "Warning: Discarding unknown compound 'cycleway.track' in type 'cycleway.track|highway.primary' (first occurrence for edge '73541403').",
+      "Warning: Discarding unknown compound 'cycleway.track' in type 'cycleway.track|highway.primary_link' (first occurrence for edge '183272596').",
+      "Warning: Discarding unknown compound 'cycleway.lane' in type 'cycleway.lane|highway.primary' (first occurrence for edge '183521181').",
+      "Warning: Discarding unknown compound 'cycleway.lane' in type 'cycleway.lane|highway.primary_link' (first occurrence for edge '184083117').",
+      "Warning: Discarding unknown compound 'cycleway.track' in type 'cycleway.track|highway.unclassified' (first occurrence for edge '203501044').",
+      "Warning: Removed a road without junctions: -1181825453.",
+      "Warning: Removed a road without junctions: -1434211195.",
+      "Warning: Removed a road without junctions: -381743725.",
+      "Warning: Removed a road without junctions: -771233454.",
+      "Warning: Removed a road without junctions: 1011007052#0.",
+      "Warning: Not joining junctions 10031311270,13339947080,13339947085,13339947086,13339947087 (not compact (maxEdge=1454603291#2 length=5.40)).",
+      "Warning: Reducing junction cluster 10069290438,2376668245,3830591311,436883307,7093405293,7195666591,8488625792 (parallel incoming 218923174#6,770891519#4).",
+      "Warning: Not joining junctions 10080348171,2463610786 (only 1 entry node).",
+      "Warning: Not joining junctions 10080353476,7195666627,8482825459,871729456 (slip lane).",
+      "Warning: Not joining junctions 3846576206,3846576214,3846576226,3846576234,3846576242 (not compact (maxEdge=320463177#2 length=5.01)).",
+      "Warning: Not joining junctions 10296356310,4202872186 (only 1 exit node)."
+    ]
+  },
+  "notes": [
+    "bbox_wgs84 was read from Step 1 analysis_area_meta.json without recalculation.",
+    "bbox_buffer_m was not applied again in Step 2.",
+    "analysis_ellipse clipping was not performed.",
+    "Inspect the net in sumo-gui before treating the netconvert draft options as stable."
+  ]
+}

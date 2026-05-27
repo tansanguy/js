@@ -1,0 +1,22 @@
+{
+  "bbox_wgs84": {
+    "min_lon": 126.96229053834942,
+    "min_lat": 37.54591301473934,
+    "max_lon": 127.02452657850698,
+    "max_lat": 37.5774540549604
+  },
+  "osm_file": "data_raw/osm/jungbu_bbox.osm.xml",
+  "osm_file_sha256": "53d9d61ae87123711db76cc2b2f1dc6cb2e99e96eae5bc78b332075648c58f40",
+  "net_file": "data_prepared/net/jungbu_area.net.xml",
+  "net_file_sha256": "f50f0f435291bba09d261052baf92cfa7e111371b01dd23192dda5d3f4eafbe2",
+  "downloaded_at": "2026-05-27T01:21:31.743228+00:00",
+  "generated_at": "2026-05-27T01:25:03.927560+00:00",
+  "sumo_version": "Eclipse SUMO sumo 1.26.0",
+  "netconvert_command": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert --osm-files /Users/junlee/Desktop/js/data_raw/osm/jungbu_bbox.osm.xml --output-file /Users/junlee/Desktop/js/data_prepared/net/jungbu_area.net.xml --tls.guess true --tls.join true --junctions.join true --geometry.remove true --remove-edges.isolated true --no-turnarounds true",
+  "netconvert_option_status": "first_pass_draft_adjust_after_net_audit_and_sumo_gui",
+  "source_policy": "auto_download_once_then_reuse",
+  "force_download_used": false,
+  "force_download_backup": null,
+  "download_url_used": null,
+  "download_ssl_verify_disabled": false
+}
