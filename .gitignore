@@ -8,3 +8,7 @@ __pycache__/
 
 # Local OS files
 .DS_Store
+
+# Simulation run artifacts
+runs/
+results/raw/
