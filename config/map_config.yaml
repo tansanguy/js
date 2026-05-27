@@ -28,3 +28,10 @@ outputs:
   step03_geojson_audit: data_prepared/geojson/step03_geojson_audit.json
   map_review_html: results/html/map_review.html
   selected_edges_schema: data_prepared/manual/selected_edges.schema.json
+  reduced_net_file: data_prepared/net/jungbu_ellipse_passenger.net.xml
+  reduced_net_audit: data_prepared/net/jungbu_ellipse_passenger_audit.json
+  reduced_map_manifest: data_prepared/net/jungbu_ellipse_passenger_manifest.json
+  reduced_edges_geojson: data_prepared/geojson/ellipse_passenger_edges.geojson
+  reduced_tls_geojson: data_prepared/geojson/ellipse_passenger_tls.geojson
+  reduced_geojson_audit: data_prepared/geojson/ellipse_passenger_geojson_audit.json
+  reduced_map_review_html: results/html/map_review_ellipse_passenger.html

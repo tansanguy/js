@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-05-27T07:33:51.894061+00:00",
+  "input_net_file": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "output_edges_geojson": "data_prepared/geojson/ellipse_passenger_edges.geojson",
+  "output_tls_geojson": "data_prepared/geojson/ellipse_passenger_tls.geojson",
+  "edge_feature_count": 3021,
+  "tls_feature_count": 93,
+  "skipped_edge_count": 0,
+  "skipped_tls_count": 0,
+  "internal_edge_count": 0,
+  "passenger_allowed_edge_count": 3021,
+  "blue_edge_rule": "!is_internal && allows_passenger === true",
+  "blue_edge_rule_count": 3021,
+  "emergency_candidate_edge_count": 3021,
+  "original_tls_count": 356,
+  "tls_count_difference_from_original": -263,
+  "coordinate_conversion_method": "sumolib.net.convertXY2LonLat",
+  "warnings_summary": {
+    "warning_count": 0,
+    "sample": []
+  }
+}

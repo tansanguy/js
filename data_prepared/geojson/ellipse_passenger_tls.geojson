@@ -1,0 +1,1958 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00487822176984,
+          37.559038205008214
+        ]
+      },
+      "properties": {
+        "tls_id": "10299171845",
+        "node_id": "10299171845",
+        "junction_id": "10299171845",
+        "lon": 127.00487822176984,
+        "lat": 37.559038205008214,
+        "controlled_link_count": 11,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97671264645992,
+          37.55515969496023
+        ]
+      },
+      "properties": {
+        "tls_id": "11059693772",
+        "node_id": "11059693772",
+        "junction_id": "11059693772",
+        "lon": 126.97671264645992,
+        "lat": 37.55515969496023,
+        "controlled_link_count": 1,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.972393315596,
+          37.55707940995035
+        ]
+      },
+      "properties": {
+        "tls_id": "11139302899",
+        "node_id": "11139302899",
+        "junction_id": "11139302899",
+        "lon": 126.972393315596,
+        "lat": 37.55707940995035,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97316618317477,
+          37.556710571540115
+        ]
+      },
+      "properties": {
+        "tls_id": "11139302904",
+        "node_id": "11139302904",
+        "junction_id": "11139302904",
+        "lon": 126.97316618317477,
+        "lat": 37.556710571540115,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97259188482676,
+          37.55719592326785
+        ]
+      },
+      "properties": {
+        "tls_id": "11178710208",
+        "node_id": "11178710208",
+        "junction_id": "11178710208",
+        "lon": 126.97259188482676,
+        "lat": 37.55719592326785,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97587588748952,
+          37.5607646743908
+        ]
+      },
+      "properties": {
+        "tls_id": "11203001806",
+        "node_id": "11203001806",
+        "junction_id": "11203001806",
+        "lon": 126.97587588748952,
+        "lat": 37.5607646743908,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97578177641559,
+          37.560824522876295
+        ]
+      },
+      "properties": {
+        "tls_id": "11203001814",
+        "node_id": "11203001814",
+        "junction_id": "11203001814",
+        "lon": 126.97578177641559,
+        "lat": 37.560824522876295,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98239721874805,
+          37.56039689694707
+        ]
+      },
+      "properties": {
+        "tls_id": "11203052957",
+        "node_id": "11203052957",
+        "junction_id": "11203052957",
+        "lon": 126.98239721874805,
+        "lat": 37.56039689694707,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98895571776539,
+          37.56146132939865
+        ]
+      },
+      "properties": {
+        "tls_id": "11203059755",
+        "node_id": "11203059755",
+        "junction_id": "11203059755",
+        "lon": 126.98895571776539,
+        "lat": 37.56146132939865,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98906860015369,
+          37.56146929102096
+        ]
+      },
+      "properties": {
+        "tls_id": "11203059756",
+        "node_id": "11203059756",
+        "junction_id": "11203059756",
+        "lon": 126.98906860015369,
+        "lat": 37.56146929102096,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98915109250207,
+          37.56109173635527
+        ]
+      },
+      "properties": {
+        "tls_id": "11203059757",
+        "node_id": "11203059757",
+        "junction_id": "11203059757",
+        "lon": 126.98915109250207,
+        "lat": 37.56109173635527,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98750022901098,
+          37.566406797462186
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083989",
+        "node_id": "11203083989",
+        "junction_id": "11203083989",
+        "lon": 126.98750022901098,
+        "lat": 37.566406797462186,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98767472006689,
+          37.566410133481625
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083990",
+        "node_id": "11203083990",
+        "junction_id": "11203083990",
+        "lon": 126.98767472006689,
+        "lat": 37.566410133481625,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98723223556497,
+          37.5662052219119
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083991",
+        "node_id": "11203083991",
+        "junction_id": "11203083991",
+        "lon": 126.98723223556497,
+        "lat": 37.5662052219119,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98723784009019,
+          37.56606851344126
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083992",
+        "node_id": "11203083992",
+        "junction_id": "11203083992",
+        "lon": 126.98723784009019,
+        "lat": 37.56606851344126,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98794620117286,
+          37.56622550779648
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083995",
+        "node_id": "11203083995",
+        "junction_id": "11203083995",
+        "lon": 126.98794620117286,
+        "lat": 37.56622550779648,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98795636007328,
+          37.56608779547147
+        ]
+      },
+      "properties": {
+        "tls_id": "11203083996",
+        "node_id": "11203083996",
+        "junction_id": "11203083996",
+        "lon": 126.98795636007328,
+        "lat": 37.56608779547147,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.993445329665,
+          37.561024687005805
+        ]
+      },
+      "properties": {
+        "tls_id": "11346754524",
+        "node_id": "11346754524",
+        "junction_id": "11346754524",
+        "lon": 126.993445329665,
+        "lat": 37.561024687005805,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9930237037221,
+          37.56111881416871
+        ]
+      },
+      "properties": {
+        "tls_id": "11346754525",
+        "node_id": "11346754525",
+        "junction_id": "11346754525",
+        "lon": 126.9930237037221,
+        "lat": 37.56111881416871,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9932131641257,
+          37.56088447590263
+        ]
+      },
+      "properties": {
+        "tls_id": "11346754526",
+        "node_id": "11346754526",
+        "junction_id": "11346754526",
+        "lon": 126.9932131641257,
+        "lat": 37.56088447590263,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99332166433655,
+          37.5608236864195
+        ]
+      },
+      "properties": {
+        "tls_id": "11346754527",
+        "node_id": "11346754527",
+        "junction_id": "11346754527",
+        "lon": 126.99332166433655,
+        "lat": 37.5608236864195,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97604816735675,
+          37.561878282168074
+        ]
+      },
+      "properties": {
+        "tls_id": "11347624895",
+        "node_id": "11347624895",
+        "junction_id": "11347624895",
+        "lon": 126.97604816735675,
+        "lat": 37.561878282168074,
+        "controlled_link_count": 15,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00276386303749,
+          37.561107231996516
+        ]
+      },
+      "properties": {
+        "tls_id": "1327210743",
+        "node_id": "1327210743",
+        "junction_id": "1327210743",
+        "lon": 127.00276386303749,
+        "lat": 37.561107231996516,
+        "controlled_link_count": 11,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97598002720275,
+          37.560643805551756
+        ]
+      },
+      "properties": {
+        "tls_id": "13721232731",
+        "node_id": "13721232731",
+        "junction_id": "13721232731",
+        "lon": 126.97598002720275,
+        "lat": 37.560643805551756,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98254267131786,
+          37.56498871699497
+        ]
+      },
+      "properties": {
+        "tls_id": "13732389937",
+        "node_id": "13732389937",
+        "junction_id": "13732389937",
+        "lon": 126.98254267131786,
+        "lat": 37.56498871699497,
+        "controlled_link_count": 6,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98239882971596,
+          37.56447896566636
+        ]
+      },
+      "properties": {
+        "tls_id": "13732389938",
+        "node_id": "13732389938",
+        "junction_id": "13732389938",
+        "lon": 126.98239882971596,
+        "lat": 37.56447896566636,
+        "controlled_link_count": 7,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98900716440535,
+          37.56108477787316
+        ]
+      },
+      "properties": {
+        "tls_id": "1908148229",
+        "node_id": "1908148229",
+        "junction_id": "1908148229",
+        "lon": 126.98900716440535,
+        "lat": 37.56108477787316,
+        "controlled_link_count": 3,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97704129318704,
+          37.55497868741339
+        ]
+      },
+      "properties": {
+        "tls_id": "2457731125",
+        "node_id": "2457731125",
+        "junction_id": "2457731125",
+        "lon": 126.97704129318704,
+        "lat": 37.55497868741339,
+        "controlled_link_count": 3,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00284127069826,
+          37.55981520759072
+        ]
+      },
+      "properties": {
+        "tls_id": "2471514433",
+        "node_id": "2471514433",
+        "junction_id": "2471514433",
+        "lon": 127.00284127069826,
+        "lat": 37.55981520759072,
+        "controlled_link_count": 16,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98933395443613,
+          37.56111170460924
+        ]
+      },
+      "properties": {
+        "tls_id": "3285441969",
+        "node_id": "3285441969",
+        "junction_id": "3285441969",
+        "lon": 126.98933395443613,
+        "lat": 37.56111170460924,
+        "controlled_link_count": 1,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00393668199057,
+          37.55897893616158
+        ]
+      },
+      "properties": {
+        "tls_id": "3846493836",
+        "node_id": "3846493836",
+        "junction_id": "3846493836",
+        "lon": 127.00393668199057,
+        "lat": 37.55897893616158,
+        "controlled_link_count": 11,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00288289686992,
+          37.55939675660856
+        ]
+      },
+      "properties": {
+        "tls_id": "3846493837",
+        "node_id": "3846493837",
+        "junction_id": "3846493837",
+        "lon": 127.00288289686992,
+        "lat": 37.55939675660856,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.0026353856819,
+          37.56242497760609
+        ]
+      },
+      "properties": {
+        "tls_id": "3846495798",
+        "node_id": "3846495798",
+        "junction_id": "3846495798",
+        "lon": 127.0026353856819,
+        "lat": 37.56242497760609,
+        "controlled_link_count": 11,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.0122075269688,
+          37.559353927595886
+        ]
+      },
+      "properties": {
+        "tls_id": "3846533327",
+        "node_id": "3846533327",
+        "junction_id": "3846533327",
+        "lon": 127.0122075269688,
+        "lat": 37.559353927595886,
+        "controlled_link_count": 20,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99895810571957,
+          37.56540166984608
+        ]
+      },
+      "properties": {
+        "tls_id": "4202879197",
+        "node_id": "4202879197",
+        "junction_id": "4202879197",
+        "lon": 126.99895810571957,
+        "lat": 37.56540166984608,
+        "controlled_link_count": 20,
+        "program_count": 1,
+        "phase_count": 7,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00236039163417,
+          37.563145621098286
+        ]
+      },
+      "properties": {
+        "tls_id": "4273893706",
+        "node_id": "4273893706",
+        "junction_id": "4273893706",
+        "lon": 127.00236039163417,
+        "lat": 37.563145621098286,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.0026029244946,
+          37.562987597569304
+        ]
+      },
+      "properties": {
+        "tls_id": "4273893707",
+        "node_id": "4273893707",
+        "junction_id": "4273893707",
+        "lon": 127.0026029244946,
+        "lat": 37.562987597569304,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9985182419737,
+          37.564357633994454
+        ]
+      },
+      "properties": {
+        "tls_id": "4276255150",
+        "node_id": "4276255150",
+        "junction_id": "4276255150",
+        "lon": 126.9985182419737,
+        "lat": 37.564357633994454,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99831867622214,
+          37.56415345870876
+        ]
+      },
+      "properties": {
+        "tls_id": "4276255151",
+        "node_id": "4276255151",
+        "junction_id": "4276255151",
+        "lon": 126.99831867622214,
+        "lat": 37.56415345870876,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99809117745212,
+          37.56434993975867
+        ]
+      },
+      "properties": {
+        "tls_id": "4276255152",
+        "node_id": "4276255152",
+        "junction_id": "4276255152",
+        "lon": 126.99809117745212,
+        "lat": 37.56434993975867,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.979590969863,
+          37.55394883716452
+        ]
+      },
+      "properties": {
+        "tls_id": "4276317241",
+        "node_id": "4276317241",
+        "junction_id": "4276317241",
+        "lon": 126.979590969863,
+        "lat": 37.55394883716452,
+        "controlled_link_count": 1,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98204266647222,
+          37.563681521741955
+        ]
+      },
+      "properties": {
+        "tls_id": "436849185",
+        "node_id": "436849185",
+        "junction_id": "436849185",
+        "lon": 126.98204266647222,
+        "lat": 37.563681521741955,
+        "controlled_link_count": 7,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00644002009197,
+          37.562129992730725
+        ]
+      },
+      "properties": {
+        "tls_id": "436870729",
+        "node_id": "436870729",
+        "junction_id": "436870729",
+        "lon": 127.00644002009197,
+        "lat": 37.562129992730725,
+        "controlled_link_count": 22,
+        "program_count": 1,
+        "phase_count": 8,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00301540466391,
+          37.559136024074434
+        ]
+      },
+      "properties": {
+        "tls_id": "436883154",
+        "node_id": "436883154",
+        "junction_id": "436883154",
+        "lon": 127.00301540466391,
+        "lat": 37.559136024074434,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98774736091399,
+          37.56431659335274
+        ]
+      },
+      "properties": {
+        "tls_id": "5172891764",
+        "node_id": "5172891764",
+        "junction_id": "5172891764",
+        "lon": 126.98774736091399,
+        "lat": 37.56431659335274,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.988022306169,
+          37.56462147511347
+        ]
+      },
+      "properties": {
+        "tls_id": "5172891765",
+        "node_id": "5172891765",
+        "junction_id": "5172891765",
+        "lon": 126.988022306169,
+        "lat": 37.56462147511347,
+        "controlled_link_count": 1,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97391964020913,
+          37.55881332843371
+        ]
+      },
+      "properties": {
+        "tls_id": "5593950705",
+        "node_id": "5593950705",
+        "junction_id": "5593950705",
+        "lon": 126.97391964020913,
+        "lat": 37.55881332843371,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97576258449939,
+          37.56078490087215
+        ]
+      },
+      "properties": {
+        "tls_id": "5851251250",
+        "node_id": "5851251250",
+        "junction_id": "5851251250",
+        "lon": 126.97576258449939,
+        "lat": 37.56078490087215,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97720376209752,
+          37.564705458521495
+        ]
+      },
+      "properties": {
+        "tls_id": "5851251281",
+        "node_id": "5851251281",
+        "junction_id": "5851251281",
+        "lon": 126.97720376209752,
+        "lat": 37.564705458521495,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97559245380454,
+          37.5608091992485
+        ]
+      },
+      "properties": {
+        "tls_id": "7121587905",
+        "node_id": "7121587905",
+        "junction_id": "7121587905",
+        "lon": 126.97559245380454,
+        "lat": 37.5608091992485,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98061825833808,
+          37.55531949969389
+        ]
+      },
+      "properties": {
+        "tls_id": "7265413652",
+        "node_id": "7265413652",
+        "junction_id": "7265413652",
+        "lon": 126.98061825833808,
+        "lat": 37.55531949969389,
+        "controlled_link_count": 1,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98793619898433,
+          37.564295660568305
+        ]
+      },
+      "properties": {
+        "tls_id": "7311080426",
+        "node_id": "7311080426",
+        "junction_id": "7311080426",
+        "lon": 126.98793619898433,
+        "lat": 37.564295660568305,
+        "controlled_link_count": 3,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9935644312084,
+          37.56112575535457
+        ]
+      },
+      "properties": {
+        "tls_id": "7335400049",
+        "node_id": "7335400049",
+        "junction_id": "7335400049",
+        "lon": 126.9935644312084,
+        "lat": 37.56112575535457,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00198949540079,
+          37.5629850543951
+        ]
+      },
+      "properties": {
+        "tls_id": "7335400058",
+        "node_id": "7335400058",
+        "junction_id": "7335400058",
+        "lon": 127.00198949540079,
+        "lat": 37.5629850543951,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97628052032499,
+          37.56255015456299
+        ]
+      },
+      "properties": {
+        "tls_id": "7666741014",
+        "node_id": "7666741014",
+        "junction_id": "7666741014",
+        "lon": 126.97628052032499,
+        "lat": 37.56255015456299,
+        "controlled_link_count": 15,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00910531141875,
+          37.56807623589534
+        ]
+      },
+      "properties": {
+        "tls_id": "8209566040",
+        "node_id": "8209566040",
+        "junction_id": "8209566040",
+        "lon": 127.00910531141875,
+        "lat": 37.56807623589534,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00919406133438,
+          37.56804276595371
+        ]
+      },
+      "properties": {
+        "tls_id": "8209566041",
+        "node_id": "8209566041",
+        "junction_id": "8209566041",
+        "lon": 127.00919406133438,
+        "lat": 37.56804276595371,
+        "controlled_link_count": 4,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.01469962317304,
+          37.56803385724805
+        ]
+      },
+      "properties": {
+        "tls_id": "8453967392",
+        "node_id": "8453967392",
+        "junction_id": "8453967392",
+        "lon": 127.01469962317304,
+        "lat": 37.56803385724805,
+        "controlled_link_count": 4,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98761232958567,
+          37.566082289917716
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11059719419_11203083979_11203083980_11203083983_#8more",
+        "node_id": "cluster_11059719419_11203083979_11203083980_11203083983_#8more",
+        "junction_id": "cluster_11059719419_11203083979_11203083980_11203083983_#8more",
+        "lon": 126.98761232958567,
+        "lat": 37.566082289917716,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97238892542994,
+          37.55679869723108
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11139302901_5593950669_5593950674",
+        "node_id": "cluster_11139302901_5593950669_5593950674",
+        "junction_id": "cluster_11139302901_5593950669_5593950674",
+        "lon": 126.97238892542994,
+        "lat": 37.55679869723108,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97303826728614,
+          37.55611726991278
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11177413157_11178710207",
+        "node_id": "cluster_11177413157_11178710207",
+        "junction_id": "cluster_11177413157_11178710207",
+        "lon": 126.97303826728614,
+        "lat": 37.55611726991278,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97312440145676,
+          37.556146957115715
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11177413160_11177413161",
+        "node_id": "cluster_11177413160_11177413161",
+        "junction_id": "cluster_11177413160_11177413161",
+        "lon": 126.97312440145676,
+        "lat": 37.556146957115715,
+        "controlled_link_count": 2,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97601699121044,
+          37.56052034264172
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203001809_11203001817_13721232729",
+        "node_id": "cluster_11203001809_11203001817_13721232729",
+        "junction_id": "cluster_11203001809_11203001817_13721232729",
+        "lon": 126.97601699121044,
+        "lat": 37.56052034264172,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97597357238074,
+          37.56044308513791
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203001810_11203001816_13721232730",
+        "node_id": "cluster_11203001810_11203001816_13721232730",
+        "junction_id": "cluster_11203001810_11203001816_13721232730",
+        "lon": 126.97597357238074,
+        "lat": 37.56044308513791,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97580906945032,
+          37.56020928321788
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203001813_13721232726",
+        "node_id": "cluster_11203001813_13721232726",
+        "junction_id": "cluster_11203001813_13721232726",
+        "lon": 126.97580906945032,
+        "lat": 37.56020928321788,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97536701607777,
+          37.5605597518435
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203001815_1936511434_5851251259",
+        "node_id": "cluster_11203001815_1936511434_5851251259",
+        "junction_id": "cluster_11203001815_1936511434_5851251259",
+        "lon": 126.97536701607777,
+        "lat": 37.5605597518435,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98121621483597,
+          37.561936789559745
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203041632_11203041633_11203041634_11203041635_#5more",
+        "node_id": "cluster_11203041632_11203041633_11203041634_11203041635_#5more",
+        "junction_id": "cluster_11203041632_11203041633_11203041634_11203041635_#5more",
+        "lon": 126.98121621483597,
+        "lat": 37.561936789559745,
+        "controlled_link_count": 25,
+        "program_count": 1,
+        "phase_count": 8,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9820402626015,
+          37.56036375760715
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+        "node_id": "cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+        "junction_id": "cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+        "lon": 126.9820402626015,
+        "lat": 37.56036375760715,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97142885769625,
+          37.55963282080462
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11209914851_11209914852_11209914858_11209914862_#5more",
+        "node_id": "cluster_11209914851_11209914852_11209914858_11209914862_#5more",
+        "junction_id": "cluster_11209914851_11209914852_11209914858_11209914862_#5more",
+        "lon": 126.97142885769625,
+        "lat": 37.55963282080462,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97134192916526,
+          37.55939439818867
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11209914857_11209914859",
+        "node_id": "cluster_11209914857_11209914859",
+        "junction_id": "cluster_11209914857_11209914859",
+        "lon": 126.97134192916526,
+        "lat": 37.55939439818867,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9712198889109,
+          37.5598411034569
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11209914868_3893667694_8483343157",
+        "node_id": "cluster_11209914868_3893667694_8483343157",
+        "junction_id": "cluster_11209914868_3893667694_8483343157",
+        "lon": 126.9712198889109,
+        "lat": 37.5598411034569,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97687699887538,
+          37.56391553303343
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_11277565408_11277565409_414685823_5851251280",
+        "node_id": "cluster_11277565408_11277565409_414685823_5851251280",
+        "junction_id": "cluster_11277565408_11277565409_414685823_5851251280",
+        "lon": 126.97687699887538,
+        "lat": 37.56391553303343,
+        "controlled_link_count": 29,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99925816305583,
+          37.566538592227346
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_12785870414_3337522189",
+        "node_id": "cluster_12785870414_3337522189",
+        "junction_id": "cluster_12785870414_3337522189",
+        "lon": 126.99925816305583,
+        "lat": 37.566538592227346,
+        "controlled_link_count": 9,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.01357244171781,
+          37.56463145324157
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_1326096615_3849700763",
+        "node_id": "cluster_1326096615_3849700763",
+        "junction_id": "cluster_1326096615_3849700763",
+        "lon": 127.01357244171781,
+        "lat": 37.56463145324157,
+        "controlled_link_count": 20,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00263242644863,
+          37.56326486003952
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_13348213189_13348213190_13348213191",
+        "node_id": "cluster_13348213189_13348213190_13348213191",
+        "junction_id": "cluster_13348213189_13348213190_13348213191",
+        "lon": 127.00263242644863,
+        "lat": 37.56326486003952,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00236481030814,
+          37.56456952542761
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_13348293702_13348293703_414685829",
+        "node_id": "cluster_13348293702_13348293703_414685829",
+        "junction_id": "cluster_13348293702_13348293703_414685829",
+        "lon": 127.00236481030814,
+        "lat": 37.56456952542761,
+        "controlled_link_count": 14,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97572663308743,
+          37.56020588661086
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_13721232725_7259737828",
+        "node_id": "cluster_13721232725_7259737828",
+        "junction_id": "cluster_13721232725_7259737828",
+        "lon": 126.97572663308743,
+        "lat": 37.56020588661086,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99130153317289,
+          37.562924025344344
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_2374692784_2374692803",
+        "node_id": "cluster_2374692784_2374692803",
+        "junction_id": "cluster_2374692784_2374692803",
+        "lon": 126.99130153317289,
+        "lat": 37.562924025344344,
+        "controlled_link_count": 20,
+        "program_count": 1,
+        "phase_count": 8,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00303718507092,
+          37.56035123126914
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_3846493853_3846493855_3846493856",
+        "node_id": "cluster_3846493853_3846493855_3846493856",
+        "junction_id": "cluster_3846493853_3846493855_3846493856",
+        "lon": 127.00303718507092,
+        "lat": 37.56035123126914,
+        "controlled_link_count": 24,
+        "program_count": 1,
+        "phase_count": 13,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00930228843075,
+          37.56452192000724
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_3846534041_436877431",
+        "node_id": "cluster_3846534041_436877431",
+        "junction_id": "cluster_3846534041_436877431",
+        "lon": 127.00930228843075,
+        "lat": 37.56452192000724,
+        "controlled_link_count": 8,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99829776257523,
+          37.564406074849146
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_4276255149_436839431",
+        "node_id": "cluster_4276255149_436839431",
+        "junction_id": "cluster_4276255149_436839431",
+        "lon": 126.99829776257523,
+        "lat": 37.564406074849146,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9765115501176,
+          37.55491057685556
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_4276316582_436883143",
+        "node_id": "cluster_4276316582_436883143",
+        "junction_id": "cluster_4276316582_436883143",
+        "lon": 126.9765115501176,
+        "lat": 37.55491057685556,
+        "controlled_link_count": 4,
+        "program_count": 1,
+        "phase_count": 3,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97407042156578,
+          37.55865063464634
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_5161705573_7195225083",
+        "node_id": "cluster_5161705573_7195225083",
+        "junction_id": "cluster_5161705573_7195225083",
+        "lon": 126.97407042156578,
+        "lat": 37.55865063464634,
+        "controlled_link_count": 4,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97714843642196,
+          37.56492593780414
+        ]
+      },
+      "properties": {
+        "tls_id": "cluster_5851251276_5851251277",
+        "node_id": "cluster_5851251276_5851251277",
+        "junction_id": "cluster_5851251276_5851251277",
+        "lon": 126.97714843642196,
+        "lat": 37.56492593780414,
+        "controlled_link_count": 0,
+        "program_count": 0,
+        "phase_count": 0,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.9725335625177,
+          37.55697147095823
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_5593950669_5593950674",
+        "node_id": null,
+        "junction_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_5593950669_5593950674",
+        "lon": 126.9725335625177,
+        "lat": 37.55697147095823,
+        "controlled_link_count": 18,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97562763185888,
+          37.560635751679
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_11203001806_11203001814_13721232731_5851251250_#6more",
+        "node_id": null,
+        "junction_id": "joinedS_11203001806_11203001814_13721232731_5851251250_#6more",
+        "lon": 126.97562763185888,
+        "lat": 37.560635751679,
+        "controlled_link_count": 30,
+        "program_count": 1,
+        "phase_count": 20,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98212168104725,
+          37.560345513697264
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+        "node_id": null,
+        "junction_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+        "lon": 126.98212168104725,
+        "lat": 37.560345513697264,
+        "controlled_link_count": 26,
+        "program_count": 1,
+        "phase_count": 10,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.98759616153137,
+          37.56618021884505
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_11203083989_11203083990_11203083991_11203083992_#3more",
+        "node_id": null,
+        "junction_id": "joinedS_11203083989_11203083990_11203083991_11203083992_#3more",
+        "lon": 126.98759616153137,
+        "lat": 37.56618021884505,
+        "controlled_link_count": 36,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00295532786235,
+          37.559264000157995
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_3846493837_436883154",
+        "node_id": null,
+        "junction_id": "joinedS_3846493837_436883154",
+        "lon": 127.00295532786235,
+        "lat": 37.559264000157995,
+        "controlled_link_count": 22,
+        "program_count": 1,
+        "phase_count": 6,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          127.00249528922986,
+          37.563145514524585
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_4273893706_4273893707_7335400058_cluster_13348213189_13348213190_13348213191",
+        "node_id": null,
+        "junction_id": "joinedS_4273893706_4273893707_7335400058_cluster_13348213189_13348213190_13348213191",
+        "lon": 127.00249528922986,
+        "lat": 37.563145514524585,
+        "controlled_link_count": 27,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.99830252651891,
+          37.56435528854131
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_4276255150_4276255151_4276255152_cluster_4276255149_436839431",
+        "node_id": null,
+        "junction_id": "joinedS_4276255150_4276255151_4276255152_cluster_4276255149_436839431",
+        "lon": 126.99830252651891,
+        "lat": 37.56435528854131,
+        "controlled_link_count": 14,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97721107412563,
+          37.56482932835115
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_5851251281_cluster_5851251276_5851251277",
+        "node_id": null,
+        "junction_id": "joinedS_5851251281_cluster_5851251276_5851251277",
+        "lon": 126.97721107412563,
+        "lat": 37.56482932835115,
+        "controlled_link_count": 44,
+        "program_count": 1,
+        "phase_count": 7,
+        "inside_analysis_bbox": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126.97135707518262,
+          37.55963981253998
+        ]
+      },
+      "properties": {
+        "tls_id": "joinedS_cluster_11209914851_11209914852_11209914858_11209914862_#5more_cluster_11209914857_11209914859_cluster_11209914868_3893667694_8483343157",
+        "node_id": null,
+        "junction_id": "joinedS_cluster_11209914851_11209914852_11209914858_11209914862_#5more_cluster_11209914857_11209914859_cluster_11209914868_3893667694_8483343157",
+        "lon": 126.97135707518262,
+        "lat": 37.55963981253998,
+        "controlled_link_count": 22,
+        "program_count": 1,
+        "phase_count": 4,
+        "inside_analysis_bbox": true
+      }
+    }
+  ]
+}

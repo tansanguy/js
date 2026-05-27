@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SUMO Map Review</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQBdjlIeqio5I8fAFs1C7lYLVQ2wZj4=" crossorigin="">
+  <style>
+    .leaflet-container { overflow: hidden; }
+    .leaflet-pane,
+    .leaflet-tile,
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow,
+    .leaflet-tile-container,
+    .leaflet-pane > svg,
+    .leaflet-pane > canvas,
+    .leaflet-zoom-box,
+    .leaflet-image-layer,
+    .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+    .leaflet-container img {
+      max-width: none !important;
+      max-height: none !important;
+    }
+    .leaflet-tile {
+      width: 256px;
+      height: 256px;
+    }
+    .leaflet-tile-pane { z-index: 200; }
+    .leaflet-overlay-pane { z-index: 400; }
+    .leaflet-shadow-pane { z-index: 500; }
+    .leaflet-marker-pane { z-index: 600; }
+    .leaflet-tooltip-pane { z-index: 650; }
+    .leaflet-popup-pane { z-index: 700; }
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --line: #d7dce5;
+      --blue: #2563eb;
+      --green: #12805c;
+      --red: #c2410c;
+      --amber: #b45309;
+      --purple: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      flex: 0 0 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      min-width: 0;
+    }
+    .content {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+    .map-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+    }
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .segmented label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+      border-right: 1px solid var(--line);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .segmented label:last-child { border-right: 0; }
+    .segmented input { margin: 0; }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    button {
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+    button.subtle {
+      background: #f8fafc;
+    }
+    .debug-action {
+      border-color: #f9a8d4;
+      color: #9d174d;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+    aside {
+      flex: 0 0 380px;
+      width: 380px;
+      position: relative;
+      overflow: auto;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+      padding: 14px;
+    }
+    .section {
+      padding: 0 0 14px;
+      margin: 0 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section:last-child { border-bottom: 0; }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    h3 {
+      margin: 10px 0 6px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+    .muted { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .status {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .status-summary {
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfe;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      margin: 0 0 10px;
+    }
+    summary {
+      min-height: 34px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .details-body {
+      padding: 0 10px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .details-body ol,
+    .details-body ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+    }
+    .details-body li { margin: 3px 0; }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+    .legend-item {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-height: 26px;
+    }
+    .legend-swatch {
+      width: 24px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      justify-self: center;
+      border: 2px solid #991b1b;
+      background: #f97316;
+    }
+    .edge-id-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      margin-bottom: 8px;
+    }
+    .edge-id-value {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfe;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+    .small-button {
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .debug-controls {
+      display: grid;
+      gap: 6px;
+      margin: 8px 0;
+    }
+    .advanced-section {
+      display: none;
+    }
+    .advanced-section.is-visible {
+      display: block;
+    }
+    .warning {
+      margin-top: 8px;
+      padding: 8px;
+      border-left: 3px solid var(--amber);
+      background: #fff7ed;
+      color: #7c2d12;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    dl {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 6px 8px;
+      margin: 0;
+      font-size: 12px;
+    }
+    dt { color: var(--muted); }
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+    .counts {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 10px;
+      font-size: 13px;
+    }
+    .list {
+      max-height: 140px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #fbfcfe;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .preview {
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #fbfcfe;
+      white-space: pre-wrap;
+    }
+    @media (max-width: 900px) {
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+      header { flex: 0 0 auto; align-items: flex-start; flex-direction: column; }
+      .content { flex-direction: column; min-height: 0; }
+      .map-wrap { flex: 0 0 60vh; min-height: 420px; }
+      aside { flex: 0 0 auto; width: 100%; border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>SUMO Map Review</h1>
+      <div class="toolbar">
+        <div class="segmented" role="radiogroup" aria-label="selection mode">
+          <label><input type="radio" name="mode" value="analysis_edge" checked> 분석 edge</label>
+          <label><input type="radio" name="mode" value="accident_candidate_edge"> 사고 후보 edge</label>
+          <label><input type="radio" name="mode" value="excluded_edge"> 제외 edge</label>
+        </div>
+        <label class="toggle"><input id="toggle-analysis" type="checkbox"> 분석권역</label>
+        <label class="toggle"><input id="toggle-edges" type="checkbox"> SUMO edge</label>
+        <label class="toggle"><input id="toggle-blue-edges-only" type="checkbox"> passenger 허용 edge만</label>
+        <label class="toggle"><input id="toggle-tls" type="checkbox"> 신호등</label>
+        <button id="show-help" class="subtle" type="button">사용법 보기</button>
+        <button id="show-legend" class="subtle" type="button">범례 보기</button>
+        <button id="show-debug" class="subtle" type="button">디버그 정보 보기</button>
+        <button id="fit-analysis" type="button">분석권역으로 이동</button>
+        <button id="fit-edges" type="button">edge 영역으로 이동</button>
+        <button id="fit-tls" type="button">신호등 영역으로 이동</button>
+        <button class="primary" id="download-json" type="button">선택 결과 다운로드</button>
+        <button id="clear-selection" type="button">선택 초기화</button>
+      </div>
+    </header>
+    <div class="content">
+      <main class="map-wrap"><div id="map"></div></main>
+      <aside>
+        <section class="section">
+          <details id="legend-panel" open>
+            <summary>범례</summary>
+            <div class="details-body">
+              <div class="legend-grid">
+                <div class="legend-item"><span class="legend-swatch" style="background:#0f5bff"></span><span>SUMO edge: passenger 허용 도로 링크</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#7c3aed; opacity:.55"></span><span>internal edge: SUMO 내부 연결 edge</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#f97316"></span><span>passenger 불가 edge: 주행 제한 또는 확인 필요 edge</span></div>
+                <div class="legend-item"><span class="legend-dot"></span><span>신호등/TLS: SUMO traffic light system 위치</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#0057ff; height:6px"></span><span>분석권역: Step 1 분석 영역, 반투명 fill 포함</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#7c3aed; height:6px"></span><span>분석축: 중부소방서-서울역 방향 기준선</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#0057ff; height:7px"></span><span>선택된 analysis edge</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#dc2626; height:7px"></span><span>선택된 accident candidate edge</span></div>
+                <div class="legend-item"><span class="legend-swatch" style="background:#111827; height:7px"></span><span>선택된 excluded edge</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+        <section class="section">
+          <h2>클릭한 Edge</h2>
+          <div id="edge-warning"></div>
+          <div class="edge-id-row">
+            <code id="edge-id-value" class="edge-id-value">none</code>
+            <button id="copy-edge-id" class="small-button" type="button">복사</button>
+          </div>
+          <dl id="edge-props"><dt>edge_id</dt><dd>none</dd></dl>
+        </section>
+        <section class="section">
+          <h2>선택 개수</h2>
+          <div class="counts">
+            <span>analysis_edges</span><strong id="count-analysis">0</strong>
+            <span>accident_candidate_edges</span><strong id="count-accident">0</strong>
+            <span>excluded_edges</span><strong id="count-excluded">0</strong>
+          </div>
+        </section>
+        <section class="section">
+          <h2>다운로드 미리보기</h2>
+          <div id="download-preview" class="preview"></div>
+          <div id="selection-list" class="list" hidden></div>
+        </section>
+        <section class="section advanced-section" id="advanced-section">
+          <details id="help-panel">
+            <summary>사용법</summary>
+            <div class="details-body">
+              <ol>
+                <li>프로젝트 루트에서 localhost 서버로 HTML을 연다.</li>
+                <li>분석권역과 SUMO edge가 지도 위에 맞게 올라왔는지 확인한다.</li>
+                <li>필요할 때만 신호등 레이어를 켠다.</li>
+                <li><strong>분석 edge</strong> 모드에서 분석 대상 도로 edge를 클릭한다.</li>
+                <li><strong>사고 후보 edge</strong> 모드에서 사고 발생 후보 edge를 클릭한다.</li>
+                <li><strong>제외 edge</strong> 모드에서 분석에서 뺄 edge를 클릭한다.</li>
+                <li>오른쪽 선택 개수와 다운로드 미리보기를 확인한다.</li>
+                <li><strong>선택 결과 다운로드</strong>로 <code>selected_edges.json</code>을 저장한다.</li>
+              </ol>
+            </div>
+          </details>
+          <details id="status-panel">
+            <summary>상태 요약</summary>
+            <div class="details-body">
+              <div id="status-summary" class="status-summary">레이어 로드 중...</div>
+              <p class="muted">file://로 열면 GeoJSON fetch가 막힐 수 있음. 기본 실행은 <code>cd /Users/junlee/Desktop/js</code>, <code>python3 -m http.server 8000</code>, <code>http://localhost:8000/results/html/map_review.html</code>.</p>
+            </div>
+          </details>
+          <details id="debug-panel">
+            <summary>디버그 정보</summary>
+            <div class="details-body">
+              <p class="muted">좌표, bounds, layer 표시 상태 확인용이다. 일반 edge 선택 작업에서는 꺼둬도 된다. Console에서는 <code>window.__debug</code>를 확인한다.</p>
+              <div class="legend-item"><span class="legend-swatch" style="background:#ff1493; height:7px"></span><span>디버그 layer: first edge / first 10 / 좌표 검증용</span></div>
+              <div class="debug-controls">
+                <label class="toggle"><input id="toggle-debug-analysis" type="checkbox"> 디버그 분석권역</label>
+                <label class="toggle"><input id="toggle-debug-first-edge" type="checkbox"> 디버그 첫 edge marker</label>
+                <label class="toggle"><input id="toggle-debug-first10" type="checkbox"> 디버그 first 10 edges</label>
+                <label class="toggle"><input id="toggle-debug-tls10" type="checkbox"> 디버그 TLS 10개</label>
+              </div>
+              <button id="fit-first-edge" class="debug-action" type="button">디버그 첫 edge로 이동</button>
+              <button id="fit-first10-edges" class="debug-action" type="button">디버그 first 10 edges로 이동</button>
+              <div id="debug-status" class="list">디버그 정보 로드 중...</div>
+            </div>
+          </details>
+        </section>
+      </aside>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const APP_CONTEXT = {"generated_at": "2026-05-27T07:33:51.895317+00:00", "initial_center": [37.5616815, 126.9934095], "initial_zoom": 14, "counts": {"analysis_feature_count": 5, "edge_feature_count": 3021, "tls_feature_count": 93}, "step03_audit_summary": {"edge_feature_count": 3021, "tls_feature_count": 93, "warnings": 0}, "paths": {"analysis_area_geojson": "../../data_prepared/geojson/analysis_area.geojson", "sumo_edges_geojson": "../../data_prepared/geojson/ellipse_passenger_edges.geojson", "sumo_tls_geojson": "../../data_prepared/geojson/ellipse_passenger_tls.geojson"}};
+    const selected = {
+      analysis_edges: new Set(),
+      accident_candidate_edges: new Set(),
+      excluded_edges: new Set(),
+    };
+    let currentMode = 'analysis_edge';
+    let edgeLayer = null;
+    let tlsLayer = null;
+    let analysisLayer = null;
+    let debugAnalysisLayer = null;
+    let debugFirstEdgeMarker = null;
+    let debugFirstEdgeLine = null;
+    let debugFirst10EdgesLayer = null;
+    let debugTls10Layer = null;
+    let debugCenterMarker = null;
+    let allEdgesData = null;
+    let blueEdgesOnly = false;
+    let selectedEdgeLayer = new Map();
+    const DEFAULT_LAYER_VISIBILITY = {
+      analysis: true,
+      edges: true,
+      tls: false,
+    };
+    const loadState = {
+      analysis: 0,
+      edges: 0,
+      tls: 0,
+      analysisVisible: false,
+      edgesVisible: false,
+      tlsVisible: false,
+      blueEdgesOnly: false,
+      blueEdgeCount: 0,
+      analysisCheckboxChecked: false,
+      edgesCheckboxChecked: false,
+      tlsCheckboxChecked: false,
+      analysisBounds: 'not loaded',
+      edgeBounds: 'not loaded',
+      tlsBounds: 'not loaded',
+      first10EdgeBounds: 'not loaded',
+      firstEdgeCoordinateSample: 'not loaded',
+      firstEdgeCoordinateInSeoul: 'not loaded',
+      firstEdgeId: 'not loaded',
+      firstEdgeMarkerLatLon: 'not loaded',
+      firstEdgeLeafletLatLng: 'not loaded',
+      firstEdgeLineVisible: false,
+      centerMarkerVisible: false,
+      analysisRoles: 'not loaded',
+      tlsFirstCoordinate: 'not loaded',
+      tlsFirstCoordinateInSeoul: 'not loaded',
+      debugFirstEdgeMarkerVisible: false,
+      debugFirst10EdgesVisible: false,
+      debugTls10Visible: false,
+      lastClickedEdgeId: 'none',
+      lastError: 'none',
+      center: APP_CONTEXT.initial_center,
+      zoom: APP_CONTEXT.initial_zoom,
+      leafletTilePosition: 'not checked',
+      paneZIndexes: 'not checked',
+    };
+
+    const modeToKey = {
+      analysis_edge: 'analysis_edges',
+      accident_candidate_edge: 'accident_candidate_edges',
+      excluded_edge: 'excluded_edges',
+    };
+    const modeColors = {
+      analysis_edges: '#0057ff',
+      accident_candidate_edges: '#dc2626',
+      excluded_edges: '#111827',
+    };
+
+    function setStatus(message) {
+      const summary = document.getElementById('status-summary');
+      if (summary) {
+        summary.textContent = [
+          message,
+          `로드 완료: analysis ${loadState.analysis.toLocaleString()} / edges ${loadState.edges.toLocaleString()} / TLS ${loadState.tls.toLocaleString()}`,
+          `표시 중: 분석권역 ${loadState.analysisVisible ? 'ON' : 'OFF'} / SUMO edge ${loadState.edgesVisible ? 'ON' : 'OFF'} / 신호등 ${loadState.tlsVisible ? 'ON' : 'OFF'}`,
+          `edge 필터: ${loadState.blueEdgesOnly ? `passenger 허용 edge만 (${loadState.blueEdgeCount.toLocaleString()}개)` : '전체 SUMO edge'}`,
+          `마지막 클릭 edge_id: ${loadState.lastClickedEdgeId}`,
+          `마지막 오류: ${loadState.lastError}`,
+        ].join('\n');
+      }
+      const debugStatus = document.getElementById('debug-status');
+      if (!debugStatus) return;
+      debugStatus.textContent = [
+        message,
+        `분석권역 로드 개수: ${loadState.analysis}`,
+        `edge 로드 개수: ${loadState.edges}`,
+        `TLS 로드 개수: ${loadState.tls}`,
+        `분석권역 표시 여부: ${loadState.analysisVisible}`,
+        `SUMO edge 표시 여부: ${loadState.edgesVisible}`,
+        `신호등 표시 여부: ${loadState.tlsVisible}`,
+        `passenger 허용 edge만 보기: ${loadState.blueEdgesOnly}`,
+        `passenger 허용 edge 개수: ${loadState.blueEdgeCount}`,
+        `checkbox 분석권역/SUMO edge/신호등: ${loadState.analysisCheckboxChecked} / ${loadState.edgesCheckboxChecked} / ${loadState.tlsCheckboxChecked}`,
+        `현재 지도 중심/줌: ${formatCenterZoom()}`,
+        `analysis bounds: ${loadState.analysisBounds}`,
+        `first 10 edge bounds: ${loadState.first10EdgeBounds}`,
+        `edge bounds: ${loadState.edgeBounds}`,
+        `TLS bounds: ${loadState.tlsBounds}`,
+        `analysis role 목록: ${loadState.analysisRoles}`,
+        `first edge id: ${loadState.firstEdgeId}`,
+        `첫 번째 edge 좌표 샘플: ${loadState.firstEdgeCoordinateSample}`,
+        `첫 번째 edge 서울 범위 여부: ${loadState.firstEdgeCoordinateInSeoul}`,
+        `first edge marker lat/lon: ${loadState.firstEdgeMarkerLatLon}`,
+        `first edge Leaflet [lat, lon]: ${loadState.firstEdgeLeafletLatLng}`,
+        `TLS 첫 좌표: ${loadState.tlsFirstCoordinate}`,
+        `TLS 첫 좌표 서울 범위 여부: ${loadState.tlsFirstCoordinateInSeoul}`,
+        `마지막 클릭 edge_id: ${loadState.lastClickedEdgeId}`,
+        `debug first edge marker 표시 여부: ${loadState.debugFirstEdgeMarkerVisible}`,
+        `debug first edge line 표시 여부: ${loadState.firstEdgeLineVisible}`,
+        `map.hasLayer(debugEdgeLayer): ${loadState.debugFirst10EdgesVisible}`,
+        `지도 center marker 표시 여부: ${loadState.centerMarkerVisible}`,
+        `debug TLS 10 표시 여부: ${loadState.debugTls10Visible}`,
+        `leaflet tile position: ${loadState.leafletTilePosition}`,
+        `pane z-index: ${loadState.paneZIndexes}`,
+        `마지막 오류 메시지: ${loadState.lastError}`,
+      ].join('\n');
+    }
+
+    function formatCenterZoom() {
+      if (!loadState.center) return 'unknown';
+      const lat = Number(loadState.center[0]).toFixed(6);
+      const lon = Number(loadState.center[1]).toFixed(6);
+      return `${lat}, ${lon} / ${loadState.zoom}`;
+    }
+
+    function updateMapState(map) {
+      const center = map.getCenter();
+      loadState.center = [center.lat, center.lng];
+      loadState.zoom = map.getZoom();
+      updateLayerDebugState(map);
+    }
+
+    function boundsText(layer) {
+      if (!layer || typeof layer.getBounds !== 'function') return 'not available';
+      const bounds = layer.getBounds();
+      if (!bounds || !bounds.isValid()) return 'invalid';
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      return `SW(${sw.lat.toFixed(6)}, ${sw.lng.toFixed(6)}) NE(${ne.lat.toFixed(6)}, ${ne.lng.toFixed(6)})`;
+    }
+
+    function updateLayerDebugState(map) {
+      loadState.analysisVisible = !!(analysisLayer && map.hasLayer(analysisLayer));
+      loadState.edgesVisible = !!(edgeLayer && map.hasLayer(edgeLayer));
+      loadState.tlsVisible = !!(tlsLayer && map.hasLayer(tlsLayer));
+      const analysisToggle = document.getElementById('toggle-analysis');
+      const edgeToggle = document.getElementById('toggle-edges');
+      const tlsToggle = document.getElementById('toggle-tls');
+      loadState.analysisCheckboxChecked = !!(analysisToggle && analysisToggle.checked);
+      loadState.edgesCheckboxChecked = !!(edgeToggle && edgeToggle.checked);
+      loadState.tlsCheckboxChecked = !!(tlsToggle && tlsToggle.checked);
+      loadState.blueEdgesOnly = blueEdgesOnly;
+      loadState.debugFirstEdgeMarkerVisible = !!(debugFirstEdgeMarker && map.hasLayer(debugFirstEdgeMarker));
+      loadState.firstEdgeLineVisible = !!(debugFirstEdgeLine && map.hasLayer(debugFirstEdgeLine));
+      loadState.debugFirst10EdgesVisible = !!(debugFirst10EdgesLayer && map.hasLayer(debugFirst10EdgesLayer));
+      loadState.debugTls10Visible = !!(debugTls10Layer && map.hasLayer(debugTls10Layer));
+      loadState.centerMarkerVisible = !!(debugCenterMarker && map.hasLayer(debugCenterMarker));
+      loadState.analysisBounds = boundsText(analysisLayer);
+      loadState.edgeBounds = boundsText(edgeLayer);
+      loadState.tlsBounds = boundsText(tlsLayer);
+      loadState.first10EdgeBounds = boundsText(debugFirst10EdgesLayer);
+      updateWindowDebug(map);
+    }
+
+    function setLayerVisible(map, layer, visible) {
+      if (!layer) return;
+      if (visible && !map.hasLayer(layer)) map.addLayer(layer);
+      if (!visible && map.hasLayer(layer)) map.removeLayer(layer);
+      updateMapState(map);
+      syncLayerVisibility(map);
+    }
+
+    function syncLayerVisibility(map) {
+      const analysisToggle = document.getElementById('toggle-analysis');
+      const edgeToggle = document.getElementById('toggle-edges');
+      const blueOnlyToggle = document.getElementById('toggle-blue-edges-only');
+      const tlsToggle = document.getElementById('toggle-tls');
+      if (analysisToggle) analysisToggle.checked = !!(analysisLayer && map.hasLayer(analysisLayer));
+      if (edgeToggle) edgeToggle.checked = !!(edgeLayer && map.hasLayer(edgeLayer));
+      if (blueOnlyToggle) blueOnlyToggle.checked = blueEdgesOnly;
+      if (tlsToggle) tlsToggle.checked = !!(tlsLayer && map.hasLayer(tlsLayer));
+      updateLayerDebugState(map);
+    }
+
+    function syncDebugToggle(id, map, layer) {
+      const toggle = document.getElementById(id);
+      if (toggle) toggle.checked = !!(layer && map.hasLayer(layer));
+    }
+
+    function syncDebugVisibility(map) {
+      syncDebugToggle('toggle-debug-analysis', map, debugAnalysisLayer);
+      syncDebugToggle('toggle-debug-first-edge', map, debugFirstEdgeMarker);
+      syncDebugToggle('toggle-debug-first10', map, debugFirst10EdgesLayer);
+      syncDebugToggle('toggle-debug-tls10', map, debugTls10Layer);
+      updateLayerDebugState(map);
+    }
+
+    function setDebugLayerVisible(map, layer, visible) {
+      if (!layer) return;
+      if (visible && !map.hasLayer(layer)) map.addLayer(layer);
+      if (!visible && map.hasLayer(layer)) map.removeLayer(layer);
+      if (layer === debugFirstEdgeMarker && debugFirstEdgeLine) {
+        if (visible && !map.hasLayer(debugFirstEdgeLine)) map.addLayer(debugFirstEdgeLine);
+        if (!visible && map.hasLayer(debugFirstEdgeLine)) map.removeLayer(debugFirstEdgeLine);
+      }
+      syncDebugVisibility(map);
+      setStatus('디버그 레이어 표시 상태가 변경되었습니다.');
+    }
+
+    function isSeoulLonLat(coord) {
+      if (!coord || coord.length < 2) return false;
+      const lon = Number(coord[0]);
+      const lat = Number(coord[1]);
+      return Number.isFinite(lon) && Number.isFinite(lat) &&
+        lon >= 126.75 && lon <= 127.25 &&
+        lat >= 37.40 && lat <= 37.75;
+    }
+
+    function firstCoordinate(feature) {
+      if (!feature || !feature.geometry) return null;
+      const coords = feature.geometry.coordinates;
+      if (!coords) return null;
+      if (feature.geometry.type === 'Point') return coords;
+      if (feature.geometry.type === 'LineString') return coords[0];
+      if (feature.geometry.type === 'MultiLineString') return coords[0] && coords[0][0];
+      if (feature.geometry.type === 'Polygon') return coords[0] && coords[0][0];
+      if (feature.geometry.type === 'MultiPolygon') return coords[0] && coords[0][0] && coords[0][0][0];
+      return null;
+    }
+
+    function lineLatLngs(feature) {
+      const coords = feature && feature.geometry && feature.geometry.coordinates;
+      if (!coords || feature.geometry.type !== 'LineString') return [];
+      return coords
+        .filter(coord => coord && coord.length >= 2)
+        .map(coord => [Number(coord[1]), Number(coord[0])])
+        .filter(coord => Number.isFinite(coord[0]) && Number.isFinite(coord[1]));
+    }
+
+    function layerBoundsValid(layer) {
+      if (!layer || typeof layer.getBounds !== 'function') return false;
+      const bounds = layer.getBounds();
+      return !!(bounds && bounds.isValid());
+    }
+
+    function updatePaneDiagnostics() {
+      const paneNames = ['tilePane', 'overlayPane', 'markerPane', 'tooltipPane', 'popupPane'];
+      const values = paneNames.map(name => {
+        const pane = document.querySelector(`.leaflet-${name.replace('Pane', '-pane')}`);
+        if (!pane) return `${name}=missing`;
+        return `${name}=${getComputedStyle(pane).zIndex || 'auto'}`;
+      });
+      loadState.paneZIndexes = values.join(', ');
+    }
+
+    function updateWindowDebug(map) {
+      if (!map) return;
+      updatePaneDiagnostics();
+      window.__debug = {
+        map,
+        layers: {
+          analysisLayer,
+          edgeLayer,
+          tlsLayer,
+          debugAnalysisLayer,
+          debugFirstEdgeMarker,
+          debugFirstEdgeLine,
+          debugFirst10EdgesLayer,
+          debugCenterMarker,
+          debugTls10Layer,
+        },
+        hasLayer: {
+          analysis: !!(analysisLayer && map.hasLayer(analysisLayer)),
+          edges: !!(edgeLayer && map.hasLayer(edgeLayer)),
+          tls: !!(tlsLayer && map.hasLayer(tlsLayer)),
+          debugAnalysis: !!(debugAnalysisLayer && map.hasLayer(debugAnalysisLayer)),
+          firstEdgeMarker: !!(debugFirstEdgeMarker && map.hasLayer(debugFirstEdgeMarker)),
+          firstEdgeLine: !!(debugFirstEdgeLine && map.hasLayer(debugFirstEdgeLine)),
+          first10Edges: !!(debugFirst10EdgesLayer && map.hasLayer(debugFirst10EdgesLayer)),
+          centerMarker: !!(debugCenterMarker && map.hasLayer(debugCenterMarker)),
+          tls10: !!(debugTls10Layer && map.hasLayer(debugTls10Layer)),
+        },
+        boundsValid: {
+          analysis: layerBoundsValid(analysisLayer),
+          edges: layerBoundsValid(edgeLayer),
+          tls: layerBoundsValid(tlsLayer),
+          first10Edges: layerBoundsValid(debugFirst10EdgesLayer),
+        },
+        counts: {
+          analysis: loadState.analysis,
+          edges: loadState.edges,
+          tls: loadState.tls,
+        },
+        coordinates: {
+          firstEdgeOriginalLonLat: loadState.firstEdgeCoordinateSample,
+          firstEdgeLeafletLatLng: loadState.firstEdgeLeafletLatLng,
+          firstEdgeInSeoul: loadState.firstEdgeCoordinateInSeoul,
+          firstTlsOriginalLonLat: loadState.tlsFirstCoordinate,
+          firstTlsInSeoul: loadState.tlsFirstCoordinateInSeoul,
+        },
+        checkboxes: {
+          analysis: loadState.analysisCheckboxChecked,
+          edges: loadState.edgesCheckboxChecked,
+          tls: loadState.tlsCheckboxChecked,
+        },
+        panes: loadState.paneZIndexes,
+        state: loadState,
+        log: () => logDiagnostics('manual window.__debug.log()'),
+      };
+    }
+
+    function openPanel(id) {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      const advancedSection = panel.closest('.advanced-section');
+      if (advancedSection) advancedSection.classList.add('is-visible');
+      panel.open = true;
+      panel.scrollIntoView({ block: 'nearest' });
+    }
+
+    function fitLayer(map, layer, label, showLayer = false) {
+      if (!layer || typeof layer.getBounds !== 'function') {
+        loadState.lastError = `${label} layer가 아직 로드되지 않았습니다.`;
+        setStatus(`${label} 이동 실패`);
+        return;
+      }
+      if (showLayer && !map.hasLayer(layer)) {
+        map.addLayer(layer);
+        syncLayerVisibility(map);
+      }
+      const bounds = layer.getBounds();
+      if (!bounds || !bounds.isValid()) {
+        loadState.lastError = `${label} bounds가 유효하지 않습니다.`;
+        setStatus(`${label} 이동 실패`);
+        return;
+      }
+      map.fitBounds(bounds.pad(0.05));
+      updateMapState(map);
+      syncDebugVisibility(map);
+      setStatus(`${label} bounds로 이동했습니다.`);
+    }
+
+    function fitFirstEdge(map) {
+      if (!debugFirstEdgeMarker) {
+        loadState.lastError = '첫 edge marker가 아직 생성되지 않았습니다.';
+        setStatus('첫 edge 이동 실패');
+        return;
+      }
+      if (!map.hasLayer(debugFirstEdgeMarker)) map.addLayer(debugFirstEdgeMarker);
+      if (debugFirstEdgeLine && !map.hasLayer(debugFirstEdgeLine)) map.addLayer(debugFirstEdgeLine);
+      const latlng = debugFirstEdgeMarker.getLatLng();
+      map.setView(latlng, 18);
+      updateMapState(map);
+      syncDebugVisibility(map);
+      setStatus('첫 edge 위치로 이동했습니다.');
+    }
+
+    function logDiagnostics(label, extra = {}) {
+      const payload = {
+        label,
+        analysisFeatureCount: loadState.analysis,
+        edgeFeatureCount: loadState.edges,
+        tlsFeatureCount: loadState.tls,
+        firstEdgeId: loadState.firstEdgeId,
+        firstEdgeCoordinateSample: loadState.firstEdgeCoordinateSample,
+        firstEdgeMarkerLatLon: loadState.firstEdgeMarkerLatLon,
+        analysisBounds: loadState.analysisBounds,
+        first10EdgeBounds: loadState.first10EdgeBounds,
+        edgeBounds: loadState.edgeBounds,
+        tlsBounds: loadState.tlsBounds,
+        hasAnalysisLayer: loadState.analysisVisible,
+        hasEdgeLayer: loadState.edgesVisible,
+        hasTlsLayer: loadState.tlsVisible,
+        hasFirstEdgeMarker: loadState.debugFirstEdgeMarkerVisible,
+        hasFirstEdgeLine: loadState.firstEdgeLineVisible,
+        hasDebugEdgeLayer: loadState.debugFirst10EdgesVisible,
+        hasCenterMarker: loadState.centerMarkerVisible,
+        firstEdgeCoordinateInSeoul: loadState.firstEdgeCoordinateInSeoul,
+        tlsFirstCoordinate: loadState.tlsFirstCoordinate,
+        tlsFirstCoordinateInSeoul: loadState.tlsFirstCoordinateInSeoul,
+        paneZIndexes: loadState.paneZIndexes,
+        centerZoom: formatCenterZoom(),
+        lastError: loadState.lastError,
+        ...extra,
+      };
+      console.log('Step4 map review diagnostics', payload);
+    }
+
+    function diagnoseLeafletCss(map, label) {
+      const tile = document.querySelector('.leaflet-tile');
+      if (!tile) {
+        loadState.leafletTilePosition = 'tile not created yet';
+        setStatus(`${label}. Waiting for tile element...`);
+        return;
+      }
+      const position = getComputedStyle(tile).position;
+      loadState.leafletTilePosition = position;
+      updatePaneDiagnostics();
+      if (position !== 'absolute') {
+        loadState.lastError = 'Leaflet CSS may not be loaded';
+      }
+      updateMapState(map);
+      setStatus(label);
+    }
+
+    function relFetch(path) {
+      return fetch(path).then(response => {
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        return response.json();
+      });
+    }
+
+    function edgeBaseStyle(feature) {
+      const p = feature.properties || {};
+      if (p.is_internal) {
+        return { color: '#7c3aed', weight: 2, opacity: 0.55 };
+      }
+      if (!p.allows_passenger) {
+        return { color: '#f97316', weight: 2.5, opacity: 0.9 };
+      }
+      return { color: '#0f5bff', weight: 2.2, opacity: 0.82 };
+    }
+
+    function isPassengerAllowedDisplayEdge(feature) {
+      const p = feature.properties || {};
+      return !p.is_internal && p.allows_passenger === true;
+    }
+
+    function createEdgeLayer(edges, filterPassengerAllowedOnly) {
+      selectedEdgeLayer = new Map();
+      return L.geoJSON(edges, {
+        filter: feature => !filterPassengerAllowedOnly || isPassengerAllowedDisplayEdge(feature),
+        style: feature => {
+          const p = feature.properties || {};
+          return selectedStyle(p.edge_id, feature);
+        },
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties || {};
+          layer.on('click', () => toggleEdge(feature, layer));
+          layer.bindTooltip(p.edge_id || '', { sticky: true });
+          if (p.edge_id && findSelectionKey(p.edge_id)) {
+            selectedEdgeLayer.set(p.edge_id, { layer, feature });
+          }
+        },
+      });
+    }
+
+    function rebuildEdgeLayer(map) {
+      if (!allEdgesData) return;
+      const wasVisible = !!(edgeLayer && map.hasLayer(edgeLayer));
+      if (edgeLayer && map.hasLayer(edgeLayer)) map.removeLayer(edgeLayer);
+      edgeLayer = createEdgeLayer(allEdgesData, blueEdgesOnly);
+      if (wasVisible) map.addLayer(edgeLayer);
+      updateMapState(map);
+      syncLayerVisibility(map);
+      renderSelection();
+    }
+
+    function selectedStyle(edgeId, feature) {
+      const key = findSelectionKey(edgeId);
+      if (!key) return edgeBaseStyle(feature);
+      return { color: modeColors[key], weight: 5, opacity: 1.0 };
+    }
+
+    function analysisStyle(feature) {
+      const role = feature.properties && feature.properties.role;
+      if (role === 'analysis_ellipse') return { color: '#0057ff', weight: 5, fillColor: '#60a5fa', fillOpacity: 0.16 };
+      if (role === 'osm_extract_bbox') return { color: '#111827', weight: 3, dashArray: '7 5', fillOpacity: 0.03 };
+      if (role === 'analysis_axis') return { color: '#7c3aed', weight: 5, opacity: 0.95 };
+      return { color: '#0057ff', weight: 3, fillOpacity: 0.95 };
+    }
+
+    function tlsPoint(feature, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 6,
+        color: '#b91c1c',
+        fillColor: '#f97316',
+        fillOpacity: 0.92,
+        weight: 2,
+      });
+    }
+
+    function debugTlsPoint(feature, latlng) {
+      return L.circleMarker(latlng, {
+        radius: 10,
+        color: '#7f1d1d',
+        fillColor: '#ef4444',
+        fillOpacity: 0.95,
+        weight: 3,
+      });
+    }
+
+    function debugAnalysisStyle(feature) {
+      const role = feature.properties && feature.properties.role;
+      if (role === 'analysis_axis') return { color: '#000000', weight: 7, opacity: 1 };
+      if (role === 'osm_extract_bbox') return { color: '#111827', weight: 5, dashArray: '8 4', fillOpacity: 0.04 };
+      if (role === 'analysis_ellipse') return { color: '#1d4ed8', weight: 7, fillColor: '#93c5fd', fillOpacity: 0.22 };
+      return { color: '#1d4ed8', weight: 4, fillOpacity: 1 };
+    }
+
+    function debugFirst10Style() {
+      return { color: '#ff1493', weight: 7, opacity: 1 };
+    }
+
+    function findPreferredAnalysisBounds(analysis) {
+      const bboxFeature = (analysis.features || []).find(feature => {
+        return feature.properties && feature.properties.role === 'osm_extract_bbox';
+      });
+      if (bboxFeature) {
+        const layer = L.geoJSON(bboxFeature);
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) return bounds;
+      }
+      if (analysisLayer) {
+        const bounds = analysisLayer.getBounds();
+        if (bounds.isValid()) return bounds;
+      }
+      return null;
+    }
+
+    function firstEdgeLatLon(edges) {
+      const first = edges.features && edges.features[0];
+      if (!first || !first.geometry || !first.geometry.coordinates) return null;
+      const coord = first.geometry.coordinates[0];
+      if (!coord || coord.length < 2) return null;
+      return { lat: Number(coord[1]), lon: Number(coord[0]) };
+    }
+
+    function featureCollectionFromFirst(features, count) {
+      return {
+        type: 'FeatureCollection',
+        features: (features || []).slice(0, count),
+      };
+    }
+
+    function findSelectionKey(edgeId) {
+      for (const key of Object.keys(selected)) {
+        if (selected[key].has(edgeId)) return key;
+      }
+      return null;
+    }
+
+    function removeFromAll(edgeId) {
+      for (const key of Object.keys(selected)) selected[key].delete(edgeId);
+    }
+
+    function toggleEdge(feature, layer) {
+      const props = feature.properties || {};
+      const edgeId = props.edge_id;
+      if (!edgeId) return;
+      const targetKey = modeToKey[currentMode];
+      const currentKey = findSelectionKey(edgeId);
+      if (currentKey === targetKey) {
+        selected[targetKey].delete(edgeId);
+      } else {
+        removeFromAll(edgeId);
+        selected[targetKey].add(edgeId);
+      }
+      selectedEdgeLayer.set(edgeId, { layer, feature });
+      layer.setStyle(selectedStyle(edgeId, feature));
+      loadState.lastClickedEdgeId = edgeId;
+      showEdge(props);
+      renderSelection();
+      setStatus(`edge 선택 갱신: ${edgeId}`);
+    }
+
+    function showEdge(props) {
+      const keys = ['edge_id', 'length_m', 'speed_mps', 'lane_count', 'is_internal', 'allows_passenger', 'allows_emergency_candidate', 'from_node', 'to_node'];
+      const html = keys.map(key => `<dt>${key}</dt><dd>${props[key] ?? ''}</dd>`).join('');
+      document.getElementById('edge-props').innerHTML = html;
+      const edgeIdValue = document.getElementById('edge-id-value');
+      if (edgeIdValue) edgeIdValue.textContent = props.edge_id || 'none';
+      const warnings = [];
+      if (props.is_internal) warnings.push('경고: SUMO internal edge입니다.');
+      if (currentMode === 'accident_candidate_edge' && props.allows_passenger === false) {
+        warnings.push('경고: passenger 차량이 허용되지 않는 edge입니다.');
+      }
+      document.getElementById('edge-warning').innerHTML = warnings.map(text => `<div class="warning">${text}</div>`).join('');
+    }
+
+    function selectedPayload() {
+      return {
+        analysis_edges: Array.from(selected.analysis_edges).sort(),
+        accident_candidate_edges: Array.from(selected.accident_candidate_edges).sort(),
+        excluded_edges: Array.from(selected.excluded_edges).sort(),
+        created_from: 'results/html/map_review.html',
+        notes: 'manual edge selection from Step 4',
+      };
+    }
+
+    function renderSelection() {
+      const payload = selectedPayload();
+      document.getElementById('count-analysis').textContent = payload.analysis_edges.length;
+      document.getElementById('count-accident').textContent = payload.accident_candidate_edges.length;
+      document.getElementById('count-excluded').textContent = payload.excluded_edges.length;
+      document.getElementById('selection-list').textContent = [
+        `analysis_edges (${payload.analysis_edges.length}):`,
+        payload.analysis_edges.join('\n') || '-',
+        '',
+        `accident_candidate_edges (${payload.accident_candidate_edges.length}):`,
+        payload.accident_candidate_edges.join('\n') || '-',
+        '',
+        `excluded_edges (${payload.excluded_edges.length}):`,
+        payload.excluded_edges.join('\n') || '-',
+      ].join('\n');
+      document.getElementById('download-preview').textContent = JSON.stringify(payload, null, 2);
+    }
+
+    function downloadSelection() {
+      const blob = new Blob([JSON.stringify(selectedPayload(), null, 2) + '\n'], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'selected_edges.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearSelection() {
+      for (const key of Object.keys(selected)) selected[key].clear();
+      for (const item of selectedEdgeLayer.values()) {
+        item.layer.setStyle(edgeBaseStyle(item.feature));
+      }
+      selectedEdgeLayer.clear();
+      renderSelection();
+    }
+
+    function invalidateSoon(map) {
+      map.invalidateSize();
+      setTimeout(() => map.invalidateSize(), 300);
+    }
+
+    function recordRuntimeError(prefix, error) {
+      const message = error && error.message ? error.message : String(error);
+      loadState.lastError = `${prefix}: ${message}`;
+      if (document.getElementById('status-summary')) {
+        setStatus('브라우저 런타임 오류가 감지되었습니다. Console을 확인하세요.');
+      }
+      console.error('Step4 map review runtime error', error);
+    }
+
+    window.addEventListener('error', event => {
+      recordRuntimeError('window.error', event.error || event.message);
+    });
+    window.addEventListener('unhandledrejection', event => {
+      recordRuntimeError('unhandledrejection', event.reason || 'unknown promise rejection');
+    });
+
+    async function init() {
+      const map = L.map('map', {
+        preferCanvas: true,
+        zoomControl: true,
+        attributionControl: true,
+      }).setView(APP_CONTEXT.initial_center, APP_CONTEXT.initial_zoom);
+      window.__debug = { map, state: loadState };
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+      debugCenterMarker = L.circleMarker(APP_CONTEXT.initial_center, {
+        radius: 12,
+        color: '#111827',
+        fillColor: '#22c55e',
+        fillOpacity: 1,
+        weight: 4,
+        pane: 'overlayPane',
+      }).bindTooltip('debug 지도 중심', { sticky: true });
+      updateMapState(map);
+      setStatus('배경지도를 초기화했습니다. 분석권역을 로드하는 중...');
+      map.invalidateSize();
+      setTimeout(() => map.invalidateSize(), 300);
+      setTimeout(() => diagnoseLeafletCss(map, 'Leaflet CSS 진단 완료.'), 300);
+      map.on('moveend zoomend', () => {
+        updateMapState(map);
+        setStatus('지도 위치가 변경되었습니다.');
+      });
+
+      document.getElementById('toggle-analysis').checked = DEFAULT_LAYER_VISIBILITY.analysis;
+      document.getElementById('toggle-edges').checked = DEFAULT_LAYER_VISIBILITY.edges;
+      document.getElementById('toggle-blue-edges-only').checked = blueEdgesOnly;
+      document.getElementById('toggle-tls').checked = DEFAULT_LAYER_VISIBILITY.tls;
+
+      document.querySelectorAll('input[name="mode"]').forEach(input => {
+        input.addEventListener('change', event => {
+          currentMode = event.target.value;
+        });
+      });
+      document.getElementById('download-json').addEventListener('click', downloadSelection);
+      document.getElementById('clear-selection').addEventListener('click', clearSelection);
+      document.getElementById('show-help').addEventListener('click', () => openPanel('help-panel'));
+      document.getElementById('show-legend').addEventListener('click', () => openPanel('legend-panel'));
+      document.getElementById('show-debug').addEventListener('click', () => openPanel('debug-panel'));
+      document.getElementById('copy-edge-id').addEventListener('click', async () => {
+        const edgeId = document.getElementById('edge-id-value').textContent;
+        if (!edgeId || edgeId === 'none') return;
+        try {
+          await navigator.clipboard.writeText(edgeId);
+          setStatus(`edge_id 복사 완료: ${edgeId}`);
+        } catch (error) {
+          loadState.lastError = 'edge_id 복사 실패';
+          setStatus('edge_id 복사 실패. 브라우저 권한을 확인하세요.');
+        }
+      });
+      document.getElementById('fit-analysis').addEventListener('click', () => fitLayer(map, analysisLayer, '분석권역', true));
+      document.getElementById('fit-first-edge').addEventListener('click', () => fitFirstEdge(map));
+      document.getElementById('fit-first10-edges').addEventListener('click', () => fitLayer(map, debugFirst10EdgesLayer, 'first 10 edges', true));
+      document.getElementById('fit-edges').addEventListener('click', () => fitLayer(map, edgeLayer, 'edge 영역', true));
+      document.getElementById('fit-tls').addEventListener('click', () => fitLayer(map, tlsLayer, '신호등 영역', true));
+      document.getElementById('toggle-blue-edges-only').addEventListener('change', event => {
+        blueEdgesOnly = event.target.checked;
+        rebuildEdgeLayer(map);
+        setStatus(blueEdgesOnly ? 'passenger 허용 edge만 표시합니다.' : '전체 SUMO edge를 표시합니다.');
+      });
+      document.getElementById('toggle-debug-analysis').addEventListener('change', event => setDebugLayerVisible(map, debugAnalysisLayer, event.target.checked));
+      document.getElementById('toggle-debug-first-edge').addEventListener('change', event => setDebugLayerVisible(map, debugFirstEdgeMarker, event.target.checked));
+      document.getElementById('toggle-debug-first10').addEventListener('change', event => setDebugLayerVisible(map, debugFirst10EdgesLayer, event.target.checked));
+      document.getElementById('toggle-debug-tls10').addEventListener('change', event => setDebugLayerVisible(map, debugTls10Layer, event.target.checked));
+
+      try {
+        const analysis = await relFetch(APP_CONTEXT.paths.analysis_area_geojson);
+        loadState.analysis = (analysis.features || []).length;
+        loadState.analysisRoles = (analysis.features || [])
+          .map(feature => feature.properties && feature.properties.role)
+          .filter(Boolean)
+          .join(', ') || 'none';
+        analysisLayer = L.geoJSON(analysis, {
+          style: analysisStyle,
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 7, color: '#2563eb', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }),
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties || {};
+            layer.bindTooltip(p.name || p.role || 'analysis area');
+          },
+        });
+        debugAnalysisLayer = L.geoJSON(analysis, {
+          style: debugAnalysisStyle,
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 10, color: '#000000', fillColor: '#facc15', fillOpacity: 0.95, weight: 3 }),
+        });
+        setLayerVisible(map, analysisLayer, DEFAULT_LAYER_VISIBILITY.analysis);
+        const bounds = findPreferredAnalysisBounds(analysis);
+        if (bounds && bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.08));
+        } else {
+          map.setView(APP_CONTEXT.initial_center, APP_CONTEXT.initial_zoom);
+        }
+        updateMapState(map);
+        invalidateSoon(map);
+        diagnoseLeafletCss(map, '분석권역 로드 완료. SUMO edge 레이어 로드 중...');
+        logDiagnostics('analysis loaded', { analysisRoles: analysis.features.map(feature => feature.properties && feature.properties.role) });
+        setStatus('분석권역 로드 완료. SUMO edge 레이어 로드 중...');
+
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const edges = await relFetch(APP_CONTEXT.paths.sumo_edges_geojson);
+        allEdgesData = edges;
+        loadState.edges = (edges.features || []).length;
+        loadState.blueEdgeCount = (edges.features || []).filter(isPassengerAllowedDisplayEdge).length;
+        if (edges.features && edges.features.length > 0) {
+          const firstEdge = edges.features[0];
+          loadState.firstEdgeId = firstEdge.properties && firstEdge.properties.edge_id;
+          const coords = firstEdge.geometry && firstEdge.geometry.coordinates;
+          const firstCoord = firstCoordinate(firstEdge);
+          loadState.firstEdgeCoordinateSample = JSON.stringify(coords ? coords.slice(0, 2) : null);
+          loadState.firstEdgeCoordinateInSeoul = isSeoulLonLat(firstCoord);
+          const firstLatLon = firstEdgeLatLon(edges);
+          if (firstLatLon) {
+            loadState.firstEdgeMarkerLatLon = `${firstLatLon.lat.toFixed(6)}, ${firstLatLon.lon.toFixed(6)}`;
+            loadState.firstEdgeLeafletLatLng = `[${firstLatLon.lat.toFixed(6)}, ${firstLatLon.lon.toFixed(6)}]`;
+            debugFirstEdgeMarker = L.circleMarker([firstLatLon.lat, firstLatLon.lon], {
+              radius: 18,
+              color: '#000000',
+              fillColor: '#ffff00',
+              fillOpacity: 1,
+              weight: 6,
+              pane: 'overlayPane',
+            }).bindTooltip(`첫 edge: ${loadState.firstEdgeId}`, { sticky: true });
+          }
+          const firstLineLatLngs = lineLatLngs(firstEdge);
+          if (firstLineLatLngs.length >= 2) {
+            debugFirstEdgeLine = L.polyline(firstLineLatLngs, {
+              color: '#00ffff',
+              weight: 10,
+              opacity: 1,
+              pane: 'overlayPane',
+            }).bindTooltip(`debug first edge line: ${loadState.firstEdgeId}`, { sticky: true });
+          }
+        }
+        edgeLayer = createEdgeLayer(edges, blueEdgesOnly);
+        debugFirst10EdgesLayer = L.geoJSON(featureCollectionFromFirst(edges.features, 10), {
+          style: debugFirst10Style,
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties || {};
+            layer.bindTooltip(`debug first10: ${p.edge_id || ''}`, { sticky: true });
+          },
+        });
+        setLayerVisible(map, edgeLayer, DEFAULT_LAYER_VISIBILITY.edges);
+        map.invalidateSize();
+        diagnoseLeafletCss(map, 'SUMO edge 로드 완료. 신호등 레이어 로드 중...');
+        logDiagnostics('edges loaded', {
+          firstEdgeProperties: edges.features[0] && edges.features[0].properties,
+          firstEdgeCoordinates: edges.features[0] && edges.features[0].geometry && edges.features[0].geometry.coordinates && edges.features[0].geometry.coordinates.slice(0, 2),
+        });
+        setStatus('SUMO edge 로드 완료. 신호등 레이어 로드 중...');
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+        const tls = await relFetch(APP_CONTEXT.paths.sumo_tls_geojson);
+        loadState.tls = (tls.features || []).length;
+        if (tls.features && tls.features.length > 0) {
+          const firstTlsCoord = firstCoordinate(tls.features[0]);
+          loadState.tlsFirstCoordinate = JSON.stringify(firstTlsCoord);
+          loadState.tlsFirstCoordinateInSeoul = isSeoulLonLat(firstTlsCoord);
+        }
+        tlsLayer = L.geoJSON(tls, {
+          pointToLayer: tlsPoint,
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties || {};
+            layer.bindTooltip(`${p.tls_id || ''} links=${p.controlled_link_count ?? 0}`, { sticky: true });
+          },
+        });
+        debugTls10Layer = L.geoJSON(featureCollectionFromFirst(tls.features, 10), {
+          pointToLayer: debugTlsPoint,
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties || {};
+            layer.bindTooltip(`debug TLS: ${p.tls_id || ''}`, { sticky: true });
+          },
+        });
+        setLayerVisible(map, tlsLayer, DEFAULT_LAYER_VISIBILITY.tls);
+
+        document.getElementById('toggle-analysis').addEventListener('change', event => {
+          setLayerVisible(map, analysisLayer, event.target.checked);
+          setStatus('분석권역 표시 상태가 변경되었습니다.');
+        });
+        document.getElementById('toggle-edges').addEventListener('change', event => {
+          setLayerVisible(map, edgeLayer, event.target.checked);
+          setStatus('SUMO edge 표시 상태가 변경되었습니다.');
+        });
+        document.getElementById('toggle-tls').addEventListener('change', event => {
+          setLayerVisible(map, tlsLayer, event.target.checked);
+          setStatus('신호등 표시 상태가 변경되었습니다.');
+        });
+
+        updateMapState(map);
+        syncLayerVisibility(map);
+        syncDebugVisibility(map);
+        invalidateSoon(map);
+        diagnoseLeafletCss(map, '모든 레이어 로드 완료. 신호등은 기본 OFF입니다.');
+        logDiagnostics('all layers loaded', {
+          firstTlsProperties: tls.features[0] && tls.features[0].properties,
+          firstTlsCoordinates: tls.features[0] && tls.features[0].geometry && tls.features[0].geometry.coordinates,
+        });
+        setStatus('모든 레이어 로드 완료. 신호등은 기본 OFF입니다.');
+      } catch (error) {
+        loadState.lastError = error.message;
+        setStatus('레이어 로드 실패. file:// 대신 localhost 실행을 확인하세요.');
+      }
+      renderSelection();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
