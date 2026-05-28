@@ -1,0 +1,14 @@
+detector_id,detector_name,road_axis_id,lat,lon,am_peak_avg_3h_bidirectional,status,exclude_from_counts,exclude_reason,screenline_edge_ids,direction_policy,nearest_candidate_distance_m,candidate_edge_count,notes
+A-10,동호로(장충체육관),동호로,37.5587935,127.007249,10329.0,PASS,False,,-520307305#2 520307305#0,bidirectional_pair_50_50,18.152,12,
+A-11,장충단로(장충단공원),장충단로,37.556889,127.004655,8242.5,PASS,False,,-244384770#15 244384770#12,bidirectional_pair_50_50,4.939,2,
+A-12,퇴계로(회현역),퇴계로,37.557432,126.976486,5766.3,PASS,False,,619147739#3 781983104#1,bidirectional_pair_50_50,4.135,12,
+A-13,세종대로(서울역),세종대로,37.55912,126.97454,10112.9,PASS,False,,218926711#4 619147736,bidirectional_pair_50_50,7.512,12,
+A-14,새문안로(서울역사박물관),새문안로,37.569654,126.971438,7981.5,PASS,False,,37400087#3 -198564935#3,bidirectional_pair_50_50,525.093,12,
+A-15,종로(종로3가역),종로,37.570533,126.990961,6857.4,PASS,False,,344663909#1 -344663909#1,bidirectional_pair_50_50,84.146,2,
+A-16,서소문로(시청역),서소문로,37.562719,126.97307,4718.9,PASS,False,,480233462#0 -480233462#1,bidirectional_pair_50_50,6.921,12,
+A-17,세종대로(시청역2),세종대로,37.567496,126.977208,0.0,WARNING,True,excluded_zero_count,,,,0,0값 측정 누락
+A-18,을지로(을지로3가역),을지로,37.56632,126.9891,5375.4,PASS,False,,184083187#3 782892488#2,bidirectional_pair_50_50,6.559,12,
+A-19,칠패로(숭례문),칠패로,37.559593,126.972518,206.0,WARNING,True,excluded_abnormally_low_count,,,,0,비정상 저값
+A-21,남산2호터널,남산2호터널,37.555316,126.989767,4139.2,PASS,False,,769116601#0 135131180#0,bidirectional_pair_50_50,265.849,12,
+A-23,소월로(회현역),소월로,37.557044,126.976362,2327.2,PASS,False,,78628775#5 777881144#1,bidirectional_pair_50_50,3.328,12,
+A-24,소파로(숭의여자대학교),소파로,37.554896,126.983521,1673.0,PASS,False,,775222468#9 -775222468#16,bidirectional_pair_50_50,4.658,5,

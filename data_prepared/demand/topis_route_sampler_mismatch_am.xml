@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-05-28 21:15:38.291336 by Eclipse SUMO routeSampler.py v1.26.0
+<configuration>
+    <route-files value="/Users/junlee/Desktop/js/data_prepared/demand/background_routes_candidate_am.rou.xml"/>
+    <edgedata-files value="/Users/junlee/Desktop/js/data_prepared/demand/topis_edgedata_am.xml"/>
+    <output-file value="/Users/junlee/Desktop/js/data_prepared/demand/background_routes_am.rou.xml"/>
+    <mismatch-output value="/Users/junlee/Desktop/js/data_prepared/demand/topis_route_sampler_mismatch_am.xml"/>
+    <prefix value="bg_"/>
+    <begin value="0"/>
+    <end value="600"/>
+    <interval value="600"/>
+    <seed value="9009"/>
+    <weighted value="True"/>
+</configuration>
+-->
+
+<data>
+    <interval id="deficit" begin="0.0" end="600.0">
+        <edge id="-198564935#3" measuredCount="221" deficit="0" GEH="0.00"/>
+        <edge id="-244384770#15" measuredCount="228" deficit="0" GEH="0.00"/>
+        <edge id="-344663909#1" measuredCount="190" deficit="0" GEH="0.00"/>
+        <edge id="-480233462#1" measuredCount="131" deficit="0" GEH="0.00"/>
+        <edge id="-520307305#2" measuredCount="286" deficit="0" GEH="0.00"/>
+        <edge id="-775222468#16" measuredCount="46" deficit="0" GEH="0.00"/>
+        <edge id="135131180#0" measuredCount="114" deficit="0" GEH="0.00"/>
+        <edge id="184083187#3" measuredCount="149" deficit="0" GEH="0.00"/>
+        <edge id="218926711#4" measuredCount="280" deficit="0" GEH="0.00"/>
+        <edge id="244384770#12" measuredCount="228" deficit="0" GEH="0.00"/>
+        <edge id="344663909#1" measuredCount="190" deficit="0" GEH="0.00"/>
+        <edge id="37400087#3" measuredCount="221" deficit="0" GEH="0.00"/>
+        <edge id="480233462#0" measuredCount="131" deficit="0" GEH="0.00"/>
+        <edge id="520307305#0" measuredCount="286" deficit="0" GEH="0.00"/>
+        <edge id="619147736" measuredCount="280" deficit="0" GEH="0.00"/>
+        <edge id="619147739#3" measuredCount="160" deficit="0" GEH="0.00"/>
+        <edge id="769116601#0" measuredCount="114" deficit="0" GEH="0.00"/>
+        <edge id="775222468#9" measuredCount="46" deficit="0" GEH="0.00"/>
+        <edge id="777881144#1" measuredCount="64" deficit="0" GEH="0.00"/>
+        <edge id="781983104#1" measuredCount="160" deficit="0" GEH="0.00"/>
+        <edge id="782892488#2" measuredCount="149" deficit="0" GEH="0.00"/>
+        <edge id="78628775#5" measuredCount="64" deficit="0" GEH="0.00"/>
+    </interval>
+</data>

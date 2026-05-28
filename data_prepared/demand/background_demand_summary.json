@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-05-28T12:15:23.404708+00:00",
+  "final_status": "WARNING",
+  "period": "am",
+  "smoke_seconds": 600,
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "canonical_topis_csv": "data_prepared/demand/peak_volume_summary.csv",
+  "canonical_input_action": "copy",
+  "topis_row_count": 13,
+  "valid_detector_count": 11,
+  "excluded_detector_count": 2,
+  "screenline_edge_count": 22,
+  "expected_600s_count": 3751.294444,
+  "candidate_route_target_count": 18757,
+  "route_sampler_vehicle_count": 3565,
+  "warnings": [
+    "A-17:excluded_zero_count",
+    "A-19:excluded_abnormally_low_count",
+    "smoke_teleports_present"
+  ],
+  "failures": [],
+  "tools": {
+    "sumo": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/sumo",
+    "duarouter": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/duarouter",
+    "randomTrips.py": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/share/sumo/tools/randomTrips.py",
+    "routeSampler.py": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/share/sumo/tools/routeSampler.py"
+  },
+  "outputs": [
+    "data_prepared/demand/detector_to_screenline_mapping.csv",
+    "data_prepared/demand/topis_screenline_counts_am.csv",
+    "data_prepared/demand/topis_edgedata_am.xml",
+    "data_prepared/demand/background_trips_candidate_am.trips.xml",
+    "data_prepared/demand/background_routes_candidate_am.rou.xml",
+    "data_prepared/demand/background_routes_am.rou.xml",
+    "data_prepared/demand/background_demand_summary.json",
+    "results/metrics/background_vehicle_spawn_smoke_summary.csv",
+    "results/metrics/background_vehicle_spawn_smoke_summary.json",
+    "outputs/logs/step09_topis_background_demand.log",
+    "docs/Step9.md"
+  ],
+  "smoke": {
+    "departed_count": 3565,
+    "arrived_count": 3565,
+    "teleport_count": 2127,
+    "route_error_count": 0,
+    "expected_vehicle_count": 3565,
+    "exit_code": 0,
+    "arrival_rate": 1.0,
+    "failure_reason": "",
+    "run_dir": "runs/background_vehicle_spawn_smoke_am",
+    "sumocfg": "runs/background_vehicle_spawn_smoke_am/scenario.sumocfg",
+    "tripinfo": "runs/background_vehicle_spawn_smoke_am/tripinfo.xml"
+  }
+}
