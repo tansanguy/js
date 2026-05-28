@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-05-28T13:34:57.367769+00:00",
+  "period": "am",
+  "smoke_seconds": 600,
+  "final_status": "WARNING",
+  "expected_vehicle_count": 4359,
+  "departed_count": 4359,
+  "arrived_count": 4359,
+  "arrival_rate": 1.0,
+  "teleport_count": 3024,
+  "route_error_count": 0,
+  "exit_code": 0,
+  "failure_reason": "",
+  "run_dir": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19",
+  "sumocfg": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/scenario.sumocfg",
+  "tripinfo": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/tripinfo.xml"
+}

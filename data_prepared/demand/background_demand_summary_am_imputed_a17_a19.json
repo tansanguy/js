@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-05-28T13:34:57.367769+00:00",
+  "final_status": "WARNING",
+  "variant": "am_imputed_a17_a19",
+  "period": "am",
+  "smoke_seconds": 600,
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "canonical_topis_csv": "data_prepared/demand/peak_volume_summary.csv",
+  "canonical_input_action": "reuse_existing_canonical",
+  "topis_row_count": 13,
+  "valid_detector_count": 13,
+  "excluded_detector_count": 0,
+  "screenline_edge_count": 26,
+  "expected_600s_count": 4604.377778,
+  "candidate_route_target_count": 36836,
+  "route_sampler_vehicle_count": 4359,
+  "warnings": [
+    "A-17:imputed_count:same_road_axis_donor_a13",
+    "A-19:imputed_count:nearby_valid_detector_median_500m",
+    "smoke_teleports_present",
+    "teleport_worse_than_base"
+  ],
+  "failures": [],
+  "tools": {
+    "sumo": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/sumo",
+    "duarouter": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/duarouter",
+    "randomTrips.py": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/share/sumo/tools/randomTrips.py",
+    "routeSampler.py": "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/share/sumo/tools/routeSampler.py"
+  },
+  "outputs": [
+    "data_prepared/demand/detector_to_screenline_mapping_am_imputed_a17_a19.csv",
+    "data_prepared/demand/topis_screenline_counts_am_imputed_a17_a19.csv",
+    "data_prepared/demand/topis_edgedata_am_imputed_a17_a19.xml",
+    "data_prepared/demand/background_trips_candidate_am_imputed_a17_a19.trips.xml",
+    "data_prepared/demand/background_routes_candidate_am_imputed_a17_a19.rou.xml",
+    "data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml",
+    "data_prepared/demand/background_demand_summary_am_imputed_a17_a19.json",
+    "results/metrics/background_vehicle_spawn_smoke_summary_am_imputed_a17_a19.csv",
+    "results/metrics/background_vehicle_spawn_smoke_summary_am_imputed_a17_a19.json",
+    "outputs/logs/step09_topis_background_demand_am_imputed_a17_a19.log",
+    "docs/Step9.md",
+    "results/metrics/background_screenline_count_audit_am_imputed_a17_a19.csv",
+    "results/metrics/background_edge_coverage_summary_am_imputed_a17_a19.json",
+    "results/metrics/background_actual_edgedata_am_imputed_a17_a19.xml",
+    "results/metrics/background_actual_edge_counts_am_imputed_a17_a19.csv"
+  ],
+  "smoke": {
+    "departed_count": 4359,
+    "arrived_count": 4359,
+    "teleport_count": 3024,
+    "route_error_count": 0,
+    "expected_vehicle_count": 4359,
+    "exit_code": 0,
+    "arrival_rate": 1.0,
+    "failure_reason": "",
+    "run_dir": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19",
+    "sumocfg": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/scenario.sumocfg",
+    "tripinfo": "runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/tripinfo.xml"
+  },
+  "imputed_variant_audit": {
+    "vehicle_count_xml": 4359,
+    "screenline_count_rows": 26,
+    "imputed_screenline_count_rows": 4,
+    "imputed_screenline_positive": true,
+    "passenger_edge_count": 3021,
+    "planned_used_edge_count": 2528,
+    "actual_used_edge_count": 2350,
+    "planned_coverage_ratio": 0.836809,
+    "actual_coverage_ratio": 0.777888,
+    "teleport_ratio": 0.693737,
+    "teleport_worse_than_base": true,
+    "actual_edgedata_smoke": {
+      "exit_code": 0,
+      "run_dir": "runs/background_demand_audit_am_imputed_a17_a19",
+      "actual_edgedata_xml": "results/metrics/background_actual_edgedata_am_imputed_a17_a19.xml"
+    },
+    "outputs": [
+      "results/metrics/background_screenline_count_audit_am_imputed_a17_a19.csv",
+      "results/metrics/background_edge_coverage_summary_am_imputed_a17_a19.json",
+      "results/metrics/background_actual_edgedata_am_imputed_a17_a19.xml",
+      "results/metrics/background_actual_edge_counts_am_imputed_a17_a19.csv"
+    ]
+  }
+}

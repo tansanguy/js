@@ -1,0 +1,2 @@
+period,smoke_seconds,final_status,expected_vehicle_count,departed_count,arrived_count,arrival_rate,teleport_count,route_error_count,exit_code,failure_reason,run_dir,sumocfg,tripinfo
+am,600,WARNING,4359,4359,4359,1.0,3024,0,0,,runs/background_vehicle_spawn_smoke_am_imputed_a17_a19,runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/scenario.sumocfg,runs/background_vehicle_spawn_smoke_am_imputed_a17_a19/tripinfo.xml

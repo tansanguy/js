@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,12 +39,30 @@ DEMAND_SUMMARY_JSON = PROJECT_ROOT / "data_prepared/demand/background_demand_sum
 SMOKE_RUN_DIR = PROJECT_ROOT / "runs/background_vehicle_spawn_smoke_am"
 SMOKE_SUMMARY_CSV = PROJECT_ROOT / "results/metrics/background_vehicle_spawn_smoke_summary.csv"
 SMOKE_SUMMARY_JSON = PROJECT_ROOT / "results/metrics/background_vehicle_spawn_smoke_summary.json"
+SCREENLINE_AUDIT_CSV = PROJECT_ROOT / "results/metrics/background_screenline_count_audit_am.csv"
+EDGE_COVERAGE_SUMMARY_JSON = PROJECT_ROOT / "results/metrics/background_edge_coverage_summary.json"
+ACTUAL_EDGEDATA_XML = PROJECT_ROOT / "results/metrics/background_actual_edgedata_am.xml"
+ACTUAL_EDGE_COUNTS_CSV = PROJECT_ROOT / "results/metrics/background_actual_edge_counts_am.csv"
+AUDIT_RUN_DIR = PROJECT_ROOT / "runs/background_demand_audit_am"
 LOG_PATH = PROJECT_ROOT / "outputs/logs/step09_topis_background_demand.log"
 STEP_DOC = PROJECT_ROOT / "docs/Step9.md"
 
 EXCLUDED_DETECTORS = {
     "A-17": ("excluded_zero_count", "0값 측정 누락"),
     "A-19": ("excluded_abnormally_low_count", "비정상 저값"),
+}
+IMPUTED_VARIANT = "am_imputed_a17_a19"
+IMPUTED_SCREENLINES = {
+    "A-17": {
+        "edge_ids": ["378453707#0", "1084408283#2"],
+        "source_detector_ids": ["A-13"],
+        "method": "same_road_axis_donor_a13",
+    },
+    "A-19": {
+        "edge_ids": ["516948900#3", "-516948900#3"],
+        "source_detector_ids": ["A-13", "A-16", "A-12", "A-23"],
+        "method": "nearby_valid_detector_median_500m",
+    },
 }
 SCREENLINE_SEARCH_RADII_M = [120.0, 250.0, 500.0, 900.0]
 OPPOSITE_HEADING_MIN_DEG = 135.0
@@ -67,7 +86,37 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--period", choices=["am"], default="am")
     parser.add_argument("--smoke-seconds", type=int, default=600)
     parser.add_argument("--seed", type=int, default=9009)
+    parser.add_argument("--variant", choices=["base", IMPUTED_VARIANT], default="base")
     return parser.parse_args()
+
+
+def configure_output_paths(variant: str) -> None:
+    if variant == "base":
+        return
+    if variant != IMPUTED_VARIANT:
+        raise Step09Error(f"Unsupported variant: {variant}")
+    suffix = f"_{variant}"
+    globals().update(
+        {
+            "MAPPING_CSV": PROJECT_ROOT / f"data_prepared/demand/detector_to_screenline_mapping{suffix}.csv",
+            "SCREENLINE_COUNTS_CSV": PROJECT_ROOT / f"data_prepared/demand/topis_screenline_counts{suffix}.csv",
+            "EDGEDATA_XML": PROJECT_ROOT / f"data_prepared/demand/topis_edgedata{suffix}.xml",
+            "BACKGROUND_TRIPS_XML": PROJECT_ROOT / f"data_prepared/demand/background_trips_candidate{suffix}.trips.xml",
+            "CANDIDATE_ROUTES_XML": PROJECT_ROOT / f"data_prepared/demand/background_routes_candidate{suffix}.rou.xml",
+            "BACKGROUND_ROUTES_XML": PROJECT_ROOT / f"data_prepared/demand/background_routes{suffix}.rou.xml",
+            "ROUTESAMPLER_MISMATCH_XML": PROJECT_ROOT / f"data_prepared/demand/topis_route_sampler_mismatch{suffix}.xml",
+            "DEMAND_SUMMARY_JSON": PROJECT_ROOT / f"data_prepared/demand/background_demand_summary{suffix}.json",
+            "SMOKE_RUN_DIR": PROJECT_ROOT / f"runs/background_vehicle_spawn_smoke{suffix}",
+            "SMOKE_SUMMARY_CSV": PROJECT_ROOT / f"results/metrics/background_vehicle_spawn_smoke_summary{suffix}.csv",
+            "SMOKE_SUMMARY_JSON": PROJECT_ROOT / f"results/metrics/background_vehicle_spawn_smoke_summary{suffix}.json",
+            "SCREENLINE_AUDIT_CSV": PROJECT_ROOT / f"results/metrics/background_screenline_count_audit{suffix}.csv",
+            "EDGE_COVERAGE_SUMMARY_JSON": PROJECT_ROOT / f"results/metrics/background_edge_coverage_summary{suffix}.json",
+            "ACTUAL_EDGEDATA_XML": PROJECT_ROOT / f"results/metrics/background_actual_edgedata{suffix}.xml",
+            "ACTUAL_EDGE_COUNTS_CSV": PROJECT_ROOT / f"results/metrics/background_actual_edge_counts{suffix}.csv",
+            "AUDIT_RUN_DIR": PROJECT_ROOT / f"runs/background_demand_audit{suffix}",
+            "LOG_PATH": PROJECT_ROOT / f"outputs/logs/step09_topis_background_demand{suffix}.log",
+        }
+    )
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -123,7 +172,12 @@ def require_tool_paths() -> dict[str, str]:
     return tools
 
 
-def canonicalize_topis_csv(lines: list[str]) -> str:
+def canonicalize_topis_csv(lines: list[str], variant: str) -> str:
+    if variant != "base" and CANONICAL_TOPIS_CSV.is_file():
+        action = "reuse_existing_canonical"
+        lines.append(f"canonical_input_action: {action}")
+        lines.append(f"canonical_input: {rel(CANONICAL_TOPIS_CSV)}")
+        return action
     if not SOURCE_TOPIS_CSV.is_file():
         raise Step09Error(f"Source TOPIS CSV missing: {rel(SOURCE_TOPIS_CSV)}")
     CANONICAL_TOPIS_CSV.parent.mkdir(parents=True, exist_ok=True)
@@ -247,20 +301,69 @@ def select_screenline_pair(candidates: list[dict[str, Any]]) -> tuple[list[dict[
     return [primary, opposite], "bidirectional_pair_50_50"
 
 
+def median(values: list[float]) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        raise Step09Error("Cannot compute median from empty values")
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2.0
+
+
+def imputed_count(detector_id: str, detector_by_id: dict[str, dict[str, str]]) -> tuple[float, str, str]:
+    spec = IMPUTED_SCREENLINES[detector_id]
+    donor_ids = spec["source_detector_ids"]
+    donor_values = [float(detector_by_id[donor_id]["AM_peak_avg"]) for donor_id in donor_ids]
+    if detector_id == "A-17":
+        return donor_values[0], ",".join(donor_ids), spec["method"]
+    return median(donor_values), ",".join(donor_ids), spec["method"]
+
+
+def fixed_screenline_edges(
+    detector: dict[str, str],
+    sumo_net: Any,
+    edge_features: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    detector_id = detector["지점번호"]
+    edge_by_id = {edge["edge_id"]: edge for edge in edge_features}
+    lat = float(detector["위도"])
+    lon = float(detector["경도"])
+    detector_point = sumo_net.convertLonLat2XY(lon, lat)
+    selected = []
+    for edge_id in IMPUTED_SCREENLINES[detector_id]["edge_ids"]:
+        edge = edge_by_id.get(edge_id)
+        if edge is None:
+            raise Step09Error(f"Imputed screenline edge missing for {detector_id}: {edge_id}")
+        points = edge["points"]
+        selected.append(
+            {
+                "edge_id": edge_id,
+                "distance_m": point_polyline_distance(detector_point, points),
+                "heading_deg": heading_deg(points),
+                "props": edge["props"],
+            }
+        )
+    return selected
+
+
 def build_mapping(
     detectors: list[dict[str, str]],
     sumo_net: Any,
     edge_features: list[dict[str, Any]],
     smoke_seconds: int,
+    variant: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     mapping_rows: list[dict[str, Any]] = []
     count_rows: list[dict[str, Any]] = []
     warnings: list[str] = []
+    detector_by_id = {detector["지점번호"]: detector for detector in detectors}
     for detector in detectors:
         detector_id = detector["지점번호"]
         axis_id = road_axis_id(detector["지점명"])
         am_peak = float(detector["AM_peak_avg"])
-        if detector_id in EXCLUDED_DETECTORS:
+        is_imputed = variant == IMPUTED_VARIANT and detector_id in IMPUTED_SCREENLINES
+        if detector_id in EXCLUDED_DETECTORS and not is_imputed:
             reason_code, reason_text = EXCLUDED_DETECTORS[detector_id]
             warnings.append(f"{detector_id}:{reason_code}")
             mapping_rows.append(
@@ -278,12 +381,30 @@ def build_mapping(
                     "direction_policy": "",
                     "nearest_candidate_distance_m": "",
                     "candidate_edge_count": 0,
+                    "imputed": False,
+                    "count_source": "",
+                    "imputation_method": "",
+                    "original_exclude_reason": reason_code,
+                    "original_am_peak_avg_3h_bidirectional": am_peak,
                     "notes": reason_text,
                 }
             )
             continue
-        candidates = candidate_edges(detector, sumo_net, edge_features)
-        selected, policy = select_screenline_pair(candidates)
+        if is_imputed:
+            reason_code, reason_text = EXCLUDED_DETECTORS[detector_id]
+            selected = fixed_screenline_edges(detector, sumo_net, edge_features)
+            policy = "imputed_bidirectional_pair_50_50"
+            imputed_am_peak, count_source, imputation_method = imputed_count(detector_id, detector_by_id)
+            candidates = selected
+            warnings.append(f"{detector_id}:imputed_count:{imputation_method}")
+        else:
+            selected, policy = select_screenline_pair(candidate_edges(detector, sumo_net, edge_features))
+            candidates = candidate_edges(detector, sumo_net, edge_features)
+            imputed_am_peak = am_peak
+            count_source = detector_id
+            imputation_method = ""
+            reason_code = ""
+            reason_text = ""
         if not selected:
             warnings.append(f"{detector_id}:no_screenline_candidate")
             mapping_rows.append(
@@ -301,13 +422,18 @@ def build_mapping(
                     "direction_policy": "",
                     "nearest_candidate_distance_m": "",
                     "candidate_edge_count": 0,
+                    "imputed": is_imputed,
+                    "count_source": count_source,
+                    "imputation_method": imputation_method,
+                    "original_exclude_reason": reason_code,
+                    "original_am_peak_avg_3h_bidirectional": am_peak,
                     "notes": "No nearby passenger edge candidate",
                 }
             )
             continue
         if policy == "single_direction_warning":
             warnings.append(f"{detector_id}:single_direction_screenline")
-        count_600s = am_peak * smoke_seconds / 10_800.0
+        count_600s = imputed_am_peak * smoke_seconds / 10_800.0
         per_edge = count_600s / len(selected)
         for index, edge in enumerate(selected, start=1):
             count_rows.append(
@@ -317,11 +443,16 @@ def build_mapping(
                     "screenline_edge_id": edge["edge_id"],
                     "direction_index": index,
                     "direction_policy": policy,
-                    "am_peak_avg_3h_bidirectional": round(am_peak, 3),
+                    "am_peak_avg_3h_bidirectional": round(imputed_am_peak, 3),
                     "count_600s_total": round(count_600s, 6),
                     "count_600s_edge": round(per_edge, 6),
                     "distance_m": round(float(edge["distance_m"]), 3),
                     "heading_deg": round(float(edge["heading_deg"]), 3),
+                    "imputed": is_imputed,
+                    "count_source": count_source,
+                    "imputation_method": imputation_method,
+                    "original_exclude_reason": reason_code,
+                    "original_am_peak_avg_3h_bidirectional": round(am_peak, 3),
                 }
             )
         mapping_rows.append(
@@ -331,15 +462,20 @@ def build_mapping(
                 "road_axis_id": axis_id,
                 "lat": detector["위도"],
                 "lon": detector["경도"],
-                "am_peak_avg_3h_bidirectional": am_peak,
-                "status": "WARNING" if policy == "single_direction_warning" else "PASS",
+                "am_peak_avg_3h_bidirectional": imputed_am_peak,
+                "status": "WARNING" if policy == "single_direction_warning" or is_imputed else "PASS",
                 "exclude_from_counts": False,
                 "exclude_reason": "",
                 "screenline_edge_ids": " ".join(edge["edge_id"] for edge in selected),
                 "direction_policy": policy,
                 "nearest_candidate_distance_m": round(float(selected[0]["distance_m"]), 3),
                 "candidate_edge_count": len(candidates),
-                "notes": "",
+                "imputed": is_imputed,
+                "count_source": count_source,
+                "imputation_method": imputation_method,
+                "original_exclude_reason": reason_code,
+                "original_am_peak_avg_3h_bidirectional": am_peak,
+                "notes": reason_text if is_imputed else "",
             }
         )
     return mapping_rows, count_rows, warnings
@@ -526,6 +662,203 @@ def run_smoke(tools: dict[str, str], lines: list[str]) -> dict[str, Any]:
     return metrics
 
 
+def route_edge_counts(path: Path) -> tuple[int, Counter[str]]:
+    vehicle_count = 0
+    edge_counts: Counter[str] = Counter()
+    for _event, elem in ET.iterparse(path, events=("end",)):
+        if elem.tag == "route":
+            for edge_id in (elem.get("edges") or "").split():
+                edge_counts[edge_id] += 1
+        elif elem.tag == "vehicle":
+            vehicle_count += 1
+        elem.clear()
+    return vehicle_count, edge_counts
+
+
+def parse_actual_edgedata(path: Path) -> dict[str, dict[str, float]]:
+    counts: dict[str, dict[str, float]] = {}
+    if not path.is_file():
+        return counts
+    root = ET.parse(path).getroot()
+    for edge in root.findall(".//edge"):
+        edge_id = edge.get("id")
+        if not edge_id:
+            continue
+        current = counts.setdefault(edge_id, {"actual_entered_count": 0.0, "actual_left_count": 0.0, "sampled_seconds": 0.0})
+        current["actual_entered_count"] += float(edge.get("entered") or edge.get("departed") or 0.0)
+        current["actual_left_count"] += float(edge.get("left") or edge.get("arrived") or 0.0)
+        current["sampled_seconds"] += float(edge.get("sampledSeconds") or 0.0)
+    return counts
+
+
+def parse_route_sampler_mismatch() -> dict[str, dict[str, float]]:
+    if not ROUTESAMPLER_MISMATCH_XML.is_file():
+        return {}
+    root = ET.parse(ROUTESAMPLER_MISMATCH_XML).getroot()
+    mismatch = {}
+    for edge in root.findall(".//edge"):
+        edge_id = edge.get("id")
+        if not edge_id:
+            continue
+        mismatch[edge_id] = {
+            "route_sampler_measured_count": float(edge.get("measuredCount") or 0.0),
+            "route_sampler_deficit": float(edge.get("deficit") or 0.0),
+            "route_sampler_geh": float(edge.get("GEH") or 0.0),
+        }
+    return mismatch
+
+
+def run_actual_edgedata_smoke(tools: dict[str, str], lines: list[str]) -> dict[str, Any]:
+    AUDIT_RUN_DIR.mkdir(parents=True, exist_ok=True)
+    additional_xml = AUDIT_RUN_DIR / "edge_data.add.xml"
+    sumocfg = AUDIT_RUN_DIR / "scenario.sumocfg"
+    tripinfo = AUDIT_RUN_DIR / "tripinfo.xml"
+    summary = AUDIT_RUN_DIR / "summary.xml"
+    additional = ET.Element("additional")
+    ET.SubElement(
+        additional,
+        "edgeData",
+        {
+            "id": "background_actual_edge_counts",
+            "file": str(ACTUAL_EDGEDATA_XML),
+            "begin": "0",
+            "end": "86400",
+            "freq": "86400",
+            "excludeEmpty": "false",
+        },
+    )
+    ET.ElementTree(additional).write(additional_xml, encoding="utf-8", xml_declaration=True)
+    config = ET.Element("configuration")
+    input_elem = ET.SubElement(config, "input")
+    ET.SubElement(input_elem, "net-file", {"value": str(ACTIVE_NET)})
+    ET.SubElement(input_elem, "route-files", {"value": str(BACKGROUND_ROUTES_XML)})
+    ET.SubElement(input_elem, "additional-files", {"value": str(additional_xml)})
+    output_elem = ET.SubElement(config, "output")
+    ET.SubElement(output_elem, "tripinfo-output", {"value": str(tripinfo)})
+    ET.SubElement(output_elem, "summary-output", {"value": str(summary)})
+    report_elem = ET.SubElement(config, "report")
+    ET.SubElement(report_elem, "no-step-log", {"value": "true"})
+    ET.SubElement(report_elem, "duration-log.disable", {"value": "true"})
+    ET.ElementTree(config).write(sumocfg, encoding="utf-8", xml_declaration=True)
+    completed = subprocess.run([tools["sumo"], "-c", str(sumocfg)], cwd=PROJECT_ROOT, check=False, capture_output=True, text=True, timeout=900)
+    (AUDIT_RUN_DIR / "sumo_stdout.log").write_text(completed.stdout, encoding="utf-8")
+    (AUDIT_RUN_DIR / "sumo_stderr.log").write_text(completed.stderr, encoding="utf-8")
+    lines.append(f"actual_edgedata_sumo_exit_code: {completed.returncode}")
+    if completed.stderr.strip():
+        lines.append(f"actual_edgedata_sumo_stderr: {completed.stderr.strip()[-4000:]}")
+    return {
+        "exit_code": completed.returncode,
+        "run_dir": rel(AUDIT_RUN_DIR),
+        "actual_edgedata_xml": rel(ACTUAL_EDGEDATA_XML),
+    }
+
+
+def write_imputed_variant_audit(
+    tools: dict[str, str],
+    count_rows: list[dict[str, Any]],
+    edge_features: list[dict[str, Any]],
+    smoke: dict[str, Any],
+    lines: list[str],
+) -> dict[str, Any]:
+    actual_smoke = run_actual_edgedata_smoke(tools, lines)
+    vehicle_count, planned_counts = route_edge_counts(BACKGROUND_ROUTES_XML)
+    actual_counts = parse_actual_edgedata(ACTUAL_EDGEDATA_XML)
+    mismatch = parse_route_sampler_mismatch()
+    actual_rows = [
+        {
+            "edge_id": edge_id,
+            "actual_entered_count": round(values.get("actual_entered_count", 0.0), 6),
+            "actual_left_count": round(values.get("actual_left_count", 0.0), 6),
+            "actual_screenline_count": round(max(values.get("actual_entered_count", 0.0), values.get("actual_left_count", 0.0)), 6),
+            "sampled_seconds": round(values.get("sampled_seconds", 0.0), 6),
+        }
+        for edge_id, values in sorted(actual_counts.items())
+    ]
+    write_csv(
+        ACTUAL_EDGE_COUNTS_CSV,
+        actual_rows,
+        ["edge_id", "actual_entered_count", "actual_left_count", "actual_screenline_count", "sampled_seconds"],
+    )
+    audit_rows = []
+    for row in count_rows:
+        edge_id = row["screenline_edge_id"]
+        target = float(row["count_600s_edge"])
+        planned = float(planned_counts.get(edge_id, 0))
+        actual = actual_counts.get(edge_id, {})
+        actual_entered = actual.get("actual_entered_count", 0.0)
+        actual_left = actual.get("actual_left_count", 0.0)
+        actual_screenline = max(actual_entered, actual_left)
+        audit_rows.append(
+            {
+                "detector_id": row["detector_id"],
+                "road_axis_id": row["road_axis_id"],
+                "screenline_edge_id": edge_id,
+                "target_count": round(target, 6),
+                "planned_count": int(planned),
+                "actual_entered_count": round(actual_entered, 6),
+                "actual_left_count": round(actual_left, 6),
+                "actual_screenline_count": round(actual_screenline, 6),
+                "planned_error_abs": round(abs(planned - target), 6),
+                "planned_error_pct": round(((planned - target) / target) * 100.0, 6) if target else "",
+                "actual_error_abs": round(abs(actual_screenline - target), 6),
+                "actual_error_pct": round(((actual_screenline - target) / target) * 100.0, 6) if target else "",
+                "route_sampler_measured_count": mismatch.get(edge_id, {}).get("route_sampler_measured_count", ""),
+                "route_sampler_deficit": mismatch.get(edge_id, {}).get("route_sampler_deficit", ""),
+                "route_sampler_geh": mismatch.get(edge_id, {}).get("route_sampler_geh", ""),
+                "imputed": row.get("imputed", False),
+                "count_source": row.get("count_source", ""),
+                "imputation_method": row.get("imputation_method", ""),
+            }
+        )
+    write_csv(
+        SCREENLINE_AUDIT_CSV,
+        audit_rows,
+        [
+            "detector_id",
+            "road_axis_id",
+            "screenline_edge_id",
+            "target_count",
+            "planned_count",
+            "actual_entered_count",
+            "actual_left_count",
+            "actual_screenline_count",
+            "planned_error_abs",
+            "planned_error_pct",
+            "actual_error_abs",
+            "actual_error_pct",
+            "route_sampler_measured_count",
+            "route_sampler_deficit",
+            "route_sampler_geh",
+            "imputed",
+            "count_source",
+            "imputation_method",
+        ],
+    )
+    passenger_edge_ids = {edge["edge_id"] for edge in edge_features}
+    planned_used = {edge_id for edge_id, count in planned_counts.items() if count > 0 and edge_id in passenger_edge_ids}
+    actual_used = {edge_id for edge_id, values in actual_counts.items() if values.get("actual_entered_count", 0.0) > 0 and edge_id in passenger_edge_ids}
+    imputed_rows = [row for row in audit_rows if str(row.get("imputed")) == "True" or row.get("imputed") is True]
+    imputed_screenline_positive = all(row["planned_count"] > 0 and row["actual_screenline_count"] > 0 for row in imputed_rows)
+    teleport_ratio = int(smoke["teleport_count"]) / int(smoke["departed_count"]) if int(smoke["departed_count"]) else 0.0
+    summary = {
+        "vehicle_count_xml": vehicle_count,
+        "screenline_count_rows": len(audit_rows),
+        "imputed_screenline_count_rows": len(imputed_rows),
+        "imputed_screenline_positive": imputed_screenline_positive,
+        "passenger_edge_count": len(passenger_edge_ids),
+        "planned_used_edge_count": len(planned_used),
+        "actual_used_edge_count": len(actual_used),
+        "planned_coverage_ratio": round(len(planned_used) / len(passenger_edge_ids), 6),
+        "actual_coverage_ratio": round(len(actual_used) / len(passenger_edge_ids), 6),
+        "teleport_ratio": round(teleport_ratio, 6),
+        "teleport_worse_than_base": teleport_ratio > 0.596634,
+        "actual_edgedata_smoke": actual_smoke,
+        "outputs": [rel(SCREENLINE_AUDIT_CSV), rel(EDGE_COVERAGE_SUMMARY_JSON), rel(ACTUAL_EDGEDATA_XML), rel(ACTUAL_EDGE_COUNTS_CSV)],
+    }
+    write_json(EDGE_COVERAGE_SUMMARY_JSON, summary)
+    return summary
+
+
 def write_step9_doc(summary: dict[str, Any]) -> None:
     text = f"""# Step 9 TOPIS AM Background Demand
 
@@ -593,6 +926,39 @@ root의 `peak_volume_summary.csv`는 canonical input으로 copy하며, Step 9 �
     STEP_DOC.write_text(text, encoding="utf-8")
 
 
+def append_imputed_variant_doc(summary: dict[str, Any]) -> None:
+    marker_title = "## A-17/A-19 Imputed Variant"
+    current = STEP_DOC.read_text(encoding="utf-8") if STEP_DOC.is_file() else "# Step 9 TOPIS AM Background Demand\n"
+    marker_index = current.find(marker_title)
+    base = (current[:marker_index] if marker_index >= 0 else current).rstrip()
+    audit = summary.get("imputed_variant_audit", {})
+    text = f"""{base}
+
+{marker_title}
+
+기존 Step 9 base demand는 보존하고, A-17/A-19에 연구용 imputed screenline target을 추가한 별도 variant를 생성했다.
+
+- variant: `{summary['variant']}`
+- route file: `{rel(BACKGROUND_ROUTES_XML)}`
+- screenline rows: `{summary['screenline_edge_count']}`
+- imputed screenline rows: `{audit.get('imputed_screenline_count_rows', '')}`
+- expected 600s count: `{summary['expected_600s_count']}`
+- routeSampler vehicle count: `{summary['route_sampler_vehicle_count']}`
+- smoke departed/arrived: `{summary['smoke']['departed_count']}` / `{summary['smoke']['arrived_count']}`
+- smoke teleports: `{summary['smoke']['teleport_count']}`
+- teleport ratio: `{audit.get('teleport_ratio', '')}`
+- A-17/A-19 screenline positive: `{audit.get('imputed_screenline_positive', '')}`
+- actual coverage ratio: `{audit.get('actual_coverage_ratio', '')}`
+
+Imputation policy:
+
+- A-17은 같은 세종대로 valid detector `A-13`의 AM 3h count를 사용한다.
+- A-19는 500m 내 valid detectors `A-13`, `A-16`, `A-12`, `A-23`의 median AM 3h count를 사용한다.
+- actual screenline 달성은 `max(actual_entered_count, actual_left_count)`로 함께 판단한다.
+"""
+    STEP_DOC.write_text(text + "\n", encoding="utf-8")
+
+
 def final_status(warnings: list[str], failures: list[str]) -> str:
     if failures:
         return "FAIL"
@@ -603,6 +969,7 @@ def final_status(warnings: list[str], failures: list[str]) -> str:
 
 def main() -> int:
     args = parse_args()
+    configure_output_paths(args.variant)
     generated_at = utc_now()
     lines = ["Step 9 TOPIS AM background demand", "=================================", f"generated_at: {generated_at}"]
     warnings: list[str] = []
@@ -610,7 +977,7 @@ def main() -> int:
     try:
         if not ACTIVE_NET.is_file():
             raise Step09Error(f"Active net missing: {rel(ACTIVE_NET)}")
-        canonicalize_topis_csv(lines)
+        canonical_action = canonicalize_topis_csv(lines, args.variant)
         tools = require_tool_paths()
         for name, path in tools.items():
             lines.append(f"tool_{name}: {path}")
@@ -620,7 +987,7 @@ def main() -> int:
             raise Step09Error(f"Expected 13 TOPIS rows, got {len(detectors)}")
         sumo_net = read_sumo_net(ACTIVE_NET)
         edge_features = load_edge_features_from_net(sumo_net)
-        mapping_rows, count_rows, mapping_warnings = build_mapping(detectors, sumo_net, edge_features, args.smoke_seconds)
+        mapping_rows, count_rows, mapping_warnings = build_mapping(detectors, sumo_net, edge_features, args.smoke_seconds, args.variant)
         warnings.extend(mapping_warnings)
         failed_mappings = [row["detector_id"] for row in mapping_rows if row.get("status") == "FAIL"]
         if failed_mappings:
@@ -643,6 +1010,11 @@ def main() -> int:
                 "direction_policy",
                 "nearest_candidate_distance_m",
                 "candidate_edge_count",
+                "imputed",
+                "count_source",
+                "imputation_method",
+                "original_exclude_reason",
+                "original_am_peak_avg_3h_bidirectional",
                 "notes",
             ],
         )
@@ -660,12 +1032,22 @@ def main() -> int:
                 "count_600s_edge",
                 "distance_m",
                 "heading_deg",
+                "imputed",
+                "count_source",
+                "imputation_method",
+                "original_exclude_reason",
+                "original_am_peak_avg_3h_bidirectional",
             ],
         )
         edge_totals = write_edgedata(EDGEDATA_XML, count_rows, args.smoke_seconds)
         expected_600s_count = sum(float(row["count_600s_edge"]) for row in count_rows)
-        candidate_count = max(5000, math.ceil(expected_600s_count * 5.0))
+        candidate_count = (
+            max(30000, math.ceil(expected_600s_count * 8.0))
+            if args.variant == IMPUTED_VARIANT
+            else max(5000, math.ceil(expected_600s_count * 5.0))
+        )
         lines.append(f"topis_row_count: {len(detectors)}")
+        lines.append(f"variant: {args.variant}")
         lines.append(f"valid_detector_count: {sum(1 for row in mapping_rows if not row.get('exclude_from_counts'))}")
         lines.append(f"excluded_detector_count: {sum(1 for row in mapping_rows if row.get('exclude_from_counts'))}")
         lines.append(f"screenline_edge_count: {len(edge_totals)}")
@@ -683,16 +1065,24 @@ def main() -> int:
             warnings.append("smoke_teleports_present")
         if int(smoke["route_error_count"]) > 0:
             warnings.append("smoke_route_errors_present")
+        imputed_variant_audit: dict[str, Any] = {}
+        if args.variant == IMPUTED_VARIANT:
+            imputed_variant_audit = write_imputed_variant_audit(tools, count_rows, edge_features, smoke, lines)
+            if not imputed_variant_audit.get("imputed_screenline_positive"):
+                failures.append("imputed_screenline_not_positive")
+            if imputed_variant_audit.get("teleport_worse_than_base"):
+                warnings.append("teleport_worse_than_base")
 
         status = final_status(warnings, failures)
         summary = {
             "generated_at": generated_at,
             "final_status": status,
+            "variant": args.variant,
             "period": args.period,
             "smoke_seconds": args.smoke_seconds,
             "active_net": rel(ACTIVE_NET),
             "canonical_topis_csv": rel(CANONICAL_TOPIS_CSV),
-            "canonical_input_action": "copy",
+            "canonical_input_action": canonical_action,
             "topis_row_count": len(detectors),
             "valid_detector_count": sum(1 for row in mapping_rows if not row.get("exclude_from_counts")),
             "excluded_detector_count": sum(1 for row in mapping_rows if row.get("exclude_from_counts")),
@@ -717,7 +1107,17 @@ def main() -> int:
                 rel(STEP_DOC),
             ],
             "smoke": smoke,
+            "imputed_variant_audit": imputed_variant_audit,
         }
+        if args.variant == IMPUTED_VARIANT:
+            summary["outputs"].extend(
+                [
+                    rel(SCREENLINE_AUDIT_CSV),
+                    rel(EDGE_COVERAGE_SUMMARY_JSON),
+                    rel(ACTUAL_EDGEDATA_XML),
+                    rel(ACTUAL_EDGE_COUNTS_CSV),
+                ]
+            )
         write_json(DEMAND_SUMMARY_JSON, summary)
         smoke_row = {
             "period": args.period,
@@ -756,7 +1156,10 @@ def main() -> int:
             ],
         )
         write_json(SMOKE_SUMMARY_JSON, {"generated_at": generated_at, **smoke_row})
-        write_step9_doc(summary)
+        if args.variant == IMPUTED_VARIANT:
+            append_imputed_variant_doc(summary)
+        else:
+            write_step9_doc(summary)
 
         lines.append(f"final_status: {status}")
         lines.append(f"background_routes: {rel(BACKGROUND_ROUTES_XML)}")

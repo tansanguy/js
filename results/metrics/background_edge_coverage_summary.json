@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-05-28T13:10:29.390337+00:00",
+  "final_status": "WARNING",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "background_routes": "data_prepared/demand/background_routes_am.rou.xml",
+  "vehicle_count_xml": 3565,
+  "route_sampler_vehicle_count": 3565,
+  "smoke_expected_vehicle_count": 3565,
+  "smoke_departed_count": 3565,
+  "smoke_arrived_count": 3565,
+  "passenger_edge_count": 3021,
+  "planned_used_edge_count": 2390,
+  "actual_used_edge_count": 2224,
+  "planned_zero_edge_count": 631,
+  "actual_zero_edge_count": 797,
+  "planned_coverage_ratio": 0.791129,
+  "actual_coverage_ratio": 0.73618,
+  "screenline_count_rows": 22,
+  "screenline_low_achievement_count": 0,
+  "screenline_actual_low_achievement_count": 5,
+  "spine_edge_count_total": 258,
+  "spine_edge_used_count": 249,
+  "spine_actual_used_count": 243,
+  "spine_planned_coverage_ratio": 0.965116,
+  "spine_actual_coverage_ratio": 0.94186,
+  "teleport": {
+    "departed_count": 3565,
+    "arrived_count": 3565,
+    "teleport_count": 2127,
+    "teleport_ratio": 0.596634,
+    "route_error_count": 0,
+    "interpretation": "routes_valid_but_network_capacity_or_lane_choice_unstable",
+    "severity": "SCALE_DOWN_RECOMMENDED",
+    "demand_generation_status": "WARNING",
+    "scale_down_recommendation": "try_0.5x_and_0.3x_before_B0_B1_B2_comparison"
+  },
+  "warnings": [
+    "teleports_present",
+    "screenline_actual_error_gt_10pct"
+  ],
+  "failures": [],
+  "actual_edgedata_smoke": {
+    "exit_code": 0,
+    "sumocfg": "runs/background_demand_audit_am/scenario.sumocfg",
+    "actual_edgedata_xml": "results/metrics/background_actual_edgedata_am.xml",
+    "stdout_log": "runs/background_demand_audit_am/sumo_stdout.log",
+    "stderr_log": "runs/background_demand_audit_am/sumo_stderr.log"
+  },
+  "outputs": [
+    "results/metrics/background_route_edge_counts_am.csv",
+    "results/metrics/background_edge_coverage_summary.json",
+    "results/metrics/background_zero_traffic_edges_am.csv",
+    "results/metrics/background_screenline_count_audit_am.csv",
+    "results/metrics/background_spine_edge_coverage_am.csv",
+    "results/metrics/background_teleport_interpretation.json",
+    "results/metrics/background_actual_edgedata_am.xml",
+    "results/metrics/background_actual_edge_counts_am.csv",
+    "outputs/logs/step09_background_demand_audit.log"
+  ]
+}
