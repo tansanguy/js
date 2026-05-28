@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-05-28T15:43:49.982825+00:00",
+  "final_status": "PASS",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
+  "net_tlLogic_count": 55,
+  "net_tls_connection_count": 616,
+  "route_count": 19,
+  "audit_row_count": 227,
+  "unique_tls_count": 20,
+  "unique_tls_ids": [
+    "11203059756",
+    "11346754524",
+    "11346754525",
+    "13732389937",
+    "13732389938",
+    "4202879197",
+    "436870729",
+    "7311080426",
+    "7335400049",
+    "cluster_11203041632_11203041633_11203041634_11203041635_#5more",
+    "cluster_11277565408_11277565409_414685823_5851251280",
+    "cluster_12785870414_3337522189",
+    "cluster_1326096615_3849700763",
+    "cluster_13348293702_13348293703_414685829",
+    "cluster_3846534041_436877431",
+    "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_5593950669_5593950674",
+    "joinedS_11203001806_11203001814_13721232731_5851251250_#6more",
+    "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+    "joinedS_4273893706_4273893707_7335400058_cluster_13348213189_13348213190_13348213191",
+    "joinedS_4276255150_4276255151_4276255152_cluster_4276255149_436839431"
+  ],
+  "controllable_row_count": 227,
+  "controllable_tls_count": 20,
+  "status_counts": {
+    "PASS": 227,
+    "WARNING": 0,
+    "FAIL": 0
+  },
+  "outputs": [
+    "data_prepared/signals/tls_phase_audit_spine_v2.csv",
+    "data_prepared/signals/tls_phase_audit_summary.json",
+    "outputs/logs/step11a_tls_phase_audit.log",
+    "docs/Step11.md"
+  ]
+}

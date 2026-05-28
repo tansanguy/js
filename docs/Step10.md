@@ -53,3 +53,18 @@
 
 추천 기준은 emergency teleport 없음, route error 0, emergency arrived, 평균속도 목표범위 근접성이다. 1.0x imputed demand는 gridlock/stress demand로 보관한다.
 
+## 19-Route B0 Baseline Smoke
+
+0.15x imputed background demand를 고정 입력으로 사용해 spine-v2 emergency route 19개 전체를 B0 no-control 조건에서 route별 1회씩 실행했다.
+
+- final status: `FAIL`
+- background route: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
+- route count: `19`
+- PASS/WARNING/FAIL: `{'PASS': 9, 'WARNING': 9, 'FAIL': 1}`
+- emergency teleport route count: `1`
+- route error route count: `0`
+- Step 11B allowed: `True`
+- summary CSV: `results/metrics/b0_baseline_19route_smoke_summary.csv`
+- summary JSON: `results/metrics/b0_baseline_19route_smoke_summary.json`
+- speed CSV: `results/metrics/b0_baseline_19route_speed_by_route.csv`
+
