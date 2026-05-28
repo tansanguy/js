@@ -1,0 +1,55 @@
+scale,scale_label,road_axis_id,direction,target_speed_kmh,simulated_speed_kmh,speed_error_kmh,abs_speed_error_kmh,edge_count,edge_ids,weighting,weight_sum,edge_mapping_status
+0.1,0p1,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.1,0p1,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.1,0p1,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.1,0p1,서소문로,EB,14.8,68.292,53.492,53.492,1,480233462#0,sampledSeconds,65.29,mapped
+0.1,0p1,세종대로,NB,16.8,55.07089,38.27089,38.27089,2,218926711#4 378453707#0,sampledSeconds,566.67,mapped
+0.1,0p1,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.1,0p1,을지로,EB,19.6,53.172,33.572,33.572,1,782892488#2,sampledSeconds,125.56,mapped
+0.1,0p1,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.1,0p1,퇴계로,EB,15.3,86.256,70.956,70.956,1,619147739#3,sampledSeconds,72.25,mapped
+0.12,0p12,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.12,0p12,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.12,0p12,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.12,0p12,서소문로,EB,14.8,64.332,49.532,49.532,1,480233462#0,sampledSeconds,77.76,mapped
+0.12,0p12,세종대로,NB,16.8,52.779954,35.979954,35.979954,2,218926711#4 378453707#0,sampledSeconds,679.11,mapped
+0.12,0p12,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.12,0p12,을지로,EB,19.6,51.552,31.952,31.952,1,782892488#2,sampledSeconds,183.52,mapped
+0.12,0p12,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.12,0p12,퇴계로,EB,15.3,94.752,79.452,79.452,1,619147739#3,sampledSeconds,87.97,mapped
+0.15,0p15,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.15,0p15,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.15,0p15,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.15,0p15,서소문로,EB,14.8,60.84,46.04,46.04,1,480233462#0,sampledSeconds,86.4,mapped
+0.15,0p15,세종대로,NB,16.8,47.640411,30.840411,30.840411,2,218926711#4 378453707#0,sampledSeconds,944.7,mapped
+0.15,0p15,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.15,0p15,을지로,EB,19.6,49.428,29.828,29.828,1,782892488#2,sampledSeconds,236.32,mapped
+0.15,0p15,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.15,0p15,퇴계로,EB,15.3,94.14,78.84,78.84,1,619147739#3,sampledSeconds,92.97,mapped
+0.2,0p2,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.2,0p2,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.2,0p2,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.2,0p2,서소문로,EB,14.8,67.392,52.592,52.592,1,480233462#0,sampledSeconds,70.34,mapped
+0.2,0p2,세종대로,NB,16.8,53.322571,36.522571,36.522571,2,218926711#4 378453707#0,sampledSeconds,1170.36,mapped
+0.2,0p2,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.2,0p2,을지로,EB,19.6,49.212,29.612,29.612,1,782892488#2,sampledSeconds,339.04,mapped
+0.2,0p2,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.2,0p2,퇴계로,EB,15.3,93.744,78.444,78.444,1,619147739#3,sampledSeconds,142.24,mapped
+0.3,0p3,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.3,0p3,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.3,0p3,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.3,0p3,서소문로,EB,14.8,69.696,54.896,54.896,1,480233462#0,sampledSeconds,179.99,mapped
+0.3,0p3,세종대로,NB,16.8,14.120654,-2.679346,2.679346,2,218926711#4 378453707#0,sampledSeconds,6171.52,mapped
+0.3,0p3,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.3,0p3,을지로,EB,19.6,47.772,28.172,28.172,1,782892488#2,sampledSeconds,524.21,mapped
+0.3,0p3,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.3,0p3,퇴계로,EB,15.3,89.784,74.484,74.484,1,619147739#3,sampledSeconds,222.57,mapped
+0.5,0p5,남대문로,NB,16.8,,,,0,,,,no_edge_mapping
+0.5,0p5,마른내로,EB,16.0,,,,0,,,,no_edge_mapping
+0.5,0p5,삼일대로,NB,22.6,,,,0,,,,no_edge_mapping
+0.5,0p5,서소문로,EB,14.8,70.128,55.328,55.328,1,480233462#0,sampledSeconds,250.63,mapped
+0.5,0p5,세종대로,NB,16.8,9.915789,-6.884211,6.884211,2,218926711#4 378453707#0,sampledSeconds,14620.81,mapped
+0.5,0p5,소공로,NB,15.6,,,,0,,,,no_edge_mapping
+0.5,0p5,을지로,EB,19.6,44.64,25.04,25.04,1,782892488#2,sampledSeconds,959.56,mapped
+0.5,0p5,청계천로,EB,15.5,,,,0,,,,no_edge_mapping
+0.5,0p5,퇴계로,EB,15.3,89.532,74.232,74.232,1,619147739#3,sampledSeconds,400.22,mapped

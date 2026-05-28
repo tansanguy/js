@@ -1,0 +1,661 @@
+{
+  "generated_at": "2026-05-28T15:18:27.719927+00:00",
+  "final_status": "WARNING",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "base_background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml",
+  "base_vehicle_count": 4359,
+  "route_id": "ER_ACC_002",
+  "time_to_teleport": 1200,
+  "collision_action": "warn",
+  "requested_scales": [
+    0.15,
+    0.12,
+    0.1
+  ],
+  "compared_scales": [
+    0.1,
+    0.12,
+    0.15,
+    0.2,
+    0.3,
+    0.5
+  ],
+  "recommended_scale": 0.12,
+  "recommended_scale_label": "0p12",
+  "eligible_scale_count": 6,
+  "blocker": "",
+  "sampling_seed": "step10_scale_calibration_v1",
+  "merged_existing_summary": true,
+  "teleport_ratio_note": "0.2x ratio 0.019495 > 0.3x 0.001529; stderr diagnostics show top reasons 0.2x='waited too long (jam)', 0.3x='waited too long (yield)'. This can happen because deterministic subsets are not nested; lower scale is sampled independently from 1.0x, not from 0.3x.",
+  "results": [
+    {
+      "scale": 0.1,
+      "scale_label": "0p1",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p1.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 436,
+      "sumo_exit_code": 0,
+      "final_status": "PASS",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p1",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 143.0,
+      "background_departed_count": 436,
+      "background_arrived_count": 436,
+      "background_departed": 436,
+      "background_arrived": 436,
+      "background_teleported": 0,
+      "background_teleport_ratio": 0.0,
+      "general_teleport_count": 0,
+      "general_teleport_ratio": 0.0,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 27.772953,
+      "network_avg_speed_kmh": 27.772953,
+      "network_edgeData_mean_speed_kmh": 27.27906,
+      "spine_mean_speed_kmh": 23.438231,
+      "spine_avg_speed_kmh": 23.438231,
+      "emergency_route_corridor_mean_speed_kmh": 14.028527,
+      "emergency_corridor_avg_speed_kmh": 14.028527,
+      "network_speed_delta_to_20kmh": 7.772953,
+      "spine_speed_delta_to_20kmh": 3.438231,
+      "emergency_route_corridor_speed_delta_to_20kmh": -5.971473,
+      "road_axis_speed_mae_kmh": 49.072722,
+      "core_speed_mae_to_20kmh": 5.727552,
+      "recommendation_score": 17.995733,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sampling_seed": "step10_scale_calibration_v1",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 2478.0,
+      "teleport_diagnostics": {
+        "teleport_start_count": 0,
+        "top_reasons": [],
+        "top_lanes": [],
+        "top_end_edges": [],
+        "top_repeat_vehicles": [],
+        "notes": "stderr_log_based_diagnostic"
+      },
+      "warnings": [],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p1",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p1/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p1/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p1/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p1/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p1/sumo_stderr.log"
+    },
+    {
+      "scale": 0.12,
+      "scale_label": "0p12",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p12.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 523,
+      "sumo_exit_code": 0,
+      "final_status": "PASS",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p12",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 247.0,
+      "background_departed_count": 523,
+      "background_arrived_count": 523,
+      "background_departed": 523,
+      "background_arrived": 523,
+      "background_teleported": 0,
+      "background_teleport_ratio": 0.0,
+      "general_teleport_count": 0,
+      "general_teleport_ratio": 0.0,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 19.655288,
+      "network_avg_speed_kmh": 19.655288,
+      "network_edgeData_mean_speed_kmh": 18.685529,
+      "spine_mean_speed_kmh": 13.689766,
+      "spine_avg_speed_kmh": 13.689766,
+      "emergency_route_corridor_mean_speed_kmh": 7.317999,
+      "emergency_corridor_avg_speed_kmh": 7.317999,
+      "network_speed_delta_to_20kmh": -0.344712,
+      "spine_speed_delta_to_20kmh": -6.310234,
+      "emergency_route_corridor_speed_delta_to_20kmh": -12.682001,
+      "road_axis_speed_mae_kmh": 49.228988,
+      "core_speed_mae_to_20kmh": 6.445649,
+      "recommendation_score": 18.752896,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sampling_seed": "step10_scale_calibration_v1",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 4341.0,
+      "teleport_diagnostics": {
+        "teleport_start_count": 0,
+        "top_reasons": [],
+        "top_lanes": [],
+        "top_end_edges": [],
+        "top_repeat_vehicles": [],
+        "notes": "stderr_log_based_diagnostic"
+      },
+      "warnings": [],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p12",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p12/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p12/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p12/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p12/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p12/sumo_stderr.log"
+    },
+    {
+      "scale": 0.15,
+      "scale_label": "0p15",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 654,
+      "sumo_exit_code": 0,
+      "final_status": "WARNING",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p15",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 177.0,
+      "background_departed_count": 654,
+      "background_arrived_count": 654,
+      "background_departed": 654,
+      "background_arrived": 654,
+      "background_teleported": 3,
+      "background_teleport_ratio": 0.004587,
+      "general_teleport_count": 3,
+      "general_teleport_ratio": 0.004587,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 14.731776,
+      "network_avg_speed_kmh": 14.731776,
+      "network_edgeData_mean_speed_kmh": 13.769952,
+      "spine_mean_speed_kmh": 9.035263,
+      "spine_avg_speed_kmh": 9.035263,
+      "emergency_route_corridor_mean_speed_kmh": 6.207953,
+      "emergency_corridor_avg_speed_kmh": 6.207953,
+      "network_speed_delta_to_20kmh": -5.268224,
+      "spine_speed_delta_to_20kmh": -10.964737,
+      "emergency_route_corridor_speed_delta_to_20kmh": -13.792047,
+      "road_axis_speed_mae_kmh": 46.387103,
+      "core_speed_mae_to_20kmh": 10.008336,
+      "recommendation_score": 21.650982,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sampling_seed": "step10_scale_calibration_v1",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 4895.0,
+      "teleport_diagnostics": {
+        "teleport_start_count": 3,
+        "top_reasons": [
+          {
+            "item": "waited too long (yield)",
+            "count": 2
+          },
+          {
+            "item": "waited too long (jam)",
+            "count": 1
+          }
+        ],
+        "top_lanes": [
+          {
+            "item": "-772527390#5_0",
+            "count": 1
+          },
+          {
+            "item": "772527390#5_0",
+            "count": 1
+          },
+          {
+            "item": "781985792#3_1",
+            "count": 1
+          }
+        ],
+        "top_end_edges": [
+          {
+            "item": "219696192#0",
+            "count": 1
+          },
+          {
+            "item": "772527390#5",
+            "count": 1
+          },
+          {
+            "item": "785130598#0",
+            "count": 1
+          }
+        ],
+        "top_repeat_vehicles": [],
+        "notes": "stderr_log_based_diagnostic"
+      },
+      "warnings": [
+        "general_vehicle_teleports_present"
+      ],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p15",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p15/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p15/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p15/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p15/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p15/sumo_stderr.log"
+    },
+    {
+      "scale": 0.2,
+      "scale_label": "0p2",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p2.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 872,
+      "sumo_exit_code": 0,
+      "final_status": "WARNING",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p2",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 618.0,
+      "background_departed_count": 872,
+      "background_arrived_count": 872,
+      "general_teleport_count": 17,
+      "general_teleport_ratio": 0.019495,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 11.82498,
+      "network_edgeData_mean_speed_kmh": 11.504387,
+      "spine_mean_speed_kmh": 7.695228,
+      "emergency_route_corridor_mean_speed_kmh": 4.561834,
+      "network_speed_delta_to_20kmh": -8.17502,
+      "spine_speed_delta_to_20kmh": -12.304772,
+      "emergency_route_corridor_speed_delta_to_20kmh": -15.438166,
+      "road_axis_speed_mae_kmh": 49.292643,
+      "core_speed_mae_to_20kmh": 11.972653,
+      "recommendation_score": 24.490763,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 6772.0,
+      "warnings": [
+        "general_vehicle_teleports_present"
+      ],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p2",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p2/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p2/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p2/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p2/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p2/sumo_stderr.log",
+      "background_departed": 872,
+      "background_arrived": 872,
+      "background_teleported": 17,
+      "background_teleport_ratio": 0.019495,
+      "network_avg_speed_kmh": 11.82498,
+      "spine_avg_speed_kmh": 7.695228,
+      "emergency_corridor_avg_speed_kmh": 4.561834,
+      "teleport_diagnostics": {
+        "teleport_start_count": 17,
+        "top_reasons": [
+          {
+            "item": "waited too long (jam)",
+            "count": 8
+          },
+          {
+            "item": "waited too long (yield)",
+            "count": 6
+          },
+          {
+            "item": "waited too long (wrong lane)",
+            "count": 3
+          }
+        ],
+        "top_lanes": [
+          {
+            "item": "615671502_1",
+            "count": 2
+          },
+          {
+            "item": "796927124_0",
+            "count": 2
+          },
+          {
+            "item": "796927124_1",
+            "count": 2
+          },
+          {
+            "item": ":1936511337_5_0",
+            "count": 2
+          },
+          {
+            "item": "1206223943_0",
+            "count": 1
+          },
+          {
+            "item": "585341904#0_4",
+            "count": 1
+          },
+          {
+            "item": "615671502_0",
+            "count": 1
+          },
+          {
+            "item": ":1936511337_5_2",
+            "count": 1
+          }
+        ],
+        "top_end_edges": [
+          {
+            "item": "183272654",
+            "count": 5
+          },
+          {
+            "item": "796927124",
+            "count": 3
+          },
+          {
+            "item": "1206223940",
+            "count": 2
+          },
+          {
+            "item": "1206223944",
+            "count": 2
+          },
+          {
+            "item": "1206223939",
+            "count": 1
+          },
+          {
+            "item": "1206223943",
+            "count": 1
+          },
+          {
+            "item": "585341904#1",
+            "count": 1
+          },
+          {
+            "item": "615671502",
+            "count": 1
+          }
+        ],
+        "top_repeat_vehicles": [],
+        "notes": "stderr_log_based_diagnostic"
+      }
+    },
+    {
+      "scale": 0.3,
+      "scale_label": "0p3",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p3.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 1308,
+      "sumo_exit_code": 0,
+      "final_status": "WARNING",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p3",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 619.0,
+      "background_departed_count": 1308,
+      "background_arrived_count": 1308,
+      "general_teleport_count": 2,
+      "general_teleport_ratio": 0.001529,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 8.242704,
+      "network_edgeData_mean_speed_kmh": 7.554818,
+      "spine_mean_speed_kmh": 4.439087,
+      "emergency_route_corridor_mean_speed_kmh": 2.363988,
+      "network_speed_delta_to_20kmh": -11.757296,
+      "spine_speed_delta_to_20kmh": -15.560913,
+      "emergency_route_corridor_speed_delta_to_20kmh": -17.636012,
+      "road_axis_speed_mae_kmh": 40.057837,
+      "core_speed_mae_to_20kmh": 14.98474,
+      "recommendation_score": 25.01449,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 9528.0,
+      "warnings": [
+        "general_vehicle_teleports_present"
+      ],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p3",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p3/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p3/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p3/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p3/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p3/sumo_stderr.log",
+      "background_departed": 1308,
+      "background_arrived": 1308,
+      "background_teleported": 2,
+      "background_teleport_ratio": 0.001529,
+      "network_avg_speed_kmh": 8.242704,
+      "spine_avg_speed_kmh": 4.439087,
+      "emergency_corridor_avg_speed_kmh": 2.363988,
+      "teleport_diagnostics": {
+        "teleport_start_count": 2,
+        "top_reasons": [
+          {
+            "item": "waited too long (yield)",
+            "count": 2
+          }
+        ],
+        "top_lanes": [
+          {
+            "item": "615671502_1",
+            "count": 1
+          },
+          {
+            "item": "796927124_1",
+            "count": 1
+          }
+        ],
+        "top_end_edges": [
+          {
+            "item": "1206223943",
+            "count": 1
+          },
+          {
+            "item": "796927124",
+            "count": 1
+          }
+        ],
+        "top_repeat_vehicles": [],
+        "notes": "stderr_log_based_diagnostic"
+      }
+    },
+    {
+      "scale": 0.5,
+      "scale_label": "0p5",
+      "scaled_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p5.rou.xml",
+      "base_vehicle_count": 4359,
+      "scaled_vehicle_count": 2180,
+      "sumo_exit_code": 0,
+      "final_status": "WARNING",
+      "eligible_for_recommendation": true,
+      "emergency_vehicle_id": "emergency_ER_ACC_002_scale_0p5",
+      "emergency_departed": true,
+      "emergency_arrived": true,
+      "emergency_teleport": false,
+      "emergency_teleport_evidence": [],
+      "emergency_travel_time": 626.0,
+      "background_departed_count": 2180,
+      "background_arrived_count": 2180,
+      "general_teleport_count": 140,
+      "general_teleport_ratio": 0.06422,
+      "route_error_count": 0,
+      "network_mean_speed_kmh": 3.685169,
+      "network_edgeData_mean_speed_kmh": 3.338874,
+      "spine_mean_speed_kmh": 1.884244,
+      "emergency_route_corridor_mean_speed_kmh": 1.237553,
+      "network_speed_delta_to_20kmh": -16.314831,
+      "spine_speed_delta_to_20kmh": -18.115756,
+      "emergency_route_corridor_speed_delta_to_20kmh": -18.762447,
+      "road_axis_speed_mae_kmh": 40.371053,
+      "core_speed_mae_to_20kmh": 17.731011,
+      "recommendation_score": 28.465975,
+      "edge_speed_weighting": "sampledSeconds",
+      "spine_speed_weighting": "sampledSeconds",
+      "emergency_route_corridor_speed_weighting": "sampledSeconds",
+      "time_to_teleport": 1200,
+      "collision_action": "warn",
+      "sumo_end_policy": "no_explicit_end_run_until_all_vehicles_finished",
+      "sim_end_time": 16146.0,
+      "warnings": [
+        "general_vehicle_teleports_present"
+      ],
+      "failures": [],
+      "run_dir": "runs/b0_baseline_speed_smoke_scale_0p5",
+      "sumocfg": "runs/b0_baseline_speed_smoke_scale_0p5/scenario.sumocfg",
+      "tripinfo": "runs/b0_baseline_speed_smoke_scale_0p5/tripinfo.xml",
+      "summary_output": "runs/b0_baseline_speed_smoke_scale_0p5/summary.xml",
+      "edgeData_output": "runs/b0_baseline_speed_smoke_scale_0p5/edgeData.xml",
+      "stderr_log": "runs/b0_baseline_speed_smoke_scale_0p5/sumo_stderr.log",
+      "background_departed": 2180,
+      "background_arrived": 2180,
+      "background_teleported": 140,
+      "background_teleport_ratio": 0.06422,
+      "network_avg_speed_kmh": 3.685169,
+      "spine_avg_speed_kmh": 1.884244,
+      "emergency_corridor_avg_speed_kmh": 1.237553,
+      "teleport_diagnostics": {
+        "teleport_start_count": 140,
+        "top_reasons": [
+          {
+            "item": "waited too long (jam)",
+            "count": 96
+          },
+          {
+            "item": "waited too long (yield)",
+            "count": 29
+          },
+          {
+            "item": "waited too long (wrong lane)",
+            "count": 15
+          }
+        ],
+        "top_lanes": [
+          {
+            "item": "333972428#1_1",
+            "count": 7
+          },
+          {
+            "item": "619147738#1_1",
+            "count": 7
+          },
+          {
+            "item": "781985779#0_1",
+            "count": 6
+          },
+          {
+            "item": "585341904#1_2",
+            "count": 5
+          },
+          {
+            "item": "781985786#6_1",
+            "count": 5
+          },
+          {
+            "item": "781985784_1",
+            "count": 4
+          },
+          {
+            "item": "781985786#5_2",
+            "count": 4
+          },
+          {
+            "item": "781985786#7_1",
+            "count": 4
+          }
+        ],
+        "top_end_edges": [
+          {
+            "item": "1206223940",
+            "count": 14
+          },
+          {
+            "item": "1206223944",
+            "count": 13
+          },
+          {
+            "item": "183272654",
+            "count": 12
+          },
+          {
+            "item": "781985779#0",
+            "count": 11
+          },
+          {
+            "item": "781985784",
+            "count": 8
+          },
+          {
+            "item": "333972428#2",
+            "count": 7
+          },
+          {
+            "item": "781985786#7",
+            "count": 7
+          },
+          {
+            "item": "219696192#0",
+            "count": 5
+          }
+        ],
+        "top_repeat_vehicles": [
+          {
+            "vehicle_id": "bg_3740",
+            "count": 3
+          },
+          {
+            "vehicle_id": "bg_1855",
+            "count": 2
+          },
+          {
+            "vehicle_id": "bg_3162",
+            "count": 2
+          },
+          {
+            "vehicle_id": "bg_3641",
+            "count": 2
+          },
+          {
+            "vehicle_id": "bg_3982",
+            "count": 2
+          },
+          {
+            "vehicle_id": "bg_4284",
+            "count": 2
+          },
+          {
+            "vehicle_id": "bg_4320",
+            "count": 2
+          }
+        ],
+        "notes": "stderr_log_based_diagnostic"
+      }
+    }
+  ],
+  "outputs": [
+    "results/metrics/b0_demand_scale_calibration_summary.csv",
+    "results/metrics/b0_demand_scale_calibration_summary.json",
+    "results/metrics/b0_road_axis_speed_calibration.csv",
+    "outputs/logs/step10_b0_demand_scale_calibration.log",
+    "docs/Step10.md"
+  ]
+}

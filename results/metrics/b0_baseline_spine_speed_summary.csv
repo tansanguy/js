@@ -1,0 +1,4 @@
+category,mean_speed_kmh,speed_delta_to_20kmh,weighting,weight_sum,edge_count
+network_edgeData,0.832505,-19.167495,sampledSeconds,37344389.02,3021
+spine,0.56697,-19.43303,sampledSeconds,25826517.98,258
+emergency_route_corridor,0.351154,-19.648846,sampledSeconds,17279985.96,60
