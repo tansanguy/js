@@ -8,7 +8,7 @@ HTML 지도는 만들지 않는다. Step 4의 `map_review.html`이 이 단계에
 
 ## 입력
 
-- `data_prepared/net/jungbu_area.net.xml`
+- `archive/full_map_legacy/net/jungbu_area.net.xml`
 - `data_prepared/geojson/analysis_area.geojson`
 - `data_prepared/geojson/analysis_area_meta.json`
 - `data_prepared/net/net_audit.json`
@@ -16,8 +16,8 @@ HTML 지도는 만들지 않는다. Step 4의 `map_review.html`이 이 단계에
 
 ## 출력
 
-- `data_prepared/geojson/sumo_edges.geojson`
-- `data_prepared/geojson/sumo_tls.geojson`
+- `archive/full_map_legacy/geojson/sumo_edges.geojson`
+- `archive/full_map_legacy/geojson/sumo_tls.geojson`
 - `data_prepared/geojson/step03_geojson_audit.json`
 - `outputs/logs/step03_export_geojson.log`
 
@@ -44,8 +44,8 @@ warnings: 0
 
 생성된 파일:
 
-- `data_prepared/geojson/sumo_edges.geojson` 약 17 MB
-- `data_prepared/geojson/sumo_tls.geojson` 약 193 KB
+- `archive/full_map_legacy/geojson/sumo_edges.geojson` 약 17 MB
+- `archive/full_map_legacy/geojson/sumo_tls.geojson` 약 193 KB
 - `data_prepared/geojson/step03_geojson_audit.json` 약 1.2 KB
 - `outputs/logs/step03_export_geojson.log`
 
@@ -121,8 +121,8 @@ python3 01_prepare/01_map/step03_export_geojson.py
 
 ```bash
 cd /Users/junlee/Desktop/js
-python3 -m json.tool data_prepared/geojson/sumo_edges.geojson >/dev/null
-python3 -m json.tool data_prepared/geojson/sumo_tls.geojson >/dev/null
+python3 -m json.tool archive/full_map_legacy/geojson/sumo_edges.geojson >/dev/null
+python3 -m json.tool archive/full_map_legacy/geojson/sumo_tls.geojson >/dev/null
 python3 -m json.tool data_prepared/geojson/step03_geojson_audit.json >/dev/null
 cat outputs/logs/step03_export_geojson.log
 ```

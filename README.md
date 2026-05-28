@@ -16,6 +16,17 @@
 2. `02_simulation`: B0/B1/B2 시뮬레이션과 run plan 기반 batch 실행.
 3. `03_results`: SUMO raw output 수집, 지표 계산, 비교 CSV와 그래프 생성.
 
+## Active map
+
+Step 6 이후 기본 맵은 Step 5 reduced map이다.
+
+- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- edge GeoJSON: `data_prepared/geojson/ellipse_passenger_edges.geojson`
+- TLS GeoJSON: `data_prepared/geojson/ellipse_passenger_tls.geojson`
+- review HTML: `results/html/map_review_ellipse_passenger.html`
+
+Full map 계열은 `archive/full_map_legacy/`에 reference 용도로 보관하며 기본 실험 입력으로 사용하지 않는다.
+
 ## Step 0 실행법
 
 ```bash

@@ -19,14 +19,14 @@ outputs:
   analysis_area_meta: data_prepared/geojson/analysis_area_meta.json
   analysis_area_geojson: data_prepared/geojson/analysis_area.geojson
   osm_file: data_raw/osm/jungbu_bbox.osm.xml
-  net_file: data_prepared/net/jungbu_area.net.xml
+  net_file: archive/full_map_legacy/net/jungbu_area.net.xml
   netconvert_command: data_prepared/net/netconvert_command.txt
   net_audit: data_prepared/net/net_audit.json
   map_manifest: data_prepared/net/map_manifest.json
-  sumo_edges_geojson: data_prepared/geojson/sumo_edges.geojson
-  sumo_tls_geojson: data_prepared/geojson/sumo_tls.geojson
+  sumo_edges_geojson: archive/full_map_legacy/geojson/sumo_edges.geojson
+  sumo_tls_geojson: archive/full_map_legacy/geojson/sumo_tls.geojson
   step03_geojson_audit: data_prepared/geojson/step03_geojson_audit.json
-  map_review_html: results/html/map_review.html
+  map_review_html: archive/full_map_legacy/html/map_review.html
   selected_edges_schema: data_prepared/manual/selected_edges.schema.json
   reduced_net_file: data_prepared/net/jungbu_ellipse_passenger.net.xml
   reduced_net_audit: data_prepared/net/jungbu_ellipse_passenger_audit.json
@@ -35,3 +35,19 @@ outputs:
   reduced_tls_geojson: data_prepared/geojson/ellipse_passenger_tls.geojson
   reduced_geojson_audit: data_prepared/geojson/ellipse_passenger_geojson_audit.json
   reduced_map_review_html: results/html/map_review_ellipse_passenger.html
+
+active_map:
+  name: jungbu_ellipse_passenger
+  net_file: data_prepared/net/jungbu_ellipse_passenger.net.xml
+  edges_geojson: data_prepared/geojson/ellipse_passenger_edges.geojson
+  tls_geojson: data_prepared/geojson/ellipse_passenger_tls.geojson
+  review_html: results/html/map_review_ellipse_passenger.html
+
+legacy_full_map:
+  name: jungbu_area_full
+  archived_root: archive/full_map_legacy
+  net_file: archive/full_map_legacy/net/jungbu_area.net.xml
+  edges_geojson: archive/full_map_legacy/geojson/sumo_edges.geojson
+  tls_geojson: archive/full_map_legacy/geojson/sumo_tls.geojson
+  review_html: archive/full_map_legacy/html/map_review.html
+  usage: reference_only

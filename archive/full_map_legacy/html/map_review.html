@@ -426,7 +426,7 @@
             <summary>상태 요약</summary>
             <div class="details-body">
               <div id="status-summary" class="status-summary">레이어 로드 중...</div>
-              <p class="muted">file://로 열면 GeoJSON fetch가 막힐 수 있음. 기본 실행은 <code>cd /Users/junlee/Desktop/js</code>, <code>python3 -m http.server 8000</code>, <code>http://localhost:8000/results/html/map_review.html</code>.</p>
+              <p class="muted">file://로 열면 GeoJSON fetch가 막힐 수 있음. 기본 실행은 <code>cd /Users/junlee/Desktop/js</code>, <code>python3 -m http.server 8000</code>, <code>http://localhost:8000/archive/full_map_legacy/html/map_review.html</code>.</p>
             </div>
           </details>
           <details id="debug-panel">
@@ -452,7 +452,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
-    const APP_CONTEXT = {"generated_at": "2026-05-27T04:29:14.282206+00:00", "initial_center": [37.56168353484987, 126.9934085584282], "initial_zoom": 14, "counts": {"analysis_feature_count": 5, "edge_feature_count": 21599, "tls_feature_count": 356}, "step03_audit_summary": {"edge_feature_count": 21599, "tls_feature_count": 356, "warnings": 0}, "paths": {"analysis_area_geojson": "../../data_prepared/geojson/analysis_area.geojson", "sumo_edges_geojson": "../../data_prepared/geojson/sumo_edges.geojson", "sumo_tls_geojson": "../../data_prepared/geojson/sumo_tls.geojson"}};
+    const APP_CONTEXT = {"generated_at": "2026-05-27T04:29:14.282206+00:00", "initial_center": [37.56168353484987, 126.9934085584282], "initial_zoom": 14, "counts": {"analysis_feature_count": 5, "edge_feature_count": 21599, "tls_feature_count": 356}, "step03_audit_summary": {"edge_feature_count": 21599, "tls_feature_count": 356, "warnings": 0}, "paths": {"analysis_area_geojson": "../../../data_prepared/geojson/analysis_area.geojson", "sumo_edges_geojson": "../geojson/sumo_edges.geojson", "sumo_tls_geojson": "../geojson/sumo_tls.geojson"}};
     const selected = {
       analysis_edges: new Set(),
       accident_candidate_edges: new Set(),
@@ -1041,7 +1041,7 @@
         analysis_edges: Array.from(selected.analysis_edges).sort(),
         accident_candidate_edges: Array.from(selected.accident_candidate_edges).sort(),
         excluded_edges: Array.from(selected.excluded_edges).sort(),
-        created_from: 'results/html/map_review.html',
+        created_from: "archive/full_map_legacy/html/map_review.html",
         notes: 'manual edge selection from Step 4',
       };
     }

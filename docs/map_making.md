@@ -18,9 +18,9 @@
 
 - `data_prepared/geojson/analysis_area.geojson`
 - `data_prepared/sumo/*.net.xml`
-- `data_prepared/geojson/sumo_edges.geojson`
-- `data_prepared/geojson/sumo_tls.geojson`
-- `results/html/map_review.html`
+- `archive/full_map_legacy/geojson/sumo_edges.geojson`
+- `archive/full_map_legacy/geojson/sumo_tls.geojson`
+- `archive/full_map_legacy/html/map_review.html`
 
 ## Step 1 분석권역
 

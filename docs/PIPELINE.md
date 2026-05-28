@@ -19,6 +19,15 @@
 
 Preflight는 시뮬레이션 실행 전 입력 데이터, 경로, 신호, 수요가 정상인지 점검하는 단계다. 도달 불가능한 사고 edge, 누락 route, 잘못된 TLS 참조, 비어 있는 demand 같은 문제를 simulation 전에 걸러낸다.
 
+Step 6 이후 active map은 Step 5 reduced map이다.
+
+- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- edge GeoJSON: `data_prepared/geojson/ellipse_passenger_edges.geojson`
+- TLS GeoJSON: `data_prepared/geojson/ellipse_passenger_tls.geojson`
+- review HTML: `results/html/map_review_ellipse_passenger.html`
+
+Full map 계열은 `archive/full_map_legacy/`에 reference 용도로만 보관하며 기본 실험 입력으로 사용하지 않는다.
+
 ## 시뮬레이션 단계: `02_simulation`
 
 입력:

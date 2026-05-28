@@ -9,14 +9,14 @@ Step 4는 실제 지도 위에 SUMO edge, traffic light, 분석권역을 겹쳐 
 ## 입력
 
 - `data_prepared/geojson/analysis_area.geojson`
-- `data_prepared/geojson/sumo_edges.geojson`
-- `data_prepared/geojson/sumo_tls.geojson`
+- `archive/full_map_legacy/geojson/sumo_edges.geojson`
+- `archive/full_map_legacy/geojson/sumo_tls.geojson`
 - `data_prepared/geojson/step03_geojson_audit.json`
 - `config/map_config.yaml`
 
 ## 출력
 
-- `results/html/map_review.html`
+- `archive/full_map_legacy/html/map_review.html`
 - `data_prepared/manual/selected_edges.schema.json`
 - `outputs/logs/step04_make_map_review_html.log`
 
@@ -36,13 +36,13 @@ Status: PASS
 analysis_feature_count: 5
 edge_feature_count: 21599
 tls_feature_count: 356
-Wrote HTML: results/html/map_review.html
+Wrote HTML: archive/full_map_legacy/html/map_review.html
 Wrote schema: data_prepared/manual/selected_edges.schema.json
 ```
 
 생성된 파일:
 
-- `results/html/map_review.html` 약 16 KB
+- `archive/full_map_legacy/html/map_review.html` 약 16 KB
 - `data_prepared/manual/selected_edges.schema.json` 약 809 B
 - `outputs/logs/step04_make_map_review_html.log` 약 472 B
 
@@ -53,8 +53,8 @@ Wrote schema: data_prepared/manual/selected_edges.schema.json
 - HTML 안에 Leaflet map, selection mode 3개, JSON download handler, CORS fallback 안내 포함 확인.
 - HTML에서 참조하는 GeoJSON 경로:
   - `../../data_prepared/geojson/analysis_area.geojson`
-  - `../../data_prepared/geojson/sumo_edges.geojson`
-  - `../../data_prepared/geojson/sumo_tls.geojson`
+  - `../../archive/full_map_legacy/geojson/sumo_edges.geojson`
+  - `../../archive/full_map_legacy/geojson/sumo_tls.geojson`
 
 ## 구현 원칙
 
@@ -78,7 +78,7 @@ Wrote schema: data_prepared/manual/selected_edges.schema.json
   "analysis_edges": ["edge_id_1", "edge_id_2"],
   "accident_candidate_edges": ["edge_id_3"],
   "excluded_edges": ["edge_id_4"],
-  "created_from": "results/html/map_review.html",
+  "created_from": "archive/full_map_legacy/html/map_review.html",
   "notes": "manual edge selection from Step 4"
 }
 ```
@@ -133,10 +133,10 @@ python3 -m http.server 8000
 브라우저에서 열기:
 
 ```text
-http://localhost:8000/results/html/map_review.html
+http://localhost:8000/archive/full_map_legacy/html/map_review.html
 ```
 
-`open results/html/map_review.html`도 가능하지만, 레이어가 로드되지 않으면 localhost 방식으로 확인한다.
+`open archive/full_map_legacy/html/map_review.html`도 가능하지만, 레이어가 로드되지 않으면 localhost 방식으로 확인한다.
 
 ## 지도 요소 범례
 
@@ -193,7 +193,7 @@ http://localhost:8000/results/html/map_review.html
 ## Edge 선택 절차
 
 1. 프로젝트 루트에서 localhost 서버를 실행한다.
-2. 브라우저에서 `http://localhost:8000/results/html/map_review.html`을 연다.
+2. 브라우저에서 `http://localhost:8000/archive/full_map_legacy/html/map_review.html`을 연다.
 3. 분석권역이 의도한 위치에 표시되는지 확인한다.
 4. SUMO edge가 분석권역 위에 표시되는지 확인한다.
 5. 필요할 때만 신호등 레이어를 켠다.
@@ -251,7 +251,7 @@ A안으로 구현한다.
 
 - 새 Step 4.5는 만들지 않는다.
 - `selectable_edges.geojson`은 만들지 않는다.
-- 기존 `data_prepared/geojson/sumo_edges.geojson` 전체 21,599개를 그대로 사용한다.
+- 기존 `archive/full_map_legacy/geojson/sumo_edges.geojson` 전체 21,599개를 그대로 사용한다.
 - 분석권역과 SUMO edge는 기본 ON, 신호등은 기본 OFF다.
 - 체크박스 상태와 `map.hasLayer(...)` 상태를 동기화한다.
 - 오른쪽 상태 패널에 다음 값을 표시한다:

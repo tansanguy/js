@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -83,9 +84,7 @@ def load_feature_collection(path: Path, label: str) -> dict[str, Any]:
 
 
 def relative_from_html(html_path: Path, target_path: Path) -> str:
-    return target_path.relative_to(html_path.parent).as_posix() if target_path.is_relative_to(html_path.parent) else (
-        Path("../../") / target_path.relative_to(PROJECT_ROOT)
-    ).as_posix()
+    return Path(os.path.relpath(target_path, start=html_path.parent)).as_posix()
 
 
 def bbox_center_from_meta(meta_path: Path) -> tuple[list[float], int]:
@@ -143,6 +142,8 @@ def main() -> int:
         initial_center, initial_zoom = bbox_center_from_meta(meta_path)
         context = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "review_html_path": str(html_path.relative_to(PROJECT_ROOT)),
+            "localhost_url": f"http://localhost:8000/{html_path.relative_to(PROJECT_ROOT).as_posix()}",
             "initial_center": initial_center,
             "initial_zoom": initial_zoom,
             "counts": {

@@ -25,7 +25,7 @@ Step 2의 netconvert 옵션은 고정 확정값이 아니라 1차 초안이다.
 ```bash
 netconvert \
   --osm-files data_raw/osm/jungbu_bbox.osm.xml \
-  --output-file data_prepared/net/jungbu_area.net.xml \
+  --output-file archive/full_map_legacy/net/jungbu_area.net.xml \
   --tls.guess true \
   --tls.join true \
   --junctions.join true \
@@ -52,7 +52,7 @@ netconvert \
 ## 산출물
 
 - `data_raw/osm/jungbu_bbox.osm.xml`
-- `data_prepared/net/jungbu_area.net.xml`
+- `archive/full_map_legacy/net/jungbu_area.net.xml`
 - `data_prepared/net/netconvert_command.txt`
 - `data_prepared/net/net_audit.json`
 - `data_prepared/net/map_manifest.json`
@@ -81,7 +81,7 @@ lane_count: 64383
 생성된 파일:
 
 - `data_raw/osm/jungbu_bbox.osm.xml` 약 8.8 MB
-- `data_prepared/net/jungbu_area.net.xml` 약 37 MB
+- `archive/full_map_legacy/net/jungbu_area.net.xml` 약 37 MB
 - `data_prepared/net/netconvert_command.txt` 약 832 B
 - `data_prepared/net/net_audit.json` 약 3.5 KB
 - `data_prepared/net/map_manifest.json` 약 1.2 KB
@@ -106,8 +106,8 @@ netconvert 실행 결과:
 
 - `net_audit.json` JSON valid.
 - `map_manifest.json` JSON valid.
-- `sumo -n data_prepared/net/jungbu_area.net.xml --no-step-log true --duration-log.disable true -e 0` 실행 exit code `0`.
-- 사용자가 `sumo-gui`에서 `data_prepared/net/jungbu_area.net.xml` 로드 확인 완료.
+- `sumo -n archive/full_map_legacy/net/jungbu_area.net.xml --no-step-log true --duration-log.disable true -e 0` 실행 exit code `0`.
+- 사용자가 `sumo-gui`에서 `archive/full_map_legacy/net/jungbu_area.net.xml` 로드 확인 완료.
 
 ## 검증 기준
 
@@ -119,7 +119,7 @@ netconvert 실행 결과:
 - edge, junction, lane 수가 1개 이상이어야 한다.
 - traffic light 수가 1개 이상이어야 한다.
 - `map_manifest.json`에 OSM/net SHA256과 netconvert command가 기록되어야 한다.
-- `sumo-gui data_prepared/net/jungbu_area.net.xml`로 열어 신호망을 확인해야 한다.
+- `sumo-gui archive/full_map_legacy/net/jungbu_area.net.xml`로 열어 신호망을 확인해야 한다.
 
 ## 실행 명령
 
@@ -141,7 +141,7 @@ python3 01_prepare/01_map/step02_build_map.py --force-download
 cd /Users/junlee/Desktop/js
 cat data_prepared/net/net_audit.json
 cat data_prepared/net/map_manifest.json
-sumo-gui data_prepared/net/jungbu_area.net.xml
+sumo-gui archive/full_map_legacy/net/jungbu_area.net.xml
 ```
 
 ## 하지 않는 일

@@ -4,7 +4,7 @@
 
 Step 5는 기존 `jungbu_area.net.xml`을 직접 자르지 않고, 기존 OSM 원본에서 새 실험용 reduced SUMO map을 만든다.
 
-원본 map은 비교/백업용으로 유지한다.
+원본 map은 비교/백업용으로 유지한다. Step 6 이후 기본 입력은 reduced map 계열이다.
 
 ## 핵심 기준
 
@@ -61,6 +61,15 @@ results/html/map_review_ellipse_passenger.html
 - `results/html/map_review_ellipse_passenger.html`
 - `outputs/logs/step05_build_reduced_map.log`
 
+Step 6 이후 active map:
+
+- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- edge GeoJSON: `data_prepared/geojson/ellipse_passenger_edges.geojson`
+- TLS GeoJSON: `data_prepared/geojson/ellipse_passenger_tls.geojson`
+- review HTML: `results/html/map_review_ellipse_passenger.html`
+
+Full map 산출물은 `archive/full_map_legacy/`에 보관하며, Step 6 이후 기본 실험 입력으로 사용하지 않는다.
+
 ## 현재 생성 결과
 
 2026-05-27 실행 결과:
@@ -81,7 +90,7 @@ results/html/map_review_ellipse_passenger.html
 
 ## 검증 기준
 
-- 원본 `data_prepared/net/jungbu_area.net.xml` 무수정
+- 원본 full map은 archive에 보관
 - reduced net 생성 성공
 - reduced edge/lane/TLS 수가 원본보다 감소
 - TLS 수가 0이 아님

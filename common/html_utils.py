@@ -58,6 +58,9 @@ def build_selected_edges_schema() -> dict[str, Any]:
 
 
 def render_map_review_html(context: dict[str, Any]) -> str:
+    review_html_path = str(context.get("review_html_path", "results/html/map_review_ellipse_passenger.html"))
+    localhost_url = str(context.get("localhost_url", f"http://localhost:8000/{review_html_path}"))
+    review_html_path_js = json_for_inline_script(review_html_path)
     context_json = json_for_inline_script(context)
     return f"""<!doctype html>
 <html lang="ko">
@@ -487,7 +490,7 @@ def render_map_review_html(context: dict[str, Any]) -> str:
             <summary>상태 요약</summary>
             <div class="details-body">
               <div id="status-summary" class="status-summary">레이어 로드 중...</div>
-              <p class="muted">file://로 열면 GeoJSON fetch가 막힐 수 있음. 기본 실행은 <code>cd /Users/junlee/Desktop/js</code>, <code>python3 -m http.server 8000</code>, <code>http://localhost:8000/results/html/map_review.html</code>.</p>
+              <p class="muted">file://로 열면 GeoJSON fetch가 막힐 수 있음. 기본 실행은 <code>cd /Users/junlee/Desktop/js</code>, <code>python3 -m http.server 8000</code>, <code>{html_escape(localhost_url)}</code>.</p>
             </div>
           </details>
           <details id="debug-panel">
@@ -1102,7 +1105,7 @@ def render_map_review_html(context: dict[str, Any]) -> str:
         analysis_edges: Array.from(selected.analysis_edges).sort(),
         accident_candidate_edges: Array.from(selected.accident_candidate_edges).sort(),
         excluded_edges: Array.from(selected.excluded_edges).sort(),
-        created_from: 'results/html/map_review.html',
+        created_from: {review_html_path_js},
         notes: 'manual edge selection from Step 4',
       }};
     }}

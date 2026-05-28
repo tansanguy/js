@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import shlex
 import sys
 from datetime import datetime, timezone
@@ -89,11 +90,7 @@ def rel_path(path_text: str) -> Path:
 
 
 def relative_from_html(html_path: Path, target_path: Path) -> str:
-    return (
-        target_path.relative_to(html_path.parent).as_posix()
-        if target_path.is_relative_to(html_path.parent)
-        else (Path("../../") / target_path.relative_to(PROJECT_ROOT)).as_posix()
-    )
+    return Path(os.path.relpath(target_path, start=html_path.parent)).as_posix()
 
 
 def escape_help_option(option_name: str) -> str:
@@ -351,6 +348,8 @@ def build_review_html(
 ) -> None:
     context = {
         "generated_at": utc_now(),
+        "review_html_path": str(html_path.relative_to(PROJECT_ROOT)),
+        "localhost_url": f"http://localhost:8000/{html_path.relative_to(PROJECT_ROOT).as_posix()}",
         "initial_center": center,
         "initial_zoom": zoom,
         "counts": {
