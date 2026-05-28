@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-05-28T00:38:14.870063+00:00",
+  "station_start_edge_id": "-381802881#2",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "active_edges_geojson": "data_prepared/geojson/ellipse_passenger_edges.geojson",
+  "validation": {
+    "edge_id": "-381802881#2",
+    "exists_in_geojson": true,
+    "exists_in_net": true,
+    "allows_passenger": true,
+    "is_internal": false,
+    "length_m": 60.4,
+    "lane_count": 1,
+    "speed_mps": 13.89,
+    "duplicate_count": 1,
+    "status": "PASS",
+    "warnings": "",
+    "failure_reason": ""
+  }
+}
