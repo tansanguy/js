@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-05-28T11:45:52.239310+00:00",
+  "final_status": "WARNING",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "route_count": 19,
+  "deleted_route_id": "ER_ACC_020",
+  "deleted_target_edge_id": "381802879#1",
+  "selected_policy": "spine_corridor_biased_v2",
+  "corridor_spine_edge_count": 258,
+  "warning_count": 5,
+  "needs_manual_review_count": 1,
+  "checks": [
+    {
+      "check": "route_xml_root",
+      "status": "PASS",
+      "detail": "routes"
+    },
+    {
+      "check": "route_edges_in_reduced_net",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "route_edges_allow_emergency",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "route_count",
+      "status": "PASS",
+      "detail": 19
+    },
+    {
+      "check": "deleted_candidate_excluded",
+      "status": "PASS",
+      "detail": "ER_ACC_020"
+    },
+    {
+      "check": "start_edge",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "route_review_spine_v2_html",
+      "status": "PASS",
+      "detail": "results/html/route_review_spine_v2.html"
+    }
+  ],
+  "outputs": [
+    "data_prepared/manual/route_review_decisions_spine.json",
+    "data_prepared/routes/deleted_route_candidates.csv",
+    "data_prepared/routes/spine_route_improvement_targets.csv",
+    "data_prepared/routes/route_compare_shortest_major_spine_v2.csv",
+    "data_prepared/routes/emergency_routes_spine_v2.csv",
+    "data_prepared/routes/emergency_routes_spine_v2.rou.xml",
+    "data_prepared/routes/spine_route_turn_diagnostics.csv",
+    "results/html/route_review_spine_v2.html"
+  ]
+}

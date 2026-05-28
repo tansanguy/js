@@ -1,10 +1,12 @@
 {
-  "generated_at": "2026-05-28T01:37:49.965436+00:00",
-  "final_status": "PASS",
+  "generated_at": "2026-05-28T11:24:26.526310+00:00",
+  "final_status": "WARNING",
   "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
   "route_count": 20,
-  "warning_count": 0,
-  "needs_manual_review_count": 0,
+  "selected_policy": "spine_corridor_biased",
+  "corridor_spine_edge_count": 258,
+  "warning_count": 1,
+  "needs_manual_review_count": 3,
   "checks": [
     {
       "check": "route_xml_root",
@@ -23,6 +25,16 @@
     },
     {
       "check": "route_count",
+      "status": "PASS",
+      "detail": 20
+    },
+    {
+      "check": "corridor_spine_edge_count",
+      "status": "PASS",
+      "detail": 258
+    },
+    {
+      "check": "spine_route_count",
       "status": "PASS",
       "detail": 20
     },

@@ -1,0 +1,147 @@
+{
+  "created_from": "manual_user_route_review_v1",
+  "generated_at": "2026-05-28T11:45:52.239310+00:00",
+  "notes": "Manual decisions supplied before Step 7 spine route v2. ER_ACC_020 is deleted; remaining routes are regenerated for v2 review.",
+  "decisions": [
+    {
+      "route_id": "ER_ACC_001",
+      "scenario_id": "ACC_001",
+      "target_edge_id": "-1099004169",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_002",
+      "scenario_id": "ACC_002",
+      "target_edge_id": "-176728951#4",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_003",
+      "scenario_id": "ACC_003",
+      "target_edge_id": "-198564930",
+      "decision": "reject",
+      "reason_type": "two_route_visual_confusion"
+    },
+    {
+      "route_id": "ER_ACC_004",
+      "scenario_id": "ACC_004",
+      "target_edge_id": "-198691090",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_005",
+      "scenario_id": "ACC_005",
+      "target_edge_id": "-228795481#0",
+      "decision": "reject",
+      "reason_type": "insufficient_spine_usage"
+    },
+    {
+      "route_id": "ER_ACC_006",
+      "scenario_id": "ACC_006",
+      "target_edge_id": "-228796091#1",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_007",
+      "scenario_id": "ACC_007",
+      "target_edge_id": "-272263606",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_008",
+      "scenario_id": "ACC_008",
+      "target_edge_id": "-37928420#2",
+      "decision": "reject",
+      "reason_type": "two_route_visual_confusion"
+    },
+    {
+      "route_id": "ER_ACC_009",
+      "scenario_id": "ACC_009",
+      "target_edge_id": "-420383159#1",
+      "decision": "reject",
+      "reason_type": "insufficient_spine_usage"
+    },
+    {
+      "route_id": "ER_ACC_010",
+      "scenario_id": "ACC_010",
+      "target_edge_id": "117784418#0",
+      "decision": "reject",
+      "reason_type": "two_route_visual_confusion"
+    },
+    {
+      "route_id": "ER_ACC_011",
+      "scenario_id": "ACC_011",
+      "target_edge_id": "1205679418#11",
+      "decision": "reject",
+      "reason_type": "two_route_visual_confusion"
+    },
+    {
+      "route_id": "ER_ACC_012",
+      "scenario_id": "ACC_012",
+      "target_edge_id": "170403814#0",
+      "decision": "reject",
+      "reason_type": "insufficient_spine_usage"
+    },
+    {
+      "route_id": "ER_ACC_013",
+      "scenario_id": "ACC_013",
+      "target_edge_id": "198564929#5",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_014",
+      "scenario_id": "ACC_014",
+      "target_edge_id": "198691079#0",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_015",
+      "scenario_id": "ACC_015",
+      "target_edge_id": "243542156#1",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_016",
+      "scenario_id": "ACC_016",
+      "target_edge_id": "273028084#6",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_017",
+      "scenario_id": "ACC_017",
+      "target_edge_id": "273640070#0",
+      "decision": "reject",
+      "reason_type": "two_route_visual_confusion;uturn_or_direction_reversal"
+    },
+    {
+      "route_id": "ER_ACC_018",
+      "scenario_id": "ACC_018",
+      "target_edge_id": "301285277#0",
+      "decision": "accept",
+      "reason_type": "accepted_v1"
+    },
+    {
+      "route_id": "ER_ACC_019",
+      "scenario_id": "ACC_019",
+      "target_edge_id": "315658884#1",
+      "decision": "reject",
+      "reason_type": "uturn_or_direction_reversal"
+    },
+    {
+      "route_id": "ER_ACC_020",
+      "scenario_id": "ACC_020",
+      "target_edge_id": "381802879#1",
+      "decision": "delete",
+      "reason_type": "deleted_candidate"
+    }
+  ]
+}

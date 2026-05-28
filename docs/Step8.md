@@ -35,11 +35,44 @@ python3 01_prepare/06_preflight/step08_b0_emergency_only_smoke.py
 - 신호제어: 없음
 - B1/B2 우선신호: 없음
 
+spine-corridor route 재검증은 기존 B0 결과를 덮어쓰지 않도록 별도 variant로 실행한다.
+
+```bash
+cd /Users/junlee/Desktop/js
+python3 01_prepare/06_preflight/step08_b0_emergency_only_smoke.py --variant spine
+```
+
+- 위치: `runs/b0_emergency_only_smoke_spine/ACC_*/`
+- 일반 차량 수요, 신호제어, B1/B2 우선신호는 동일하게 없음
+
+Step 7 spine route v2는 ER_ACC_020을 제외한 19개 route만 별도 variant로 실행한다.
+
+```bash
+cd /Users/junlee/Desktop/js
+python3 01_prepare/06_preflight/step08_b0_emergency_only_smoke.py --variant spine-v2
+```
+
+- 입력: `data_prepared/routes/emergency_routes_spine_v2.csv`
+- 위치: `runs/b0_emergency_only_smoke_spine_v2/ACC_*/`
+- 일반 차량 수요, 신호제어, B1/B2 우선신호는 동일하게 없음
+
 ## Smoke 결과
 
 - `results/metrics/b0_emergency_only_smoke_summary.csv`
 - `results/metrics/b0_emergency_only_smoke_summary.json`
 - `outputs/logs/step08_b0_emergency_only_smoke.log`
+
+spine variant 결과:
+
+- `results/metrics/b0_emergency_only_smoke_spine_summary.csv`
+- `results/metrics/b0_emergency_only_smoke_spine_summary.json`
+- `outputs/logs/step08_b0_emergency_only_smoke_spine.log`
+
+spine v2 variant 결과:
+
+- `results/metrics/b0_emergency_only_smoke_spine_v2_summary.csv`
+- `results/metrics/b0_emergency_only_smoke_spine_v2_summary.json`
+- `outputs/logs/step08_b0_emergency_only_smoke_spine_v2.log`
 
 각 smoke는 `exit_code`, `arrived`, `travel_time`, `route_id`, `scenario_id`, `failure_reason`을 기록한다.
 

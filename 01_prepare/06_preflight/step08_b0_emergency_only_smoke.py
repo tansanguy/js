@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import argparse
 import json
 import shutil
 import subprocess
@@ -18,10 +19,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ACTIVE_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger.net.xml"
 EMERGENCY_ROUTES_CSV = PROJECT_ROOT / "data_prepared/routes/emergency_routes.csv"
 EMERGENCY_ROUTE_SUMMARY = PROJECT_ROOT / "data_prepared/routes/emergency_route_summary.json"
+EMERGENCY_ROUTES_V2_CSV = PROJECT_ROOT / "data_prepared/routes/emergency_routes_spine_v2.csv"
+EMERGENCY_ROUTE_V2_SUMMARY = PROJECT_ROOT / "data_prepared/routes/emergency_route_summary_spine_v2.json"
 RUN_ROOT = PROJECT_ROOT / "runs/b0_emergency_only_smoke"
 SUMMARY_CSV = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_summary.csv"
 SUMMARY_JSON = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_summary.json"
 LOG_PATH = PROJECT_ROOT / "outputs/logs/step08_b0_emergency_only_smoke.log"
+SPINE_RUN_ROOT = PROJECT_ROOT / "runs/b0_emergency_only_smoke_spine"
+SPINE_SUMMARY_CSV = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_spine_summary.csv"
+SPINE_SUMMARY_JSON = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_spine_summary.json"
+SPINE_LOG_PATH = PROJECT_ROOT / "outputs/logs/step08_b0_emergency_only_smoke_spine.log"
+SPINE_V2_RUN_ROOT = PROJECT_ROOT / "runs/b0_emergency_only_smoke_spine_v2"
+SPINE_V2_SUMMARY_CSV = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_spine_v2_summary.csv"
+SPINE_V2_SUMMARY_JSON = PROJECT_ROOT / "results/metrics/b0_emergency_only_smoke_spine_v2_summary.json"
+SPINE_V2_LOG_PATH = PROJECT_ROOT / "outputs/logs/step08_b0_emergency_only_smoke_spine_v2.log"
 
 
 class Step08Error(RuntimeError):
@@ -61,6 +72,25 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run B0 emergency-only smoke checks.")
+    parser.add_argument(
+        "--variant",
+        choices=["default", "spine", "spine-v2"],
+        default="default",
+        help="Use default outputs or separate spine-corridor smoke outputs.",
+    )
+    return parser.parse_args()
+
+
+def output_paths(variant: str) -> tuple[Path, Path, Path, Path, Path, Path, int]:
+    if variant == "spine-v2":
+        return SPINE_V2_RUN_ROOT, SPINE_V2_SUMMARY_CSV, SPINE_V2_SUMMARY_JSON, SPINE_V2_LOG_PATH, EMERGENCY_ROUTES_V2_CSV, EMERGENCY_ROUTE_V2_SUMMARY, 19
+    if variant == "spine":
+        return SPINE_RUN_ROOT, SPINE_SUMMARY_CSV, SPINE_SUMMARY_JSON, SPINE_LOG_PATH, EMERGENCY_ROUTES_CSV, EMERGENCY_ROUTE_SUMMARY, 20
+    return RUN_ROOT, SUMMARY_CSV, SUMMARY_JSON, LOG_PATH, EMERGENCY_ROUTES_CSV, EMERGENCY_ROUTE_SUMMARY, 20
 
 
 def write_smoke_route(path: Path, row: dict[str, str]) -> str:
@@ -125,26 +155,28 @@ def parse_tripinfo(path: Path, vehicle_id: str) -> tuple[bool, str, str]:
 
 
 def main() -> int:
+    args = parse_args()
+    run_root, summary_csv, summary_json, log_path, routes_csv, route_summary_path, expected_count = output_paths(args.variant)
     generated_at = utc_now()
-    lines = ["Step 8 B0 emergency-only smoke", "===============================", f"generated_at: {generated_at}"]
+    lines = ["Step 8 B0 emergency-only smoke", "===============================", f"generated_at: {generated_at}", f"variant: {args.variant}"]
     try:
-        for path in [ACTIVE_NET, EMERGENCY_ROUTES_CSV, EMERGENCY_ROUTE_SUMMARY]:
+        for path in [ACTIVE_NET, routes_csv, route_summary_path]:
             if not path.is_file():
                 raise Step08Error(f"Required input missing: {rel(path)}")
-        route_summary = load_json(EMERGENCY_ROUTE_SUMMARY)
+        route_summary = load_json(route_summary_path)
         if route_summary.get("final_status") not in {"PASS", "WARNING"}:
             raise Step08Error(f"Step 7 summary blocks smoke: {route_summary.get('final_status')}")
         sumo = shutil.which("sumo")
         if sumo is None:
             raise Step08Error("sumo executable not found")
 
-        rows = read_csv(EMERGENCY_ROUTES_CSV)
-        if len(rows) != 20:
-            raise Step08Error(f"Expected 20 emergency routes, got {len(rows)}")
+        rows = read_csv(routes_csv)
+        if len(rows) != expected_count:
+            raise Step08Error(f"Expected {expected_count} emergency routes, got {len(rows)}")
 
         results: list[dict[str, Any]] = []
         for row in rows:
-            run_dir = RUN_ROOT / row["scenario_id"]
+            run_dir = run_root / row["scenario_id"]
             route_file = run_dir / "emergency_only.rou.xml"
             sumocfg = run_dir / "scenario.sumocfg"
             tripinfo = run_dir / "tripinfo.xml"
@@ -184,13 +216,15 @@ def main() -> int:
         failed = [row for row in results if int(row["exit_code"]) != 0 or not row["arrived"]]
         final_status = "PASS" if not failed else "FAIL"
         fields = ["scenario_id", "route_id", "target_edge_id", "exit_code", "arrived", "travel_time", "failure_reason", "run_dir", "sumocfg", "tripinfo"]
-        write_csv(SUMMARY_CSV, results, fields)
+        write_csv(summary_csv, results, fields)
         write_json(
-            SUMMARY_JSON,
+            summary_json,
             {
                 "generated_at": generated_at,
                 "final_status": final_status,
                 "active_net": rel(ACTIVE_NET),
+                "routes_csv": rel(routes_csv),
+                "variant": args.variant,
                 "run_count": len(results),
                 "arrived_count": sum(1 for row in results if row["arrived"]),
                 "failed_count": len(failed),
@@ -203,18 +237,18 @@ def main() -> int:
                 f"arrived_count: {sum(1 for row in results if row['arrived'])}",
                 f"failed_count: {len(failed)}",
                 f"final_status: {final_status}",
-                f"summary_csv: {rel(SUMMARY_CSV)}",
-                f"summary_json: {rel(SUMMARY_JSON)}",
+                f"summary_csv: {rel(summary_csv)}",
+                f"summary_json: {rel(summary_json)}",
             ]
         )
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        LOG_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print("\n".join(lines))
         return 0 if final_status == "PASS" else 1
     except (Step08Error, OSError, ET.ParseError, subprocess.TimeoutExpired, ValueError) as exc:
         lines.extend(["Status: FAIL", str(exc)])
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        LOG_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print(str(exc), file=sys.stderr)
         return 1
 
