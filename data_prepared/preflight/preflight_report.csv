@@ -1,0 +1,6 @@
+check,status,detail
+route_xml_root,PASS,routes
+route_edges_in_reduced_net,PASS,
+route_edges_allow_emergency,PASS,
+route_count,PASS,20
+route_review_html,PASS,results/html/route_review.html

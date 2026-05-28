@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-05-28T01:37:49.965436+00:00",
+  "final_status": "PASS",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "route_count": 20,
+  "shortest_vs_major_warning_threshold": 0.35,
+  "needs_manual_review_threshold": 0.6,
+  "warning_count": 0,
+  "needs_manual_review_count": 0,
+  "outputs": [
+    "data_prepared/routes/emergency_routes.csv",
+    "data_prepared/routes/emergency_routes.rou.xml",
+    "data_prepared/routes/route_compare_shortest_vs_major.csv",
+    "data_prepared/scenarios/accident_scenarios.csv",
+    "results/html/route_review.html",
+    "data_prepared/manual/route_review_decisions.schema.json",
+    "data_prepared/preflight/preflight_summary.json",
+    "data_prepared/preflight/preflight_report.csv"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Route review decisions",
+  "type": "object",
+  "required": [
+    "created_from",
+    "generated_at",
+    "decisions"
+  ],
+  "properties": {
+    "created_from": {
+      "const": "results/html/route_review.html"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "route_id",
+          "scenario_id",
+          "target_edge_id",
+          "decision",
+          "reject_reason"
+        ],
+        "properties": {
+          "route_id": {
+            "type": "string"
+          },
+          "scenario_id": {
+            "type": "string"
+          },
+          "target_edge_id": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "pending",
+              "accept",
+              "reject"
+            ]
+          },
+          "reject_reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

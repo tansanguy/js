@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-05-28T01:37:49.965436+00:00",
+  "final_status": "PASS",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "route_count": 20,
+  "warning_count": 0,
+  "needs_manual_review_count": 0,
+  "checks": [
+    {
+      "check": "route_xml_root",
+      "status": "PASS",
+      "detail": "routes"
+    },
+    {
+      "check": "route_edges_in_reduced_net",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "route_edges_allow_emergency",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "route_count",
+      "status": "PASS",
+      "detail": 20
+    },
+    {
+      "check": "route_review_html",
+      "status": "PASS",
+      "detail": "results/html/route_review.html"
+    }
+  ]
+}
