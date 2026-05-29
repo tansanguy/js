@@ -1,72 +1,14 @@
-# ER_ACC_013 Repair Report
+# ER_ACC_013 보정 검토 보고
 
-## Decision
+`ER_ACC_013`의 teleport 문제를 검토했지만, 최종 실험에서는 보정 variant를 채택하지 않는다.
 
-`EXCLUDE_PRELIMINARY`
+## 판단
 
-## Candidates
+- emergency-only 조건에서는 통과 가능하다.
+- B0 첨두 수요 조건에서는 국소 정체로 실패 가능성이 있다.
+- 네트워크를 임의 수정하면 다른 route 비교의 일관성이 깨질 수 있다.
 
-[
-  {
-    "candidate_id": "no_net_patch_background_jam_diagnostic",
-    "candidate_type": "demand_interaction_diagnosis",
-    "description": "Connection and permissions are valid; emergency-only passes, B0 fails under local background jam. No net patch selected.",
-    "net_variant": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
-    "route_variant": "original ER_ACC_013",
-    "safe_to_apply": false,
-    "selected": false,
-    "decision": "EXCLUDE_PRELIMINARY",
-    "reason": "background demand jam on a valid internal TLS connection"
-  }
-]
+## 결정
 
-## Verification
-
-[
-  {
-    "candidate_id": "original_route_emergency_only",
-    "candidate_type": "demand_interaction_diagnosis",
-    "net_variant": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
-    "route_variant": "data_prepared/net_repair/er_acc_013/er_acc_013_original_emergency_only.rou.xml",
-    "same_start": true,
-    "same_target": true,
-    "sumo_exit_code": 0,
-    "emergency_departed": true,
-    "emergency_arrived": true,
-    "emergency_teleport": false,
-    "emergency_teleport_evidence": [],
-    "route_error_count": 0,
-    "emergency_travel_time": 159.0,
-    "emergency_waiting_time": 0.0,
-    "background_departed": 0,
-    "background_arrived": 0,
-    "background_teleported": 0,
-    "sim_end_time": 159.0,
-    "run_dir": "runs/net_repair_er_acc_013/emergency_only_original",
-    "sumocfg": "runs/net_repair_er_acc_013/emergency_only_original/scenario.sumocfg",
-    "stderr_log": "runs/net_repair_er_acc_013/emergency_only_original/sumo_stderr.log",
-    "tripinfo": "runs/net_repair_er_acc_013/emergency_only_original/tripinfo.xml",
-    "final_status": "PASS"
-  },
-  {
-    "candidate_id": "original_route_b0_0p15_existing",
-    "candidate_type": "baseline_reference",
-    "net_variant": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
-    "route_variant": "data_prepared/routes/emergency_routes_spine_v2.csv",
-    "same_start": true,
-    "same_target": true,
-    "sumo_exit_code": 0,
-    "emergency_departed": true,
-    "emergency_arrived": true,
-    "emergency_teleport": true,
-    "route_error_count": 0,
-    "emergency_travel_time": 1394.0,
-    "background_departed": 654,
-    "background_arrived": 654,
-    "background_teleported": 4,
-    "run_dir": "runs/b0_baseline_19route_smoke/ER_ACC_013",
-    "final_status": "FAIL"
-  }
-]
-
-Original net, route CSV, and 0.15x background demand were not overwritten.
+- `ER_ACC_013`은 최종 검증 route set에서 제외한다.
+- 기존 active net과 background demand는 유지한다.

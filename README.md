@@ -1,53 +1,50 @@
 # Emergency Signal SUMO Project
 
-이 프로젝트는 중부소방서 권역의 SUMO 맵에서 응급차량 출동 시뮬레이션을 수행하기 위한 전체 파이프라인 코드베이스다.
+중부소방서 권역 SUMO 네트워크에서 응급차 출동과 신호 우선 제어 효과를 실험하는 프로젝트다.
 
 ## 목적
 
-- 사고지점은 SUMO에서 도달 가능한 edge 중 고정 시나리오로 선정한다.
-- 응급차 경로는 사고지점별 다익스트라 경로를 사전에 생성해 재사용한다.
-- 최종 실험 모드는 `B00_freeflow`, `B0_peak_no_control`, `B2_peak_corridor_control`이다. `B1` 코드는 과거 smoke/setup reference로만 유지한다.
-- `B00`은 배경 차량 없는 응급차 자유류 기준값, `B0`은 첨두 수요 no-control baseline, `B2`는 같은 첨두 수요에서 corridor priority 제어 조건이다.
-- 각 파라미터 조합에서 응급차 지연, 일반차 메인스트림 지연, 신호 회복시간과 score 계산에 필요한 metric CSV를 출력한다.
-- Bayesian Optimization은 이 코드베이스 내부에서 수행하지 않는다. 결과 CSV를 외부 최적화 파트에 넘긴다.
+- 응급차 출발지는 중부소방서 인근 edge로 고정한다.
+- 최종 실험 모드는 `B00`, `B0`, `B2` 세 가지다.
+- `B00`은 배경 차량 없는 응급차 자유류 기준 run이다.
+- `B0`은 첨두시간 배경 수요에서 신호 조작이 없는 baseline이다.
+- `B2`는 B0과 같은 배경 수요에서 corridor priority 신호 제어를 적용한다.
+- Bayesian Optimization은 이 저장소 안에서 수행하지 않는다. 외부 최적화기는 `configs/b2_parameter_sets.csv`를 생성하고, 이 저장소는 실행과 지표 저장을 담당한다.
 
-## 전체 흐름
+## 핵심 파이프라인
 
-1. `01_prepare`: 맵, 수동 선택, 사고 시나리오, 긴급차 경로, 일반차 수요, preflight 준비.
-2. `02_simulation`: B00/B0/B2 시뮬레이션과 run plan 기반 batch 실행.
-3. `03_results`: SUMO raw output 수집, 지표 계산, 비교 CSV와 그래프 생성.
+- `parameter_input_sim`: 소방서에서 서울역까지의 단일 route로 파라미터 입력용 지표를 만든다.
+- `final_effect_validation_sim`: `b0_valid_18` route set에서 최종 파라미터 효과를 검증한다.
 
-## Active map
-
-Step 6 이후 기본 맵은 Step 5 reduced map이다.
-
-- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
-- edge GeoJSON: `data_prepared/geojson/ellipse_passenger_edges.geojson`
-- TLS GeoJSON: `data_prepared/geojson/ellipse_passenger_tls.geojson`
-- review HTML: `results/html/map_review_ellipse_passenger.html`
-
-Full map 계열은 `archive/full_map_legacy/`에 reference 용도로 보관하며 기본 실험 입력으로 사용하지 않는다.
-
-## Step 0 실행법
+실행 진입점은 하나다.
 
 ```bash
-cd /Users/junlee/Desktop/js
-bash 00_setup/verify_env.sh
+python3 02_simulation/run_b0_b1_b2_experiment.py --manifest configs/final_experiment_manifest.json ...
 ```
 
-실행 로그는 `outputs/logs/env_check.log`에 저장된다.
+## 주요 지표
 
-## 아직 구현하지 않은 항목
+- `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 자유류 통행시간을 뺀 값.
+- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로 지연시간 평균.
+- `T_recovery_sec`: 소방서→서울역 경로의 소방서 쪽 첫 교차로에서 B2 제어 후 대기행렬이 기준 이하로 회복되는 시간.
+- `score_sec`: `A_delay_sec + N_delay_sec + T_recovery_sec`.
 
-- SUMO 맵 생성
-- OSM 다운로드
-- SUMO 맵 GeoJSON 변환
-- 실제 지도 HTML 시각화
-- 분석 edge, 사고 후보 edge, 제외 edge 선택 도구
-- 사고 시나리오 생성
-- 사고지점별 긴급차량 route 생성
-- 일반차량 수요 생성
-- TraCI controller 및 신호제어
-- batch simulation
-- 결과 지표 계산 및 그래프 생성
-- Bayesian Optimization
+모든 시간 단위는 초(s), 소수 둘째자리로 저장한다.
+
+## 디렉터리
+
+- `01_prepare`: 네트워크, 수요, route, 신호 audit 준비.
+- `02_simulation`: B00/B0/B2 실행 러너.
+- `03_results`: 결과 분석용 작업 영역.
+- `configs`: 최종 manifest와 B2 파라미터 CSV.
+- `docs`: 한국어 실행 문서와 과거 단계별 기록.
+
+## 기본 입력
+
+- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
+- emergency routes: `data_prepared/routes/emergency_routes_spine_v2.csv`
+- corridor edges: `data_prepared/routes/corridor_spine_edges.csv`
+- B2 parameters: `configs/b2_parameter_sets.csv`
+
+자세한 실행 절차는 `docs/PIPELINE.md`와 `docs/FINAL_EXPERIMENT_RUNBOOK.md`를 따른다.

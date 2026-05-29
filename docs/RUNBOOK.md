@@ -1,31 +1,36 @@
-# Runbook
+# 실행 요약
 
-## Step 0 실행 명령어
+최종 실험은 `docs/PIPELINE.md`와 `docs/FINAL_EXPERIMENT_RUNBOOK.md`를 기준으로 실행한다.
+
+## 환경 확인
 
 ```bash
 cd /Users/junlee/Desktop/js
 bash 00_setup/verify_env.sh
 ```
 
-## 성공 기준
+## 최종 실행
 
-- `verify_env.py`가 모든 항목을 `PASS`로 출력한다.
-- `outputs/logs/env_check.log`가 생성된다.
-- 명령어 exit code가 `0`이다.
+파라미터 입력 실험:
 
-## 실패 시 확인할 것
+```bash
+python3 02_simulation/run_b0_b1_b2_experiment.py \
+  --manifest configs/final_experiment_manifest.json \
+  --pipeline parameter_input_sim \
+  --modes B00 B0 B2
+```
 
-- `python3`가 PATH에 있는지 확인한다.
-- `SUMO_HOME` 환경변수가 설정되어 있는지 확인한다.
-- `sumo`, `sumo-gui`, `netconvert`가 PATH에서 실행 가능한지 확인한다.
-- Python에서 `traci`, `sumolib` import가 가능한지 확인한다.
-- 지정된 필수 폴더와 `config` 파일이 삭제되지 않았는지 확인한다.
-- 상세 실패 항목은 `outputs/logs/env_check.log`를 확인한다.
+최종 효과 검증:
 
-## 다음 Step에서 해야 할 일
+```bash
+python3 02_simulation/run_b0_b1_b2_experiment.py \
+  --manifest configs/final_experiment_manifest.json \
+  --pipeline final_effect_validation_sim \
+  --modes B00 B0 B2
+```
 
-- 중부소방서 권역 OSM/SUMO 맵 준비 방식 확정.
-- SUMO 맵 생성 및 검토용 GeoJSON/HTML 생성 구현.
-- 분석 edge, 사고 후보 edge, 제외 edge 수동 선택 워크플로 구현.
-- 고정 사고 시나리오와 사고지점별 긴급차량 route 생성 구현.
-- 일반차량 demand 생성 및 preflight 검증 구현.
+## 주의
+
+- `B1` 관련 Step 문서는 과거 smoke/진단 기록이다.
+- 최종 결과 CSV는 pipeline별로 1개만 만든다.
+- `ER_ACC_013`은 최종 검증 route set에서 제외한다.

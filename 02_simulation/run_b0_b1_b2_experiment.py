@@ -69,9 +69,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "emergency_travel_time",
     "emergency_corridor_actual_sec",
     "emergency_corridor_free_flow_sec",
-    "general_mainstream_actual_sec",
-    "general_mainstream_free_flow_sec",
-    "general_mainstream_vehicle_edge_count",
+    "general_non_main_actual_sec",
+    "general_non_main_free_flow_sec",
+    "general_non_main_vehicle_edge_count",
     "route_error_count",
     "background_departed",
     "background_arrived",
@@ -417,6 +417,13 @@ def load_corridor_tls_ids(path: Path) -> set[str]:
     return load_id_set(path, "tls_id")
 
 
+def load_corridor_edge_ids(path: Path) -> set[str]:
+    rows = read_csv(path)
+    if rows and "is_spine_edge" in rows[0]:
+        return {row["edge_id"] for row in rows if row.get("edge_id") and row.get("is_spine_edge") == "True"}
+    return {row["edge_id"] for row in rows if row.get("edge_id")}
+
+
 def edge_free_flow_seconds(sumo_net: Any, edge_id: str) -> float:
     edge = sumo_net.getEdge(edge_id)
     speed = max(float(edge.getSpeed()), 0.01)
@@ -429,6 +436,27 @@ def route_free_flow_seconds(net_path: Path, edge_ids: list[str], include_edges: 
     if not selected and include_edges is not None:
         selected = edge_ids
     return sum(edge_free_flow_seconds(sumo_net, edge_id) for edge_id in selected)
+
+
+def non_main_free_flow_seconds_by_edge(sumo_net: Any, corridor_edges: set[str]) -> dict[str, float]:
+    result: dict[str, float] = {}
+    for edge in sumo_net.getEdges():
+        edge_id = edge.getID()
+        if edge_id.startswith(":") or edge_id in corridor_edges:
+            continue
+        result[edge_id] = edge_free_flow_seconds(sumo_net, edge_id)
+    return result
+
+
+def tls_incoming_edges(net_path: Path, tls_id: str) -> set[str]:
+    incoming: set[str] = set()
+    for _event, elem in ET.iterparse(net_path, events=("end",)):
+        if elem.tag == "connection" and elem.get("tl") == tls_id:
+            from_edge = elem.get("from", "")
+            if from_edge and not from_edge.startswith(":"):
+                incoming.add(from_edge)
+            elem.clear()
+    return incoming
 
 
 def parse_tl_logic(net_path: Path) -> dict[str, dict[str, Any]]:
@@ -526,13 +554,27 @@ def load_tls_plan_for_route(net_path: Path, tls_audit: Path, route_id: str, rout
     return plan
 
 
-def summarize_general_mainstream_delay(records: list[dict[str, float]]) -> dict[str, Any]:
+def load_queue_recovery_reference(net_path: Path, tls_audit: Path, corridor_tls_ids: set[str]) -> dict[str, Any]:
+    route_row = synthetic_seoul_station_route(net_path)
+    route_edges = route_row["route_edges"].split()
+    tls_plan = load_tls_plan_for_route(net_path, tls_audit, SEOUL_STATION_ROUTE_ID, route_edges, corridor_tls_ids)
+    if not tls_plan:
+        return {"tls_id": "", "junction_id": "", "incoming_edges": set()}
+    first_tls = tls_plan[0]
+    return {
+        "tls_id": first_tls["tls_id"],
+        "junction_id": first_tls["junction_id"],
+        "incoming_edges": tls_incoming_edges(net_path, first_tls["tls_id"]),
+    }
+
+
+def summarize_general_non_main_delay(records: list[dict[str, float]]) -> dict[str, Any]:
     if not records:
         return {
             "N_delay_sec": 0.0,
-            "general_mainstream_actual_sec": 0.0,
-            "general_mainstream_free_flow_sec": 0.0,
-            "general_mainstream_vehicle_edge_count": 0,
+            "general_non_main_actual_sec": 0.0,
+            "general_non_main_free_flow_sec": 0.0,
+            "general_non_main_vehicle_edge_count": 0,
         }
     total_delay = 0.0
     total_actual = 0.0
@@ -546,10 +588,25 @@ def summarize_general_mainstream_delay(records: list[dict[str, float]]) -> dict[
     count = len(records)
     return {
         "N_delay_sec": total_delay / count,
-        "general_mainstream_actual_sec": total_actual / count,
-        "general_mainstream_free_flow_sec": total_free / count,
-        "general_mainstream_vehicle_edge_count": count,
+        "general_non_main_actual_sec": total_actual / count,
+        "general_non_main_free_flow_sec": total_free / count,
+        "general_non_main_vehicle_edge_count": count,
     }
+
+
+def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: float | None, emergency_depart: float) -> float:
+    if pass_time is None or not queue_history:
+        return 0.0
+    baseline_candidates = [queue for time_value, queue in queue_history if time_value <= emergency_depart]
+    baseline_queue = baseline_candidates[-1] if baseline_candidates else queue_history[0][1]
+    recovery_time = None
+    for time_value, queue in queue_history:
+        if time_value >= pass_time and queue <= baseline_queue:
+            recovery_time = time_value
+            break
+    if recovery_time is None:
+        recovery_time = queue_history[-1][0]
+    return max(float(recovery_time) - float(pass_time), 0.0)
 
 
 def build_tasks(args: argparse.Namespace, route_ids: list[str], b2_params: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -634,26 +691,31 @@ def run_traci_experiment(
     effective_g_ext = max(1, int(round(float(params.get("G_ext", 0.0) or 0.0))))
     metric_sample_interval = max(1, int(float(params.get("metric_sample_interval") or 10)))
     edge_starts = S14.route_edge_starts(Path(task["net"]), route_edges)
-    corridor_edges = load_id_set(Path(task["corridor_edges"]), "edge_id")
+    corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     sumo_net = S14.read_sumo_net(str(Path(task["net"])))
-    mainstream_free_flow: dict[str, float] = {}
-    for edge_id in corridor_edges:
-        try:
-            mainstream_free_flow[edge_id] = edge_free_flow_seconds(sumo_net, edge_id)
-        except KeyError:
-            continue
+    non_main_free_flow = non_main_free_flow_seconds_by_edge(sumo_net, corridor_edges)
     first_tls_distance = float(tls_plan[0]["distance"]) if tls_plan else None
-    first_segment_edges = [edge_id for idx, edge_id in enumerate(route_edges) if first_tls_distance is None or edge_starts[idx] <= first_tls_distance]
+    corridor_tls_ids = load_corridor_tls_ids(Path(task["priority_terminals"]))
+    recovery_ref = load_queue_recovery_reference(Path(task["net"]), Path(task["tls_audit"]), corridor_tls_ids)
+    recovery_queue_edges = sorted(recovery_ref["incoming_edges"])
+    recovery_pass_distance = None
+    if recovery_ref["tls_id"]:
+        for item in tls_plan:
+            if item["tls_id"] == recovery_ref["tls_id"]:
+                recovery_pass_distance = float(item["distance"])
+                break
+    if recovery_pass_distance is None:
+        recovery_pass_distance = first_tls_distance
     events: list[dict[str, Any]] = []
     touched: dict[str, dict[str, Any]] = {}
     controlled: dict[str, dict[str, Any]] = {}
     pending_after_clearance: dict[str, dict[str, Any]] = {}
     restored: set[str] = set()
     edge_time: dict[str, float] = {}
-    general_mainstream_records: list[dict[str, float]] = []
-    active_general_mainstream: dict[str, tuple[str, float]] = {}
+    general_non_main_records: list[dict[str, float]] = []
+    active_general_non_main: dict[str, tuple[str, float]] = {}
     queue_history: list[tuple[float, int]] = []
-    first_tls_pass_time: float | None = None
+    recovery_pass_time: float | None = None
     tls_recovery_times: list[float] = []
     controller_started = False
     cmd = [sumo, "-c", str(paths["sumocfg"]), "--error-log", str(paths["stderr"])]
@@ -663,6 +725,9 @@ def run_traci_experiment(
         traci.start(cmd, stdout=stdout)
         controller_started = True
         try:
+            if recovery_queue_edges:
+                queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in traci.edge.getIDList())
+                queue_history.append((0.0, queue))
             last_metric_sample = -metric_sample_interval
             while traci.simulation.getMinExpectedNumber() > 0 and traci.simulation.getTime() <= int(task["timeout_steps"]):
                 if time.time() - started_wall > int(task["timeout_sec"]):
@@ -671,44 +736,44 @@ def run_traci_experiment(
                 traci.simulationStep()
                 sim_time = float(traci.simulation.getTime())
                 vehicle_ids = set(traci.vehicle.getIDList())
-                for vehicle_id, (edge_id, entered_at) in list(active_general_mainstream.items()):
+                for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
                     if vehicle_id not in vehicle_ids:
-                        general_mainstream_records.append(
+                        general_non_main_records.append(
                             {
                                 "actual_sec": max(sim_time - entered_at, 0.0),
-                                "free_flow_sec": mainstream_free_flow.get(edge_id, 0.0),
+                                "free_flow_sec": non_main_free_flow.get(edge_id, 0.0),
                             }
                         )
-                        active_general_mainstream.pop(vehicle_id, None)
+                        active_general_non_main.pop(vehicle_id, None)
                 for vehicle_id in vehicle_ids:
                     if vehicle_id == args.emergency_vehicle_id:
                         continue
                     road = traci.vehicle.getRoadID(vehicle_id)
-                    active = active_general_mainstream.get(vehicle_id)
-                    if road in mainstream_free_flow:
+                    active = active_general_non_main.get(vehicle_id)
+                    if road in non_main_free_flow:
                         if active is None:
-                            active_general_mainstream[vehicle_id] = (road, sim_time)
+                            active_general_non_main[vehicle_id] = (road, sim_time)
                         elif active[0] != road:
-                            general_mainstream_records.append(
+                            general_non_main_records.append(
                                 {
                                     "actual_sec": max(sim_time - active[1], 0.0),
-                                    "free_flow_sec": mainstream_free_flow.get(active[0], 0.0),
+                                    "free_flow_sec": non_main_free_flow.get(active[0], 0.0),
                                 }
                             )
-                            active_general_mainstream[vehicle_id] = (road, sim_time)
+                            active_general_non_main[vehicle_id] = (road, sim_time)
                     elif active is not None:
-                        general_mainstream_records.append(
+                        general_non_main_records.append(
                             {
                                 "actual_sec": max(sim_time - active[1], 0.0),
-                                "free_flow_sec": mainstream_free_flow.get(active[0], 0.0),
+                                "free_flow_sec": non_main_free_flow.get(active[0], 0.0),
                             }
                         )
-                        active_general_mainstream.pop(vehicle_id, None)
+                        active_general_non_main.pop(vehicle_id, None)
                 vehicle_present = args.emergency_vehicle_id in vehicle_ids
                 current_distance = 0.0
                 road_id = ""
-                if first_segment_edges:
-                    queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in first_segment_edges if edge_id in traci.edge.getIDList())
+                if recovery_queue_edges:
+                    queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in traci.edge.getIDList())
                     queue_history.append((sim_time, queue))
                 if vehicle_present:
                     road_id = traci.vehicle.getRoadID(args.emergency_vehicle_id)
@@ -717,8 +782,8 @@ def run_traci_experiment(
                     route_index = int(traci.vehicle.getRouteIndex(args.emergency_vehicle_id))
                     lane_position = float(traci.vehicle.getLanePosition(args.emergency_vehicle_id))
                     current_distance = edge_starts[route_index] + lane_position if 0 <= route_index < len(edge_starts) else 0.0
-                    if first_tls_distance is not None and first_tls_pass_time is None and current_distance > first_tls_distance + 10.0:
-                        first_tls_pass_time = sim_time
+                    if recovery_pass_distance is not None and recovery_pass_time is None and current_distance > recovery_pass_distance + 10.0:
+                        recovery_pass_time = sim_time
                     for tls_id, record in list(controlled.items()):
                         if tls_id in restored:
                             continue
@@ -884,22 +949,24 @@ def run_traci_experiment(
             if wall_timeout:
                 events.append({"time": sec(traci.simulation.getTime()), "route_id": args.route_id, "action": "timeout", "reason": "controller_timeout_sec"})
             final_time = float(traci.simulation.getTime())
-            for vehicle_id, (edge_id, entered_at) in list(active_general_mainstream.items()):
-                general_mainstream_records.append(
+            for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
+                general_non_main_records.append(
                     {
                         "actual_sec": max(final_time - entered_at, 0.0),
-                        "free_flow_sec": mainstream_free_flow.get(edge_id, 0.0),
+                        "free_flow_sec": non_main_free_flow.get(edge_id, 0.0),
                     }
                 )
-                active_general_mainstream.pop(vehicle_id, None)
+                active_general_non_main.pop(vehicle_id, None)
         finally:
             traci.close(False)
     return events, controller_started, {
         "edge_time": edge_time,
         "queue_history": queue_history,
-        "first_tls_pass_time": first_tls_pass_time,
-        "first_segment_edges": first_segment_edges,
-        "general_mainstream_records": general_mainstream_records,
+        "recovery_pass_time": recovery_pass_time,
+        "recovery_tls_id": recovery_ref["tls_id"],
+        "recovery_junction_id": recovery_ref["junction_id"],
+        "recovery_queue_edges": recovery_queue_edges,
+        "general_non_main_records": general_non_main_records,
         "tls_recovery_times": tls_recovery_times,
         "wall_timeout": wall_timeout,
     }
@@ -1040,7 +1107,7 @@ def summarize_run(
         failures.append("timeout_sec_exceeded")
     if background_teleported > 0:
         warnings.append("background_teleports_present")
-    corridor_edges = load_id_set(Path(task["corridor_edges"]), "edge_id")
+    corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     corridor_route_edges = [edge_id for edge_id in route_edges if edge_id in corridor_edges]
     if not corridor_route_edges:
         corridor_route_edges = route_edges
@@ -1049,8 +1116,16 @@ def summarize_run(
     if emergency_corridor_actual <= 0 and trip["emergency_travel_time"] not in {"", None}:
         emergency_corridor_actual = float(trip["emergency_travel_time"])
     emergency_corridor_free = route_free_flow_seconds(Path(task["net"]), route_edges, set(corridor_route_edges))
-    general_delay = summarize_general_mainstream_delay(observations.get("general_mainstream_records", []))
-    t_recovery = max(observations.get("tls_recovery_times", []) or [0.0]) if task["mode"] == "B2" else 0.0
+    general_delay = summarize_general_non_main_delay(observations.get("general_non_main_records", []))
+    t_recovery = (
+        queue_recovery_seconds(
+            observations.get("queue_history", []),
+            observations.get("recovery_pass_time"),
+            float(task["emergency_depart"]),
+        )
+        if task["mode"] == "B2"
+        else 0.0
+    )
     score = float(general_delay["N_delay_sec"]) + t_recovery
     row = common_row_base(task, run_dir, vehicle_id, params, time.time() - started)
     row.update(
@@ -1071,9 +1146,9 @@ def summarize_run(
             "score_sec": sec(score),
             "emergency_corridor_actual_sec": sec(emergency_corridor_actual),
             "emergency_corridor_free_flow_sec": sec(emergency_corridor_free),
-            "general_mainstream_actual_sec": sec(general_delay["general_mainstream_actual_sec"]),
-            "general_mainstream_free_flow_sec": sec(general_delay["general_mainstream_free_flow_sec"]),
-            "general_mainstream_vehicle_edge_count": general_delay["general_mainstream_vehicle_edge_count"],
+            "general_non_main_actual_sec": sec(general_delay["general_non_main_actual_sec"]),
+            "general_non_main_free_flow_sec": sec(general_delay["general_non_main_free_flow_sec"]),
+            "general_non_main_vehicle_edge_count": general_delay["general_non_main_vehicle_edge_count"],
             "route_error_count": route_errors,
             "background_departed": background_departed,
             "background_arrived": background_arrived,

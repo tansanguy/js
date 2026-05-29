@@ -1,14 +1,13 @@
-# ER_ACC_013 B0 Teleport Diagnosis
+# ER_ACC_013 진단
 
-- route_id: `ER_ACC_013`
-- teleport time: `1382.0`
-- teleport lane: `:cluster_11277565408_11277565409_414685823_5851251280_9_0`
-- internal lane: `True`
-- incoming/outgoing: `619147735#4` -> `198564929#0`
-- nearest TLS: `cluster_11277565408_11277565409_414685823_5851251280`
-- net connection exists: `True`
-- lane permits emergency/passenger: `True` / `True`
-- likely causes: `['background_demand_jam', 'internal_lane_blockage', 'signal_phase_conflict_possible', 'excessive_local_demand_concentration']`
-- assessment: `background demand jam on a valid internal TLS connection`
-- time-to-teleport masking: `True`
-- repair decision: `EXCLUDE_PRELIMINARY`
+`ER_ACC_013`은 B0 조건에서 emergency teleport 문제가 확인된 route다.
+
+## 결론
+
+- route 생성 자체보다 국소 정체와 lane 선택 불안정의 영향이 크다.
+- 최종 `b0_valid_18` route set에서는 제외한다.
+- 별도 네트워크 수정 없이 최종 실험 안정성을 우선한다.
+
+## 최종 반영
+
+`configs/final_experiment_manifest.json`의 `excluded_routes`에 `ER_ACC_013`을 유지한다.
