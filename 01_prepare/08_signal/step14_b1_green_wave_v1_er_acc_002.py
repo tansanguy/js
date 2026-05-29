@@ -23,7 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from common.net_utils import read_sumo_net  # noqa: E402
 
 
-DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger.net.xml"
+DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml"
 DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml"
 DEFAULT_EMERGENCY_ROUTES = PROJECT_ROOT / "data_prepared/routes/emergency_routes_spine_v2.csv"
 DEFAULT_TLS_AUDIT = PROJECT_ROOT / "data_prepared/signals/tls_phase_audit_spine_v2.csv"
@@ -152,14 +152,14 @@ def write_emergency_route_xml(path: Path, route_row: dict[str, str], vehicle_id:
             "vClass": "emergency",
             "guiShape": "emergency",
             "color": "1,0,0",
-            "speedFactor": "1.30",
+            "speedFactor": "1.00",
             "speedDev": "0.00",
             "accel": "3.0",
             "decel": "7.5",
             "impatience": "1.0",
         },
     )
-    ET.SubElement(vtype, "param", {"key": "has.bluelight.device", "value": "true"})
+    ET.SubElement(vtype, "param", {"key": "has.bluelight.device", "value": "false"})
     ET.SubElement(root, "route", {"id": route_row["route_id"], "edges": route_row["route_edges"]})
     ET.SubElement(
         root,

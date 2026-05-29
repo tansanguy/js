@@ -1,6 +1,6 @@
 {
   "schema": "final_experiment_manifest.v2",
-  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml",
   "background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
   "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
   "route_set": "b0_valid_18",

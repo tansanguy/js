@@ -40,13 +40,14 @@ B2는 안전 규칙을 우선한다.
 - 보행자 최소 보행시간 보호를 위해 현재 phase를 단축하지 않는다.
 - `alpha`, `G_ext`는 정수 초만 허용한다.
 
-이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 여러 `D_det`, `alpha`, `G_ext` 후보 실행과 Bayesian Optimization은 추후 구현한다.
+이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. `D_det=300,500,700,900`, `alpha=5`, `G_ext=60` 후보를 실행하며 Bayesian Optimization은 추후 구현한다.
 
 고정값:
 
 - `T_change_sec=30.00`
 - `w1=3.00`, `w2=1.00`, `w3=1.00`
 - `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`
+- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.
 
 ## 파라미터 입력 실험
 
@@ -56,7 +57,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2 \
   --repeats 1 \
-  --workers 1
+  --workers 1 \
+  --timeout-steps 7200
 ```
 
 출력:
@@ -95,8 +97,8 @@ parameter_id,D_det,alpha,G_ext
 ## 핵심 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 통행시간을 뺀 값.
-- `N_delay_sec`: 전체 네트워크 비메인 도로 일반차 지연시간 평균.
-- `T_recovery_sec`: B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
+- `N_delay_sec`: 전체 네트워크 비메인 도로 일반차 지연시간 평균. 완료된 차량-edge 기록만 primary metric에 사용하고, 미완료 active 기록 수와 비율은 별도 컬럼에 저장한다.
+- `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 
 모든 시간 단위는 초(s), 소수 둘째자리다.
@@ -113,4 +115,4 @@ parameter_id,D_det,alpha,G_ext
 - `emergency_lane_connection_warning_count=0`
 - 한 CSV 안에 `B00`, `B0`, `B2`가 함께 존재
 
-background/general teleport는 `WARNING`, emergency teleport는 `FAIL`이다. `timeout_steps`에 도달했는데 차량이 남아 있으면 `WARNING`이며, `remaining_vehicle_count`와 `background_remaining_count`를 확인한다.
+background/general teleport는 `WARNING`, emergency teleport는 `FAIL`이다. `timeout_steps=7200`은 2시간 관측창이며, 일반차가 남아 있는 것은 실패가 아니므로 `PASS_WITH_REMAINING_BACKGROUND`로 기록한다. emergency가 도착하지 못하면 `FAIL`이다.

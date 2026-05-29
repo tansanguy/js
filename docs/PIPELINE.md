@@ -5,7 +5,7 @@
 ## 1. 공통 입력
 
 - manifest: `configs/final_experiment_manifest.json`
-- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
 - background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
 - route set: `results/metrics/b0_baseline_19route_smoke_summary.csv`에서 검증된 `b0_valid_18`
 - 제외 route: `ER_ACC_013`
@@ -21,6 +21,7 @@ parameter_id,D_det,alpha,G_ext
 
 - `T_change_sec=30.00`: `D_det` 안에서 red/yellow/clearance이면 30초 뒤 응급차 방향 green으로 전환한다.
 - `w1=3.00`, `w2=1.00`, `w3=1.00`: `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`.
+- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.
 
 실행 전 venv 준비:
 
@@ -47,7 +48,7 @@ B2는 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는�
 - `alpha`, `G_ext`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-`D_det`, `alpha`, `G_ext` 여러 후보 실행과 Bayesian Optimization은 추후 구현 범위다.
+현재 `configs/b2_parameter_sets.csv`에는 `D_det=300,500,700,900`, `alpha=5`, `G_ext=60` 후보를 둔다. Bayesian Optimization은 추후 구현 범위다.
 
 ## 3. 파이프라인 1: `parameter_input_sim`
 
@@ -64,7 +65,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2 \
   --repeats 1 \
-  --workers 1
+  --workers 1 \
+  --timeout-steps 7200
 ```
 
 ## 4. 파이프라인 2: `final_effect_validation_sim`
@@ -91,6 +93,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 핵심 컬럼:
 
 - `pipeline,mode,parameter_id,repeat_id,route_id`
+- `route_start_edge,route_target_edge,route_policy`
 - `D_det,alpha,G_ext,T_change_sec,w1,w2,w3`
 - `effective_alpha_sec,effective_G_ext_sec`
 - `emergency_travel_time_sec,b00_emergency_travel_time_sec`
@@ -98,17 +101,21 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `emergency_arrived,emergency_teleport,background_vehicle_count,final_status,warning_reason,failure_reason,run_dir`
 - `safety_violation_count,emergency_stop_warning_count,emergency_lane_connection_warning_count,signal_events_csv`
 - `timeout_reached,remaining_vehicle_count,background_remaining_count,all_vehicles_arrived`
+- `N_delay_completed_vehicle_edge_count,N_delay_excluded_active_vehicle_edge_count,N_delay_excluded_ratio`
+- `network_avg_speed_kmh,congestion_valid,congestion_reason`
+- `emergency_speed_factor,emergency_speed_cap_kmh,emergency_bluelight_enabled`
 - `T_recovery_tls_count,T_recovery_max_tls_id,T_recovery_unrecovered_count`
+- `queue_recovery_csv`
 - `run_id,generated_at,timeout_steps,command_time_to_teleport`
 
 지표 정의:
 
 - `A_delay_sec`: `emergency_travel_time_sec - b00_emergency_travel_time_sec`.
-- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균.
-- `T_recovery_sec`: B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
+- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서, 완료된 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. 관측 종료 시점에 아직 edge를 빠져나가지 못한 기록은 제외하고 제외량을 별도 컬럼에 저장한다.
+- `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 
-`B00`의 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`는 `0.00`이다. `B0`의 `T_recovery_sec`도 `0.00`이다.
+`B00`의 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`는 `0.00`이다.
 
 ## 6. 판정 기준
 
@@ -116,5 +123,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - background/general teleport는 `WARNING`.
 - route error는 `FAIL`.
 - B2 안전 규칙 위반, emergency stop warning, emergency lane connection warning은 `FAIL`.
-- `timeout_steps`에 도달했는데 차량이 남아 있으면 `WARNING`.
+- `timeout_steps=7200`은 2시간 관측창이다. 일반차가 남아 있어도 실패가 아니며 `PASS_WITH_REMAINING_BACKGROUND`로 남긴다.
+- emergency가 도착하지 못하면 `FAIL`.
+- `network_avg_speed_kmh`가 10~25km/h이면 정체 상황으로 인정한다.
 - 모든 `_sec` 값은 초(s), 소수 둘째자리 문자열로 저장한다.

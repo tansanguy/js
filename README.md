@@ -36,9 +36,9 @@ bash 00_setup/verify_env.sh
 ## 주요 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 자유류 통행시간을 뺀 값.
-- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로 지연시간 평균.
-- `T_recovery_sec`: 소방서→서울역 경로의 소방서 쪽 첫 교차로에서 B2 제어 후 대기행렬이 기준 이하로 회복되는 시간.
-- `score_sec`: `A_delay_sec + N_delay_sec + T_recovery_sec`.
+- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로의 완료된 차량-edge 지연시간 평균.
+- `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
+- `score_sec`: `3*A_delay_sec + N_delay_sec + T_recovery_sec`.
 
 모든 시간 단위는 초(s), 소수 둘째자리로 저장한다.
 
@@ -52,7 +52,7 @@ bash 00_setup/verify_env.sh
 
 ## 기본 입력
 
-- net: `data_prepared/net/jungbu_ellipse_passenger.net.xml`
+- net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
 - background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
 - emergency routes: `data_prepared/routes/emergency_routes_spine_v2.csv`
 - corridor edges: `data_prepared/routes/corridor_spine_edges.csv`

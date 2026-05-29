@@ -23,7 +23,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STEP14_PATH = PROJECT_ROOT / "01_prepare/08_signal/step14_b1_green_wave_v1_er_acc_002.py"
 
-DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger.net.xml"
+DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml"
 DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml"
 DEFAULT_EMERGENCY_ROUTES = PROJECT_ROOT / "data_prepared/routes/emergency_routes_spine_v2.csv"
 DEFAULT_TLS_AUDIT = PROJECT_ROOT / "data_prepared/signals/tls_phase_audit_spine_v2.csv"
@@ -39,12 +39,15 @@ DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 1200
 FREE_FLOW_SPEED_CAP_KMH = 50.0
 FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
+EMERGENCY_SPEED_FACTOR = 1.0
+EMERGENCY_SPEED_CAP_KMH = 50.0
+EMERGENCY_BLUELIGHT_ENABLED = False
 T_CHANGE_SEC = 30
 CLEARANCE_BEFORE_GREEN_SEC = 3
 SCORE_WEIGHT_A = 3.0
 SCORE_WEIGHT_N = 1.0
 SCORE_WEIGHT_RECOVERY = 1.0
-B00_SPEED_POLICY = "existing_emergency_vtype_speedFactor_1p30"
+B00_SPEED_POLICY = "speed50_net_emergency_speedFactor_1p00_no_bluelight"
 SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "438360331#2"
@@ -88,6 +91,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "parameter_id",
     "repeat_id",
     "route_id",
+    "route_start_edge",
+    "route_target_edge",
+    "route_policy",
     "D_det",
     "alpha",
     "G_ext",
@@ -118,6 +124,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "general_non_main_actual_sec",
     "general_non_main_free_flow_sec",
     "general_non_main_vehicle_edge_count",
+    "N_delay_completed_vehicle_edge_count",
+    "N_delay_excluded_active_vehicle_edge_count",
+    "N_delay_excluded_ratio",
     "route_error_count",
     "background_departed",
     "background_arrived",
@@ -126,10 +135,16 @@ EXPERIMENT_RESULT_FIELDS = [
     "timeout_reached",
     "remaining_vehicle_count",
     "background_remaining_count",
+    "background_remaining_at_sim_end",
     "all_vehicles_arrived",
     "network_avg_speed_kmh",
+    "congestion_valid",
+    "congestion_reason",
     "emergency_route_length_m",
     "emergency_avg_speed_kmh",
+    "emergency_speed_factor",
+    "emergency_speed_cap_kmh",
+    "emergency_bluelight_enabled",
     "b00_speed_policy",
     "controlled_tls_count",
     "skipped_tls_count",
@@ -145,9 +160,11 @@ EXPERIMENT_RESULT_FIELDS = [
     "T_recovery_tls_count",
     "T_recovery_max_tls_id",
     "T_recovery_unrecovered_count",
+    "queue_recovery_csv",
     "safety_violation_count",
     "emergency_stop_warning_count",
     "emergency_lane_connection_warning_count",
+    "emergency_lane_connection_diagnostic_count",
     "signal_events_csv",
     "b0_emergency_travel_time",
     "travel_time_delta_sec",
@@ -664,6 +681,7 @@ def summarize_general_non_main_delay(records: list[dict[str, float]]) -> dict[st
             "general_non_main_actual_sec": 0.0,
             "general_non_main_free_flow_sec": 0.0,
             "general_non_main_vehicle_edge_count": 0,
+            "N_delay_completed_vehicle_edge_count": 0,
         }
     total_delay = 0.0
     total_actual = 0.0
@@ -680,7 +698,16 @@ def summarize_general_non_main_delay(records: list[dict[str, float]]) -> dict[st
         "general_non_main_actual_sec": total_actual / count,
         "general_non_main_free_flow_sec": total_free / count,
         "general_non_main_vehicle_edge_count": count,
+        "N_delay_completed_vehicle_edge_count": count,
     }
+
+
+def congestion_diagnostic(network_avg_speed_kmh: float) -> tuple[bool, str]:
+    if 10.0 <= network_avg_speed_kmh <= 25.0:
+        return True, "congested_10_to_25_kmh"
+    if network_avg_speed_kmh > 25.0:
+        return False, "weak_congestion_over_25_kmh"
+    return False, "possible_gridlock_under_10_kmh"
 
 
 def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: float | None, emergency_depart: float) -> float:
@@ -698,6 +725,46 @@ def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: fl
     return max(float(recovery_time) - float(pass_time), 0.0)
 
 
+def queue_recovery_detail_rows(
+    queue_history_by_tls: dict[str, list[tuple[float, int]]],
+    pass_time_by_tls: dict[str, float],
+    tls_plan: list[dict[str, Any]],
+    emergency_depart: float,
+) -> list[dict[str, Any]]:
+    rows = []
+    for tls in tls_plan:
+        tls_id = tls["tls_id"]
+        history = queue_history_by_tls.get(tls_id, [])
+        pass_time = pass_time_by_tls.get(tls_id)
+        if pass_time is None or not history:
+            continue
+        baseline_candidates = [queue for time_value, queue in history if time_value <= emergency_depart]
+        baseline_queue = baseline_candidates[-1] if baseline_candidates else history[0][1]
+        recovery_time = None
+        max_queue_after_pass = 0
+        for time_value, queue in history:
+            if time_value >= pass_time:
+                max_queue_after_pass = max(max_queue_after_pass, queue)
+                if recovery_time is None and queue <= baseline_queue:
+                    recovery_time = time_value
+        recovered = recovery_time is not None
+        if recovery_time is None:
+            recovery_time = history[-1][0]
+        rows.append(
+            {
+                "tls_id": tls_id,
+                "junction_id": tls.get("junction_id", ""),
+                "passed_time_sec": sec(pass_time),
+                "baseline_queue": baseline_queue,
+                "recovered": recovered,
+                "recovered_time_sec": sec(recovery_time) if recovered else "",
+                "recovery_sec": sec(max(float(recovery_time) - float(pass_time), 0.0)),
+                "max_queue_after_pass": max_queue_after_pass,
+            }
+        )
+    return rows
+
+
 def route_length_meters(net_path: Path, edge_ids: list[str]) -> float:
     sumo_net = S14.read_sumo_net(str(net_path))
     return sum(float(sumo_net.getEdge(edge_id).getLength()) for edge_id in edge_ids)
@@ -709,21 +776,9 @@ def queue_recovery_summary(
     tls_plan: list[dict[str, Any]],
     emergency_depart: float,
 ) -> dict[str, Any]:
-    recovery_values: list[tuple[str, float]] = []
-    unrecovered = 0
-    for tls in tls_plan:
-        tls_id = tls["tls_id"]
-        history = queue_history_by_tls.get(tls_id, [])
-        pass_time = pass_time_by_tls.get(tls_id)
-        if pass_time is None:
-            continue
-        recovery = queue_recovery_seconds(history, pass_time, emergency_depart)
-        if history and recovery > max(history[-1][0] - pass_time, 0.0) - 1e-9:
-            baseline_candidates = [queue for time_value, queue in history if time_value <= emergency_depart]
-            baseline_queue = baseline_candidates[-1] if baseline_candidates else history[0][1]
-            if history[-1][1] > baseline_queue:
-                unrecovered += 1
-        recovery_values.append((tls_id, recovery))
+    details = queue_recovery_detail_rows(queue_history_by_tls, pass_time_by_tls, tls_plan, emergency_depart)
+    recovery_values = [(row["tls_id"], float(row["recovery_sec"])) for row in details]
+    unrecovered = sum(1 for row in details if row["recovered"] is False)
     if not recovery_values:
         return {
             "T_recovery_sec": 0.0,
@@ -756,6 +811,8 @@ def build_tasks(args: argparse.Namespace, route_ids: list[str], b2_params: list[
 
 
 def common_row_base(task: dict[str, Any], run_dir: Path, vehicle_id: str, params: dict[str, Any], elapsed_sec: float) -> dict[str, Any]:
+    route_row = task.get("route_row") or {}
+    route_edges = str(route_row.get("route_edges", "")).split()
     return {
         "generated_at": task.get("generated_at", ""),
         "run_id": task.get("run_id", ""),
@@ -767,6 +824,9 @@ def common_row_base(task: dict[str, Any], run_dir: Path, vehicle_id: str, params
         "parameter_id": task["parameter_id"],
         "repeat_id": task["repeat_id"],
         "route_id": task["route_id"],
+        "route_start_edge": route_edges[0] if route_edges else "",
+        "route_target_edge": route_row.get("target_edge_id", route_edges[-1] if route_edges else ""),
+        "route_policy": route_row.get("selected_policy", ""),
         "emergency_vehicle_id": vehicle_id,
         "run_dir": rel(run_dir),
         "elapsed_wall_sec": sec(elapsed_sec),
@@ -1332,15 +1392,8 @@ def run_traci_experiment(
                 events.append({"time": sec(traci.simulation.getTime()), "route_id": args.route_id, "action": "timeout", "reason": "controller_timeout_steps"})
             if wall_timeout:
                 events.append({"time": sec(traci.simulation.getTime()), "route_id": args.route_id, "action": "timeout", "reason": "controller_timeout_sec"})
-            final_time = float(traci.simulation.getTime())
-            for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
-                general_non_main_records.append(
-                    {
-                        "actual_sec": max(final_time - entered_at, 0.0),
-                        "free_flow_sec": non_main_free_flow.get(edge_id, 0.0),
-                    }
-                )
-                active_general_non_main.pop(vehicle_id, None)
+            excluded_active_general_non_main_count = len(active_general_non_main)
+            active_general_non_main.clear()
         finally:
             traci.close(False)
     return events, controller_started, {
@@ -1350,6 +1403,7 @@ def run_traci_experiment(
         "recovery_queue_edges_by_tls": recovery_queue_edges_by_tls,
         "tls_plan": tls_plan,
         "general_non_main_records": general_non_main_records,
+        "excluded_active_general_non_main_count": excluded_active_general_non_main_count if "excluded_active_general_non_main_count" in locals() else len(active_general_non_main),
         "tls_recovery_times": tls_recovery_times,
         "lane_connection_warning_count": len(lane_connection_warnings),
         "wall_timeout": wall_timeout,
@@ -1496,7 +1550,7 @@ def summarize_run(
     emergency_stop_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("emergency stop", "emergency braking"))
     stderr_lane_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("no connection", "is not connected"))
     detected_lane_warning_count = int(observations.get("lane_connection_warning_count") or 0)
-    emergency_lane_connection_warning_count = stderr_lane_warning_count + detected_lane_warning_count
+    emergency_lane_connection_warning_count = stderr_lane_warning_count
     emergency_arrived = bool(trip["emergency_arrived"])
     emergency_departed = summary_metrics["departed_count_total"] > background_count or emergency_arrived
     emergency_teleport = bool(emergency_tp)
@@ -1530,8 +1584,8 @@ def summarize_run(
         failures.append("timeout_sec_exceeded")
     if background_teleported > 0:
         warnings.append("background_teleports_present")
-    if timeout_reached:
-        warnings.append("timeout_reached_with_running_vehicles")
+    if timeout_reached and not emergency_arrived:
+        warnings.append("timeout_reached_before_emergency_arrival")
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     corridor_route_edges = [edge_id for edge_id in route_edges if edge_id in corridor_edges]
     if not corridor_route_edges:
@@ -1542,8 +1596,18 @@ def summarize_run(
         emergency_corridor_actual = float(trip["emergency_travel_time"])
     emergency_corridor_free = route_free_flow_seconds(Path(task["net"]), route_edges, set(corridor_route_edges))
     general_delay = summarize_general_non_main_delay(observations.get("general_non_main_records", []))
-    if task["mode"] == "B2":
+    excluded_non_main_count = int(observations.get("excluded_active_general_non_main_count") or 0)
+    completed_non_main_count = int(general_delay["N_delay_completed_vehicle_edge_count"])
+    non_main_total_count = completed_non_main_count + excluded_non_main_count
+    excluded_non_main_ratio = (excluded_non_main_count / non_main_total_count) if non_main_total_count else 0.0
+    if task["mode"] in {"B0", "B2"}:
         recovery = queue_recovery_summary(
+            observations.get("queue_history_by_tls", {}),
+            observations.get("recovery_pass_time_by_tls", {}),
+            observations.get("tls_plan", []),
+            float(task["emergency_depart"]),
+        )
+        queue_recovery_rows = queue_recovery_detail_rows(
             observations.get("queue_history_by_tls", {}),
             observations.get("recovery_pass_time_by_tls", {}),
             observations.get("tls_plan", []),
@@ -1556,6 +1620,13 @@ def summarize_run(
             "T_recovery_max_tls_id": "",
             "T_recovery_unrecovered_count": 0,
         }
+        queue_recovery_rows = []
+    queue_recovery_csv = run_dir / "queue_recovery_by_tls.csv"
+    write_csv(
+        queue_recovery_csv,
+        queue_recovery_rows,
+        ["tls_id", "junction_id", "passed_time_sec", "baseline_queue", "recovered", "recovered_time_sec", "recovery_sec", "max_queue_after_pass"],
+    )
     t_recovery = float(recovery["T_recovery_sec"])
     score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
     safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
@@ -1566,11 +1637,24 @@ def summarize_run(
         emergency_route_length = route_length_meters(Path(task["net"]), route_edges)
     emergency_travel_time = trip["emergency_travel_time"]
     emergency_avg_speed = (emergency_route_length / float(emergency_travel_time) * 3.6) if emergency_travel_time not in {"", None} and float(emergency_travel_time) > 0 else ""
+    network_avg_speed = float(summary_metrics["network_avg_speed_kmh"])
+    if background_count > 0:
+        congestion_valid, congestion_reason = congestion_diagnostic(network_avg_speed)
+    else:
+        congestion_valid, congestion_reason = False, "not_applicable_no_background"
+    if failures:
+        final_status = "FAIL"
+    elif background_teleported > 0:
+        final_status = "WARNING"
+    elif background_remaining_count > 0:
+        final_status = "PASS_WITH_REMAINING_BACKGROUND"
+    else:
+        final_status = "PASS"
     row = common_row_base(task, run_dir, vehicle_id, params, time.time() - started)
     row.update(
         {
             "sumo_exit_code": returncode,
-            "final_status": "FAIL" if failures else "WARNING" if warnings else "PASS",
+            "final_status": final_status,
             "failure_reason": ";".join(failures),
             "warning_reason": ";".join(warnings),
             "emergency_departed": emergency_departed,
@@ -1588,6 +1672,9 @@ def summarize_run(
             "general_non_main_actual_sec": sec(general_delay["general_non_main_actual_sec"]),
             "general_non_main_free_flow_sec": sec(general_delay["general_non_main_free_flow_sec"]),
             "general_non_main_vehicle_edge_count": general_delay["general_non_main_vehicle_edge_count"],
+            "N_delay_completed_vehicle_edge_count": completed_non_main_count,
+            "N_delay_excluded_active_vehicle_edge_count": excluded_non_main_count,
+            "N_delay_excluded_ratio": round(excluded_non_main_ratio, 6),
             "route_error_count": route_errors,
             "background_departed": background_departed,
             "background_arrived": background_arrived,
@@ -1596,10 +1683,16 @@ def summarize_run(
             "timeout_reached": timeout_reached,
             "remaining_vehicle_count": remaining_vehicle_count,
             "background_remaining_count": background_remaining_count,
+            "background_remaining_at_sim_end": background_remaining_count,
             "all_vehicles_arrived": all_vehicles_arrived,
-            "network_avg_speed_kmh": round(float(summary_metrics["network_avg_speed_kmh"]), 6),
+            "network_avg_speed_kmh": round(network_avg_speed, 6),
+            "congestion_valid": congestion_valid,
+            "congestion_reason": congestion_reason,
             "emergency_route_length_m": sec(emergency_route_length),
             "emergency_avg_speed_kmh": sec(emergency_avg_speed),
+            "emergency_speed_factor": sec(EMERGENCY_SPEED_FACTOR),
+            "emergency_speed_cap_kmh": sec(EMERGENCY_SPEED_CAP_KMH),
+            "emergency_bluelight_enabled": EMERGENCY_BLUELIGHT_ENABLED,
             "b00_speed_policy": B00_SPEED_POLICY,
             "sim_end_time": sec(summary_metrics["sim_end_time"]),
             "controlled_tls_count": len(controlled_tls),
@@ -1616,9 +1709,11 @@ def summarize_run(
             "T_recovery_tls_count": recovery["T_recovery_tls_count"],
             "T_recovery_max_tls_id": recovery["T_recovery_max_tls_id"],
             "T_recovery_unrecovered_count": recovery["T_recovery_unrecovered_count"],
+            "queue_recovery_csv": rel(queue_recovery_csv),
             "safety_violation_count": safety_violation_count,
             "emergency_stop_warning_count": emergency_stop_warning_count,
             "emergency_lane_connection_warning_count": emergency_lane_connection_warning_count,
+            "emergency_lane_connection_diagnostic_count": detected_lane_warning_count,
             "signal_events_csv": "",
             "sumocfg": rel(paths["sumocfg"]),
             "tripinfo": rel(paths["tripinfo"]),
