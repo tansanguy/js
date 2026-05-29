@@ -37,6 +37,55 @@ LOG_PATH = PROJECT_ROOT / "outputs/logs/b0_b1_b2_experiment.log"
 DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 1200
 CONTROL_ACTIONS = {"extend_green", "advance_to_next_green"}
+EXPERIMENT_RESULT_FIELDS = [
+    "output_prefix",
+    "mode",
+    "parameter_id",
+    "repeat_id",
+    "route_id",
+    "final_status",
+    "failure_reason",
+    "warning_reason",
+    "sumo_exit_code",
+    "emergency_departed",
+    "emergency_arrived",
+    "emergency_teleport",
+    "emergency_travel_time",
+    "route_error_count",
+    "background_departed",
+    "background_arrived",
+    "background_teleported",
+    "background_teleport_ratio",
+    "network_avg_speed_kmh",
+    "controlled_tls_count",
+    "skipped_tls_count",
+    "failed_tls_count",
+    "intervention_count",
+    "green_extension_count",
+    "phase_switch_count",
+    "restore_count",
+    "signal_event_count",
+    "b0_emergency_travel_time",
+    "travel_time_delta_sec",
+    "travel_time_improvement_pct",
+    "run_dir",
+    "stderr_log",
+    "tripinfo",
+    "summary_output",
+    "edgeData_output",
+    "D_det",
+    "alpha",
+    "t_lead",
+    "G_ext",
+    "tau",
+    "rho",
+    "fallback_v_e_mps",
+    "controller_started",
+    "elapsed_wall_sec",
+    "emergency_vehicle_id",
+    "sumocfg",
+    "sim_end_time",
+]
 
 
 class ExperimentError(RuntimeError):
@@ -113,7 +162,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--emergency-depart", type=float, default=0.0)
     parser.add_argument("--timeout-steps", type=int, default=DEFAULT_TIMEOUT_STEPS)
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
-    parser.add_argument("--output-prefix", default="experiment")
+    parser.add_argument("--output-prefix", required=True)
     parser.add_argument("--run-root", type=Path, default=PROJECT_ROOT / "runs/final")
     parser.add_argument("--allow-nonfinal-background", action="store_true")
     parser.add_argument("--legacy-output-names", action="store_true")
@@ -157,7 +206,7 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
 def output_paths(output_prefix: str, legacy: bool) -> dict[str, Path]:
     if legacy:
         return {
-            "summary_csv": PROJECT_ROOT / "results/metrics/experiment_b0_b1_b2_summary.csv",
+            "results_csv": PROJECT_ROOT / "results/metrics/experiment_b0_b1_b2_summary.csv",
             "summary_json": PROJECT_ROOT / "results/metrics/experiment_b0_b1_b2_summary.json",
             "events_csv": PROJECT_ROOT / "results/metrics/experiment_signal_events.csv",
             "compare_csv": PROJECT_ROOT / "results/metrics/experiment_compare_by_route.csv",
@@ -166,10 +215,8 @@ def output_paths(output_prefix: str, legacy: bool) -> dict[str, Path]:
     if not safe_prefix:
         raise ExperimentError("output_prefix cannot be blank")
     return {
-        "summary_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_b0_b1_b2_summary.csv",
-        "summary_json": PROJECT_ROOT / f"results/metrics/{safe_prefix}_b0_b1_b2_summary.json",
-        "events_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_signal_events.csv",
-        "compare_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_compare_by_route.csv",
+        "results_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_results.csv",
+        "summary_json": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_summary.json",
     }
 
 
@@ -538,6 +585,27 @@ def compare_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def add_compare_fields(result_rows: list[dict[str, Any]]) -> None:
+    b0_by_key: dict[tuple[str, str], float] = {}
+    for row in result_rows:
+        row.setdefault("b0_emergency_travel_time", "")
+        row.setdefault("travel_time_delta_sec", "")
+        row.setdefault("travel_time_improvement_pct", "")
+        if row["mode"] == "B0" and row.get("emergency_travel_time") not in ("", None):
+            b0_by_key[(row["route_id"], row["repeat_id"])] = float(row["emergency_travel_time"])
+    for row in result_rows:
+        if row["mode"] == "B0":
+            continue
+        base = b0_by_key.get((row["route_id"], row["repeat_id"]))
+        current = row.get("emergency_travel_time")
+        if base is None or current in ("", None):
+            continue
+        current_value = float(current)
+        row["b0_emergency_travel_time"] = base
+        row["travel_time_delta_sec"] = round(current_value - base, 6)
+        row["travel_time_improvement_pct"] = round(((base - current_value) / base) * 100.0, 6) if base else ""
+
+
 def main() -> int:
     args = parse_args()
     generated_at = utc_now()
@@ -553,6 +621,8 @@ def main() -> int:
             raise ExperimentError("repeats must be >= 1")
         if args.workers < 1:
             raise ExperimentError("workers must be >= 1")
+        if args.output_prefix.strip() == "experiment" and not args.legacy_output_names:
+            raise ExperimentError("reserved_output_prefix: experiment is only allowed with --legacy-output-names")
         if manifest:
             required_substring = str(manifest.get("final_background_required_substring") or "scale_0p15")
         else:
@@ -596,7 +666,7 @@ def main() -> int:
         }
         tasks = []
         for task in build_tasks(args, route_ids, b1_params, b2_params):
-            run_dir = args.run_root / task["mode"] / task["parameter_id"] / task["repeat_id"] / task["route_id"]
+            run_dir = args.run_root / args.output_prefix / task["mode"] / task["parameter_id"] / task["repeat_id"] / task["route_id"]
             tasks.append({**base_task, **task, "run_dir": str(run_dir)})
         lines.extend(
             [
@@ -645,6 +715,7 @@ def main() -> int:
                     event_rows.extend(events)
         result_rows.sort(key=lambda r: (r.get("repeat_id", ""), r.get("route_id", ""), r.get("mode", ""), r.get("parameter_id", "")))
         event_rows.sort(key=lambda r: (r.get("repeat_id", ""), r.get("route_id", ""), r.get("mode", ""), r.get("parameter_id", ""), float(r.get("time") or 0)))
+        add_compare_fields(result_rows)
         compare = compare_rows(result_rows)
         status_counts: dict[str, int] = {}
         for row in result_rows:
@@ -676,13 +747,23 @@ def main() -> int:
             "route_error_count_any": route_error_count_any,
             "status_counts": status_counts,
             "final_status": "FAIL" if status_counts.get("FAIL") else "WARNING" if status_counts.get("WARNING") else "PASS",
-            "outputs": [rel(paths["summary_csv"]), rel(paths["summary_json"]), rel(paths["events_csv"]), rel(paths["compare_csv"]), rel(LOG_PATH)],
+            "outputs": [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(LOG_PATH)]
+            if not args.legacy_output_names
+            else [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(paths["events_csv"]), rel(paths["compare_csv"]), rel(LOG_PATH)],
         }
-        write_csv(paths["summary_csv"], result_rows)
-        write_csv(paths["events_csv"], event_rows)
-        write_csv(paths["compare_csv"], compare)
-        write_json(paths["summary_json"], {**summary, "results": result_rows, "compare": compare})
-        lines.extend([f"status_counts: {status_counts}", f"final_status: {summary['final_status']}", f"summary_json: {rel(paths['summary_json'])}"])
+        write_csv(paths["results_csv"], result_rows, EXPERIMENT_RESULT_FIELDS)
+        if args.legacy_output_names:
+            write_csv(paths["events_csv"], event_rows)
+            write_csv(paths["compare_csv"], compare)
+        write_json(paths["summary_json"], {**summary, "results": result_rows, "compare": compare, "signal_events": event_rows})
+        lines.extend(
+            [
+                f"status_counts: {status_counts}",
+                f"final_status: {summary['final_status']}",
+                f"results_csv: {rel(paths['results_csv'])}",
+                f"summary_json: {rel(paths['summary_json'])}",
+            ]
+        )
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         LOG_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print("\n".join(lines))

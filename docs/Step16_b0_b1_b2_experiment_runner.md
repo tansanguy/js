@@ -61,13 +61,13 @@ python3 02_simulation/run_b0_b1_b2_experiment.py \
 
 Outputs are prefix-scoped and do not overwrite preflight/final runs unless the same `--output-prefix` is reused:
 
-- `results/metrics/{output_prefix}_b0_b1_b2_summary.csv`
-- `results/metrics/{output_prefix}_b0_b1_b2_summary.json`
-- `results/metrics/{output_prefix}_signal_events.csv`
-- `results/metrics/{output_prefix}_compare_by_route.csv`
-- `runs/final/{mode}/{parameter_id}/{repeat_id}/{route_id}/`
+- `results/metrics/{output_prefix}_experiment_results.csv`
+- `results/metrics/{output_prefix}_experiment_summary.json`
+- `runs/final/{output_prefix}/{mode}/{parameter_id}/{repeat_id}/{route_id}/`
 
-Legacy generic `experiment_*.csv/json` names are only available with `--legacy-output-names`.
+The report CSV is the single default CSV for the experiment. It includes route-run metrics plus B0 comparison columns. Signal event details are stored in the summary JSON, not as a separate default CSV.
+
+Legacy generic `experiment_*.csv/json` names are only available with `--legacy-output-names`. The reserved prefix `experiment` is blocked unless that legacy flag is used.
 
 ## Guardrails
 
@@ -77,6 +77,7 @@ The runner blocks unsafe final-style execution when:
 - background route does not contain `scale_0p15`
 - `ER_ACC_013` appears in `b0_valid_18`
 - B2 parameter CSV is empty or lacks required columns
+- `--output-prefix experiment` is used without `--legacy-output-names`
 
 Use `--allow-nonfinal-background` only for explicit diagnostics, not final comparison.
 
@@ -95,5 +96,6 @@ Manifest preflight should be run before final. It must show:
 
 - route list excludes `ER_ACC_013`
 - background path is the 0.15x route
+- run directories are under `runs/final/preflight_manifest/`
 - emergency teleport is false for all successful runs
 - background teleport, if any, is only a warning

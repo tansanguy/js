@@ -30,10 +30,9 @@ python3 02_simulation/run_b0_b1_b2_experiment.py \
 
 Expected outputs:
 
-- `results/metrics/preflight_manifest_b0_b1_b2_summary.csv`
-- `results/metrics/preflight_manifest_b0_b1_b2_summary.json`
-- `results/metrics/preflight_manifest_signal_events.csv`
-- `results/metrics/preflight_manifest_compare_by_route.csv`
+- `results/metrics/preflight_manifest_experiment_results.csv`
+- `results/metrics/preflight_manifest_experiment_summary.json`
+- `runs/final/preflight_manifest/...`
 
 ## Final 18-Route Command
 
@@ -70,6 +69,19 @@ For each run:
 - `route_error_count=0`
 
 Background teleport can produce WARNING. Emergency teleport produces FAIL.
+
+## Output Policy
+
+Every non-legacy experiment writes one report CSV and one summary JSON:
+
+- `results/metrics/{output_prefix}_experiment_results.csv`
+- `results/metrics/{output_prefix}_experiment_summary.json`
+
+Raw SUMO outputs are also prefix-scoped:
+
+- `runs/final/{output_prefix}/{mode}/{parameter_id}/{repeat_id}/{route_id}/`
+
+Generic `experiment_*` outputs are legacy only. Use them only with `--legacy-output-names`; do not use them for final comparison.
 
 ## Current Fixed Inputs
 

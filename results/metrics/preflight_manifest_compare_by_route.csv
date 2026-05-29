@@ -1,5 +1,0 @@
-output_prefix,route_id,repeat_id,mode,parameter_id,b0_emergency_travel_time,mode_emergency_travel_time,travel_time_delta_sec,travel_time_improvement_pct,mode_final_status,emergency_teleport,route_error_count,background_teleport_ratio,intervention_count,skipped_tls_count
-preflight_manifest,ER_ACC_002,repeat_001,B1,b1_default,177.0,191.0,14.0,-7.909605,PASS,False,0,0.0,5,3
-preflight_manifest,ER_ACC_002,repeat_001,B2,b2_default_candidate,177.0,191.0,14.0,-7.909605,PASS,False,0,0.0,5,3
-preflight_manifest,ER_ACC_019,repeat_001,B1,b1_default,203.0,204.0,1.0,-0.492611,WARNING,False,0,0.003058,5,2
-preflight_manifest,ER_ACC_019,repeat_001,B2,b2_default_candidate,203.0,204.0,1.0,-0.492611,WARNING,False,0,0.003058,5,2
