@@ -17,6 +17,11 @@
 parameter_id,D_det,alpha,G_ext
 ```
 
+고정 알고리즘 파라미터:
+
+- `T_change_sec=30.00`: `D_det` 안에서 red/yellow/clearance이면 30초 뒤 응급차 방향 green으로 전환한다.
+- `w1=3.00`, `w2=1.00`, `w3=1.00`: `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`.
+
 실행 전 venv 준비:
 
 ```bash
@@ -31,6 +36,19 @@ bash 00_setup/verify_env.sh
 - `B0`: 첨두시간 배경 수요와 응급차 1대를 함께 실행한다. 신호 조작은 없다.
 - `B2`: B0과 같은 배경 수요와 응급차를 사용하고 corridor priority 신호 제어를 적용한다.
 
+## 2.1 B2 안전 규칙
+
+B2는 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는다.
+
+- `D_det` 안에서 이미 green이면 green을 연장한다.
+- `D_det` 안에서 green이 아니면 `T_change_sec=30.00` 뒤 응급차 방향 green으로 전환한다.
+- 노란불과 교차로 clearance phase를 생략하지 않는다.
+- 직접 red→green 순간 점프는 금지하고, 전환 전 yellow/clearance 정리시간을 둔다.
+- `alpha`, `G_ext`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
+- 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
+
+`D_det`, `alpha`, `G_ext` 여러 후보 실행과 Bayesian Optimization은 추후 구현 범위다.
+
 ## 3. 파이프라인 1: `parameter_input_sim`
 
 목적은 추후 외부 Bayesian Optimization이 사용할 입력 지표를 만드는 것이다. 현재 저장소는 최적화를 직접 수행하지 않고, CSV에 있는 B2 파라미터 조합만 실행한다.
@@ -38,7 +56,7 @@ bash 00_setup/verify_env.sh
 - route: 소방서 edge `-381802881#2`에서 서울역 후보 edge `438360331#2`까지 synthetic route.
 - modes: `B00`, `B0`, `B2`.
 - output: `results/metrics/parameter_input_sim.csv`.
-- raw run dir: `runs/final/parameter_input_sim/...`.
+- raw run dir: `runs/final/parameter_input_sim/{run_id}/...`.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
@@ -57,7 +75,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - excluded route: `ER_ACC_013`.
 - modes: `B00`, `B0`, `B2`.
 - output: `results/metrics/final_effect_validation_sim.csv`.
-- raw run dir: `runs/final/final_effect_validation_sim/...`.
+- raw run dir: `runs/final/final_effect_validation_sim/{run_id}/...`.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
@@ -73,17 +91,22 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 핵심 컬럼:
 
 - `pipeline,mode,parameter_id,repeat_id,route_id`
-- `D_det,alpha,G_ext`
+- `D_det,alpha,G_ext,T_change_sec,w1,w2,w3`
+- `effective_alpha_sec,effective_G_ext_sec`
 - `emergency_travel_time_sec,b00_emergency_travel_time_sec`
 - `A_delay_sec,N_delay_sec,T_recovery_sec,score_sec`
 - `emergency_arrived,emergency_teleport,background_vehicle_count,final_status,warning_reason,failure_reason,run_dir`
+- `safety_violation_count,emergency_stop_warning_count,emergency_lane_connection_warning_count,signal_events_csv`
+- `timeout_reached,remaining_vehicle_count,background_remaining_count,all_vehicles_arrived`
+- `T_recovery_tls_count,T_recovery_max_tls_id,T_recovery_unrecovered_count`
+- `run_id,generated_at,timeout_steps,command_time_to_teleport`
 
 지표 정의:
 
 - `A_delay_sec`: `emergency_travel_time_sec - b00_emergency_travel_time_sec`.
 - `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균.
-- `T_recovery_sec`: B2에서 소방서→서울역 route의 첫 신호 교차로 접근 edge 전체 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 처음 회복되는 시간.
-- `score_sec`: 세 지표의 동일가중 합.
+- `T_recovery_sec`: B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
+- `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 
 `B00`의 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`는 `0.00`이다. `B0`의 `T_recovery_sec`도 `0.00`이다.
 
@@ -92,4 +115,6 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - emergency teleport는 `FAIL`.
 - background/general teleport는 `WARNING`.
 - route error는 `FAIL`.
+- B2 안전 규칙 위반, emergency stop warning, emergency lane connection warning은 `FAIL`.
+- `timeout_steps`에 도달했는데 차량이 남아 있으면 `WARNING`.
 - 모든 `_sec` 값은 초(s), 소수 둘째자리 문자열로 저장한다.

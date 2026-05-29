@@ -39,11 +39,49 @@ DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 1200
 FREE_FLOW_SPEED_CAP_KMH = 50.0
 FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
+T_CHANGE_SEC = 30
+CLEARANCE_BEFORE_GREEN_SEC = 3
+SCORE_WEIGHT_A = 3.0
+SCORE_WEIGHT_N = 1.0
+SCORE_WEIGHT_RECOVERY = 1.0
+B00_SPEED_POLICY = "existing_emergency_vtype_speedFactor_1p30"
 SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "438360331#2"
-CONTROL_ACTIONS = {"extend_green", "switch_to_green", "switch_to_green_after_clearance"}
+CONTROL_ACTIONS = {"extend_green", "alpha_hold_extend", "switch_to_green_after_t_change"}
+EVENT_FIELDS = [
+    "time",
+    "output_prefix",
+    "mode",
+    "parameter_id",
+    "repeat_id",
+    "route_id",
+    "vehicle_id",
+    "tls_id",
+    "junction_id",
+    "incoming",
+    "outgoing",
+    "remaining_distance_m",
+    "D_det",
+    "alpha",
+    "G_ext",
+    "T_change_sec",
+    "effective_alpha_sec",
+    "effective_G_ext_sec",
+    "current_road_id",
+    "phase_before",
+    "phase_after",
+    "action",
+    "reason",
+    "restore_action",
+    "pass_time",
+    "recovery_sec",
+]
 EXPERIMENT_RESULT_FIELDS = [
+    "generated_at",
+    "run_id",
+    "timeout_steps",
+    "command_time_to_teleport",
     "pipeline",
     "output_prefix",
     "mode",
@@ -53,6 +91,12 @@ EXPERIMENT_RESULT_FIELDS = [
     "D_det",
     "alpha",
     "G_ext",
+    "T_change_sec",
+    "w1",
+    "w2",
+    "w3",
+    "effective_alpha_sec",
+    "effective_G_ext_sec",
     "emergency_travel_time_sec",
     "b00_emergency_travel_time_sec",
     "A_delay_sec",
@@ -79,7 +123,14 @@ EXPERIMENT_RESULT_FIELDS = [
     "background_arrived",
     "background_teleported",
     "background_teleport_ratio",
+    "timeout_reached",
+    "remaining_vehicle_count",
+    "background_remaining_count",
+    "all_vehicles_arrived",
     "network_avg_speed_kmh",
+    "emergency_route_length_m",
+    "emergency_avg_speed_kmh",
+    "b00_speed_policy",
     "controlled_tls_count",
     "skipped_tls_count",
     "failed_tls_count",
@@ -88,6 +139,16 @@ EXPERIMENT_RESULT_FIELDS = [
     "phase_switch_count",
     "restore_count",
     "signal_event_count",
+    "t_change_request_count",
+    "t_change_switch_count",
+    "green_missed_before_t_change_count",
+    "T_recovery_tls_count",
+    "T_recovery_max_tls_id",
+    "T_recovery_unrecovered_count",
+    "safety_violation_count",
+    "emergency_stop_warning_count",
+    "emergency_lane_connection_warning_count",
+    "signal_events_csv",
     "b0_emergency_travel_time",
     "travel_time_delta_sec",
     "travel_time_improvement_pct",
@@ -109,6 +170,10 @@ class ExperimentError(RuntimeError):
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def run_id_from_generated_at(generated_at: str) -> str:
+    return generated_at.replace(":", "").replace("-", "").replace("+", "Z").replace(".", "_")
 
 
 def rel(path: Path) -> str:
@@ -390,6 +455,8 @@ def parse_summary_output(path: Path) -> dict[str, Any]:
     return {
         "departed_count_total": int(float(last_step.get("inserted", "0"))),
         "arrived_count_total": int(float(last_step.get("arrived", "0"))),
+        "running_count": int(float(last_step.get("running", "0"))),
+        "waiting_count": int(float(last_step.get("waiting", "0"))),
         "teleport_count": max_teleports,
         "sim_end_time": float(last_step.get("time", "0")),
         "network_avg_speed_kmh": mean_speed_mps * 3.6,
@@ -403,6 +470,26 @@ def route_error_count(stderr: str) -> int:
 
 def emergency_teleport_lines(stderr: str, vehicle_id: str) -> list[str]:
     return [line for line in stderr.splitlines() if vehicle_id in line and "teleport" in line.lower()]
+
+
+def emergency_warning_count(stderr: str, vehicle_id: str, needles: tuple[str, ...]) -> int:
+    count = 0
+    for line in stderr.splitlines():
+        lower = line.lower()
+        if vehicle_id in line and any(needle in lower for needle in needles):
+            count += 1
+    return count
+
+
+def tripinfo_float_attr(path: Path, vehicle_id: str, attr: str) -> float | None:
+    try:
+        root = S14.parse_xml_with_retry(path).getroot()
+    except Exception:  # noqa: BLE001 - malformed tripinfo is handled elsewhere.
+        return None
+    for tripinfo in root.findall("tripinfo"):
+        if tripinfo.get("id") == vehicle_id and tripinfo.get(attr) not in {"", None}:
+            return float(tripinfo.get(attr, "0"))
+    return None
 
 
 def sec(value: Any) -> str:
@@ -611,6 +698,48 @@ def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: fl
     return max(float(recovery_time) - float(pass_time), 0.0)
 
 
+def route_length_meters(net_path: Path, edge_ids: list[str]) -> float:
+    sumo_net = S14.read_sumo_net(str(net_path))
+    return sum(float(sumo_net.getEdge(edge_id).getLength()) for edge_id in edge_ids)
+
+
+def queue_recovery_summary(
+    queue_history_by_tls: dict[str, list[tuple[float, int]]],
+    pass_time_by_tls: dict[str, float],
+    tls_plan: list[dict[str, Any]],
+    emergency_depart: float,
+) -> dict[str, Any]:
+    recovery_values: list[tuple[str, float]] = []
+    unrecovered = 0
+    for tls in tls_plan:
+        tls_id = tls["tls_id"]
+        history = queue_history_by_tls.get(tls_id, [])
+        pass_time = pass_time_by_tls.get(tls_id)
+        if pass_time is None:
+            continue
+        recovery = queue_recovery_seconds(history, pass_time, emergency_depart)
+        if history and recovery > max(history[-1][0] - pass_time, 0.0) - 1e-9:
+            baseline_candidates = [queue for time_value, queue in history if time_value <= emergency_depart]
+            baseline_queue = baseline_candidates[-1] if baseline_candidates else history[0][1]
+            if history[-1][1] > baseline_queue:
+                unrecovered += 1
+        recovery_values.append((tls_id, recovery))
+    if not recovery_values:
+        return {
+            "T_recovery_sec": 0.0,
+            "T_recovery_tls_count": 0,
+            "T_recovery_max_tls_id": "",
+            "T_recovery_unrecovered_count": 0,
+        }
+    max_tls, max_recovery = max(recovery_values, key=lambda item: item[1])
+    return {
+        "T_recovery_sec": max_recovery,
+        "T_recovery_tls_count": len(recovery_values),
+        "T_recovery_max_tls_id": max_tls,
+        "T_recovery_unrecovered_count": unrecovered,
+    }
+
+
 def build_tasks(args: argparse.Namespace, route_ids: list[str], b2_params: list[dict[str, Any]]) -> list[dict[str, Any]]:
     tasks = []
     for repeat_idx in range(1, args.repeats + 1):
@@ -628,6 +757,10 @@ def build_tasks(args: argparse.Namespace, route_ids: list[str], b2_params: list[
 
 def common_row_base(task: dict[str, Any], run_dir: Path, vehicle_id: str, params: dict[str, Any], elapsed_sec: float) -> dict[str, Any]:
     return {
+        "generated_at": task.get("generated_at", ""),
+        "run_id": task.get("run_id", ""),
+        "timeout_steps": task.get("timeout_steps", ""),
+        "command_time_to_teleport": task.get("time_to_teleport", ""),
         "pipeline": task.get("pipeline", ""),
         "output_prefix": task["output_prefix"],
         "mode": task["mode"],
@@ -641,6 +774,12 @@ def common_row_base(task: dict[str, Any], run_dir: Path, vehicle_id: str, params
         "D_det": params.get("D_det", ""),
         "alpha": params.get("alpha", ""),
         "G_ext": params.get("G_ext", ""),
+        "T_change_sec": sec(T_CHANGE_SEC) if task["mode"] == "B2" else "",
+        "w1": sec(SCORE_WEIGHT_A),
+        "w2": sec(SCORE_WEIGHT_N),
+        "w3": sec(SCORE_WEIGHT_RECOVERY),
+        "effective_alpha_sec": sec(params.get("_effective_alpha_sec", "")),
+        "effective_G_ext_sec": sec(params.get("_effective_G_ext_sec", "")),
     }
 
 
@@ -655,19 +794,127 @@ def phase_state_for_link(traci: Any, tls_id: str, phase_index: int, link_index: 
     return ""
 
 
-def switch_to_emergency_green(traci: Any, tls: dict[str, Any], g_ext: int) -> tuple[str, int | str, str]:
+def integer_seconds(value: Any, field_name: str) -> tuple[int | None, str]:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None, f"{field_name}_not_numeric"
+    rounded = round(parsed)
+    if abs(parsed - rounded) > 1e-9:
+        return None, f"{field_name}_must_be_integer_seconds"
+    if rounded < 0:
+        return None, f"{field_name}_must_be_nonnegative"
+    return int(rounded), ""
+
+
+def phase_remaining_seconds(traci: Any, tls_id: str, sim_time: float) -> float:
+    try:
+        return max(float(traci.trafficlight.getNextSwitch(tls_id)) - sim_time, 0.0)
+    except Exception:  # noqa: BLE001 - TraCI may not expose next switch for malformed TLS.
+        return 0.0
+
+
+def extend_current_green_without_shortening(traci: Any, tls: dict[str, Any], min_remaining_sec: int, sim_time: float) -> tuple[str, int | str, str]:
     tls_id = tls["tls_id"]
     current_phase = int(traci.trafficlight.getPhase(tls_id))
     green_phases = list(tls.get("green_phases") or [])
     if not green_phases:
         return "failed", current_phase, "no_green_phase_for_emergency_link"
     if current_phase in green_phases:
-        traci.trafficlight.setPhaseDuration(tls_id, g_ext)
+        current_remaining = phase_remaining_seconds(traci, tls_id, sim_time)
+        target_remaining = max(int(round(current_remaining)), int(min_remaining_sec))
+        traci.trafficlight.setPhaseDuration(tls_id, target_remaining)
         return "extend_green", current_phase, "current_phase_already_green"
+    return "wait_for_sequence_green", current_phase, "phase_sequence_preserved_wait_for_green"
+
+
+def phase_duration_seconds(traci: Any, tls_id: str, phase_index: int, fallback: int) -> int:
+    try:
+        phases = traci.trafficlight.getAllProgramLogics(tls_id)[0].phases
+        return max(1, int(round(float(phases[phase_index].duration))))
+    except Exception:  # noqa: BLE001 - TraCI program logic may be incomplete.
+        return max(1, int(fallback))
+
+
+def start_clearance_before_green(traci: Any, tls: dict[str, Any]) -> tuple[str, int | str, str, int]:
+    tls_id = tls["tls_id"]
+    current_phase = int(traci.trafficlight.getPhase(tls_id))
+    clearance_candidates = list(tls.get("yellow_phases") or []) + list(tls.get("clearance_phases") or [])
+    if current_phase in clearance_candidates:
+        return "clearance_before_green", current_phase, "current_clearance_phase_preserved", 0
+    if not clearance_candidates:
+        return "failed", current_phase, "no_yellow_or_clearance_phase_for_emergency_link", 0
+    clearance_phase = int(clearance_candidates[0])
+    duration = phase_duration_seconds(traci, tls_id, clearance_phase, CLEARANCE_BEFORE_GREEN_SEC)
+    traci.trafficlight.setPhase(tls_id, clearance_phase)
+    traci.trafficlight.setPhaseDuration(tls_id, duration)
+    return "clearance_before_green", clearance_phase, "t_change_elapsed_clearance_inserted_before_green", duration
+
+
+def switch_to_green_after_t_change(traci: Any, tls: dict[str, Any], g_ext: int) -> tuple[str, int | str, str]:
+    tls_id = tls["tls_id"]
+    green_phases = list(tls.get("green_phases") or [])
+    if not green_phases:
+        return "failed", traci.trafficlight.getPhase(tls_id), "no_green_phase_for_emergency_link"
+    current_phase = int(traci.trafficlight.getPhase(tls_id))
+    if current_phase in green_phases:
+        action, phase_after, reason = extend_current_green_without_shortening(traci, tls, g_ext, float("inf"))
+        return action, phase_after, f"green_arrived_before_t_change_switch:{reason}"
     target_phase = int(green_phases[0])
     traci.trafficlight.setPhase(tls_id, target_phase)
     traci.trafficlight.setPhaseDuration(tls_id, g_ext)
-    return "switch_to_green", target_phase, "distance_trigger_no_eta"
+    return "switch_to_green_after_t_change", target_phase, "t_change_elapsed_clearance_completed_then_green"
+
+
+def actual_upcoming_corridor_tls(traci: Any, vehicle_id: str, corridor_tls_ids: set[str]) -> dict[str, Any] | None:
+    try:
+        upcoming = traci.vehicle.getNextTLS(vehicle_id)
+    except Exception:  # noqa: BLE001 - vehicle may have left the network.
+        return None
+    for item in upcoming:
+        tls_id = str(item[0])
+        if tls_id not in corridor_tls_ids:
+            continue
+        return {
+            "tls_id": tls_id,
+            "link_index": int(item[1]),
+            "distance": float(item[2]),
+            "state": str(item[3]),
+        }
+    return None
+
+
+def match_tls_plan(tls_plan: list[dict[str, Any]], actual_tls: dict[str, Any], touched: dict[str, dict[str, Any]], pending: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    tls_id = actual_tls["tls_id"]
+    link_index = actual_tls["link_index"]
+    for candidate in tls_plan:
+        if candidate["tls_id"] in touched or candidate["tls_id"] in pending:
+            continue
+        if candidate["tls_id"] == tls_id and int(candidate.get("link_index", -1)) == link_index:
+            return candidate
+    for candidate in tls_plan:
+        if candidate["tls_id"] in touched or candidate["tls_id"] in pending:
+            continue
+        if candidate["tls_id"] == tls_id:
+            return candidate
+    return None
+
+
+def vehicle_lane_connection_ok(sumo_net: Any, lane_id: str, next_edge_id: str) -> bool | None:
+    if not lane_id or lane_id.startswith(":") or not next_edge_id:
+        return None
+    try:
+        lane = sumo_net.getLane(lane_id)
+    except Exception:  # noqa: BLE001 - lane may be internal or absent in sumolib.
+        return None
+    try:
+        for connection in lane.getOutgoing():
+            to_lane = connection.getToLane()
+            if to_lane is not None and to_lane.getEdge().getID() == next_edge_id:
+                return True
+    except Exception:  # noqa: BLE001 - older sumolib may expose lane links differently.
+        return None
+    return False
 
 
 def run_traci_experiment(
@@ -689,35 +936,31 @@ def run_traci_experiment(
         timeout_steps=int(task["timeout_steps"]),
     )
     d_det = float(params.get("D_det", 0.0) or 0.0)
-    alpha = float(params.get("alpha", 0.0) or 0.0)
-    effective_g_ext = max(1, int(round(float(params.get("G_ext", 0.0) or 0.0))))
+    alpha = int(params.get("_effective_alpha_sec", 0) or 0)
+    effective_g_ext = max(1, int(params.get("_effective_G_ext_sec", 0) or 0))
     metric_sample_interval = max(1, int(float(params.get("metric_sample_interval") or 10)))
     edge_starts = S14.route_edge_starts(Path(task["net"]), route_edges)
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     sumo_net = S14.read_sumo_net(str(Path(task["net"])))
     non_main_free_flow = non_main_free_flow_seconds_by_edge(sumo_net, corridor_edges)
-    first_tls_distance = float(tls_plan[0]["distance"]) if tls_plan else None
     corridor_tls_ids = load_corridor_tls_ids(Path(task["priority_terminals"]))
-    recovery_ref = load_queue_recovery_reference(Path(task["net"]), Path(task["tls_audit"]), corridor_tls_ids)
-    recovery_queue_edges = sorted(recovery_ref["incoming_edges"])
-    recovery_pass_distance = None
-    if recovery_ref["tls_id"]:
-        for item in tls_plan:
-            if item["tls_id"] == recovery_ref["tls_id"]:
-                recovery_pass_distance = float(item["distance"])
-                break
-    if recovery_pass_distance is None:
-        recovery_pass_distance = first_tls_distance
+    recovery_queue_edges_by_tls = {
+        tls["tls_id"]: sorted(tls_incoming_edges(Path(task["net"]), tls["tls_id"]))
+        for tls in tls_plan
+        if tls.get("tls_id")
+    }
     events: list[dict[str, Any]] = []
     touched: dict[str, dict[str, Any]] = {}
     controlled: dict[str, dict[str, Any]] = {}
-    pending_after_clearance: dict[str, dict[str, Any]] = {}
+    pending_t_change: dict[str, dict[str, Any]] = {}
     restored: set[str] = set()
+    lane_connection_warnings: set[tuple[str, str, str]] = set()
+    lane_connection_candidates: dict[tuple[str, str, str], int] = {}
     edge_time: dict[str, float] = {}
     general_non_main_records: list[dict[str, float]] = []
     active_general_non_main: dict[str, tuple[str, float]] = {}
-    queue_history: list[tuple[float, int]] = []
-    recovery_pass_time: float | None = None
+    queue_history_by_tls: dict[str, list[tuple[float, int]]] = {tls_id: [] for tls_id in recovery_queue_edges_by_tls}
+    recovery_pass_time_by_tls: dict[str, float] = {}
     tls_recovery_times: list[float] = []
     controller_started = False
     cmd = [sumo, "-c", str(paths["sumocfg"]), "--error-log", str(paths["stderr"])]
@@ -727,9 +970,10 @@ def run_traci_experiment(
         traci.start(cmd, stdout=stdout)
         controller_started = True
         try:
-            if recovery_queue_edges:
-                queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in traci.edge.getIDList())
-                queue_history.append((0.0, queue))
+            edge_ids = set(traci.edge.getIDList())
+            for tls_id, recovery_queue_edges in recovery_queue_edges_by_tls.items():
+                queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in edge_ids)
+                queue_history_by_tls.setdefault(tls_id, []).append((0.0, queue))
             last_metric_sample = -metric_sample_interval
             while traci.simulation.getMinExpectedNumber() > 0 and traci.simulation.getTime() <= int(task["timeout_steps"]):
                 if time.time() - started_wall > int(task["timeout_sec"]):
@@ -774,9 +1018,10 @@ def run_traci_experiment(
                 vehicle_present = args.emergency_vehicle_id in vehicle_ids
                 current_distance = 0.0
                 road_id = ""
-                if recovery_queue_edges:
-                    queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in traci.edge.getIDList())
-                    queue_history.append((sim_time, queue))
+                edge_ids = set(traci.edge.getIDList())
+                for tls_id, recovery_queue_edges in recovery_queue_edges_by_tls.items():
+                    queue = sum(int(traci.edge.getLastStepHaltingNumber(edge_id)) for edge_id in recovery_queue_edges if edge_id in edge_ids)
+                    queue_history_by_tls.setdefault(tls_id, []).append((sim_time, queue))
                 if vehicle_present:
                     road_id = traci.vehicle.getRoadID(args.emergency_vehicle_id)
                     if road_id and not road_id.startswith(":"):
@@ -784,8 +1029,44 @@ def run_traci_experiment(
                     route_index = int(traci.vehicle.getRouteIndex(args.emergency_vehicle_id))
                     lane_position = float(traci.vehicle.getLanePosition(args.emergency_vehicle_id))
                     current_distance = edge_starts[route_index] + lane_position if 0 <= route_index < len(edge_starts) else 0.0
-                    if recovery_pass_distance is not None and recovery_pass_time is None and current_distance > recovery_pass_distance + 10.0:
-                        recovery_pass_time = sim_time
+                    if 0 <= route_index < len(route_edges) - 1 and road_id and not road_id.startswith(":"):
+                        lane_id = traci.vehicle.getLaneID(args.emergency_vehicle_id)
+                        next_edge_id = route_edges[route_index + 1]
+                        lane_connection_ok = vehicle_lane_connection_ok(sumo_net, lane_id, next_edge_id)
+                        warning_key = (lane_id, road_id, next_edge_id)
+                        if lane_connection_ok is False:
+                            lane_connection_candidates[warning_key] = lane_connection_candidates.get(warning_key, 0) + 1
+                        else:
+                            lane_connection_candidates.pop(warning_key, None)
+                        if lane_connection_candidates.get(warning_key, 0) >= 2 and warning_key not in lane_connection_warnings:
+                            lane_connection_warnings.add(warning_key)
+                            events.append(
+                                {
+                                    "time": sec(sim_time),
+                                    "route_id": args.route_id,
+                                    "vehicle_id": args.emergency_vehicle_id,
+                                    "tls_id": "",
+                                    "junction_id": "",
+                                    "incoming": road_id,
+                                    "outgoing": next_edge_id,
+                                    "remaining_distance_m": "0.00",
+                                    "D_det": d_det,
+                                    "alpha": params.get("alpha", ""),
+                                    "G_ext": params.get("G_ext", ""),
+                                    "effective_alpha_sec": sec(alpha),
+                                    "effective_G_ext_sec": sec(effective_g_ext),
+                                    "current_road_id": road_id,
+                                    "phase_before": "",
+                                    "phase_after": "",
+                                    "action": "lane_connection_warning",
+                                    "reason": f"current_lane_has_no_connection_to_next_edge:{lane_id}->{next_edge_id}",
+                                    "restore_action": "",
+                                }
+                            )
+                    for tls in tls_plan:
+                        tls_id = tls["tls_id"]
+                        if tls_id not in recovery_pass_time_by_tls and current_distance > float(tls["distance"]) + 10.0:
+                            recovery_pass_time_by_tls[tls_id] = sim_time
                     for tls_id, record in list(controlled.items()):
                         if tls_id in restored:
                             continue
@@ -793,16 +1074,40 @@ def run_traci_experiment(
                             continue
                         if "pass_time" not in record:
                             record["pass_time"] = sim_time
+                            if alpha > 0:
+                                action, phase_after, reason = extend_current_green_without_shortening(traci, record, alpha, sim_time)
+                                if action == "extend_green":
+                                    action = "alpha_hold_extend"
+                                events.append(
+                                    {
+                                        "time": sec(sim_time),
+                                        "route_id": args.route_id,
+                                        "vehicle_id": args.emergency_vehicle_id,
+                                        "tls_id": tls_id,
+                                        "junction_id": record["junction_id"],
+                                        "incoming": record["incoming"],
+                                        "outgoing": record["outgoing"],
+                                        "remaining_distance_m": "0.00",
+                                        "D_det": d_det,
+                                        "alpha": params.get("alpha", ""),
+                                        "G_ext": params.get("G_ext", ""),
+                                        "effective_alpha_sec": sec(alpha),
+                                        "effective_G_ext_sec": sec(effective_g_ext),
+                                        "current_road_id": road_id,
+                                        "phase_before": record["phase_after"],
+                                        "phase_after": phase_after,
+                                        "action": action,
+                                        "reason": f"emergency_passed_tls_alpha_hold_{alpha}s:{reason}",
+                                        "restore_action": "",
+                                        "pass_time": sec(record.get("pass_time", "")),
+                                    }
+                                )
                         if sim_time < float(record["pass_time"]) + alpha:
                             continue
+                        restore_action = "no_program_restore_needed_sequence_preserved"
                         try:
-                            current_program = traci.trafficlight.getProgram(tls_id)
-                            if current_program != record["original_program"]:
-                                traci.trafficlight.setProgram(tls_id, record["original_program"])
-                            restore_action = "restore_original_program"
                             phase_after = traci.trafficlight.getPhase(tls_id)
-                        except Exception as exc:  # noqa: BLE001
-                            restore_action = f"restore_skipped:{type(exc).__name__}"
+                        except Exception:  # noqa: BLE001
                             phase_after = ""
                         restored.add(tls_id)
                         recovery_sec = max(sim_time - float(record.get("pass_time", sim_time)), 0.0)
@@ -820,7 +1125,9 @@ def run_traci_experiment(
                                 "D_det": d_det,
                                 "alpha": alpha,
                                 "G_ext": params.get("G_ext", ""),
+                                "effective_alpha_sec": sec(alpha),
                                 "effective_G_ext": effective_g_ext,
+                                "effective_G_ext_sec": sec(effective_g_ext),
                                 "current_road_id": road_id,
                                 "phase_before": record["phase_after"],
                                 "phase_after": phase_after,
@@ -831,14 +1138,88 @@ def run_traci_experiment(
                                 "recovery_sec": sec(recovery_sec),
                             }
                         )
-                for tls_id, pending in list(pending_after_clearance.items()):
+                for tls_id, pending in list(pending_t_change.items()):
                     if not vehicle_present:
                         continue
+                    if current_distance > float(pending["distance"]) + 10.0:
+                        touched[tls_id] = {"action": "green_missed_before_t_change"}
+                        events.append(
+                            {
+                                **pending["event_base"],
+                                "time": sec(sim_time),
+                                "phase_before": traci.trafficlight.getPhase(tls_id),
+                                "phase_after": traci.trafficlight.getPhase(tls_id),
+                                "action": "green_missed_before_t_change",
+                                "reason": "vehicle_passed_before_t_change_green_switch",
+                                "restore_action": "",
+                            }
+                        )
+                        pending_t_change.pop(tls_id, None)
+                        continue
                     current_phase = int(traci.trafficlight.getPhase(tls_id))
-                    if current_phase in pending.get("yellow_phases", []) or current_phase in pending.get("clearance_phases", []):
+                    if current_phase in pending.get("green_phases", []):
+                        before = current_phase
+                        action, phase_after, reason = extend_current_green_without_shortening(traci, pending, effective_g_ext, sim_time)
+                        touched[tls_id] = {"action": action}
+                        if action in CONTROL_ACTIONS:
+                            controlled[tls_id] = {
+                                **pending,
+                                "original_program": pending["original_program"],
+                                "original_phase": before,
+                                "phase_after": phase_after,
+                            }
+                        events.append(
+                            {
+                                **pending["event_base"],
+                                "time": sec(sim_time),
+                                "phase_before": before,
+                                "phase_after": phase_after,
+                                "action": action,
+                                "reason": "green_arrived_before_t_change_then_extended" if action in CONTROL_ACTIONS else reason,
+                                "restore_action": "",
+                            }
+                        )
+                        pending_t_change.pop(tls_id, None)
+                        continue
+                    request_time = float(pending["request_time"])
+                    if sim_time < request_time + T_CHANGE_SEC:
+                        if not pending.get("wait_logged"):
+                            pending["wait_logged"] = True
+                            events.append(
+                                {
+                                    **pending["event_base"],
+                                    "time": sec(sim_time),
+                                    "phase_before": current_phase,
+                                    "phase_after": current_phase,
+                                    "action": "wait_t_change",
+                                    "reason": f"waiting_until_t_change_{sec(T_CHANGE_SEC)}s",
+                                    "restore_action": "",
+                                }
+                            )
+                        continue
+                    if not pending.get("clearance_started"):
+                        action, phase_after, reason, clearance_duration = start_clearance_before_green(traci, pending)
+                        pending["clearance_started"] = True
+                        pending["clearance_until"] = sim_time + clearance_duration
+                        events.append(
+                            {
+                                **pending["event_base"],
+                                "time": sec(sim_time),
+                                "phase_before": current_phase,
+                                "phase_after": phase_after,
+                                "action": action,
+                                "reason": reason,
+                                "restore_action": "",
+                            }
+                        )
+                        if action == "failed":
+                            touched[tls_id] = {"action": action}
+                            pending_t_change.pop(tls_id, None)
+                        continue
+                    if current_phase in pending.get("yellow_phases", []) + pending.get("clearance_phases", []):
                         continue
                     before = current_phase
-                    action, phase_after, reason = switch_to_emergency_green(traci, pending, effective_g_ext)
+                    action, phase_after, reason = switch_to_green_after_t_change(traci, pending, effective_g_ext)
                     touched[tls_id] = {"action": action}
                     if action in CONTROL_ACTIONS:
                         controlled[tls_id] = {
@@ -853,27 +1234,23 @@ def run_traci_experiment(
                             "time": sec(sim_time),
                             "phase_before": before,
                             "phase_after": phase_after,
-                            "action": "switch_to_green_after_clearance" if action in CONTROL_ACTIONS else action,
-                            "reason": "yellow_clearance_completed_then_green" if action in CONTROL_ACTIONS else reason,
+                            "action": action,
+                            "reason": reason,
                             "restore_action": "",
                         }
                     )
-                    pending_after_clearance.pop(tls_id, None)
+                    pending_t_change.pop(tls_id, None)
                 if not control_enabled or not vehicle_present:
                     continue
                 if sim_time - last_metric_sample < metric_sample_interval and int(sim_time) % metric_sample_interval != 0:
                     pass
                 next_tls = None
-                for candidate in tls_plan:
-                    if candidate["tls_id"] in touched or candidate["tls_id"] in pending_after_clearance:
-                        continue
-                    if float(candidate["distance"]) + 1.0 < current_distance:
-                        continue
-                    next_tls = candidate
-                    break
+                actual_next_tls = actual_upcoming_corridor_tls(traci, args.emergency_vehicle_id, corridor_tls_ids)
+                if actual_next_tls is not None:
+                    next_tls = match_tls_plan(tls_plan, actual_next_tls, touched, pending_t_change)
                 if next_tls is None:
                     continue
-                remaining_distance = 0.0 if road_id == next_tls["incoming"] else max(float(next_tls["distance"]) - current_distance, 0.0)
+                remaining_distance = max(float(actual_next_tls["distance"]), 0.0)
                 if remaining_distance > d_det:
                     if sim_time - last_metric_sample >= metric_sample_interval:
                         last_metric_sample = sim_time
@@ -890,7 +1267,9 @@ def run_traci_experiment(
                                 "D_det": d_det,
                                 "alpha": alpha,
                                 "G_ext": params.get("G_ext", ""),
+                                "effective_alpha_sec": sec(alpha),
                                 "effective_G_ext": effective_g_ext,
+                                "effective_G_ext_sec": sec(effective_g_ext),
                                 "current_road_id": road_id,
                                 "phase_before": "",
                                 "phase_after": "",
@@ -913,7 +1292,9 @@ def run_traci_experiment(
                     "D_det": d_det,
                     "alpha": alpha,
                     "G_ext": params.get("G_ext", ""),
+                    "effective_alpha_sec": sec(alpha),
                     "effective_G_ext": effective_g_ext,
+                    "effective_G_ext_sec": sec(effective_g_ext),
                     "current_road_id": road_id,
                 }
                 if not next_tls["is_controllable"]:
@@ -922,21 +1303,22 @@ def run_traci_experiment(
                     continue
                 current_phase = int(traci.trafficlight.getPhase(tls_id))
                 original_program = traci.trafficlight.getProgram(tls_id)
-                if current_phase in next_tls.get("yellow_phases", []) or current_phase in next_tls.get("clearance_phases", []):
-                    pending_after_clearance[tls_id] = {**next_tls, "original_program": original_program, "event_base": event_base}
+                if current_phase not in next_tls.get("green_phases", []):
+                    pending_t_change[tls_id] = {**next_tls, "original_program": original_program, "event_base": event_base, "request_time": sim_time}
+                    reason = "yellow_or_clearance_active" if current_phase in next_tls.get("yellow_phases", []) or current_phase in next_tls.get("clearance_phases", []) else "red_or_other_phase_active"
                     events.append(
                         {
                             **event_base,
                             "phase_before": current_phase,
                             "phase_after": current_phase,
-                            "action": "wait_yellow_clearance",
-                            "reason": "yellow_or_clearance_active",
+                            "action": "request_green",
+                            "reason": f"{reason};t_change_timer_started",
                             "restore_action": "",
                         }
                     )
                     continue
                 before = current_phase
-                action, phase_after, reason = switch_to_emergency_green(traci, next_tls, effective_g_ext)
+                action, phase_after, reason = extend_current_green_without_shortening(traci, next_tls, effective_g_ext, sim_time)
                 touched[tls_id] = {"action": action}
                 if action in CONTROL_ACTIONS:
                     controlled[tls_id] = {
@@ -963,13 +1345,13 @@ def run_traci_experiment(
             traci.close(False)
     return events, controller_started, {
         "edge_time": edge_time,
-        "queue_history": queue_history,
-        "recovery_pass_time": recovery_pass_time,
-        "recovery_tls_id": recovery_ref["tls_id"],
-        "recovery_junction_id": recovery_ref["junction_id"],
-        "recovery_queue_edges": recovery_queue_edges,
+        "queue_history_by_tls": queue_history_by_tls,
+        "recovery_pass_time_by_tls": recovery_pass_time_by_tls,
+        "recovery_queue_edges_by_tls": recovery_queue_edges_by_tls,
+        "tls_plan": tls_plan,
         "general_non_main_records": general_non_main_records,
         "tls_recovery_times": tls_recovery_times,
+        "lane_connection_warning_count": len(lane_connection_warnings),
         "wall_timeout": wall_timeout,
     }
 
@@ -1014,6 +1396,9 @@ def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, An
     events, controller_started, observations = run_traci_experiment(task, paths, tls_plan, route_edges, {}, False)
     row, events = summarize_run(task, run_dir, vehicle_id, paths, 0 if controller_started else 1, events, {}, started, route_edges, observations)
     row["controller_started"] = controller_started
+    events_csv = run_dir / "signal_events.csv"
+    write_csv(events_csv, events, EVENT_FIELDS)
+    row["signal_events_csv"] = rel(events_csv)
     return row, events
 
 
@@ -1026,7 +1411,28 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
     run_dir = Path(task["run_dir"])
     vehicle_id = f"emergency_{task['route_id']}_{task['mode']}_{task['parameter_id']}_{task['repeat_id']}"
     task = {**task, "vehicle_id": vehicle_id}
-    params = task["params"]
+    params = dict(task["params"])
+    base = common_row_base(task, run_dir, vehicle_id, params, 0)
+    effective_alpha, alpha_error = integer_seconds(params.get("alpha"), "alpha")
+    effective_g_ext, g_ext_error = integer_seconds(params.get("G_ext"), "G_ext")
+    if alpha_error or g_ext_error:
+        base.update(
+            {
+                "sumo_exit_code": "",
+                "final_status": "FAIL",
+                "failure_reason": ";".join(error for error in [alpha_error, g_ext_error] if error),
+                "warning_reason": "",
+                "emergency_departed": False,
+                "emergency_arrived": False,
+                "emergency_teleport": False,
+                "route_error_count": 0,
+                "signal_event_count": 0,
+                "safety_violation_count": 1,
+            }
+        )
+        return base, []
+    params["_effective_alpha_sec"] = effective_alpha
+    params["_effective_G_ext_sec"] = effective_g_ext
     base = common_row_base(task, run_dir, vehicle_id, params, 0)
     if validation_failures:
         base.update(
@@ -1063,6 +1469,9 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
     events, controller_started, observations = run_traci_experiment(task, paths, tls_plan, route_edges, params, True)
     row, events = summarize_run(task, run_dir, vehicle_id, paths, 0 if controller_started else 1, events, params, started, route_edges, observations)
     row["controller_started"] = controller_started
+    events_csv = run_dir / "signal_events.csv"
+    write_csv(events_csv, events, EVENT_FIELDS)
+    row["signal_events_csv"] = rel(events_csv)
     return row, events
 
 
@@ -1084,12 +1493,20 @@ def summarize_run(
     trip = S14.parse_tripinfo(paths["tripinfo"], vehicle_id)
     route_errors = route_error_count(stderr_text)
     emergency_tp = emergency_teleport_lines(stderr_text, vehicle_id)
+    emergency_stop_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("emergency stop", "emergency braking"))
+    stderr_lane_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("no connection", "is not connected"))
+    detected_lane_warning_count = int(observations.get("lane_connection_warning_count") or 0)
+    emergency_lane_connection_warning_count = stderr_lane_warning_count + detected_lane_warning_count
     emergency_arrived = bool(trip["emergency_arrived"])
     emergency_departed = summary_metrics["departed_count_total"] > background_count or emergency_arrived
     emergency_teleport = bool(emergency_tp)
     background_departed = max(summary_metrics["departed_count_total"] - (1 if emergency_departed else 0), 0)
     background_arrived = max(summary_metrics["arrived_count_total"] - (1 if emergency_arrived else 0), 0)
     background_teleported = max(summary_metrics["teleport_count"] - (1 if emergency_teleport else 0), 0)
+    remaining_vehicle_count = int(summary_metrics["running_count"]) + int(summary_metrics["waiting_count"])
+    background_remaining_count = max(remaining_vehicle_count - (0 if emergency_arrived else 1), 0)
+    timeout_reached = float(summary_metrics["sim_end_time"]) >= float(task["timeout_steps"]) and remaining_vehicle_count > 0
+    all_vehicles_arrived = remaining_vehicle_count == 0 and summary_metrics["departed_count_total"] == summary_metrics["arrived_count_total"]
     controlled_tls = {event["tls_id"] for event in events if event.get("action") in CONTROL_ACTIONS and event.get("tls_id")}
     skipped_tls = {event["tls_id"] for event in events if event.get("action") == "skip" and event.get("tls_id")}
     failed_tls = {event["tls_id"] for event in events if event.get("action") == "failed" and event.get("tls_id")}
@@ -1103,12 +1520,18 @@ def summarize_run(
         failures.append("emergency_not_arrived")
     if emergency_teleport:
         failures.append("emergency_teleport_detected")
+    if emergency_stop_warning_count > 0:
+        failures.append("emergency_stop_warning_detected")
+    if emergency_lane_connection_warning_count > 0:
+        failures.append("emergency_lane_connection_warning_detected")
     if route_errors > 0:
         failures.append("route_error_count_gt_0")
     if observations.get("wall_timeout"):
         failures.append("timeout_sec_exceeded")
     if background_teleported > 0:
         warnings.append("background_teleports_present")
+    if timeout_reached:
+        warnings.append("timeout_reached_with_running_vehicles")
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     corridor_route_edges = [edge_id for edge_id in route_edges if edge_id in corridor_edges]
     if not corridor_route_edges:
@@ -1119,16 +1542,30 @@ def summarize_run(
         emergency_corridor_actual = float(trip["emergency_travel_time"])
     emergency_corridor_free = route_free_flow_seconds(Path(task["net"]), route_edges, set(corridor_route_edges))
     general_delay = summarize_general_non_main_delay(observations.get("general_non_main_records", []))
-    t_recovery = (
-        queue_recovery_seconds(
-            observations.get("queue_history", []),
-            observations.get("recovery_pass_time"),
+    if task["mode"] == "B2":
+        recovery = queue_recovery_summary(
+            observations.get("queue_history_by_tls", {}),
+            observations.get("recovery_pass_time_by_tls", {}),
+            observations.get("tls_plan", []),
             float(task["emergency_depart"]),
         )
-        if task["mode"] == "B2"
-        else 0.0
-    )
-    score = float(general_delay["N_delay_sec"]) + t_recovery
+    else:
+        recovery = {
+            "T_recovery_sec": 0.0,
+            "T_recovery_tls_count": 0,
+            "T_recovery_max_tls_id": "",
+            "T_recovery_unrecovered_count": 0,
+        }
+    t_recovery = float(recovery["T_recovery_sec"])
+    score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
+    safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
+    if safety_violation_count > 0:
+        failures.append("safety_violation_detected")
+    emergency_route_length = tripinfo_float_attr(paths["tripinfo"], vehicle_id, "routeLength")
+    if emergency_route_length is None:
+        emergency_route_length = route_length_meters(Path(task["net"]), route_edges)
+    emergency_travel_time = trip["emergency_travel_time"]
+    emergency_avg_speed = (emergency_route_length / float(emergency_travel_time) * 3.6) if emergency_travel_time not in {"", None} and float(emergency_travel_time) > 0 else ""
     row = common_row_base(task, run_dir, vehicle_id, params, time.time() - started)
     row.update(
         {
@@ -1156,16 +1593,33 @@ def summarize_run(
             "background_arrived": background_arrived,
             "background_teleported": background_teleported,
             "background_teleport_ratio": round(background_teleported / background_departed, 6) if background_departed else 0.0,
+            "timeout_reached": timeout_reached,
+            "remaining_vehicle_count": remaining_vehicle_count,
+            "background_remaining_count": background_remaining_count,
+            "all_vehicles_arrived": all_vehicles_arrived,
             "network_avg_speed_kmh": round(float(summary_metrics["network_avg_speed_kmh"]), 6),
+            "emergency_route_length_m": sec(emergency_route_length),
+            "emergency_avg_speed_kmh": sec(emergency_avg_speed),
+            "b00_speed_policy": B00_SPEED_POLICY,
             "sim_end_time": sec(summary_metrics["sim_end_time"]),
             "controlled_tls_count": len(controlled_tls),
             "skipped_tls_count": len(skipped_tls),
             "failed_tls_count": len(failed_tls),
             "intervention_count": sum(1 for event in events if event.get("action") in CONTROL_ACTIONS),
             "green_extension_count": sum(1 for event in events if event.get("action") == "extend_green"),
-            "phase_switch_count": sum(1 for event in events if event.get("action") in {"switch_to_green", "switch_to_green_after_clearance"}),
+            "phase_switch_count": sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change"),
             "restore_count": sum(1 for event in events if event.get("action") == "restore"),
             "signal_event_count": len(events),
+            "t_change_request_count": sum(1 for event in events if event.get("action") == "request_green"),
+            "t_change_switch_count": sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change"),
+            "green_missed_before_t_change_count": sum(1 for event in events if event.get("action") == "green_missed_before_t_change"),
+            "T_recovery_tls_count": recovery["T_recovery_tls_count"],
+            "T_recovery_max_tls_id": recovery["T_recovery_max_tls_id"],
+            "T_recovery_unrecovered_count": recovery["T_recovery_unrecovered_count"],
+            "safety_violation_count": safety_violation_count,
+            "emergency_stop_warning_count": emergency_stop_warning_count,
+            "emergency_lane_connection_warning_count": emergency_lane_connection_warning_count,
+            "signal_events_csv": "",
             "sumocfg": rel(paths["sumocfg"]),
             "tripinfo": rel(paths["tripinfo"]),
             "summary_output": rel(paths["summary"]),
@@ -1224,7 +1678,7 @@ def apply_b00_delay_fields(result_rows: list[dict[str, Any]]) -> None:
             row["A_delay_sec"] = sec(current - base)
         a_delay = row_float(row, "A_delay_sec")
         if a_delay is not None and n_delay is not None and t_recovery is not None:
-            row["score_sec"] = sec(a_delay + n_delay + t_recovery)
+            row["score_sec"] = sec(SCORE_WEIGHT_A * a_delay + SCORE_WEIGHT_N * n_delay + SCORE_WEIGHT_RECOVERY * t_recovery)
 
 
 def compare_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1301,7 +1755,8 @@ def fill_missing_result_fields(result_rows: list[dict[str, Any]]) -> None:
 def main() -> int:
     args = parse_args()
     generated_at = utc_now()
-    lines = ["B00/B0/B2 experiment runner", "=======================", f"generated_at: {generated_at}"]
+    run_id = run_id_from_generated_at(generated_at)
+    lines = ["B00/B0/B2 experiment runner", "=======================", f"generated_at: {generated_at}", f"run_id: {run_id}"]
     try:
         manifest = apply_manifest(args)
         if args.pipeline and args.output_prefix is None:
@@ -1352,6 +1807,8 @@ def main() -> int:
         background_vehicle_count = S14.count_vehicles(args.background_route)
         paths = output_paths(args.output_prefix, args.legacy_output_names, args.pipeline)
         base_task = {
+            "generated_at": generated_at,
+            "run_id": run_id,
             "pipeline": args.pipeline or "",
             "net": str(args.net),
             "background_route": str(args.background_route),
@@ -1369,7 +1826,7 @@ def main() -> int:
         }
         tasks = []
         for task in build_tasks(args, route_ids, b2_params):
-            run_dir = args.run_root / args.output_prefix / task["mode"] / task["parameter_id"] / task["repeat_id"] / task["route_id"]
+            run_dir = args.run_root / args.output_prefix / run_id / task["mode"] / task["parameter_id"] / task["repeat_id"] / task["route_id"]
             task_background_count = background_vehicle_count if task.get("include_background", True) else 0
             tasks.append({**base_task, **task, "background_vehicle_count": task_background_count, "route_row": routes[task["route_id"]], "run_dir": str(run_dir)})
         lines.extend(
@@ -1399,6 +1856,10 @@ def main() -> int:
                         row, events = future.result()
                     except Exception as exc:  # noqa: BLE001
                         row = {
+                            "generated_at": generated_at,
+                            "run_id": run_id,
+                            "timeout_steps": args.timeout_steps,
+                            "command_time_to_teleport": args.time_to_teleport,
                             "pipeline": args.pipeline or "",
                             "output_prefix": args.output_prefix,
                             "mode": task["mode"],
@@ -1432,6 +1893,7 @@ def main() -> int:
         route_error_count_any = any(int(row.get("route_error_count") or 0) > 0 for row in result_rows)
         summary = {
             "generated_at": generated_at,
+            "run_id": run_id,
             "output_prefix": args.output_prefix,
             "manifest": manifest_path,
             "manifest_path": manifest_path,
@@ -1449,6 +1911,8 @@ def main() -> int:
             "b2_parameter_ids": [row["parameter_id"] for row in b2_params],
             "repeats": args.repeats,
             "workers": args.workers,
+            "timeout_steps": args.timeout_steps,
+            "command_time_to_teleport": args.time_to_teleport,
             "task_count": len(tasks),
             "teleport_policy": manifest.get("teleport_policy", {"emergency": "FAIL", "background": "WARNING"}) if manifest else {"emergency": "FAIL", "background": "WARNING"},
             "allow_nonfinal_background": args.allow_nonfinal_background,
