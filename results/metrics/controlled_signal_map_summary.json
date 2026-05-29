@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-05-29T03:03:03.265776+00:00",
+  "output_html": "results/html/controlled_signal_map.html",
+  "main_route_id": "ER_ACC_002",
+  "terminal_count": 20,
+  "terminal_feature_count": 20,
+  "missing_terminal_tls": [],
+  "all_tls_reference_count": 73,
+  "main_route_edge_count": 60,
+  "all_route_union_edge_count": 222,
+  "terminal_install_status_counts": {
+    "PASS": 20
+  },
+  "terminal_runtime_status_counts": {
+    "CONTROLLED_IN_B1_BATCH": 14,
+    "SKIPPED_IN_B1_BATCH": 5,
+    "TERMINAL_CANDIDATE_ONLY": 1
+  },
+  "signal_event_count": 23,
+  "signal_event_action_counts": {
+    "skip": 3,
+    "extend_green": 4,
+    "observe_wait": 10,
+    "restore": 5,
+    "advance_to_next_green": 1
+  },
+  "batch_signal_event_count": 103,
+  "batch_signal_event_action_counts": {
+    "skip": 29,
+    "extend_green": 74
+  },
+  "batch_unique_tls_count": 19,
+  "batch_executed_route_count": 18,
+  "batch_status_counts": {
+    "PASS": 18,
+    "WARNING": 0,
+    "FAIL": 0
+  },
+  "controlled_tls_count": 5,
+  "skipped_tls_count": 3,
+  "intervention_count": 5,
+  "emergency_travel_time": 191.0,
+  "source_files": {
+    "tls_geojson": "data_prepared/geojson/ellipse_passenger_tls.geojson",
+    "edge_geojson": "data_prepared/geojson/ellipse_passenger_edges.geojson",
+    "terminal_candidates": "data_prepared/signals/priority_terminal_candidates.csv",
+    "tls_audit": "data_prepared/signals/tls_phase_audit_spine_v2.csv",
+    "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
+    "signal_events": "results/metrics/b1_green_wave_v1_er_acc_002_signal_events.csv",
+    "batch_signal_events": "results/metrics/b1_b0_valid_route_signal_events.csv",
+    "smoke_summary": "results/metrics/b1_green_wave_v1_er_acc_002_smoke_summary.json",
+    "batch_summary": "results/metrics/b1_b0_valid_route_smoke_summary.json"
+  }
+}
