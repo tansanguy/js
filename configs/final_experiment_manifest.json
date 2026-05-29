@@ -1,5 +1,5 @@
 {
-  "schema": "final_experiment_manifest.v1",
+  "schema": "final_experiment_manifest.v2",
   "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
   "background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
   "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
@@ -8,13 +8,20 @@
     "ER_ACC_013"
   ],
   "tls_audit": "data_prepared/signals/tls_phase_audit_spine_v2.csv",
-  "b1_config": "configs/b1_priority_signal_config.json",
+  "priority_terminals": "data_prepared/signals/priority_terminal_candidates.csv",
+  "corridor_edges": "data_prepared/routes/corridor_spine_edges.csv",
   "b2_parameter_sets": "configs/b2_parameter_sets.csv",
   "b0_summary": "results/metrics/b0_baseline_19route_smoke_summary.csv",
+  "optimization_route": {
+    "route_id": "FIRE_TO_SEOUL_STATION",
+    "start_edge_id": "-381802881#2",
+    "target_edge_id": "438360331#2",
+    "usage": "parameter_search_input_only"
+  },
   "teleport_policy": {
     "emergency": "FAIL",
     "background": "WARNING"
   },
   "final_background_required_substring": "scale_0p15",
-  "notes": "Step16 final experiment manifest. Step9-15 scripts are setup/diagnostic references; use 02_simulation/run_b0_b1_b2_experiment.py for final B0/B1/B2 runs."
+  "notes": "B00/B0/B2 final experiment manifest. Use parameter_input_sim for the fire-station-to-Seoul-Station parameter input run and final_effect_validation_sim for b0_valid_18 effect validation. Bayesian Optimization is out of scope; external optimizers may generate b2_parameter_sets.csv."
 }

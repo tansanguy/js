@@ -6,14 +6,15 @@
 
 - 사고지점은 SUMO에서 도달 가능한 edge 중 고정 시나리오로 선정한다.
 - 응급차 경로는 사고지점별 다익스트라 경로를 사전에 생성해 재사용한다.
-- 비교군은 `B0 baseline`, `B1 independent_priority`, `B2 corridor_priority`다.
-- 각 파라미터 조합에서 응급차 통행시간과 일반차 지체시간을 측정하고 score 계산에 필요한 raw metric CSV를 출력한다.
+- 최종 실험 모드는 `B00_freeflow`, `B0_peak_no_control`, `B2_peak_corridor_control`이다. `B1` 코드는 과거 smoke/setup reference로만 유지한다.
+- `B00`은 배경 차량 없는 응급차 자유류 기준값, `B0`은 첨두 수요 no-control baseline, `B2`는 같은 첨두 수요에서 corridor priority 제어 조건이다.
+- 각 파라미터 조합에서 응급차 지연, 일반차 메인스트림 지연, 신호 회복시간과 score 계산에 필요한 metric CSV를 출력한다.
 - Bayesian Optimization은 이 코드베이스 내부에서 수행하지 않는다. 결과 CSV를 외부 최적화 파트에 넘긴다.
 
 ## 전체 흐름
 
 1. `01_prepare`: 맵, 수동 선택, 사고 시나리오, 긴급차 경로, 일반차 수요, preflight 준비.
-2. `02_simulation`: B0/B1/B2 시뮬레이션과 run plan 기반 batch 실행.
+2. `02_simulation`: B00/B0/B2 시뮬레이션과 run plan 기반 batch 실행.
 3. `03_results`: SUMO raw output 수집, 지표 계산, 비교 CSV와 그래프 생성.
 
 ## Active map
