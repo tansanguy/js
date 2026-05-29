@@ -1,0 +1,18 @@
+{
+  "schema": "b1_priority_signal_config.v1",
+  "generated_at": "2026-05-28T23:59:41.434065+00:00",
+  "D_det": 300,
+  "v_e_policy": "current_speed_with_fallback",
+  "fallback_v_e_mps": 8.33,
+  "alpha": 1.2,
+  "G_ext": 30,
+  "rho": "restore_original_program",
+  "SC": null,
+  "tau": 1,
+  "t_lead": 30,
+  "metric_sample_interval": 10,
+  "phase_control_policy": "existing_sequence_only_no_direct_state_rewrite",
+  "yellow_clearance_policy": "do_not_skip",
+  "pedestrian_min_walk_policy": "safety_placeholder_documented_not_optimized",
+  "b2_bayesian_optimization": "not_implemented"
+}
