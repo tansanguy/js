@@ -5,6 +5,7 @@ outputs/debug/*
 # Python cache
 __pycache__/
 *.py[cod]
+.venv/
 
 # Local OS files
 .DS_Store

@@ -15,7 +15,7 @@
 파라미터 입력 실험:
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2
@@ -24,7 +24,7 @@ python3 02_simulation/run_b0_b1_b2_experiment.py \
 최종 효과 검증:
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline final_effect_validation_sim \
   --modes B00 B0 B2

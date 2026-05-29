@@ -37,6 +37,8 @@ LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
 DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 1200
+FREE_FLOW_SPEED_CAP_KMH = 50.0
+FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
 SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "438360331#2"
@@ -426,7 +428,7 @@ def load_corridor_edge_ids(path: Path) -> set[str]:
 
 def edge_free_flow_seconds(sumo_net: Any, edge_id: str) -> float:
     edge = sumo_net.getEdge(edge_id)
-    speed = max(float(edge.getSpeed()), 0.01)
+    speed = max(min(float(edge.getSpeed()), FREE_FLOW_SPEED_CAP_MPS), 0.01)
     return float(edge.getLength()) / speed
 
 

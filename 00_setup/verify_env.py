@@ -76,6 +76,18 @@ def check_python_version() -> CheckResult:
     return CheckResult("Python version", version.major == 3, detail)
 
 
+def check_python_executable(root: Path) -> CheckResult:
+    executable = Path(sys.executable)
+    venv_dir = root / ".venv"
+    if venv_dir.exists():
+        passed = Path(sys.prefix).resolve() == venv_dir.resolve()
+        detail = f"executable={executable}; prefix={sys.prefix}"
+        if not passed:
+            detail = f"{detail}; expected prefix={venv_dir}"
+        return CheckResult("Python executable", passed, detail)
+    return CheckResult("Python executable", True, str(executable))
+
+
 def check_project_root(root: Path) -> CheckResult:
     expected = Path.cwd().resolve()
     passed = expected == root
@@ -87,7 +99,14 @@ def check_project_root(root: Path) -> CheckResult:
 
 def check_sumo_home() -> CheckResult:
     value = os.environ.get("SUMO_HOME")
-    return CheckResult("SUMO_HOME", bool(value), value or "not set")
+    if value:
+        return CheckResult("SUMO_HOME", True, value)
+    executable = shutil.which("sumo")
+    if executable:
+        candidate_home = Path(executable).resolve().parents[1] / "share/sumo"
+        if candidate_home.is_dir():
+            return CheckResult("SUMO_HOME", True, f"inferred from sumo: {candidate_home}")
+    return CheckResult("SUMO_HOME", False, "not set and could not infer from sumo")
 
 
 def command_version(command: str) -> str:
@@ -140,6 +159,7 @@ def check_required_config_files(root: Path) -> CheckResult:
 def collect_checks(root: Path) -> list[CheckResult]:
     checks = [
         check_python_version(),
+        check_python_executable(root),
         check_project_root(root),
         check_sumo_home(),
     ]

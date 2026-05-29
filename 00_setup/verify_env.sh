@@ -9,7 +9,15 @@ LOG_FILE="${LOG_DIR}/env_check.log"
 mkdir -p "${LOG_DIR}"
 cd "${PROJECT_ROOT}" || exit 1
 
-if ! command -v python3 >/dev/null 2>&1; then
+if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python" ]]; then
+  PYTHON_BIN="${VIRTUAL_ENV}/bin/python"
+elif [[ -x "${PROJECT_ROOT}/.venv/bin/python" ]]; then
+  PYTHON_BIN="${PROJECT_ROOT}/.venv/bin/python"
+else
+  PYTHON_BIN="$(command -v python3 || true)"
+fi
+
+if [[ -z "${PYTHON_BIN}" ]]; then
   {
     echo "Step 0 environment check"
     echo "========================"
@@ -18,5 +26,5 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-python3 00_setup/verify_env.py 2>&1 | tee "${LOG_FILE}"
+"${PYTHON_BIN}" 00_setup/verify_env.py 2>&1 | tee "${LOG_FILE}"
 exit "${PIPESTATUS[0]}"

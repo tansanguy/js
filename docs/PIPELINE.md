@@ -17,6 +17,14 @@
 parameter_id,D_det,alpha,G_ext
 ```
 
+실행 전 venv 준비:
+
+```bash
+bash 00_setup/setup_venv.sh
+source .venv/bin/activate
+bash 00_setup/verify_env.sh
+```
+
 ## 2. 실험 모드
 
 - `B00`: 배경 차량 없이 응급차 1대만 주행한다. 자유류 응급차 통행시간 기준값을 만든다.
@@ -33,7 +41,7 @@ parameter_id,D_det,alpha,G_ext
 - raw run dir: `runs/final/parameter_input_sim/...`.
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2 \
@@ -52,7 +60,7 @@ python3 02_simulation/run_b0_b1_b2_experiment.py \
 - raw run dir: `runs/final/final_effect_validation_sim/...`.
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline final_effect_validation_sim \
   --modes B00 B0 B2 \

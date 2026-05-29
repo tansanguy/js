@@ -19,8 +19,19 @@
 실행 진입점은 하나다.
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py --manifest configs/final_experiment_manifest.json ...
+python 02_simulation/run_b0_b1_b2_experiment.py --manifest configs/final_experiment_manifest.json ...
 ```
+
+## venv 설정
+
+```bash
+cd /Users/junlee/Desktop/js
+bash 00_setup/setup_venv.sh
+source .venv/bin/activate
+bash 00_setup/verify_env.sh
+```
+
+`.venv`는 Python 패키지 의존성만 관리한다. SUMO 실행 파일은 시스템에 별도로 설치되어 PATH에서 보여야 한다.
 
 ## 주요 지표
 

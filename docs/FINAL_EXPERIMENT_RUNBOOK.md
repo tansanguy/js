@@ -5,10 +5,21 @@
 최종 실험은 아래 러너만 사용한다.
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py --manifest configs/final_experiment_manifest.json ...
+python 02_simulation/run_b0_b1_b2_experiment.py --manifest configs/final_experiment_manifest.json ...
 ```
 
 Step9-Step15 스크립트는 준비, 진단, smoke 기록용이다. 최종 CSV 산출 명령으로 사용하지 않는다.
+
+## venv 준비
+
+```bash
+cd /Users/junlee/Desktop/js
+bash 00_setup/setup_venv.sh
+source .venv/bin/activate
+bash 00_setup/verify_env.sh
+```
+
+`verify_env.sh`는 `.venv/bin/python`을 자동으로 우선 사용한다. SUMO 실행 파일은 별도 시스템 설치가 필요하다.
 
 ## 모드
 
@@ -21,7 +32,7 @@ Step9-Step15 스크립트는 준비, 진단, smoke 기록용이다. 최종 CSV �
 ## 파라미터 입력 실험
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2 \
@@ -37,7 +48,7 @@ python3 02_simulation/run_b0_b1_b2_experiment.py \
 ## 최종 효과 검증 실험
 
 ```bash
-python3 02_simulation/run_b0_b1_b2_experiment.py \
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline final_effect_validation_sim \
   --modes B00 B0 B2 \
