@@ -216,7 +216,7 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
     args.corridor_edges = project_path(manifest.get("corridor_edges"), args.corridor_edges)
     args.b2_params = project_path(manifest.get("b2_parameter_sets"), args.b2_params)
     args.b0_summary = project_path(manifest.get("b0_summary"), args.b0_summary)
-    if not args.routes and args.route_set is None and manifest.get("route_set"):
+    if not args.routes and args.route_set is None and args.pipeline != "parameter_input_sim" and manifest.get("route_set"):
         args.route_set = str(manifest["route_set"])
     return manifest
 
@@ -1230,11 +1230,11 @@ def apply_b00_delay_fields(result_rows: list[dict[str, Any]]) -> None:
 def compare_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     b0_by_key: dict[tuple[str, str], float] = {}
     for row in result_rows:
-        if row["mode"] == "B0" and row.get("emergency_travel_time") not in ("", None):
+        if row.get("mode") == "B0" and row.get("emergency_travel_time") not in ("", None):
             b0_by_key[(row["route_id"], row["repeat_id"])] = float(row["emergency_travel_time"])
     rows = []
     for row in result_rows:
-        if row["mode"] in {"B00", "B0"}:
+        if row.get("mode") in {"B00", "B0"}:
             continue
         base = b0_by_key.get((row["route_id"], row["repeat_id"]))
         current = row.get("emergency_travel_time")
@@ -1246,19 +1246,19 @@ def compare_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             improvement = round(((base - float(current)) / base) * 100.0, 6) if base else ""
         rows.append(
             {
-                "output_prefix": row["output_prefix"],
-                "route_id": row["route_id"],
-                "repeat_id": row["repeat_id"],
-                "mode": row["mode"],
-                "parameter_id": row["parameter_id"],
+                "output_prefix": row.get("output_prefix", ""),
+                "route_id": row.get("route_id", ""),
+                "repeat_id": row.get("repeat_id", ""),
+                "mode": row.get("mode", ""),
+                "parameter_id": row.get("parameter_id", ""),
                 "b0_emergency_travel_time": base if base is not None else "",
                 "mode_emergency_travel_time": current,
                 "travel_time_delta_sec": delta,
                 "travel_time_improvement_pct": improvement,
-                "mode_final_status": row["final_status"],
-                "emergency_teleport": row["emergency_teleport"],
-                "route_error_count": row["route_error_count"],
-                "background_teleport_ratio": row["background_teleport_ratio"],
+                "mode_final_status": row.get("final_status", ""),
+                "emergency_teleport": row.get("emergency_teleport", ""),
+                "route_error_count": row.get("route_error_count", ""),
+                "background_teleport_ratio": row.get("background_teleport_ratio", ""),
                 "A_delay_sec": row.get("A_delay_sec", ""),
                 "N_delay_sec": row.get("N_delay_sec", ""),
                 "T_recovery_sec": row.get("T_recovery_sec", ""),
@@ -1276,10 +1276,10 @@ def add_compare_fields(result_rows: list[dict[str, Any]]) -> None:
         row.setdefault("b0_emergency_travel_time", "")
         row.setdefault("travel_time_delta_sec", "")
         row.setdefault("travel_time_improvement_pct", "")
-        if row["mode"] == "B0" and row.get("emergency_travel_time") not in ("", None):
+        if row.get("mode") == "B0" and row.get("emergency_travel_time") not in ("", None):
             b0_by_key[(row["route_id"], row["repeat_id"])] = float(row["emergency_travel_time"])
     for row in result_rows:
-        if row["mode"] in {"B00", "B0"}:
+        if row.get("mode") in {"B00", "B0"}:
             continue
         base = b0_by_key.get((row["route_id"], row["repeat_id"]))
         current = row.get("emergency_travel_time")
@@ -1289,6 +1289,13 @@ def add_compare_fields(result_rows: list[dict[str, Any]]) -> None:
         row["b0_emergency_travel_time"] = base
         row["travel_time_delta_sec"] = sec(current_value - base)
         row["travel_time_improvement_pct"] = round(((base - current_value) / base) * 100.0, 6) if base else ""
+
+
+def fill_missing_result_fields(result_rows: list[dict[str, Any]]) -> None:
+    for row in result_rows:
+        for field in EXPERIMENT_RESULT_FIELDS:
+            row.setdefault(field, "")
+        row.setdefault("background_teleport_ratio", "")
 
 
 def main() -> int:
@@ -1413,6 +1420,7 @@ def main() -> int:
                     event_rows.extend(events)
         result_rows.sort(key=lambda r: (r.get("repeat_id", ""), r.get("route_id", ""), r.get("mode", ""), r.get("parameter_id", "")))
         event_rows.sort(key=lambda r: (r.get("repeat_id", ""), r.get("route_id", ""), r.get("mode", ""), r.get("parameter_id", ""), float(r.get("time") or 0)))
+        fill_missing_result_fields(result_rows)
         apply_b00_delay_fields(result_rows)
         add_compare_fields(result_rows)
         compare = compare_rows(result_rows)

@@ -4,9 +4,10 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${PROJECT_ROOT}/outputs/logs"
+DEBUG_DIR="${PROJECT_ROOT}/outputs/debug"
 LOG_FILE="${LOG_DIR}/env_check.log"
 
-mkdir -p "${LOG_DIR}"
+mkdir -p "${LOG_DIR}" "${DEBUG_DIR}"
 cd "${PROJECT_ROOT}" || exit 1
 
 if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python" ]]; then
