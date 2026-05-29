@@ -1,0 +1,2 @@
+parameter_id,D_det,alpha,t_lead,G_ext,tau,fallback_v_e_mps,rho
+b2_default_candidate,300,1.2,30,30,1,8.33,restore_original_program

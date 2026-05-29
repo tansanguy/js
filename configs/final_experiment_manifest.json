@@ -1,0 +1,20 @@
+{
+  "schema": "final_experiment_manifest.v1",
+  "active_net": "data_prepared/net/jungbu_ellipse_passenger.net.xml",
+  "background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
+  "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
+  "route_set": "b0_valid_18",
+  "excluded_routes": [
+    "ER_ACC_013"
+  ],
+  "tls_audit": "data_prepared/signals/tls_phase_audit_spine_v2.csv",
+  "b1_config": "configs/b1_priority_signal_config.json",
+  "b2_parameter_sets": "configs/b2_parameter_sets.csv",
+  "b0_summary": "results/metrics/b0_baseline_19route_smoke_summary.csv",
+  "teleport_policy": {
+    "emergency": "FAIL",
+    "background": "WARNING"
+  },
+  "final_background_required_substring": "scale_0p15",
+  "notes": "Step16 final experiment manifest. Step9-15 scripts are setup/diagnostic references; use 02_simulation/run_b0_b1_b2_experiment.py for final B0/B1/B2 runs."
+}
