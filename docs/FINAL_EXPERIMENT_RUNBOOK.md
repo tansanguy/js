@@ -57,7 +57,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --modes B00 B0 B2 \
   --repeats 1 \
   --workers 1 \
-  --timeout-steps 7200
+  --timeout-steps 7200 \
+  --recovery-buffer-sec 300
 ```
 
 출력:
@@ -86,21 +87,32 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 `configs/b2_parameter_sets.csv`를 수정한다.
 
 ```csv
-parameter_id,D_det,alpha,G_ext
+parameter_id,D_det,alpha,G_ext,T_change_sec
 ```
 
 - `D_det`: 응급차가 이 거리 안에 들어오면 제어 후보가 되는 거리(m).
 - `alpha`: 응급차 통과 후 초록 유지 시간(s). 정수 초만 허용한다.
 - `G_ext`: 초록 연장 상한(s). 정수 초만 허용한다.
+- `T_change_sec`: green이 아닐 때 green 전환 요청 전 대기시간(s). 정수 초만 허용한다.
 
 ## 핵심 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 통행시간을 뺀 값.
-- `N_delay_sec`: 전체 네트워크 비메인 도로 일반차 지연시간 평균. 완료된 차량-edge 기록만 primary metric에 사용하고, 미완료 active 기록 수와 비율은 별도 컬럼에 저장한다.
+- `N_delay_sec`: 전체 네트워크 비메인 도로 일반차 지연시간 평균. 관측 종료 시점에 edge 위에 남은 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 저장한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 
 모든 시간 단위는 초(s), 소수 둘째자리다.
+
+## 관측 종료 시점
+
+`timeout_steps=7200`은 최대 2시간 관측창이다. B0/B2의 primary metric은 모든 일반차가 도착할 때까지 기다리지 않고, 다음 조건을 만족하면 종료한다.
+
+- emergency가 도착한다.
+- emergency route의 모든 TLS 대기열이 출발 전 기준 이하로 회복된다.
+- 회복 후 `recovery_buffer_sec`만큼 추가 관측한다. 기본값은 300초다.
+
+실제 종료 시점은 `analysis_end_time_sec`, 종료 사유는 `analysis_stop_reason`에 저장한다. 일반차가 남아 있으면 `PASS_WITH_REMAINING_BACKGROUND`이며, 종료 시점 정체 지속 여부는 `congestion_valid_at_analysis_end`로 확인한다.
 
 ## 성공 기준
 
@@ -114,4 +126,4 @@ parameter_id,D_det,alpha,G_ext
 - `emergency_lane_connection_warning_count=0`
 - 한 CSV 안에 `B00`, `B0`, `B2`가 함께 존재
 
-background/general teleport는 `WARNING`, emergency teleport는 `FAIL`이다. `timeout_steps=7200`은 2시간 관측창이며, 일반차가 남아 있는 것은 실패가 아니므로 `PASS_WITH_REMAINING_BACKGROUND`로 기록한다. emergency가 도착하지 못하면 `FAIL`이다.
+background/general teleport는 `WARNING`, emergency teleport는 `FAIL`이다. 일반차가 남아 있는 것은 실패가 아니므로 `PASS_WITH_REMAINING_BACKGROUND`로 기록한다. emergency가 도착하지 못하면 `FAIL`이다.

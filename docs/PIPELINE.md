@@ -66,7 +66,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --modes B00 B0 B2 \
   --repeats 1 \
   --workers 1 \
-  --timeout-steps 7200
+  --timeout-steps 7200 \
+  --recovery-buffer-sec 300
 ```
 
 ## 4. 파이프라인 2: `final_effect_validation_sim`
@@ -101,8 +102,11 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `emergency_arrived,emergency_teleport,background_vehicle_count,final_status,warning_reason,failure_reason,run_dir`
 - `safety_violation_count,emergency_stop_warning_count,emergency_lane_connection_warning_count,signal_events_csv`
 - `timeout_reached,remaining_vehicle_count,background_remaining_count,all_vehicles_arrived`
-- `N_delay_completed_vehicle_edge_count,N_delay_excluded_active_vehicle_edge_count,N_delay_excluded_ratio`
-- `network_avg_speed_kmh,congestion_valid,congestion_reason`
+- `N_delay_completed_vehicle_edge_count,N_delay_censored_vehicle_edge_count,N_delay_censored_ratio`
+- `N_delay_excluded_active_vehicle_edge_count,N_delay_excluded_ratio`
+- `network_avg_speed_kmh,network_avg_speed_at_analysis_end_kmh,network_running_at_analysis_end`
+- `congestion_valid,congestion_valid_at_analysis_end,congestion_reason_at_analysis_end`
+- `analysis_end_time_sec,analysis_stop_reason,recovery_buffer_sec`
 - `emergency_speed_factor,emergency_speed_cap_kmh,emergency_bluelight_enabled`
 - `T_recovery_tls_count,T_recovery_max_tls_id,T_recovery_unrecovered_count`
 - `queue_recovery_csv`
@@ -111,9 +115,11 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 지표 정의:
 
 - `A_delay_sec`: `emergency_travel_time_sec - b00_emergency_travel_time_sec`.
-- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서, 완료된 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. 관측 종료 시점에 아직 edge를 빠져나가지 못한 기록은 제외하고 제외량을 별도 컬럼에 저장한다.
+- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서, 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. `analysis_end_time_sec`에 아직 edge를 빠져나가지 못한 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 표시한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
+
+`timeout_steps=7200`은 최대 관측창이다. B0/B2의 primary metric 관측은 emergency가 도착하고, route TLS 대기열이 회복되고, `recovery_buffer_sec`가 지난 시점에서 종료한다. 이 종료 시점은 `analysis_end_time_sec`에 저장한다.
 
 `B00`의 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`는 `0.00`이다.
 
@@ -123,7 +129,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - background/general teleport는 `WARNING`.
 - route error는 `FAIL`.
 - B2 안전 규칙 위반, emergency stop warning, emergency lane connection warning은 `FAIL`.
-- `timeout_steps=7200`은 2시간 관측창이다. 일반차가 남아 있어도 실패가 아니며 `PASS_WITH_REMAINING_BACKGROUND`로 남긴다.
+- `timeout_steps=7200`은 최대 2시간 관측창이다. 일반차가 남아 있어도 실패가 아니며 `PASS_WITH_REMAINING_BACKGROUND`로 남긴다.
 - emergency가 도착하지 못하면 `FAIL`.
 - `network_avg_speed_kmh`가 10~25km/h이면 정체 상황으로 인정한다.
+- `congestion_valid_at_analysis_end=True`이면 primary metric 종료 시점에도 잔류 정체 또는 queue가 남아 있는 상태로 본다.
 - 모든 `_sec` 값은 초(s), 소수 둘째자리 문자열로 저장한다.
