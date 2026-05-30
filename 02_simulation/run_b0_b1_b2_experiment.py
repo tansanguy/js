@@ -35,14 +35,33 @@ DEFAULT_CORRIDOR_EDGES = PROJECT_ROOT / "data_prepared/routes/corridor_spine_edg
 
 LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
+
+def configure_runtime_environment() -> None:
+    sumo_bin = shutil.which("sumo")
+    if sumo_bin:
+        candidate = Path(sumo_bin).resolve().parent.parent
+        sumo_home = candidate / "share/sumo"
+        if (sumo_home / "data/xsd").is_dir():
+            os.environ["SUMO_HOME"] = str(sumo_home)
+    if "PROJ_LIB" not in os.environ or "PROJ_DATA" not in os.environ:
+        try:
+            import pyproj  # type: ignore
+
+            proj_dir = Path(pyproj.datadir.get_data_dir())
+            if (proj_dir / "proj.db").is_file():
+                os.environ["PROJ_LIB"] = str(proj_dir)
+                os.environ["PROJ_DATA"] = str(proj_dir)
+        except Exception:
+            pass
+
 DEFAULT_TIMEOUT_STEPS = 7200
-DEFAULT_TIMEOUT_SEC = 1200
+DEFAULT_TIMEOUT_SEC = 7200
 FREE_FLOW_SPEED_CAP_KMH = 50.0
 FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
 EMERGENCY_SPEED_FACTOR = 1.0
 EMERGENCY_SPEED_CAP_KMH = 50.0
 EMERGENCY_BLUELIGHT_ENABLED = False
-T_CHANGE_SEC = 30
+DEFAULT_T_CHANGE_SEC = 10
 CLEARANCE_BEFORE_GREEN_SEC = 3
 SCORE_WEIGHT_A = 3.0
 SCORE_WEIGHT_N = 1.0
@@ -52,6 +71,35 @@ SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "438360331#2"
 CONTROL_ACTIONS = {"extend_green", "alpha_hold_extend", "switch_to_green_after_t_change"}
+SCORE_COMPONENT_FIELDS = [
+    "generated_at",
+    "run_id",
+    "pipeline",
+    "mode",
+    "parameter_id",
+    "repeat_id",
+    "route_id",
+    "D_det",
+    "alpha",
+    "G_ext",
+    "T_change_sec",
+    "A_delay_sec",
+    "N_delay_sec",
+    "T_recovery_sec",
+    "score_sec",
+    "final_status",
+    "warning_reason",
+    "failure_reason",
+    "emergency_travel_time_sec",
+    "b00_emergency_travel_time_sec",
+    "background_teleported",
+    "background_remaining_count",
+    "network_avg_speed_kmh",
+    "congestion_valid",
+    "intervention_count",
+    "t_change_switch_count",
+    "run_dir",
+]
 EVENT_FIELDS = [
     "time",
     "output_prefix",
@@ -69,6 +117,7 @@ EVENT_FIELDS = [
     "alpha",
     "G_ext",
     "T_change_sec",
+    "effective_T_change_sec",
     "effective_alpha_sec",
     "effective_G_ext_sec",
     "current_road_id",
@@ -206,6 +255,7 @@ def load_step14_module() -> Any:
     return module
 
 
+configure_runtime_environment()
 S14 = load_step14_module()
 
 
@@ -290,14 +340,22 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
     if not args.manifest.is_file():
         raise ExperimentError(f"missing_manifest: {args.manifest}")
     manifest = load_json(args.manifest)
-    args.net = project_path(manifest.get("active_net"), args.net)
-    args.background_route = project_path(manifest.get("background_route"), args.background_route)
-    args.emergency_routes = project_path(manifest.get("emergency_routes"), args.emergency_routes)
-    args.tls_audit = project_path(manifest.get("tls_audit"), args.tls_audit)
-    args.priority_terminals = project_path(manifest.get("priority_terminals"), args.priority_terminals)
-    args.corridor_edges = project_path(manifest.get("corridor_edges"), args.corridor_edges)
-    args.b2_params = project_path(manifest.get("b2_parameter_sets"), args.b2_params)
-    args.b0_summary = project_path(manifest.get("b0_summary"), args.b0_summary)
+    if args.net == DEFAULT_NET:
+        args.net = project_path(manifest.get("active_net"), args.net)
+    if args.background_route == DEFAULT_BACKGROUND_ROUTE:
+        args.background_route = project_path(manifest.get("background_route"), args.background_route)
+    if args.emergency_routes == DEFAULT_EMERGENCY_ROUTES:
+        args.emergency_routes = project_path(manifest.get("emergency_routes"), args.emergency_routes)
+    if args.tls_audit == DEFAULT_TLS_AUDIT:
+        args.tls_audit = project_path(manifest.get("tls_audit"), args.tls_audit)
+    if args.priority_terminals == DEFAULT_PRIORITY_TERMINALS:
+        args.priority_terminals = project_path(manifest.get("priority_terminals"), args.priority_terminals)
+    if args.corridor_edges == DEFAULT_CORRIDOR_EDGES:
+        args.corridor_edges = project_path(manifest.get("corridor_edges"), args.corridor_edges)
+    if args.b2_params == DEFAULT_B2_PARAMS:
+        args.b2_params = project_path(manifest.get("b2_parameter_sets"), args.b2_params)
+    if args.b0_summary == DEFAULT_B0_SUMMARY:
+        args.b0_summary = project_path(manifest.get("b0_summary"), args.b0_summary)
     if not args.routes and args.route_set is None and args.pipeline != "parameter_input_sim" and manifest.get("route_set"):
         args.route_set = str(manifest["route_set"])
     return manifest
@@ -307,6 +365,7 @@ def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None) 
     if pipeline:
         return {
             "results_csv": PROJECT_ROOT / f"results/metrics/{pipeline}.csv",
+            "score_components_csv": PROJECT_ROOT / f"results/metrics/{pipeline}_score_components.csv",
             "summary_json": None,
         }
     if legacy:
@@ -321,6 +380,7 @@ def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None) 
         raise ExperimentError("output_prefix cannot be blank")
     return {
         "results_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_results.csv",
+        "score_components_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_score_components.csv",
         "summary_json": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_summary.json",
     }
 
@@ -435,12 +495,16 @@ def load_b2_parameter_sets(path: Path) -> list[dict[str, Any]]:
         parameter_id = row.get("parameter_id", "").strip()
         if not parameter_id:
             raise ExperimentError("b2_parameter_sets contains blank parameter_id")
+        t_change_raw = row.get("T_change_sec", row.get("T_change", ""))
+        if t_change_raw in {"", None}:
+            raise ExperimentError("missing_b2_parameter_columns:T_change_sec")
         result.append(
             {
                 "parameter_id": parameter_id,
                 "D_det": float(row["D_det"]),
                 "alpha": float(row["alpha"]),
                 "G_ext": float(row["G_ext"]),
+                "T_change_sec": float(t_change_raw),
                 "metric_sample_interval": int(float(row.get("metric_sample_interval") or 10)),
                 "phase_control_policy": row.get("phase_control_policy") or "distance_trigger_no_eta",
                 "yellow_clearance_policy": row.get("yellow_clearance_policy") or "wait_clearance_then_switch",
@@ -834,10 +898,11 @@ def common_row_base(task: dict[str, Any], run_dir: Path, vehicle_id: str, params
         "D_det": params.get("D_det", ""),
         "alpha": params.get("alpha", ""),
         "G_ext": params.get("G_ext", ""),
-        "T_change_sec": sec(T_CHANGE_SEC) if task["mode"] == "B2" else "",
+        "T_change_sec": sec(params.get("T_change_sec", "")) if task["mode"] == "B2" else "",
         "w1": sec(SCORE_WEIGHT_A),
         "w2": sec(SCORE_WEIGHT_N),
         "w3": sec(SCORE_WEIGHT_RECOVERY),
+        "effective_T_change_sec": sec(params.get("_effective_T_change_sec", "")),
         "effective_alpha_sec": sec(params.get("_effective_alpha_sec", "")),
         "effective_G_ext_sec": sec(params.get("_effective_G_ext_sec", "")),
     }
@@ -998,6 +1063,7 @@ def run_traci_experiment(
     d_det = float(params.get("D_det", 0.0) or 0.0)
     alpha = int(params.get("_effective_alpha_sec", 0) or 0)
     effective_g_ext = max(1, int(params.get("_effective_G_ext_sec", 0) or 0))
+    effective_t_change = max(0, int(params.get("_effective_T_change_sec", DEFAULT_T_CHANGE_SEC) or 0))
     metric_sample_interval = max(1, int(float(params.get("metric_sample_interval") or 10)))
     edge_starts = S14.route_edge_starts(Path(task["net"]), route_edges)
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
@@ -1242,7 +1308,7 @@ def run_traci_experiment(
                         pending_t_change.pop(tls_id, None)
                         continue
                     request_time = float(pending["request_time"])
-                    if sim_time < request_time + T_CHANGE_SEC:
+                    if sim_time < request_time + effective_t_change:
                         if not pending.get("wait_logged"):
                             pending["wait_logged"] = True
                             events.append(
@@ -1252,7 +1318,7 @@ def run_traci_experiment(
                                     "phase_before": current_phase,
                                     "phase_after": current_phase,
                                     "action": "wait_t_change",
-                                    "reason": f"waiting_until_t_change_{sec(T_CHANGE_SEC)}s",
+                                    "reason": f"waiting_until_t_change_{sec(effective_t_change)}s",
                                     "restore_action": "",
                                 }
                             )
@@ -1469,12 +1535,13 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
     base = common_row_base(task, run_dir, vehicle_id, params, 0)
     effective_alpha, alpha_error = integer_seconds(params.get("alpha"), "alpha")
     effective_g_ext, g_ext_error = integer_seconds(params.get("G_ext"), "G_ext")
-    if alpha_error or g_ext_error:
+    effective_t_change, t_change_error = integer_seconds(params.get("T_change_sec"), "T_change_sec")
+    if alpha_error or g_ext_error or t_change_error:
         base.update(
             {
                 "sumo_exit_code": "",
                 "final_status": "FAIL",
-                "failure_reason": ";".join(error for error in [alpha_error, g_ext_error] if error),
+                "failure_reason": ";".join(error for error in [alpha_error, g_ext_error, t_change_error] if error),
                 "warning_reason": "",
                 "emergency_departed": False,
                 "emergency_arrived": False,
@@ -1487,6 +1554,7 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
         return base, []
     params["_effective_alpha_sec"] = effective_alpha
     params["_effective_G_ext_sec"] = effective_g_ext
+    params["_effective_T_change_sec"] = effective_t_change
     base = common_row_base(task, run_dir, vehicle_id, params, 0)
     if validation_failures:
         base.update(
@@ -1731,6 +1799,7 @@ def summarize_run(
                 "repeat_id": task["repeat_id"],
             }
         )
+        event.setdefault("T_change_sec", sec(params.get("_effective_T_change_sec", params.get("T_change_sec", ""))))
     return row, events
 
 
@@ -1845,6 +1914,13 @@ def fill_missing_result_fields(result_rows: list[dict[str, Any]]) -> None:
         for field in EXPERIMENT_RESULT_FIELDS:
             row.setdefault(field, "")
         row.setdefault("background_teleport_ratio", "")
+
+
+def score_component_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for row in result_rows:
+        rows.append({field: row.get(field, "") for field in SCORE_COMPONENT_FIELDS})
+    return rows
 
 
 def main() -> int:
@@ -2017,11 +2093,13 @@ def main() -> int:
             "final_status": "FAIL" if status_counts.get("FAIL") else "WARNING" if status_counts.get("WARNING") else "PASS",
             "outputs": [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(LOG_PATH)]
             if not args.legacy_output_names and paths.get("summary_json") is not None
-            else [rel(paths["results_csv"]), rel(LOG_PATH)]
+            else [rel(paths["results_csv"]), rel(paths["score_components_csv"]), rel(LOG_PATH)]
             if not args.legacy_output_names
             else [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(paths["events_csv"]), rel(paths["compare_csv"]), rel(LOG_PATH)],
         }
         write_csv(paths["results_csv"], result_rows, EXPERIMENT_RESULT_FIELDS)
+        if not args.legacy_output_names:
+            write_csv(paths["score_components_csv"], score_component_rows(result_rows), SCORE_COMPONENT_FIELDS)
         if args.legacy_output_names:
             write_csv(paths["events_csv"], event_rows)
             write_csv(paths["compare_csv"], compare)
@@ -2034,6 +2112,8 @@ def main() -> int:
                 f"results_csv: {rel(paths['results_csv'])}",
             ]
         )
+        if not args.legacy_output_names:
+            lines.append(f"score_components_csv: {rel(paths['score_components_csv'])}")
         if paths.get("summary_json") is not None:
             lines.append(f"summary_json: {rel(paths['summary_json'])}")
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)

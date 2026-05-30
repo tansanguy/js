@@ -1,0 +1,11 @@
+parameter_id,D_det,alpha,G_ext,T_change_sec
+tchange_d500_a5_g60_t0,500,5,60,0
+tchange_d500_a5_g60_t2,500,5,60,2
+tchange_d500_a5_g60_t5,500,5,60,5
+tchange_d500_a5_g60_t8,500,5,60,8
+tchange_d500_a5_g60_t10,500,5,60,10
+tchange_d500_a5_g60_t12,500,5,60,12
+tchange_d500_a5_g60_t15,500,5,60,15
+tchange_d500_a5_g60_t20,500,5,60,20
+tchange_d500_a5_g60_t25,500,5,60,25
+tchange_d500_a5_g60_t30,500,5,60,30

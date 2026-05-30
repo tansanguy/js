@@ -34,17 +34,16 @@ bash 00_setup/verify_env.sh
 B2는 안전 규칙을 우선한다.
 
 - `D_det` 안에서 이미 green이면 green 시간을 연장한다.
-- green이 아니면 `T_change_sec=30.00` 뒤 응급차 방향 green으로 전환한다.
+- green이 아니면 CSV의 `T_change_sec` 뒤 응급차 방향 green 전환을 요청한다.
 - 노란불과 clearance phase를 건너뛰지 않는다.
 - 직접 red→green 순간 점프는 금지하고, 전환 전 yellow/clearance 정리시간을 둔다.
 - 보행자 최소 보행시간 보호를 위해 현재 phase를 단축하지 않는다.
-- `alpha`, `G_ext`는 정수 초만 허용한다.
+- `alpha`, `G_ext`, `T_change_sec`는 정수 초만 허용한다.
 
-이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. `D_det=300,500,700,900`, `alpha=5`, `G_ext=60` 후보를 실행하며 Bayesian Optimization은 추후 구현한다.
+이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 기본 선택값은 `D_det=500, alpha=5, G_ext=60, T_change_sec=10`이며, 후보 탐색 기록은 `configs/b2_stage1_parameter_sets.csv`와 `configs/b2_tchange_sweep_parameter_sets.csv`에 남긴다. Bayesian Optimization 전체 구현은 추후 범위다.
 
 고정값:
 
-- `T_change_sec=30.00`
 - `w1=3.00`, `w2=1.00`, `w3=1.00`
 - `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`
 - net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.

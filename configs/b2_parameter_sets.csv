@@ -1,5 +1,2 @@
-parameter_id,D_det,alpha,G_ext
-b2_d300_a5_g60,300,5.00,60
-b2_d500_a5_g60,500,5.00,60
-b2_d700_a5_g60,700,5.00,60
-b2_d900_a5_g60,900,5.00,60
+parameter_id,D_det,alpha,G_ext,T_change_sec
+selected_d500_a5_g60_t10,500,5,60,10

@@ -14,12 +14,12 @@
 `configs/b2_parameter_sets.csv` 필수 컬럼:
 
 ```csv
-parameter_id,D_det,alpha,G_ext
+parameter_id,D_det,alpha,G_ext,T_change_sec
 ```
 
-고정 알고리즘 파라미터:
+고정/입력 알고리즘 파라미터:
 
-- `T_change_sec=30.00`: `D_det` 안에서 red/yellow/clearance이면 30초 뒤 응급차 방향 green으로 전환한다.
+- `T_change_sec`: `D_det` 안에서 red/yellow/clearance이면 후보 시간 뒤 응급차 방향 green 전환을 요청한다. CSV 입력값이며 정수 초만 허용한다.
 - `w1=3.00`, `w2=1.00`, `w3=1.00`: `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`.
 - net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.
 
@@ -42,13 +42,13 @@ bash 00_setup/verify_env.sh
 B2는 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는다.
 
 - `D_det` 안에서 이미 green이면 green을 연장한다.
-- `D_det` 안에서 green이 아니면 `T_change_sec=30.00` 뒤 응급차 방향 green으로 전환한다.
+- `D_det` 안에서 green이 아니면 CSV의 `T_change_sec` 뒤 응급차 방향 green 전환을 요청한다.
 - 노란불과 교차로 clearance phase를 생략하지 않는다.
 - 직접 red→green 순간 점프는 금지하고, 전환 전 yellow/clearance 정리시간을 둔다.
-- `alpha`, `G_ext`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
+- `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-현재 `configs/b2_parameter_sets.csv`에는 `D_det=300,500,700,900`, `alpha=5`, `G_ext=60` 후보를 둔다. Bayesian Optimization은 추후 구현 범위다.
+현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=500, alpha=5, G_ext=60, T_change_sec=10`을 둔다. 후보 탐색 기록은 `configs/b2_stage1_parameter_sets.csv`와 `configs/b2_tchange_sweep_parameter_sets.csv`에 남긴다. Bayesian Optimization 전체 구현은 추후 범위다.
 
 ## 3. 파이프라인 1: `parameter_input_sim`
 
