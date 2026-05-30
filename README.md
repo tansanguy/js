@@ -6,14 +6,14 @@
 
 - 응급차 출발지는 중부소방서 인근 edge로 고정한다.
 - 최종 실험 모드는 `B00`, `B0`, `B2` 세 가지다.
-- `B00`은 배경 차량 없는 응급차 자유류 기준 run이다.
-- `B0`은 첨두시간 배경 수요에서 신호 조작이 없는 baseline이다.
-- `B2`는 B0과 같은 배경 수요에서 corridor priority 신호 제어를 적용한다.
+- `B00`은 배경 차량 없이 신호등을 비활성화한 응급차 자유류 기준 run이다.
+- `B0`은 600초 warm-up 후에도 지속 투입되는 첨두시간 배경 수요에서 신호 조작이 없는 baseline이다.
+- `B2`는 B0과 같은 지속 배경 수요에서 corridor priority 신호 제어를 적용한다.
 - Bayesian Optimization은 이 저장소 안에서 수행하지 않는다. 외부 최적화기는 `configs/b2_parameter_sets.csv`를 생성하고, 이 저장소는 실행과 지표 저장을 담당한다.
 
 ## 핵심 파이프라인
 
-- `parameter_input_sim`: 소방서에서 서울역까지의 단일 route로 파라미터 입력용 지표를 만든다.
+- `parameter_input_sim`: 소방서에서 서울역까지의 고정 직선 route로 파라미터 입력용 지표를 만든다.
 - `final_effect_validation_sim`: `b0_valid_18` route set에서 최종 파라미터 효과를 검증한다.
 
 실행 진입점은 하나다.
@@ -36,7 +36,7 @@ bash 00_setup/verify_env.sh
 ## 주요 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 자유류 통행시간을 뺀 값.
-- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로의 완료된 차량-edge 지연시간 평균.
+- `N_delay_sec`: 응급차 출동 이후 관측창에서 main/corridor edge와 internal edge를 제외한 비메인 도로의 차량-edge 지연시간 평균.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
 - `score_sec`: `3*A_delay_sec + N_delay_sec + T_recovery_sec`.
 
@@ -53,9 +53,12 @@ bash 00_setup/verify_env.sh
 ## 기본 입력
 
 - net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
-- background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
+- background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml`
 - emergency routes: `data_prepared/routes/emergency_routes_spine_v2.csv`
+- Seoul Station fixed route: `data_prepared/manual/seoul_station_manual_route.json`
 - corridor edges: `data_prepared/routes/corridor_spine_edges.csv`
 - B2 parameters: `configs/b2_parameter_sets.csv`
+
+기본 결과는 `results/metrics/{output_prefix}/{run_id}/`에 시행별로 저장하고, SUMO 원본 로그는 `runs/final/{output_prefix}/{run_id}/...`에 저장한다.
 
 자세한 실행 절차는 `docs/PIPELINE.md`와 `docs/FINAL_EXPERIMENT_RUNBOOK.md`를 따른다.

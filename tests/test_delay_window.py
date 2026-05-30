@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import importlib.util
+import math
+import unittest
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNNER_PATH = PROJECT_ROOT / "02_simulation/run_b0_b1_b2_experiment.py"
+
+
+spec = importlib.util.spec_from_file_location("run_b0_b1_b2_experiment", RUNNER_PATH)
+assert spec and spec.loader
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+
+
+class DelayWindowTest(unittest.TestCase):
+    def test_edge_delay_is_clipped_to_emergency_depart_window(self) -> None:
+        record = runner.windowed_edge_delay_record(
+            edge_id="edge-a",
+            entered_at=500.0,
+            left_at=650.0,
+            free_flow_sec=90.0,
+            window_start=600.0,
+        )
+
+        assert record is not None
+        self.assertEqual(record["edge_id"], "edge-a")
+        self.assertAlmostEqual(record["actual_sec"], 50.0)
+        self.assertAlmostEqual(record["free_flow_sec"], 30.0)
+
+    def test_edge_delay_before_emergency_depart_is_excluded(self) -> None:
+        record = runner.windowed_edge_delay_record(
+            edge_id="edge-a",
+            entered_at=100.0,
+            left_at=590.0,
+            free_flow_sec=90.0,
+            window_start=600.0,
+        )
+
+        self.assertIsNone(record)
+
+    def test_n_delay_uses_windowed_records(self) -> None:
+        records = [
+            runner.windowed_edge_delay_record("edge-a", 500.0, 650.0, 90.0, 600.0),
+            runner.windowed_edge_delay_record("edge-b", 620.0, 680.0, 40.0, 600.0),
+        ]
+        summary = runner.summarize_general_non_main_delay([record for record in records if record is not None])
+
+        expected_delay = ((50.0 - 30.0) + (60.0 - 40.0)) / 2.0
+        self.assertTrue(math.isclose(summary["N_delay_sec"], expected_delay))
+        self.assertEqual(summary["general_non_main_vehicle_edge_count"], 2)
+
+
+class OutputPathTest(unittest.TestCase):
+    def test_nonlegacy_outputs_are_scoped_by_run_id(self) -> None:
+        paths = runner.output_paths("sample_prefix", legacy=False, run_id="run_001")
+
+        self.assertEqual(
+            paths["results_csv"],
+            PROJECT_ROOT / "results/metrics/sample_prefix/run_001/experiment_results.csv",
+        )
+        self.assertEqual(
+            paths["score_components_csv"],
+            PROJECT_ROOT / "results/metrics/sample_prefix/run_001/score_components.csv",
+        )
+        self.assertEqual(
+            paths["summary_json"],
+            PROJECT_ROOT / "results/metrics/sample_prefix/run_001/experiment_summary.json",
+        )
+        self.assertEqual(paths["latest_json"], PROJECT_ROOT / "results/metrics/sample_prefix/latest.json")
+
+
+class FixedSeoulStationRouteTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.sumo_net = runner.S07.read_sumo_net(runner.DEFAULT_NET)
+        cls.route = runner.synthetic_seoul_station_route(runner.DEFAULT_NET)
+
+    def test_fixed_route_policy_and_target(self) -> None:
+        self.assertEqual(self.route["route_id"], runner.SEOUL_STATION_ROUTE_ID)
+        self.assertEqual(self.route["selected_policy"], "straight_seoul_station_fixed")
+        self.assertEqual(self.route["target_edge_id"], "619147738#0")
+
+    def test_fixed_route_edges_are_connected_and_unique(self) -> None:
+        edge_ids = self.route["route_edges"].split()
+
+        self.assertEqual(edge_ids[0], runner.SEOUL_STATION_START_EDGE)
+        self.assertEqual(edge_ids[-1], runner.SEOUL_STATION_TARGET_EDGE)
+        self.assertEqual(len(edge_ids), len(set(edge_ids)))
+        for from_edge_id, to_edge_id in zip(edge_ids, edge_ids[1:], strict=False):
+            from_edge = self.sumo_net.getEdge(from_edge_id)
+            to_edge = self.sumo_net.getEdge(to_edge_id)
+            self.assertIn(to_edge, from_edge.getOutgoing(), f"{from_edge_id}->{to_edge_id}")
+
+
+if __name__ == "__main__":
+    unittest.main()

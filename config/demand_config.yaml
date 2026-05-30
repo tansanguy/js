@@ -8,6 +8,11 @@ traffic_count_source:
   path: data_raw/traffic_counts/
   description: TODO
 
-target_duration_sec: 600
+target_duration_sec: 3600
+sustained_pattern_period_sec: 600
+warmup_sec: 600
+warmup_scale: 0.15
+sustain_scale: 0.05
+sampling_seed: sustained_calibration_seed_002
 seed_list:
   - 1

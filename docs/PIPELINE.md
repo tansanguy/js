@@ -6,8 +6,9 @@
 
 - manifest: `configs/final_experiment_manifest.json`
 - net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
-- background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml`
+- background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml`
 - route set: `results/metrics/b0_baseline_19route_smoke_summary.csv`에서 검증된 `b0_valid_18`
+- fixed Seoul Station route: `data_prepared/manual/seoul_station_manual_route.json`
 - 제외 route: `ER_ACC_013`
 - B2 parameter CSV: `configs/b2_parameter_sets.csv`
 
@@ -21,7 +22,8 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 - `T_change_sec`: `D_det` 안에서 red/yellow/clearance이면 후보 시간 뒤 응급차 방향 green 전환을 요청한다. CSV 입력값이며 정수 초만 허용한다.
 - `w1=3.00`, `w2=1.00`, `w3=1.00`: `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`.
-- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.
+- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.40`, `maxSpeed=70km/h`, `has.bluelight.device=false`로 둔다. 단 `B00`은 자유류 기준이므로 SUMO `tls.all-off=true`로 신호등을 비활성화한다.
+- 배경 수요는 600초 TOPIS 패턴을 3600초까지 반복하되, 0~600초 warm-up은 0.15x, 이후 지속 수요는 0.05x(`sustained_calibration_seed_002`)를 사용한다. 기본 응급차 출동 시점은 600초다.
 
 실행 전 venv 준비:
 
@@ -33,9 +35,9 @@ bash 00_setup/verify_env.sh
 
 ## 2. 실험 모드
 
-- `B00`: 배경 차량 없이 응급차 1대만 주행한다. 자유류 응급차 통행시간 기준값을 만든다.
-- `B0`: 첨두시간 배경 수요와 응급차 1대를 함께 실행한다. 신호 조작은 없다.
-- `B2`: B0과 같은 배경 수요와 응급차를 사용하고 corridor priority 신호 제어를 적용한다.
+- `B00`: 배경 차량 없이 신호등을 비활성화하고 응급차 1대만 주행한다. 신호 대기 없는 자유류 응급차 통행시간 기준값을 만든다.
+- `B0`: 지속 첨두시간 배경 수요와 응급차 1대를 함께 실행한다. 신호 조작은 없다.
+- `B2`: B0과 같은 지속 배경 수요와 응급차를 사용하고 corridor priority 신호 제어를 적용한다.
 
 ## 2.1 B2 안전 규칙
 
@@ -48,15 +50,16 @@ B2는 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는�
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=500, alpha=5, G_ext=60, T_change_sec=10`을 둔다. 후보 탐색 기록은 `configs/b2_stage1_parameter_sets.csv`와 `configs/b2_tchange_sweep_parameter_sets.csv`에 남긴다. Bayesian Optimization 전체 구현은 추후 범위다.
+현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization 전체 구현은 추후 범위다.
 
 ## 3. 파이프라인 1: `parameter_input_sim`
 
 목적은 추후 외부 Bayesian Optimization이 사용할 입력 지표를 만드는 것이다. 현재 저장소는 최적화를 직접 수행하지 않고, CSV에 있는 B2 파라미터 조합만 실행한다.
 
-- route: 소방서 edge `-381802881#2`에서 서울역 후보 edge `438360331#2`까지 synthetic route.
+- route: 소방서 edge `-381802881#2`에서 서울역 edge `619147738#0`까지의 고정 직선 route.
 - modes: `B00`, `B0`, `B2`.
-- output: `results/metrics/parameter_input_sim.csv`.
+- output: `results/metrics/parameter_input_sim/{run_id}/experiment_results.csv`.
+- latest pointer: `results/metrics/parameter_input_sim/latest.json`.
 - raw run dir: `runs/final/parameter_input_sim/{run_id}/...`.
 
 ```bash
@@ -66,6 +69,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --modes B00 B0 B2 \
   --repeats 1 \
   --workers 1 \
+  --emergency-depart 600 \
   --timeout-steps 7200 \
   --recovery-buffer-sec 300
 ```
@@ -77,7 +81,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - route set: `b0_valid_18`.
 - excluded route: `ER_ACC_013`.
 - modes: `B00`, `B0`, `B2`.
-- output: `results/metrics/final_effect_validation_sim.csv`.
+- output: `results/metrics/final_effect_validation_sim/{run_id}/experiment_results.csv`.
+- latest pointer: `results/metrics/final_effect_validation_sim/latest.json`.
 - raw run dir: `runs/final/final_effect_validation_sim/{run_id}/...`.
 
 ```bash
@@ -105,6 +110,9 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `N_delay_completed_vehicle_edge_count,N_delay_censored_vehicle_edge_count,N_delay_censored_ratio`
 - `N_delay_excluded_active_vehicle_edge_count,N_delay_excluded_ratio`
 - `network_avg_speed_kmh,network_avg_speed_at_analysis_end_kmh,network_running_at_analysis_end`
+- `network_speed_pre_emergency_kmh,network_speed_during_response_kmh,network_speed_post_recovery_kmh`
+- `active_vehicle_count_pre_emergency,active_vehicle_count_during_response,active_vehicle_count_post_recovery`
+- `rolling_congestion_valid,rolling_congestion_reason,rolling_congestion_min_kmh,rolling_congestion_max_kmh`
 - `congestion_valid,congestion_valid_at_analysis_end,congestion_reason_at_analysis_end`
 - `analysis_end_time_sec,analysis_stop_reason,recovery_buffer_sec`
 - `emergency_speed_factor,emergency_speed_cap_kmh,emergency_bluelight_enabled`
@@ -115,9 +123,10 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 지표 정의:
 
 - `A_delay_sec`: `emergency_travel_time_sec - b00_emergency_travel_time_sec`.
-- `N_delay_sec`: 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서, 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. `analysis_end_time_sec`에 아직 edge를 빠져나가지 못한 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 표시한다.
+- `N_delay_sec`: 응급차 출동 시점부터 `analysis_end_time_sec`까지, 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. 출동 전부터 edge에 있던 차량은 출동 이후 겹친 체류분만 반영한다. `analysis_end_time_sec`에 아직 edge를 빠져나가지 못한 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 표시한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
+- `rolling_congestion_valid`: 300초 rolling 평균 네트워크 속도가 관측창 동안 12~35km/h 안에 있으면 `True`다. 마지막 순간 속도는 보조 진단으로만 본다.
 
 `timeout_steps=7200`은 최대 관측창이다. B0/B2의 primary metric 관측은 emergency가 도착하고, route TLS 대기열이 회복되고, `recovery_buffer_sec`가 지난 시점에서 종료한다. 이 종료 시점은 `analysis_end_time_sec`에 저장한다.
 
@@ -131,6 +140,6 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - B2 안전 규칙 위반, emergency stop warning, emergency lane connection warning은 `FAIL`.
 - `timeout_steps=7200`은 최대 2시간 관측창이다. 일반차가 남아 있어도 실패가 아니며 `PASS_WITH_REMAINING_BACKGROUND`로 남긴다.
 - emergency가 도착하지 못하면 `FAIL`.
-- `network_avg_speed_kmh`가 10~25km/h이면 정체 상황으로 인정한다.
-- `congestion_valid_at_analysis_end=True`이면 primary metric 종료 시점에도 잔류 정체 또는 queue가 남아 있는 상태로 본다.
+- `rolling_congestion_valid=True`이면 실험 관측창 동안 정체가 유지된 것으로 인정한다.
+- `network_avg_speed_at_analysis_end_kmh`와 `congestion_valid_at_analysis_end`는 종료 순간 잔류 상태를 보는 보조 진단이다.
 - 모든 `_sec` 값은 초(s), 소수 둘째자리 문자열로 저장한다.

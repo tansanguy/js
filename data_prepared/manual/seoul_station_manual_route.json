@@ -1,0 +1,17 @@
+{
+  "created_from": "canonical_fixed_straight_route",
+  "generated_at": "2026-05-30T15:52:00+00:00",
+  "route_policy": "straight_seoul_station_fixed",
+  "route_id": "FIRE_TO_SEOUL_STATION",
+  "start_edge_id": "-381802881#2",
+  "target_edge_id": "619147738#0",
+  "manual_edge_ids": [
+    "781985787#0",
+    "218915135#3",
+    "218915135#4",
+    "781983104#0",
+    "781983104#1",
+    "619147738#0"
+  ],
+  "notes": "Canonical fixed Seoul Station route. The runner fails if this route id, start edge, target edge, passenger permissions, repeated-edge check, or SUMO connectivity check fails."
+}

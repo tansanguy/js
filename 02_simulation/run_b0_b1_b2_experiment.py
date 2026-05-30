@@ -21,10 +21,11 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+STEP07_PATH = PROJECT_ROOT / "01_prepare/04_routes/step07_generate_emergency_routes.py"
 STEP14_PATH = PROJECT_ROOT / "01_prepare/08_signal/step14_b1_green_wave_v1_er_acc_002.py"
 
 DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml"
-DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml"
+DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml"
 DEFAULT_EMERGENCY_ROUTES = PROJECT_ROOT / "data_prepared/routes/emergency_routes_spine_v2.csv"
 DEFAULT_TLS_AUDIT = PROJECT_ROOT / "data_prepared/signals/tls_phase_audit_spine_v2.csv"
 DEFAULT_PRIORITY_TERMINALS = PROJECT_ROOT / "data_prepared/signals/priority_terminal_candidates.csv"
@@ -32,6 +33,7 @@ DEFAULT_B2_PARAMS = PROJECT_ROOT / "configs/b2_parameter_sets.csv"
 DEFAULT_MANIFEST = PROJECT_ROOT / "configs/final_experiment_manifest.json"
 DEFAULT_B0_SUMMARY = PROJECT_ROOT / "results/metrics/b0_baseline_19route_smoke_summary.csv"
 DEFAULT_CORRIDOR_EDGES = PROJECT_ROOT / "data_prepared/routes/corridor_spine_edges.csv"
+DEFAULT_SEOUL_STATION_MANUAL_ROUTE = PROJECT_ROOT / "data_prepared/manual/seoul_station_manual_route.json"
 
 LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
@@ -57,20 +59,27 @@ def configure_runtime_environment() -> None:
 DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 7200
 DEFAULT_RECOVERY_BUFFER_SEC = 300
+DEFAULT_EMERGENCY_DEPART_SEC = 600.0
+ROLLING_CONGESTION_WINDOW_SEC = 300
+CONGESTION_MIN_KMH = 12.0
+CONGESTION_MAX_KMH = 35.0
+PREFERRED_CONGESTION_MIN_KMH = 15.0
+PREFERRED_CONGESTION_MAX_KMH = 30.0
 FREE_FLOW_SPEED_CAP_KMH = 50.0
 FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
-EMERGENCY_SPEED_FACTOR = 1.0
-EMERGENCY_SPEED_CAP_KMH = 50.0
+EMERGENCY_SPEED_FACTOR = 1.4
+EMERGENCY_SPEED_CAP_KMH = 70.0
 EMERGENCY_BLUELIGHT_ENABLED = False
 DEFAULT_T_CHANGE_SEC = 10
 CLEARANCE_BEFORE_GREEN_SEC = 3
 SCORE_WEIGHT_A = 3.0
 SCORE_WEIGHT_N = 1.0
 SCORE_WEIGHT_RECOVERY = 1.0
-B00_SPEED_POLICY = "speed50_net_emergency_speedFactor_1p00_no_bluelight"
+B00_SPEED_POLICY = "speed50_net_emergency_speedFactor_1p40_cap70_no_bluelight_tls_all_off"
 SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
-SEOUL_STATION_TARGET_EDGE = "438360331#2"
+SEOUL_STATION_TARGET_EDGE = "619147738#0"
+SEOUL_STATION_POLICY = "straight_seoul_station_fixed"
 CONTROL_ACTIONS = {"extend_green", "alpha_hold_extend", "switch_to_green_after_t_change"}
 SCORE_COMPONENT_FIELDS = [
     "generated_at",
@@ -98,6 +107,17 @@ SCORE_COMPONENT_FIELDS = [
     "network_avg_speed_kmh",
     "network_avg_speed_at_analysis_end_kmh",
     "network_running_at_analysis_end",
+    "network_speed_pre_emergency_kmh",
+    "network_speed_during_response_kmh",
+    "network_speed_post_recovery_kmh",
+    "active_vehicle_count_pre_emergency",
+    "active_vehicle_count_during_response",
+    "active_vehicle_count_post_recovery",
+    "rolling_congestion_valid",
+    "rolling_congestion_reason",
+    "rolling_congestion_window_sec",
+    "rolling_congestion_min_kmh",
+    "rolling_congestion_max_kmh",
     "congestion_valid",
     "congestion_valid_at_analysis_end",
     "intervention_count",
@@ -196,6 +216,17 @@ EXPERIMENT_RESULT_FIELDS = [
     "network_avg_speed_kmh",
     "network_avg_speed_at_analysis_end_kmh",
     "network_running_at_analysis_end",
+    "network_speed_pre_emergency_kmh",
+    "network_speed_during_response_kmh",
+    "network_speed_post_recovery_kmh",
+    "active_vehicle_count_pre_emergency",
+    "active_vehicle_count_during_response",
+    "active_vehicle_count_post_recovery",
+    "rolling_congestion_valid",
+    "rolling_congestion_reason",
+    "rolling_congestion_window_sec",
+    "rolling_congestion_min_kmh",
+    "rolling_congestion_max_kmh",
     "congestion_valid",
     "congestion_valid_at_analysis_end",
     "congestion_reason_at_analysis_end",
@@ -241,6 +272,12 @@ EXPERIMENT_RESULT_FIELDS = [
     "emergency_vehicle_id",
     "sumocfg",
     "sim_end_time",
+    "emergency_last_edge_id",
+    "emergency_last_route_index",
+    "emergency_last_lane_id",
+    "emergency_last_speed_kmh",
+    "emergency_last_waiting_time_sec",
+    "emergency_route_progress_ratio",
 ]
 
 
@@ -269,7 +306,17 @@ def load_step14_module() -> Any:
     return module
 
 
+def load_step07_module() -> Any:
+    spec = importlib.util.spec_from_file_location("step07_routes", STEP07_PATH)
+    if spec is None or spec.loader is None:
+        raise ExperimentError(f"cannot import Step7 route module: {STEP07_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 configure_runtime_environment()
+S07 = load_step07_module()
 S14 = load_step14_module()
 
 
@@ -298,6 +345,17 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def read_text_with_retry(path: Path, attempts: int = 3, delay_sec: float = 0.2) -> str:
+    text = ""
+    for attempt in range(attempts):
+        if path.is_file():
+            text = path.read_text(encoding="utf-8", errors="replace")
+        if text or attempt == attempts - 1:
+            return text
+        time.sleep(delay_sec)
+    return text
+
+
 def default_workers() -> int:
     cpus = os.cpu_count() or 2
     return max(1, min(cpus - 2, 8))
@@ -322,7 +380,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=default_workers())
     parser.add_argument("--time-to-teleport", type=int, default=1200)
     parser.add_argument("--collision-action", choices=["none", "warn", "teleport", "remove"], default="warn")
-    parser.add_argument("--emergency-depart", type=float, default=0.0)
+    parser.add_argument("--emergency-depart", type=float, default=DEFAULT_EMERGENCY_DEPART_SEC)
     parser.add_argument("--timeout-steps", type=int, default=DEFAULT_TIMEOUT_STEPS)
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
     parser.add_argument("--recovery-buffer-sec", type=int, default=DEFAULT_RECOVERY_BUFFER_SEC)
@@ -376,31 +434,35 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
     return manifest
 
 
-def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None) -> dict[str, Path | None]:
-    if pipeline:
-        return {
-            "results_csv": PROJECT_ROOT / f"results/metrics/{pipeline}.csv",
-            "score_components_csv": PROJECT_ROOT / f"results/metrics/{pipeline}_score_components.csv",
-            "summary_json": None,
-        }
+def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None, run_id: str | None = None) -> dict[str, Path | None]:
     if legacy:
         return {
             "results_csv": PROJECT_ROOT / "results/metrics/experiment_b0_b2_summary.csv",
             "summary_json": PROJECT_ROOT / "results/metrics/experiment_b0_b2_summary.json",
             "events_csv": PROJECT_ROOT / "results/metrics/experiment_signal_events.csv",
             "compare_csv": PROJECT_ROOT / "results/metrics/experiment_compare_by_route.csv",
+            "latest_json": None,
         }
     safe_prefix = output_prefix.strip()
     if not safe_prefix:
         raise ExperimentError("output_prefix cannot be blank")
+    if not run_id:
+        raise ExperimentError("run_id is required for non-legacy metrics output")
+    metrics_dir = PROJECT_ROOT / "results/metrics" / safe_prefix / run_id
     return {
-        "results_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_results.csv",
-        "score_components_csv": PROJECT_ROOT / f"results/metrics/{safe_prefix}_score_components.csv",
-        "summary_json": PROJECT_ROOT / f"results/metrics/{safe_prefix}_experiment_summary.json",
+        "results_csv": metrics_dir / "experiment_results.csv",
+        "score_components_csv": metrics_dir / "score_components.csv",
+        "summary_json": metrics_dir / "experiment_summary.json",
+        "latest_json": PROJECT_ROOT / "results/metrics" / safe_prefix / "latest.json",
     }
 
 
-def write_sumo_files_for_task(args: argparse.Namespace, emergency_route_xml: Path, include_background: bool) -> dict[str, Path]:
+def write_sumo_files_for_task(
+    args: argparse.Namespace,
+    emergency_route_xml: Path,
+    include_background: bool,
+    tls_all_off: bool = False,
+) -> dict[str, Path]:
     paths = {
         "additional": args.run_dir / "edge_data.add.xml",
         "edge_data": args.run_dir / "edgeData.xml",
@@ -441,11 +503,51 @@ def write_sumo_files_for_task(args: argparse.Namespace, emergency_route_xml: Pat
     processing_elem = ET.SubElement(config, "processing")
     ET.SubElement(processing_elem, "time-to-teleport", {"value": str(args.time_to_teleport)})
     ET.SubElement(processing_elem, "collision.action", {"value": args.collision_action})
+    ET.SubElement(processing_elem, "emergency-insert", {"value": "true"})
+    if tls_all_off:
+        ET.SubElement(processing_elem, "tls.all-off", {"value": "true"})
     report_elem = ET.SubElement(config, "report")
     ET.SubElement(report_elem, "no-step-log", {"value": "true"})
     ET.SubElement(report_elem, "duration-log.disable", {"value": "true"})
     ET.ElementTree(config).write(paths["sumocfg"], encoding="utf-8", xml_declaration=True)
     return paths
+
+
+def set_congested_emergency_departure(path: Path) -> None:
+    tree = ET.parse(path)
+    root = tree.getroot()
+    for vtype in root.findall("vType"):
+        vtype.set("speedFactor", f"{EMERGENCY_SPEED_FACTOR:.2f}")
+        vtype.set("maxSpeed", f"{EMERGENCY_SPEED_CAP_KMH / 3.6:.6f}")
+        vtype.set("lcStrategic", "10.0")
+        vtype.set("lcCooperative", "0.0")
+        vtype.set("lcSpeedGain", "5.0")
+        vtype.set("lcKeepRight", "0.0")
+        vtype.set("lcAssertive", "5.0")
+        for param in vtype.findall("param"):
+            if param.get("key") == "has.bluelight.device":
+                param.set("value", "true" if EMERGENCY_BLUELIGHT_ENABLED else "false")
+    for vehicle in root.findall("vehicle"):
+        vehicle.set("departLane", "free")
+        vehicle.set("departPos", "last")
+        vehicle.set("departSpeed", "max")
+        vehicle.set("insertionChecks", "none")
+    tree.write(path, encoding="utf-8", xml_declaration=True)
+
+
+def remove_vehicle_elements(path: Path) -> None:
+    tree = ET.parse(path)
+    root = tree.getroot()
+    for vehicle in list(root.findall("vehicle")):
+        root.remove(vehicle)
+    tree.write(path, encoding="utf-8", xml_declaration=True)
+
+
+def configure_dynamic_emergency_departure(task: dict[str, Any], emergency_route_xml: Path) -> dict[str, Any]:
+    if task["mode"] == "B00" or float(task["emergency_depart"]) <= 0:
+        return task
+    remove_vehicle_elements(emergency_route_xml)
+    return {**task, "dynamic_emergency_insert": True}
 
 
 def current_git_commit() -> str:
@@ -460,27 +562,112 @@ def load_routes(path: Path) -> dict[str, dict[str, str]]:
     return {row["route_id"]: row for row in read_csv(path) if row.get("route_id")}
 
 
+def stitch_route_waypoints(sumo_net: Any, waypoints: list[str]) -> list[str]:
+    if len(waypoints) < 2:
+        raise ExperimentError("straight_seoul_station_route_requires_at_least_two_waypoints")
+    route_edges: list[str] = []
+    for start_edge, target_edge in zip(waypoints, waypoints[1:], strict=False):
+        segment = S07.shortest_route(sumo_net, start_edge, target_edge)
+        if not route_edges:
+            route_edges.extend(segment)
+        elif route_edges[-1] == segment[0]:
+            route_edges.extend(segment[1:])
+        else:
+            route_edges.extend(segment)
+    return route_edges
+
+
+def validate_route_transitions(sumo_net: Any, route_edges: list[str]) -> None:
+    for from_edge_id, to_edge_id in zip(route_edges, route_edges[1:], strict=False):
+        from_edge = S07.edge_from_net(sumo_net, from_edge_id)
+        to_edge = S07.edge_from_net(sumo_net, to_edge_id)
+        if from_edge is None or to_edge is None:
+            raise ExperimentError(f"straight_seoul_station_route_edge_missing:{from_edge_id}->{to_edge_id}")
+        if not from_edge.getOutgoing().get(to_edge, []):
+            raise ExperimentError(f"straight_seoul_station_route_not_connected:{from_edge_id}->{to_edge_id}")
+
+
+def load_canonical_seoul_station_route(sumo_net: Any) -> dict[str, Any]:
+    if not DEFAULT_SEOUL_STATION_MANUAL_ROUTE.is_file():
+        raise ExperimentError(f"missing_straight_seoul_station_route:{DEFAULT_SEOUL_STATION_MANUAL_ROUTE}")
+    payload = load_json(DEFAULT_SEOUL_STATION_MANUAL_ROUTE)
+    route_id = str(payload.get("route_id") or "").strip()
+    start_edge = str(payload.get("start_edge_id") or "").strip()
+    target_edge = str(payload.get("target_edge_id") or "").strip()
+    if route_id != SEOUL_STATION_ROUTE_ID:
+        raise ExperimentError(f"straight_seoul_station_route_id_mismatch:{route_id}")
+    if start_edge != SEOUL_STATION_START_EDGE:
+        raise ExperimentError(f"straight_seoul_station_start_edge_mismatch:{start_edge}")
+    if target_edge != SEOUL_STATION_TARGET_EDGE:
+        raise ExperimentError(f"straight_seoul_station_target_edge_mismatch:{target_edge}")
+    waypoint_edges = payload.get("manual_edge_ids", payload.get("waypoint_edge_ids", []))
+    if not isinstance(waypoint_edges, list) or not all(isinstance(edge_id, str) for edge_id in waypoint_edges):
+        raise ExperimentError(f"invalid_straight_seoul_station_route_edges:{DEFAULT_SEOUL_STATION_MANUAL_ROUTE}")
+    waypoint_edges = [edge_id.strip() for edge_id in waypoint_edges if edge_id.strip()]
+    if not waypoint_edges:
+        raise ExperimentError(f"empty_straight_seoul_station_route_edges:{DEFAULT_SEOUL_STATION_MANUAL_ROUTE}")
+    waypoints = [SEOUL_STATION_START_EDGE, *waypoint_edges]
+    if waypoints[-1] != target_edge:
+        waypoints.append(target_edge)
+    for edge_id in waypoints:
+        edge = S07.edge_from_net(sumo_net, edge_id)
+        if edge is None:
+            raise ExperimentError(f"straight_seoul_station_route_edge_missing:{edge_id}")
+        if not edge.allows("passenger"):
+            raise ExperimentError(f"straight_seoul_station_route_edge_not_passenger:{edge_id}")
+    route_edges = stitch_route_waypoints(sumo_net, waypoints)
+    repeated = sorted({edge_id for edge_id in route_edges if route_edges.count(edge_id) > 1})
+    if repeated:
+        raise ExperimentError(f"straight_seoul_station_route_repeated_edge:{','.join(repeated)}")
+    if not route_edges or route_edges[0] != SEOUL_STATION_START_EDGE or route_edges[-1] != SEOUL_STATION_TARGET_EDGE:
+        raise ExperimentError("straight_seoul_station_route_endpoint_mismatch")
+    validate_route_transitions(sumo_net, route_edges)
+    return {
+        "target_edge": target_edge,
+        "route_edges": route_edges,
+        "waypoint_edge_count": len(waypoint_edges),
+    }
+
+
 def synthetic_seoul_station_route(net_path: Path) -> dict[str, str]:
-    sumo_net = S14.read_sumo_net(str(net_path))
     try:
-        start = sumo_net.getEdge(SEOUL_STATION_START_EDGE)
-        target = sumo_net.getEdge(SEOUL_STATION_TARGET_EDGE)
-    except KeyError as exc:
-        raise ExperimentError(f"missing_seoul_station_route_endpoint: {exc}") from exc
-    edges, _cost = sumo_net.getOptimalPath(start, target, vClass="passenger", withInternal=False, includeFromToCost=True)
-    if not edges:
-        raise ExperimentError(f"no_route_to_seoul_station: {SEOUL_STATION_START_EDGE}->{SEOUL_STATION_TARGET_EDGE}")
-    route_edges = [edge.getID() for edge in edges]
-    route_length = sum(float(edge.getLength()) for edge in edges)
+        sumo_net = S07.read_sumo_net(net_path)
+        props_by_id, coords_by_id = S07.load_edge_geojson(S07.ACTIVE_EDGES_GEOJSON)
+        map_config = S07.load_yaml(S07.MAP_CONFIG)
+        axis_ctx = S07.axis_context(map_config)
+        _spine_rows, spine_ids, spine_metrics = S07.build_spine_edges(sumo_net, props_by_id, coords_by_id, axis_ctx)
+        canonical_route = load_canonical_seoul_station_route(sumo_net)
+        target_edge = canonical_route["target_edge"]
+        route_edges = canonical_route["route_edges"]
+        shortest_edges = S07.shortest_route(sumo_net, SEOUL_STATION_START_EDGE, target_edge)
+        geometry = S07.route_geometry_diagnostics(route_edges, coords_by_id, axis_ctx)
+        selected = S07.route_spine_metrics(
+            sumo_net,
+            route_edges,
+            S07.route_length(sumo_net, shortest_edges),
+            spine_ids,
+            spine_metrics,
+            coords_by_id,
+            axis_ctx,
+            target_edge,
+        )
+        route_length = float(selected["route_length_m"])
+        if int(geometry["repeated_edge_count"]) != 0:
+            raise ExperimentError(f"straight_seoul_station_route_repeated_edge:{geometry['repeated_edge_count']}")
+        route_tls_count = len(S07.route_tls_ids(S07.route_objects(sumo_net, route_edges)))
+    except ExperimentError:
+        raise
+    except Exception as exc:
+        raise ExperimentError(f"straight_seoul_station_route_failed:{exc}") from exc
     return {
         "route_id": SEOUL_STATION_ROUTE_ID,
         "scenario_id": "SEOUL_STATION",
-        "target_edge_id": SEOUL_STATION_TARGET_EDGE,
-        "selected_policy": "shortest_to_seoul_station",
+        "target_edge_id": target_edge,
+        "selected_policy": SEOUL_STATION_POLICY,
         "route_edges": " ".join(route_edges),
         "route_length_m": f"{route_length:.2f}",
         "route_edge_count": str(len(route_edges)),
-        "route_tls_count": "",
+        "route_tls_count": str(route_tls_count),
     }
 
 
@@ -531,35 +718,112 @@ def load_b2_parameter_sets(path: Path) -> list[dict[str, Any]]:
     return result
 
 
-def parse_summary_output(path: Path) -> dict[str, Any]:
+def parse_summary_steps(path: Path) -> list[dict[str, float]]:
     root = S14.parse_xml_with_retry(path).getroot()
-    last_step = None
-    max_teleports = 0
-    speed_num = 0.0
-    speed_den = 0.0
-    last_mean_speed = 0.0
+    steps = []
     for step in root.findall("step"):
-        last_step = step
-        max_teleports = max(max_teleports, int(float(step.get("teleports", "0"))))
         mean_speed = max(float(step.get("meanSpeed", "0") or 0), 0.0)
-        last_mean_speed = mean_speed
         running = float(step.get("running", "0") or 0)
-        if running > 0:
-            speed_num += mean_speed * running
-            speed_den += running
-    if last_step is None:
+        waiting = float(step.get("waiting", "0") or 0)
+        steps.append(
+            {
+                "time": float(step.get("time", "0") or 0),
+                "inserted": float(step.get("inserted", "0") or 0),
+                "arrived": float(step.get("arrived", "0") or 0),
+                "running": running,
+                "waiting": waiting,
+                "teleports": float(step.get("teleports", "0") or 0),
+                "mean_speed_mps": mean_speed,
+            }
+        )
+    if not steps:
         raise ExperimentError(f"summary-output has no steps: {path}")
-    mean_speed_mps = speed_num / speed_den if speed_den else float(last_step.get("meanSpeed", "0") or 0)
+    return steps
+
+
+def parse_summary_output(path: Path) -> dict[str, Any]:
+    steps = parse_summary_steps(path)
+    last_step = steps[-1]
+    max_teleports = max(int(step["teleports"]) for step in steps)
+    speed_num = sum(step["mean_speed_mps"] * step["running"] for step in steps if step["running"] > 0)
+    speed_den = sum(step["running"] for step in steps if step["running"] > 0)
+    mean_speed_mps = speed_num / speed_den if speed_den else last_step["mean_speed_mps"]
     return {
-        "departed_count_total": int(float(last_step.get("inserted", "0"))),
-        "arrived_count_total": int(float(last_step.get("arrived", "0"))),
-        "running_count": int(float(last_step.get("running", "0"))),
-        "waiting_count": int(float(last_step.get("waiting", "0"))),
+        "departed_count_total": int(last_step["inserted"]),
+        "arrived_count_total": int(last_step["arrived"]),
+        "running_count": int(last_step["running"]),
+        "waiting_count": int(last_step["waiting"]),
         "teleport_count": max_teleports,
-        "sim_end_time": float(last_step.get("time", "0")),
+        "sim_end_time": last_step["time"],
         "network_avg_speed_kmh": mean_speed_mps * 3.6,
-        "network_avg_speed_at_analysis_end_kmh": last_mean_speed * 3.6,
-        "network_running_at_analysis_end": int(float(last_step.get("running", "0"))),
+        "network_avg_speed_at_analysis_end_kmh": last_step["mean_speed_mps"] * 3.6,
+        "network_running_at_analysis_end": int(last_step["running"]),
+    }
+
+
+def summary_window_stats(steps: list[dict[str, float]], start: float, end: float) -> dict[str, Any]:
+    if end <= start:
+        return {"speed_kmh": "", "active_count": "", "running_count": "", "sample_count": 0}
+    samples = [step for step in steps if start < step["time"] <= end]
+    if not samples:
+        return {"speed_kmh": "", "active_count": "", "running_count": "", "sample_count": 0}
+    speed_den = sum(step["running"] for step in samples if step["running"] > 0)
+    if speed_den:
+        speed_kmh: float | str = sum(step["mean_speed_mps"] * step["running"] for step in samples if step["running"] > 0) / speed_den * 3.6
+    else:
+        speed_kmh = ""
+    return {
+        "speed_kmh": speed_kmh,
+        "active_count": sum(step["running"] + step["waiting"] for step in samples) / len(samples),
+        "running_count": sum(step["running"] for step in samples) / len(samples),
+        "sample_count": len(samples),
+    }
+
+
+def rolling_congestion_stats(
+    steps: list[dict[str, float]],
+    start: float,
+    end: float,
+    window_sec: int = ROLLING_CONGESTION_WINDOW_SEC,
+) -> dict[str, Any]:
+    if end - start < window_sec:
+        return {
+            "rolling_congestion_valid": False,
+            "rolling_congestion_reason": "insufficient_window",
+            "rolling_congestion_min_kmh": "",
+            "rolling_congestion_max_kmh": "",
+        }
+    speeds = []
+    sample_times = [step["time"] for step in steps if start + window_sec <= step["time"] <= end]
+    stride = max(1, window_sec // 10)
+    for idx, time_value in enumerate(sample_times):
+        if idx % stride != 0 and time_value != sample_times[-1]:
+            continue
+        stats = summary_window_stats(steps, time_value - window_sec, time_value)
+        speed = stats["speed_kmh"]
+        if speed != "":
+            speeds.append(float(speed))
+    if not speeds:
+        return {
+            "rolling_congestion_valid": False,
+            "rolling_congestion_reason": "no_running_vehicles_in_rolling_windows",
+            "rolling_congestion_min_kmh": "",
+            "rolling_congestion_max_kmh": "",
+        }
+    min_speed = min(speeds)
+    max_speed = max(speeds)
+    valid = CONGESTION_MIN_KMH <= min_speed and max_speed <= CONGESTION_MAX_KMH
+    if valid:
+        reason = "rolling_speed_12_to_35_kmh"
+    elif min_speed < CONGESTION_MIN_KMH:
+        reason = "rolling_speed_below_12_kmh"
+    else:
+        reason = "rolling_speed_above_35_kmh"
+    return {
+        "rolling_congestion_valid": valid,
+        "rolling_congestion_reason": reason,
+        "rolling_congestion_min_kmh": min_speed,
+        "rolling_congestion_max_kmh": max_speed,
     }
 
 
@@ -635,6 +899,34 @@ def non_main_free_flow_seconds_by_edge(sumo_net: Any, corridor_edges: set[str]) 
             continue
         result[edge_id] = edge_free_flow_seconds(sumo_net, edge_id)
     return result
+
+
+def windowed_edge_delay_record(
+    edge_id: str,
+    entered_at: float,
+    left_at: float,
+    free_flow_sec: float,
+    window_start: float,
+    censored: bool = False,
+) -> dict[str, Any] | None:
+    if left_at <= window_start:
+        return None
+    total_actual = max(left_at - entered_at, 0.0)
+    overlap_actual = max(left_at - max(entered_at, window_start), 0.0)
+    if overlap_actual <= 0:
+        return None
+    if total_actual > 0 and overlap_actual < total_actual:
+        overlap_free = free_flow_sec * (overlap_actual / total_actual)
+    else:
+        overlap_free = free_flow_sec
+    record: dict[str, Any] = {
+        "actual_sec": overlap_actual,
+        "free_flow_sec": overlap_free,
+        "edge_id": edge_id,
+    }
+    if censored:
+        record["censored"] = True
+    return record
 
 
 def tls_incoming_edges(net_path: Path, tls_id: str) -> set[str]:
@@ -757,7 +1049,7 @@ def load_queue_recovery_reference(net_path: Path, tls_audit: Path, corridor_tls_
     }
 
 
-def summarize_general_non_main_delay(records: list[dict[str, float]]) -> dict[str, Any]:
+def summarize_general_non_main_delay(records: list[dict[str, Any]]) -> dict[str, Any]:
     if not records:
         return {
             "N_delay_sec": 0.0,
@@ -1073,6 +1365,25 @@ def vehicle_lane_connection_ok(sumo_net: Any, lane_id: str, next_edge_id: str) -
     return False
 
 
+def route_connected_lane_indices(net_path: Path, route_edges: list[str]) -> dict[tuple[str, str], set[int]]:
+    route_pairs = set(zip(route_edges, route_edges[1:], strict=False))
+    result: dict[tuple[str, str], set[int]] = {pair: set() for pair in route_pairs}
+    for _event, elem in ET.iterparse(net_path, events=("end",)):
+        if elem.tag == "connection":
+            key = (elem.get("from", ""), elem.get("to", ""))
+            if key in result and str(elem.get("fromLane", "")).isdigit():
+                result[key].add(int(elem.get("fromLane", "0")))
+            elem.clear()
+    return result
+
+
+def lane_index_from_id(lane_id: str) -> int | None:
+    try:
+        return int(lane_id.rsplit("_", 1)[1])
+    except (IndexError, ValueError):
+        return None
+
+
 def run_traci_experiment(
     task: dict[str, Any],
     paths: dict[str, Path],
@@ -1097,6 +1408,7 @@ def run_traci_experiment(
     effective_t_change = max(0, int(params.get("_effective_T_change_sec", DEFAULT_T_CHANGE_SEC) or 0))
     metric_sample_interval = max(1, int(float(params.get("metric_sample_interval") or 10)))
     edge_starts = S14.route_edge_starts(Path(task["net"]), route_edges)
+    connected_lanes_by_transition = route_connected_lane_indices(Path(task["net"]), route_edges)
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
     sumo_net = S14.read_sumo_net(str(Path(task["net"])))
     non_main_free_flow = non_main_free_flow_seconds_by_edge(sumo_net, corridor_edges)
@@ -1113,9 +1425,29 @@ def run_traci_experiment(
     restored: set[str] = set()
     lane_connection_warnings: set[tuple[str, str, str]] = set()
     lane_connection_candidates: dict[tuple[str, str, str], int] = {}
+    emergency_lane_guidance_events: set[tuple[str, str, int]] = set()
     edge_time: dict[str, float] = {}
-    general_non_main_records: list[dict[str, float]] = []
+    general_non_main_records: list[dict[str, Any]] = []
     active_general_non_main: dict[str, tuple[str, float]] = {}
+    n_delay_window_start = float(task["emergency_depart"])
+    dynamic_emergency_insert = bool(task.get("dynamic_emergency_insert"))
+    dynamic_emergency_inserted = not dynamic_emergency_insert
+    emergency_last_state: dict[str, Any] = {}
+
+    def append_general_non_main_record(edge_id: str, entered_at: float, left_at: float, censored: bool = False) -> bool:
+        record = windowed_edge_delay_record(
+            edge_id,
+            entered_at,
+            left_at,
+            non_main_free_flow.get(edge_id, 0.0),
+            n_delay_window_start,
+            censored,
+        )
+        if record is None:
+            return False
+        general_non_main_records.append(record)
+        return True
+
     queue_history_by_tls: dict[str, list[tuple[float, int]]] = {tls_id: [] for tls_id in recovery_queue_edges_by_tls}
     recovery_pass_time_by_tls: dict[str, float] = {}
     recovery_time_by_tls: dict[str, float] = {}
@@ -1124,6 +1456,7 @@ def run_traci_experiment(
     recovery_buffer_sec = max(0, int(task.get("recovery_buffer_sec", DEFAULT_RECOVERY_BUFFER_SEC) or 0))
     emergency_seen = False
     emergency_left_time: float | None = None
+    latest_queue_recovery_time: float | None = None
     analysis_stop_reason = "simulation_completed"
     controller_started = False
     cmd = [sumo, "-c", str(paths["sumocfg"]), "--error-log", str(paths["stderr"])]
@@ -1146,14 +1479,43 @@ def run_traci_experiment(
                 traci.simulationStep()
                 sim_time = float(traci.simulation.getTime())
                 vehicle_ids = set(traci.vehicle.getIDList())
-                for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
-                    if vehicle_id not in vehicle_ids:
-                        general_non_main_records.append(
+                if dynamic_emergency_insert and not dynamic_emergency_inserted and sim_time >= float(task["emergency_depart"]):
+                    try:
+                        traci.vehicle.add(
+                            args.emergency_vehicle_id,
+                            args.route_id,
+                            typeID="b1_emergency_type",
+                            depart="now",
+                            departLane="free",
+                            departPos="last",
+                            departSpeed="max",
+                        )
+                        traci.vehicle.updateBestLanes(args.emergency_vehicle_id)
+                    except Exception as exc:  # noqa: BLE001 - TraCI exception type differs by SUMO version.
+                        events.append(
                             {
-                                "actual_sec": max(sim_time - entered_at, 0.0),
-                                "free_flow_sec": non_main_free_flow.get(edge_id, 0.0),
+                                "time": sec(sim_time),
+                                "route_id": args.route_id,
+                                "vehicle_id": args.emergency_vehicle_id,
+                                "action": "dynamic_emergency_insert_failed",
+                                "reason": str(exc),
                             }
                         )
+                        raise ExperimentError(f"dynamic_emergency_insert_failed: {exc}") from exc
+                    dynamic_emergency_inserted = True
+                    events.append(
+                        {
+                            "time": sec(sim_time),
+                            "route_id": args.route_id,
+                            "vehicle_id": args.emergency_vehicle_id,
+                            "action": "dynamic_emergency_insert",
+                            "reason": f"emergency_depart_{sec(task['emergency_depart'])}s",
+                        }
+                    )
+                    vehicle_ids = set(traci.vehicle.getIDList())
+                for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
+                    if vehicle_id not in vehicle_ids:
+                        append_general_non_main_record(edge_id, entered_at, sim_time)
                         active_general_non_main.pop(vehicle_id, None)
                 for vehicle_id in vehicle_ids:
                     if vehicle_id == args.emergency_vehicle_id:
@@ -1164,20 +1526,10 @@ def run_traci_experiment(
                         if active is None:
                             active_general_non_main[vehicle_id] = (road, sim_time)
                         elif active[0] != road:
-                            general_non_main_records.append(
-                                {
-                                    "actual_sec": max(sim_time - active[1], 0.0),
-                                    "free_flow_sec": non_main_free_flow.get(active[0], 0.0),
-                                }
-                            )
+                            append_general_non_main_record(active[0], active[1], sim_time)
                             active_general_non_main[vehicle_id] = (road, sim_time)
                     elif active is not None:
-                        general_non_main_records.append(
-                            {
-                                "actual_sec": max(sim_time - active[1], 0.0),
-                                "free_flow_sec": non_main_free_flow.get(active[0], 0.0),
-                            }
-                        )
+                        append_general_non_main_record(active[0], active[1], sim_time)
                         active_general_non_main.pop(vehicle_id, None)
                 vehicle_present = args.emergency_vehicle_id in vehicle_ids
                 if vehicle_present:
@@ -1201,10 +1553,74 @@ def run_traci_experiment(
                         edge_time[road_id] = edge_time.get(road_id, 0.0) + 1.0
                     route_index = int(traci.vehicle.getRouteIndex(args.emergency_vehicle_id))
                     lane_position = float(traci.vehicle.getLanePosition(args.emergency_vehicle_id))
+                    emergency_last_state = {
+                        "edge_id": road_id,
+                        "route_index": route_index,
+                        "lane_id": traci.vehicle.getLaneID(args.emergency_vehicle_id),
+                        "speed_kmh": float(traci.vehicle.getSpeed(args.emergency_vehicle_id)) * 3.6,
+                        "waiting_time_sec": float(traci.vehicle.getWaitingTime(args.emergency_vehicle_id)),
+                        "progress_ratio": (route_index / max(len(route_edges) - 1, 1)) if route_index >= 0 else 0.0,
+                    }
                     current_distance = edge_starts[route_index] + lane_position if 0 <= route_index < len(edge_starts) else 0.0
                     if 0 <= route_index < len(route_edges) - 1 and road_id and not road_id.startswith(":"):
                         lane_id = traci.vehicle.getLaneID(args.emergency_vehicle_id)
                         next_edge_id = route_edges[route_index + 1]
+                        connected_lane_indices = connected_lanes_by_transition.get((road_id, next_edge_id), set())
+                        current_lane_index = lane_index_from_id(lane_id)
+                        if connected_lane_indices and current_lane_index is not None and current_lane_index not in connected_lane_indices:
+                            target_lane_index = min(connected_lane_indices, key=lambda item: abs(item - current_lane_index))
+                            try:
+                                traci.vehicle.changeLane(args.emergency_vehicle_id, target_lane_index, 20)
+                                guidance_key = (road_id, next_edge_id, target_lane_index)
+                                if guidance_key not in emergency_lane_guidance_events:
+                                    emergency_lane_guidance_events.add(guidance_key)
+                                    events.append(
+                                        {
+                                            "time": sec(sim_time),
+                                            "route_id": args.route_id,
+                                            "vehicle_id": args.emergency_vehicle_id,
+                                            "tls_id": "",
+                                            "junction_id": "",
+                                            "incoming": road_id,
+                                            "outgoing": next_edge_id,
+                                            "remaining_distance_m": "0.00",
+                                            "D_det": d_det,
+                                            "alpha": params.get("alpha", ""),
+                                            "G_ext": params.get("G_ext", ""),
+                                            "effective_alpha_sec": sec(alpha),
+                                            "effective_G_ext_sec": sec(effective_g_ext),
+                                            "current_road_id": road_id,
+                                            "phase_before": "",
+                                            "phase_after": "",
+                                            "action": "emergency_lane_guidance",
+                                            "reason": f"change_lane_{current_lane_index}_to_{target_lane_index}_for_next_edge:{next_edge_id}",
+                                            "restore_action": "",
+                                        }
+                                    )
+                            except Exception as exc:  # noqa: BLE001 - failed guidance is diagnostic only.
+                                events.append(
+                                    {
+                                        "time": sec(sim_time),
+                                        "route_id": args.route_id,
+                                        "vehicle_id": args.emergency_vehicle_id,
+                                        "tls_id": "",
+                                        "junction_id": "",
+                                        "incoming": road_id,
+                                        "outgoing": next_edge_id,
+                                        "remaining_distance_m": "0.00",
+                                        "D_det": d_det,
+                                        "alpha": params.get("alpha", ""),
+                                        "G_ext": params.get("G_ext", ""),
+                                        "effective_alpha_sec": sec(alpha),
+                                        "effective_G_ext_sec": sec(effective_g_ext),
+                                        "current_road_id": road_id,
+                                        "phase_before": "",
+                                        "phase_after": "",
+                                        "action": "emergency_lane_guidance_failed",
+                                        "reason": str(exc),
+                                        "restore_action": "",
+                                    }
+                                )
                         lane_connection_ok = vehicle_lane_connection_ok(sumo_net, lane_id, next_edge_id)
                         warning_key = (lane_id, road_id, next_edge_id)
                         if lane_connection_ok is False:
@@ -1416,6 +1832,7 @@ def run_traci_experiment(
                 expected_recovery_tls = [tls["tls_id"] for tls in tls_plan if tls.get("tls_id")]
                 if emergency_left_time is not None and all(tls_id in recovery_time_by_tls for tls_id in expected_recovery_tls):
                     latest_recovery = max([emergency_left_time, *recovery_time_by_tls.values()])
+                    latest_queue_recovery_time = max(recovery_time_by_tls.values()) if recovery_time_by_tls else emergency_left_time
                     if sim_time >= latest_recovery + recovery_buffer_sec:
                         analysis_stop_reason = "emergency_arrived_queue_recovered_buffer_elapsed"
                         events.append(
@@ -1524,14 +1941,8 @@ def run_traci_experiment(
             analysis_end_time = float(traci.simulation.getTime())
             censored_active_general_non_main_count = 0
             for vehicle_id, (edge_id, entered_at) in list(active_general_non_main.items()):
-                general_non_main_records.append(
-                    {
-                        "actual_sec": max(analysis_end_time - entered_at, 0.0),
-                        "free_flow_sec": non_main_free_flow.get(edge_id, 0.0),
-                        "censored": True,
-                    }
-                )
-                censored_active_general_non_main_count += 1
+                if append_general_non_main_record(edge_id, entered_at, analysis_end_time, censored=True):
+                    censored_active_general_non_main_count += 1
             excluded_active_general_non_main_count = 0
             active_general_non_main.clear()
         finally:
@@ -1545,11 +1956,16 @@ def run_traci_experiment(
         "general_non_main_records": general_non_main_records,
         "analysis_end_time": analysis_end_time if "analysis_end_time" in locals() else 0.0,
         "analysis_stop_reason": analysis_stop_reason,
+        "dynamic_emergency_inserted": dynamic_emergency_inserted,
+        "emergency_seen": emergency_seen,
+        "emergency_left_time": emergency_left_time,
+        "latest_queue_recovery_time": latest_queue_recovery_time,
         "censored_active_general_non_main_count": censored_active_general_non_main_count if "censored_active_general_non_main_count" in locals() else 0,
         "excluded_active_general_non_main_count": excluded_active_general_non_main_count if "excluded_active_general_non_main_count" in locals() else len(active_general_non_main),
         "tls_recovery_times": tls_recovery_times,
         "lane_connection_warning_count": len(lane_connection_warnings),
         "wall_timeout": wall_timeout,
+        "emergency_last_state": emergency_last_state,
     }
 
 
@@ -1580,6 +1996,9 @@ def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, An
         return base, []
     emergency_route_xml = run_dir / f"{vehicle_id}.rou.xml"
     S14.write_emergency_route_xml(emergency_route_xml, route_row, vehicle_id, float(task["emergency_depart"]))
+    if float(task["emergency_depart"]) > 0:
+        set_congested_emergency_departure(emergency_route_xml)
+    task = configure_dynamic_emergency_departure(task, emergency_route_xml)
     args = SimpleNamespace(
         net=Path(task["net"]),
         background_route=Path(task["background_route"]),
@@ -1587,7 +2006,12 @@ def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, An
         time_to_teleport=int(task["time_to_teleport"]),
         collision_action=task["collision_action"],
     )
-    paths = write_sumo_files_for_task(args, emergency_route_xml, bool(task.get("include_background", True)))
+    paths = write_sumo_files_for_task(
+        args,
+        emergency_route_xml,
+        bool(task.get("include_background", True)),
+        tls_all_off=task["mode"] == "B00",
+    )
     corridor_tls_ids = load_corridor_tls_ids(Path(task["priority_terminals"]))
     tls_plan = load_tls_plan_for_route(Path(task["net"]), Path(task["tls_audit"]), task["route_id"], route_edges, corridor_tls_ids)
     events, controller_started, observations = run_traci_experiment(task, paths, tls_plan, route_edges, {}, False)
@@ -1654,6 +2078,9 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
         raise ExperimentError(f"no_corridor_tls_rows: {task['route_id']}")
     emergency_route_xml = run_dir / f"{vehicle_id}.rou.xml"
     S14.write_emergency_route_xml(emergency_route_xml, route_row, vehicle_id, float(task["emergency_depart"]))
+    if float(task["emergency_depart"]) > 0:
+        set_congested_emergency_departure(emergency_route_xml)
+    task = configure_dynamic_emergency_departure(task, emergency_route_xml)
     args = SimpleNamespace(
         net=Path(task["net"]),
         background_route=Path(task["background_route"]),
@@ -1687,17 +2114,18 @@ def summarize_run(
     observations: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     background_count = int(task["background_vehicle_count"])
-    stderr_text = paths["stderr"].read_text(encoding="utf-8", errors="replace") if paths["stderr"].is_file() else ""
+    stderr_text = read_text_with_retry(paths["stderr"])
+    summary_steps = parse_summary_steps(paths["summary"])
     summary_metrics = parse_summary_output(paths["summary"])
     trip = S14.parse_tripinfo(paths["tripinfo"], vehicle_id)
     route_errors = route_error_count(stderr_text)
     emergency_tp = emergency_teleport_lines(stderr_text, vehicle_id)
-    emergency_stop_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("emergency stop", "emergency braking"))
+    emergency_stop_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("emergency stop", "emergency braking", "junction collision"))
     stderr_lane_warning_count = emergency_warning_count(stderr_text, vehicle_id, ("no connection", "is not connected"))
     detected_lane_warning_count = int(observations.get("lane_connection_warning_count") or 0)
     emergency_lane_connection_warning_count = stderr_lane_warning_count
     emergency_arrived = bool(trip["emergency_arrived"])
-    emergency_departed = summary_metrics["departed_count_total"] > background_count or emergency_arrived
+    emergency_departed = bool(observations.get("emergency_seen")) or summary_metrics["departed_count_total"] > background_count or emergency_arrived
     emergency_teleport = bool(emergency_tp)
     background_departed = max(summary_metrics["departed_count_total"] - (1 if emergency_departed else 0), 0)
     background_arrived = max(summary_metrics["arrived_count_total"] - (1 if emergency_arrived else 0), 0)
@@ -1784,21 +2212,48 @@ def summarize_run(
         emergency_route_length = route_length_meters(Path(task["net"]), route_edges)
     emergency_travel_time = trip["emergency_travel_time"]
     emergency_avg_speed = (emergency_route_length / float(emergency_travel_time) * 3.6) if emergency_travel_time not in {"", None} and float(emergency_travel_time) > 0 else ""
+    emergency_last_state = observations.get("emergency_last_state", {}) or {}
     network_avg_speed = float(summary_metrics["network_avg_speed_kmh"])
     network_avg_speed_at_analysis_end = float(summary_metrics["network_avg_speed_at_analysis_end_kmh"])
     network_running_at_analysis_end = int(summary_metrics["network_running_at_analysis_end"])
+    analysis_end_time = float(observations.get("analysis_end_time", summary_metrics["sim_end_time"]) or summary_metrics["sim_end_time"])
+    emergency_depart = float(task["emergency_depart"])
+    recovery_buffer_sec = float(task.get("recovery_buffer_sec", DEFAULT_RECOVERY_BUFFER_SEC) or 0)
+    emergency_arrival_time = trip.get("emergency_arrival_time")
+    during_end_time = float(emergency_arrival_time) if emergency_arrival_time not in {"", None} else analysis_end_time
+    recovery_anchor = observations.get("latest_queue_recovery_time") or observations.get("emergency_left_time") or during_end_time
+    recovery_anchor = float(recovery_anchor) if recovery_anchor not in {"", None} else during_end_time
+    if background_count > 0:
+        pre_congestion = summary_window_stats(summary_steps, max(0.0, emergency_depart - ROLLING_CONGESTION_WINDOW_SEC), emergency_depart)
+        during_congestion = summary_window_stats(summary_steps, emergency_depart, max(during_end_time, emergency_depart))
+        post_congestion = summary_window_stats(summary_steps, recovery_anchor, min(recovery_anchor + recovery_buffer_sec, analysis_end_time))
+        rolling_congestion = rolling_congestion_stats(summary_steps, max(0.0, emergency_depart - ROLLING_CONGESTION_WINDOW_SEC), analysis_end_time)
+    else:
+        pre_congestion = {"speed_kmh": "", "active_count": "", "sample_count": 0}
+        during_congestion = {"speed_kmh": "", "active_count": "", "sample_count": 0}
+        post_congestion = {"speed_kmh": "", "active_count": "", "sample_count": 0}
+        rolling_congestion = {
+            "rolling_congestion_valid": False,
+            "rolling_congestion_reason": "not_applicable_no_background",
+            "rolling_congestion_min_kmh": "",
+            "rolling_congestion_max_kmh": "",
+        }
     if background_count > 0:
         congestion_valid, congestion_reason = congestion_diagnostic(network_avg_speed)
         congestion_valid_at_analysis_end, congestion_reason_at_analysis_end = analysis_end_congestion_diagnostic(
             network_avg_speed_at_analysis_end,
             network_running_at_analysis_end,
         )
+        if not rolling_congestion["rolling_congestion_valid"]:
+            warnings.append(f"congestion_not_maintained:{rolling_congestion['rolling_congestion_reason']}")
     else:
         congestion_valid, congestion_reason = False, "not_applicable_no_background"
         congestion_valid_at_analysis_end, congestion_reason_at_analysis_end = False, "not_applicable_no_background"
     if failures:
         final_status = "FAIL"
     elif background_teleported > 0:
+        final_status = "WARNING"
+    elif warnings:
         final_status = "WARNING"
     elif background_remaining_count > 0:
         final_status = "PASS_WITH_REMAINING_BACKGROUND"
@@ -1844,11 +2299,22 @@ def summarize_run(
             "network_avg_speed_kmh": round(network_avg_speed, 6),
             "network_avg_speed_at_analysis_end_kmh": round(network_avg_speed_at_analysis_end, 6),
             "network_running_at_analysis_end": network_running_at_analysis_end,
+            "network_speed_pre_emergency_kmh": sec(pre_congestion["speed_kmh"]),
+            "network_speed_during_response_kmh": sec(during_congestion["speed_kmh"]),
+            "network_speed_post_recovery_kmh": sec(post_congestion["speed_kmh"]),
+            "active_vehicle_count_pre_emergency": sec(pre_congestion["active_count"]),
+            "active_vehicle_count_during_response": sec(during_congestion["active_count"]),
+            "active_vehicle_count_post_recovery": sec(post_congestion["active_count"]),
+            "rolling_congestion_valid": rolling_congestion["rolling_congestion_valid"],
+            "rolling_congestion_reason": rolling_congestion["rolling_congestion_reason"],
+            "rolling_congestion_window_sec": ROLLING_CONGESTION_WINDOW_SEC,
+            "rolling_congestion_min_kmh": sec(rolling_congestion["rolling_congestion_min_kmh"]),
+            "rolling_congestion_max_kmh": sec(rolling_congestion["rolling_congestion_max_kmh"]),
             "congestion_valid": congestion_valid,
             "congestion_reason": congestion_reason,
             "congestion_valid_at_analysis_end": congestion_valid_at_analysis_end,
             "congestion_reason_at_analysis_end": congestion_reason_at_analysis_end,
-            "analysis_end_time_sec": sec(observations.get("analysis_end_time", summary_metrics["sim_end_time"])),
+            "analysis_end_time_sec": sec(analysis_end_time),
             "analysis_stop_reason": observations.get("analysis_stop_reason", ""),
             "recovery_buffer_sec": sec(task.get("recovery_buffer_sec", DEFAULT_RECOVERY_BUFFER_SEC)),
             "emergency_route_length_m": sec(emergency_route_length),
@@ -1883,6 +2349,12 @@ def summarize_run(
             "summary_output": rel(paths["summary"]),
             "edgeData_output": rel(paths["edge_data"]),
             "stderr_log": rel(paths["stderr"]),
+            "emergency_last_edge_id": emergency_last_state.get("edge_id", ""),
+            "emergency_last_route_index": emergency_last_state.get("route_index", ""),
+            "emergency_last_lane_id": emergency_last_state.get("lane_id", ""),
+            "emergency_last_speed_kmh": sec(emergency_last_state.get("speed_kmh", "")),
+            "emergency_last_waiting_time_sec": sec(emergency_last_state.get("waiting_time_sec", "")),
+            "emergency_route_progress_ratio": sec(emergency_last_state.get("progress_ratio", "")),
         }
     )
     for event in events:
@@ -2041,9 +2513,9 @@ def main() -> int:
         if args.output_prefix.strip() == "experiment" and not args.legacy_output_names:
             raise ExperimentError("reserved_output_prefix: experiment is only allowed with --legacy-output-names")
         if manifest:
-            required_substring = str(manifest.get("final_background_required_substring") or "scale_0p15")
+            required_substring = str(manifest.get("final_background_required_substring") or "warm0p15_sustain0p05_seed002_sustained_3600")
         else:
-            required_substring = "scale_0p15"
+            required_substring = "warm0p15_sustain0p05_seed002_sustained_3600"
         if required_substring and required_substring not in args.background_route.name and not args.allow_nonfinal_background:
             raise ExperimentError(
                 "nonfinal_background_blocked:"
@@ -2071,7 +2543,7 @@ def main() -> int:
             raise ExperimentError(f"excluded_routes_present_in_route_set: {','.join(forbidden)}")
         b2_params = load_b2_parameter_sets(args.b2_params) if "B2" in args.modes else []
         background_vehicle_count = S14.count_vehicles(args.background_route)
-        paths = output_paths(args.output_prefix, args.legacy_output_names, args.pipeline)
+        paths = output_paths(args.output_prefix, args.legacy_output_names, args.pipeline, run_id)
         base_task = {
             "generated_at": generated_at,
             "run_id": run_id,
@@ -2189,7 +2661,7 @@ def main() -> int:
             "route_error_count_any": route_error_count_any,
             "status_counts": status_counts,
             "final_status": "FAIL" if status_counts.get("FAIL") else "WARNING" if status_counts.get("WARNING") else "PASS",
-            "outputs": [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(LOG_PATH)]
+            "outputs": [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(paths["latest_json"]), rel(LOG_PATH)]
             if not args.legacy_output_names and paths.get("summary_json") is not None
             else [rel(paths["results_csv"]), rel(paths["score_components_csv"]), rel(LOG_PATH)]
             if not args.legacy_output_names
@@ -2203,6 +2675,19 @@ def main() -> int:
             write_csv(paths["compare_csv"], compare)
         if paths.get("summary_json") is not None:
             write_json(paths["summary_json"], {**summary, "results": result_rows, "compare": compare, "signal_events": event_rows})
+        if paths.get("latest_json") is not None:
+            write_json(
+                paths["latest_json"],
+                {
+                    "generated_at": generated_at,
+                    "run_id": run_id,
+                    "output_prefix": args.output_prefix,
+                    "final_status": summary["final_status"],
+                    "results_csv": rel(paths["results_csv"]),
+                    "score_components_csv": rel(paths["score_components_csv"]),
+                    "summary_json": rel(paths["summary_json"]),
+                },
+            )
         lines.extend(
             [
                 f"status_counts: {status_counts}",
@@ -2214,6 +2699,8 @@ def main() -> int:
             lines.append(f"score_components_csv: {rel(paths['score_components_csv'])}")
         if paths.get("summary_json") is not None:
             lines.append(f"summary_json: {rel(paths['summary_json'])}")
+        if paths.get("latest_json") is not None:
+            lines.append(f"latest_json: {rel(paths['latest_json'])}")
         LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         LOG_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print("\n".join(lines))

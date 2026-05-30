@@ -23,9 +23,9 @@ bash 00_setup/verify_env.sh
 
 ## 모드
 
-- `B00`: 배경 차량 없는 응급차 자유류 run.
-- `B0`: 첨두시간 배경 수요 + 응급차, 신호 조작 없음.
-- `B2`: B0과 같은 수요 + corridor priority 제어.
+- `B00`: 배경 차량 없이 신호등을 비활성화한 응급차 자유류 run.
+- `B0`: 600초 warm-up 후에도 지속되는 첨두시간 배경 수요 + 응급차, 신호 조작 없음.
+- `B2`: B0과 같은 지속 수요 + corridor priority 제어.
 
 `B1`은 최종 비교 대상에서 제외한다.
 
@@ -40,13 +40,14 @@ B2는 안전 규칙을 우선한다.
 - 보행자 최소 보행시간 보호를 위해 현재 phase를 단축하지 않는다.
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초만 허용한다.
 
-이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 기본 선택값은 `D_det=500, alpha=5, G_ext=60, T_change_sec=10`이며, 후보 탐색 기록은 `configs/b2_stage1_parameter_sets.csv`와 `configs/b2_tchange_sweep_parameter_sets.csv`에 남긴다. Bayesian Optimization 전체 구현은 추후 범위다.
+이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 기본 선택값은 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`이다. Bayesian Optimization 전체 구현은 추후 범위다.
 
 고정값:
 
 - `w1=3.00`, `w2=1.00`, `w3=1.00`
 - `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`
-- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.00`, `has.bluelight.device=false`로 둔다.
+- net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.40`, `maxSpeed=70km/h`, `has.bluelight.device=false`로 둔다. 단 `B00`은 자유류 기준이므로 SUMO `tls.all-off=true`로 신호등을 비활성화한다.
+- 배경 수요는 600초 TOPIS 패턴을 3600초까지 반복하되, 0~600초 warm-up은 0.15x, 이후 지속 수요는 0.05x(`sustained_calibration_seed_002`)를 사용한다. 기본 응급차 출동은 600초다.
 
 ## 파라미터 입력 실험
 
@@ -57,13 +58,17 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --modes B00 B0 B2 \
   --repeats 1 \
   --workers 1 \
+  --emergency-depart 600 \
   --timeout-steps 7200 \
   --recovery-buffer-sec 300
 ```
 
 출력:
 
-- `results/metrics/parameter_input_sim.csv`
+- `results/metrics/parameter_input_sim/{run_id}/experiment_results.csv`
+- `results/metrics/parameter_input_sim/{run_id}/score_components.csv`
+- `results/metrics/parameter_input_sim/{run_id}/experiment_summary.json`
+- `results/metrics/parameter_input_sim/latest.json`
 - `runs/final/parameter_input_sim/{run_id}/...`
 
 ## 최종 효과 검증 실험
@@ -79,7 +84,10 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 출력:
 
-- `results/metrics/final_effect_validation_sim.csv`
+- `results/metrics/final_effect_validation_sim/{run_id}/experiment_results.csv`
+- `results/metrics/final_effect_validation_sim/{run_id}/score_components.csv`
+- `results/metrics/final_effect_validation_sim/{run_id}/experiment_summary.json`
+- `results/metrics/final_effect_validation_sim/latest.json`
 - `runs/final/final_effect_validation_sim/{run_id}/...`
 
 ## B2 파라미터 CSV
@@ -98,7 +106,7 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 ## 핵심 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 통행시간을 뺀 값.
-- `N_delay_sec`: 전체 네트워크 비메인 도로 일반차 지연시간 평균. 관측 종료 시점에 edge 위에 남은 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 저장한다.
+- `N_delay_sec`: 응급차 출동 이후 관측창의 전체 네트워크 비메인 도로 일반차 지연시간 평균. 출동 전부터 edge에 있던 차량은 출동 이후 겹친 체류분만 포함한다. 관측 종료 시점에 edge 위에 남은 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 저장한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 
@@ -113,6 +121,14 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 - 회복 후 `recovery_buffer_sec`만큼 추가 관측한다. 기본값은 300초다.
 
 실제 종료 시점은 `analysis_end_time_sec`, 종료 사유는 `analysis_stop_reason`에 저장한다. 일반차가 남아 있으면 `PASS_WITH_REMAINING_BACKGROUND`이며, 종료 시점 정체 지속 여부는 `congestion_valid_at_analysis_end`로 확인한다.
+
+## 정체 유지 판정
+
+종료 순간 속도 하나로 정체를 판정하지 않는다. `network_speed_pre_emergency_kmh`, `network_speed_during_response_kmh`, `network_speed_post_recovery_kmh`와 300초 rolling 평균을 함께 본다.
+
+- `rolling_congestion_valid=True`: 300초 rolling 평균 속도가 관측창 동안 12~35km/h 범위다.
+- `rolling_congestion_valid=False`: 결과는 `WARNING`이며 `rolling_congestion_reason`에 원인을 저장한다.
+- `network_avg_speed_at_analysis_end_kmh`는 잔류 stuck 차량 진단용 보조 지표다.
 
 ## 성공 기준
 

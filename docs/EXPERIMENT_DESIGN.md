@@ -9,14 +9,14 @@
 - 공간 범위: 중부소방서 권역과 서울역 방향 corridor.
 - 시간대: 첨두시간 대표 수요.
 - 출동 차량: 시뮬레이션 1회당 응급차 1대.
-- 파라미터 입력 route: 소방서에서 서울역까지의 단일 route.
+- 파라미터 입력 route: 소방서에서 서울역 edge `619147738#0`까지의 고정 직선 route.
 - 최종 검증 route: `b0_valid_18`, 단 `ER_ACC_013` 제외.
 
 ## 비교군
 
-- `B00_freeflow`: 배경 차량 없는 응급차 자유류 기준 run.
-- `B0_peak_no_control`: 첨두시간 배경 수요, 신호 조작 없음.
-- `B2_peak_corridor_control`: 첨두시간 배경 수요, corridor priority 신호 제어 적용.
+- `B00_freeflow`: 배경 차량 없이 신호등을 비활성화한 응급차 자유류 기준 run.
+- `B0_peak_no_control`: 600초 warm-up 후에도 지속되는 첨두시간 배경 수요, 신호 조작 없음.
+- `B2_peak_corridor_control`: B0과 같은 지속 첨두시간 배경 수요, corridor priority 신호 제어 적용.
 
 `B1`은 과거 진단용 smoke 코드로만 유지하고 최종 비교에서는 제외한다.
 
@@ -25,8 +25,8 @@
 - `emergency_travel_time_sec`: SUMO tripinfo 기준 응급차 실제 통행시간.
 - `b00_emergency_travel_time_sec`: 같은 route/repeat의 B00 응급차 자유류 통행시간.
 - `A_delay_sec`: 응급차 지연시간.
-- `N_delay_sec`: 전체 비메인 도로 일반차 지연시간 평균.
+- `N_delay_sec`: 응급차 출동 이후 관측창의 전체 비메인 도로 일반차 지연시간 평균.
 - `T_recovery_sec`: 소방서→서울역 첫 교차로 대기행렬 회복시간.
-- `score_sec`: 세 지표의 동일가중 합.
+- `score_sec`: `3*A_delay_sec + N_delay_sec + T_recovery_sec`.
 
 모든 시간 단위는 초(s), 소수 둘째자리로 저장한다.

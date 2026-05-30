@@ -1,7 +1,18 @@
 {
   "schema": "final_experiment_manifest.v2",
   "active_net": "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml",
-  "background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
+  "background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml",
+  "legacy_background_route": "data_prepared/demand/background_routes_am_imputed_a17_a19_scale_0p15.rou.xml",
+  "background_demand_design": {
+    "source_pattern": "data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml",
+    "method": "repeat_600s_topis_pattern_with_split_scale",
+    "warmup_sec": 600,
+    "warmup_scale": 0.15,
+    "sustain_scale": 0.05,
+    "sampling_seed": "sustained_calibration_seed_002",
+    "emergency_depart_sec": 600,
+    "sustained_duration_sec": 3600
+  },
   "emergency_routes": "data_prepared/routes/emergency_routes_spine_v2.csv",
   "route_set": "b0_valid_18",
   "excluded_routes": [
@@ -15,13 +26,14 @@
   "optimization_route": {
     "route_id": "FIRE_TO_SEOUL_STATION",
     "start_edge_id": "-381802881#2",
-    "target_edge_id": "438360331#2",
+    "target_edge_id": "619147738#0",
+    "route_policy": "straight_seoul_station_fixed",
     "usage": "parameter_search_input_only"
   },
   "teleport_policy": {
     "emergency": "FAIL",
     "background": "WARNING"
   },
-  "final_background_required_substring": "scale_0p15",
-  "notes": "B00/B0/B2 final experiment manifest. Use parameter_input_sim for the fire-station-to-Seoul-Station parameter input run and final_effect_validation_sim for b0_valid_18 effect validation. Bayesian Optimization is out of scope; external optimizers may generate b2_parameter_sets.csv."
+  "final_background_required_substring": "warm0p15_sustain0p05_seed002_sustained_3600",
+  "notes": "B00/B0/B2 final experiment manifest. Background demand uses a split-scale sustained TOPIS pattern: 0.15x for the 0-600s warm-up cycle and 0.05x for later cycles through 3600s, with emergency_depart_sec=600. The parameter_input_sim route is the fixed straight Seoul Station route ending at 619147738#0. Use parameter_input_sim for the fire-station-to-Seoul-Station parameter input run and final_effect_validation_sim for b0_valid_18 effect validation. Bayesian Optimization is out of scope; external optimizers may generate b2_parameter_sets.csv."
 }

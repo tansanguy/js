@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seoul Station Fixed Route</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #111827; }
+    .app { display: grid; grid-template-columns: 360px 1fr; height: 100vh; background: #f3f4f6; }
+    aside { overflow: auto; padding: 16px; border-right: 1px solid #d1d5db; background: #ffffff; }
+    #map { height: 100vh; min-height: 420px; background: #e5e7eb; }
+    h1 { font-size: 20px; line-height: 1.2; margin: 0 0 8px; font-weight: 700; }
+    h2 { font-size: 14px; margin: 18px 0 8px; }
+    p { margin: 0 0 12px; }
+    .meta { color: #6b7280; font-size: 12px; line-height: 1.45; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+    .stat { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; min-width: 0; }
+    .stat-label { display: block; color: #6b7280; font-size: 11px; line-height: 1.2; margin-bottom: 3px; }
+    .stat-value { display: block; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 6px 4px; vertical-align: top; }
+    th { color: #6b7280; font-weight: 600; }
+    textarea { width: 100%; height: 120px; box-sizing: border-box; margin-top: 8px; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #374151; }
+    .lane-loss-marker { border: 2px solid #fff; border-radius: 999px; background: #dc2626; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: 46vh 54vh; }
+      aside { grid-row: 2; border-right: 0; border-top: 1px solid #d1d5db; }
+      #map { grid-row: 1; height: 46vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>서울역 고정 직선 경로</h1>
+      <p class="meta">실험에는 이 단일 경로만 사용한다. 빨간 점은 차로 수가 줄어드는 연결부다.</p>
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-label">Route</span><span class="stat-value" id="route-id"></span></div>
+        <div class="stat"><span class="stat-label">Policy</span><span class="stat-value" id="policy"></span></div>
+        <div class="stat"><span class="stat-label">Target</span><span class="stat-value" id="target"></span></div>
+        <div class="stat"><span class="stat-label">Length</span><span class="stat-value" id="length"></span></div>
+        <div class="stat"><span class="stat-label">Edges</span><span class="stat-value" id="edges"></span></div>
+        <div class="stat"><span class="stat-label">Lane-loss</span><span class="stat-value" id="lane-loss"></span></div>
+      </div>
+      <h2>Latest metrics</h2>
+      <div id="metrics"></div>
+      <h2>Edge IDs</h2>
+      <textarea id="edge-list" readonly></textarea>
+    </aside>
+    <main id="map"></main>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const DATA = {"generated_at": "2026-05-30T16:40:59.100744+00:00", "net_path": "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml", "results_csv": "results/metrics/seoul_station_straight_final_smoke/20260530T163915_704321Z0000/experiment_results.csv", "route_id": "FIRE_TO_SEOUL_STATION", "policy": "straight_seoul_station_fixed", "start_edge": "-381802881#2", "target_edge": "619147738#0", "edge_count": 59, "length_m": 2990.17, "edge_ids": ["-381802881#2", "-381802847#2", "-183272625#1", "-174870621#2", "-174870621#0", "578313748#0", "578313748#2", "800229255", "180368918#0", "180368918#3", "180368918#5", "180368918#6", "180368918#7", "180368918#8", "218773868#0", "218773868#2", "218773868#3", "218773868#4", "218773868#5", "218773868#6", "-1455512070", "-1455512069", "428260110", "785130600#0", "785130600#1", "785130600#2", "785130600#3", "1455497345", "218773869#1", "218773869#3", "218773869#4", "218773869#5", "218773869#6", "218773869#7", "218773869#8", "219696193#0", "219696193#1", "219696193#2", "781985793#0", "180368915#0", "180368915#1", "180368915#2", "180368915#3", "218915133#0", "218915133#2", "218915133#3", "347237859#0", "347237859#1", "347237859#2", "347237859#3", "347237859#4", "781985787#0", "218915135#3", "218915135#4", "781983104#0", "781983104#1", "333557072#3", "333557072#5", "619147738#0"], "segments": [{"index": 0, "edge_id": "-381802881#2", "coords": [[37.56509600492159, 127.01486706271254], [37.565091661977235, 127.01486604584657], [37.564562136044906, 127.01473382921498]]}, {"index": 1, "edge_id": "-381802847#2", "coords": [[37.564495978124874, 127.01459938824401], [37.56457515107549, 127.01421111039336], [37.56472913691042, 127.01379684310017], [37.56470722290671, 127.01364605664904]]}, {"index": 2, "edge_id": "-183272625#1", "coords": [[37.56474929816194, 127.01357576459827], [37.564916119089, 127.0135546905687], [37.564929365414066, 127.01354924400185], [37.56494019859026, 127.01354499369008]]}, {"index": 3, "edge_id": "-174870621#2", "coords": [[37.56502922063251, 127.01320128411342], [37.56499855462326, 127.01290541775252], [37.56498545722214, 127.01278054951075], [37.56494990028329, 127.01244048968674], [37.5649468355276, 127.01241102193227]]}, {"index": 4, "edge_id": "-174870621#0", "coords": [[37.56493837633946, 127.01228065285513], [37.56492513869036, 127.01148951634849]]}, {"index": 5, "edge_id": "578313748#0", "coords": [[37.56489584729379, 127.01135302172933], [37.56486626306193, 127.01116439939463]]}, {"index": 6, "edge_id": "578313748#2", "coords": [[37.564826655584206, 127.01092917273861], [37.564801532605664, 127.01079941716098]]}, {"index": 7, "edge_id": "800229255", "coords": [[37.56478532506967, 127.01071204998435], [37.564768499935894, 127.01061745351213]]}, {"index": 8, "edge_id": "180368918#0", "coords": [[37.564748684761604, 127.01051121887544], [37.564698295794514, 127.01020319957233], [37.56466810099838, 127.00999183827369]]}, {"index": 9, "edge_id": "180368918#3", "coords": [[37.56459851157135, 127.00966225382025], [37.56456249283983, 127.00938617601912]]}, {"index": 10, "edge_id": "180368918#5", "coords": [[37.564537943658934, 127.00922108318612], [37.56450151278883, 127.00900343556535]]}, {"index": 11, "edge_id": "180368918#6", "coords": [[37.56447480460796, 127.00884394800406], [37.56443661522857, 127.0086155922103]]}, {"index": 12, "edge_id": "180368918#7", "coords": [[37.56440264122847, 127.00839940816137], [37.56432398468551, 127.00786928230329]]}, {"index": 13, "edge_id": "180368918#8", "coords": [[37.56427837133206, 127.00758831083466], [37.56426553142531, 127.00750838402499], [37.564258538641305, 127.00745451054202], [37.56425199160092, 127.00739768162241]]}, {"index": 14, "edge_id": "218773868#0", "coords": [[37.56420260991747, 127.00700303093471], [37.564176900784034, 127.00681747889983]]}, {"index": 15, "edge_id": "218773868#2", "coords": [[37.564144928008226, 127.00660792276001], [37.56402093569405, 127.00607533010083]]}, {"index": 16, "edge_id": "218773868#3", "coords": [[37.563955353829044, 127.00579155363148], [37.56389683488262, 127.00553645878055]]}, {"index": 17, "edge_id": "218773868#4", "coords": [[37.563858692702254, 127.0053672593959], [37.563757831806, 127.00491052945965], [37.5637141651911, 127.00470513662799]]}, {"index": 18, "edge_id": "218773868#5", "coords": [[37.56367481098471, 127.00452029039785], [37.56356105281183, 127.00398590316149]]}, {"index": 19, "edge_id": "218773868#6", "coords": [[37.56352647406186, 127.0038277051247], [37.56349667169553, 127.00369615461162]]}, {"index": 20, "edge_id": "-1455512070", "coords": [[37.56346777366079, 127.00357278800402], [37.56327261388238, 127.00276575369023]]}, {"index": 21, "edge_id": "-1455512069", "coords": [[37.56319270377991, 127.00243725060571], [37.56317422179848, 127.0023543066612]]}, {"index": 22, "edge_id": "428260110", "coords": [[37.56317409050826, 127.00235453659327], [37.56309609837716, 127.0019450929096]]}, {"index": 23, "edge_id": "785130600#0", "coords": [[37.563063576332254, 127.00178876649832], [37.56305441609779, 127.0017480850046], [37.562949032526895, 127.00136303603477]]}, {"index": 24, "edge_id": "785130600#1", "coords": [[37.56291190411433, 127.00119551210295], [37.56288149698155, 127.00099384507172]]}, {"index": 25, "edge_id": "785130600#2", "coords": [[37.56284787160911, 127.00082300129706], [37.562508574507206, 126.99929998078143]]}, {"index": 26, "edge_id": "785130600#3", "coords": [[37.562473162606054, 126.99914350769862], [37.56245487007261, 126.99906390006922], [37.56233048463314, 126.99855794763054]]}, {"index": 27, "edge_id": "1455497345", "coords": [[37.56227722069906, 126.99832932817733], [37.56211540613629, 126.99760939290896], [37.56206965824655, 126.99740955550594]]}, {"index": 28, "edge_id": "218773869#1", "coords": [[37.56204061393369, 126.99728857512592], [37.5619549492895, 126.99695112421671]]}, {"index": 29, "edge_id": "218773869#3", "coords": [[37.561873086189166, 126.99661204391924], [37.56181081670202, 126.99634687521592]]}, {"index": 30, "edge_id": "218773869#4", "coords": [[37.56178140811838, 126.9962257356284], [37.56172752994347, 126.99601162694974], [37.56167459446999, 126.99579998394496]]}, {"index": 31, "edge_id": "218773869#5", "coords": [[37.56164914179872, 126.99569158812672], [37.56157271917594, 126.99533079832487]]}, {"index": 32, "edge_id": "218773869#6", "coords": [[37.561537087487125, 126.99517495770793], [37.56131653008869, 126.9942847598503]]}, {"index": 33, "edge_id": "218773869#7", "coords": [[37.56127615836831, 126.9941311417921], [37.56113648857887, 126.99362855932954], [37.56112575535457, 126.9935644312084]]}, {"index": 34, "edge_id": "218773869#8", "coords": [[37.56112575535457, 126.9935644312084], [37.56111730997402, 126.99349175103404], [37.561112995262924, 126.99345530021294], [37.561105496447674, 126.99337999085608], [37.56111827491616, 126.99327023128487]]}, {"index": 35, "edge_id": "219696193#0", "coords": [[37.56112126576399, 126.99311222415595], [37.56111840971968, 126.9930794135145], [37.56111881416871, 126.9930237037221]]}, {"index": 36, "edge_id": "219696193#1", "coords": [[37.56111881416871, 126.9930237037221], [37.56111943696695, 126.99293844046223], [37.561123471555845, 126.9926669696678], [37.56112491764534, 126.9922857553941]]}, {"index": 37, "edge_id": "219696193#2", "coords": [[37.56112744385451, 126.99212170401711], [37.56113476001502, 126.99184193740268], [37.56112167756057, 126.99166364454933]]}, {"index": 38, "edge_id": "781985793#0", "coords": [[37.56111413585154, 126.99149850504293], [37.56111250457922, 126.99141324572841], [37.56111425730191, 126.9911932332041], [37.56112515927296, 126.99106071203475], [37.561150745935684, 126.9907823224853]]}, {"index": 39, "edge_id": "180368915#0", "coords": [[37.56115619322908, 126.99075291155415], [37.56116914276632, 126.99069833642241]]}, {"index": 40, "edge_id": "180368915#1", "coords": [[37.56118969737049, 126.99061140550845], [37.56122126533246, 126.9904779326203]]}, {"index": 41, "edge_id": "180368915#2", "coords": [[37.56123987630343, 126.9903906575809], [37.561274686762395, 126.99017241674053], [37.56131197548027, 126.98995948654655], [37.561316095411634, 126.98992094120334]]}, {"index": 42, "edge_id": "180368915#3", "coords": [[37.561326992423815, 126.9897617588157], [37.56132715279865, 126.98975530156449], [37.561328718986374, 126.98961974771466], [37.56132550966892, 126.9892991115412]]}, {"index": 43, "edge_id": "218915133#0", "coords": [[37.56127570775703, 126.98887540580452], [37.56126431466258, 126.98877535206593], [37.56120893189655, 126.98836272186627]]}, {"index": 44, "edge_id": "218915133#2", "coords": [[37.561186068689615, 126.98820308914706], [37.56114345385137, 126.98792364653228], [37.56109701744859, 126.98767645845801]]}, {"index": 45, "edge_id": "218915133#3", "coords": [[37.56107718142242, 126.98754906593399], [37.56107340115295, 126.98751763893185]]}, {"index": 46, "edge_id": "347237859#0", "coords": [[37.56107085335688, 126.98748714104521], [37.56104211209487, 126.9868534911862], [37.561037461405576, 126.9867895400825]]}, {"index": 47, "edge_id": "347237859#1", "coords": [[37.561021075093, 126.98662933765577], [37.560989227415966, 126.98640015450196]]}, {"index": 48, "edge_id": "347237859#2", "coords": [[37.560969660157475, 126.98624898142408], [37.560948406049896, 126.98605970247158]]}, {"index": 49, "edge_id": "347237859#3", "coords": [[37.56093423498231, 126.9859343090726], [37.560914062714964, 126.98575564279773], [37.56084042384189, 126.98510305353119]]}, {"index": 50, "edge_id": "347237859#4", "coords": [[37.56082654905561, 126.98497923745144], [37.56080102698534, 126.98475124371079], [37.560741755444006, 126.98404053293017], [37.56069407753918, 126.98346796462457]]}, {"index": 51, "edge_id": "781985787#0", "coords": [[37.56068369249429, 126.98334014933444], [37.560653792921954, 126.98296957558159], [37.56062485724837, 126.98271609012328], [37.560625614092466, 126.98266546560248]]}, {"index": 52, "edge_id": "218915135#3", "coords": [[37.56021888468569, 126.98162111442143], [37.55990840696979, 126.98114632489818], [37.55977257154335, 126.98084999300002], [37.559692683743485, 126.98058690606621]]}, {"index": 53, "edge_id": "218915135#4", "coords": [[37.55963482423624, 126.98038667724255], [37.5595122272708, 126.97996353857373]]}, {"index": 54, "edge_id": "781983104#0", "coords": [[37.5594771194009, 126.97983684644501], [37.559307519744266, 126.97914249199115], [37.559191776104605, 126.97888298122247]]}, {"index": 55, "edge_id": "781983104#1", "coords": [[37.559124524213274, 126.97875806446935], [37.55906484298045, 126.97866475418412], [37.55886098597892, 126.97840151347513], [37.55865677177567, 126.9782068862119], [37.55834039026128, 126.97789325752801], [37.55812031362762, 126.97764076156759], [37.55804557225087, 126.97754429468742], [37.55783310234375, 126.97714148656738], [37.55770762136498, 126.97685043711252], [37.557700693628355, 126.97683534198812], [37.557634162066456, 126.97668159973607], [37.5575125022844, 126.97636118536069]]}, {"index": 56, "edge_id": "333557072#3", "coords": [[37.55747748701946, 126.97626902287864], [37.55739603470091, 126.9760545555453], [37.55724480511802, 126.97561806132182]]}, {"index": 57, "edge_id": "333557072#5", "coords": [[37.5571065622422, 126.97521897047498], [37.55682107516574, 126.97439539666831]]}, {"index": 58, "edge_id": "619147738#0", "coords": [[37.55677039434992, 126.97424909671034], [37.5565910384898, 126.97373113047466], [37.556581107187476, 126.97362510282255], [37.55658453650687, 126.97347841332613], [37.55658980861003, 126.97340231194455], [37.55662316029476, 126.97330824304518], [37.55670982724123, 126.97316744856673]]}], "lane_loss_transitions": [{"index": 39, "from_edge": "781985793#0", "to_edge": "180368915#0", "from_lanes": 2, "connected_lanes": 1, "lost_lanes": 1, "point": [37.56111425730191, 126.9911932332041]}, {"index": 52, "from_edge": "781985787#0", "to_edge": "218915135#3", "from_lanes": 2, "connected_lanes": 1, "lost_lanes": 1, "point": [37.56062485724837, 126.98271609012328]}], "metrics": {"B00": {"mode": "B00", "final_status": "PASS", "emergency_travel_time_sec": "227.00", "emergency_avg_speed_kmh": "61.97", "A_delay_sec": "0.00", "N_delay_sec": "0.00", "rolling_congestion_valid": "False", "background_teleported": "0", "route_error_count": "0", "emergency_stop_warning_count": "0", "emergency_lane_connection_warning_count": "0"}, "B0": {"mode": "B0", "final_status": "PASS_WITH_REMAINING_BACKGROUND", "emergency_travel_time_sec": "1472.00", "emergency_avg_speed_kmh": "9.56", "A_delay_sec": "1245.00", "N_delay_sec": "4.90", "rolling_congestion_valid": "True", "background_teleported": "0", "route_error_count": "0", "emergency_stop_warning_count": "0", "emergency_lane_connection_warning_count": "0"}, "B2": {"mode": "B2", "final_status": "PASS_WITH_REMAINING_BACKGROUND", "emergency_travel_time_sec": "1158.00", "emergency_avg_speed_kmh": "12.15", "A_delay_sec": "931.00", "N_delay_sec": "4.22", "rolling_congestion_valid": "True", "background_teleported": "0", "route_error_count": "0", "emergency_stop_warning_count": "0", "emergency_lane_connection_warning_count": "0"}}};
+    const map = L.map('map', { preferCanvas: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function fmt(value, digits = 1) {
+      const number = Number(value);
+      return Number.isFinite(number) ? number.toLocaleString(undefined, { maximumFractionDigits: digits }) : (value || '');
+    }
+
+    const bounds = L.latLngBounds([]);
+    DATA.segments.forEach((segment) => {
+      const line = L.polyline(segment.coords, {
+        color: '#2563eb',
+        weight: 6,
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round'
+      }).bindTooltip(`#${segment.index} ${segment.edge_id}`, { sticky: true }).addTo(map);
+      bounds.extend(line.getBounds());
+    });
+    if (DATA.segments.length) {
+      const start = DATA.segments[0].coords[0];
+      const last = DATA.segments[DATA.segments.length - 1].coords;
+      const end = last[last.length - 1];
+      L.circleMarker(start, { radius: 7, color: '#047857', fillColor: '#10b981', fillOpacity: 1, weight: 2 }).bindPopup(`Start<br><code>${DATA.start_edge}</code>`).addTo(map);
+      L.circleMarker(end, { radius: 7, color: '#7c2d12', fillColor: '#f97316', fillOpacity: 1, weight: 2 }).bindPopup(`Target<br><code>${DATA.target_edge}</code>`).addTo(map);
+    }
+    DATA.lane_loss_transitions.forEach((item) => {
+      L.marker(item.point, {
+        icon: L.divIcon({ className: 'lane-loss-marker', iconSize: [13, 13] })
+      }).bindPopup(
+        `<strong>Lane-loss transition</strong><br>` +
+        `#${item.index} <code>${item.from_edge}</code> -> <code>${item.to_edge}</code><br>` +
+        `${item.connected_lanes} of ${item.from_lanes} lanes connect`
+      ).addTo(map);
+    });
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24] });
+    else map.setView([37.556, 126.98], 14);
+
+    document.getElementById('route-id').textContent = DATA.route_id;
+    document.getElementById('policy').textContent = DATA.policy;
+    document.getElementById('target').textContent = DATA.target_edge;
+    document.getElementById('length').textContent = `${fmt(DATA.length_m, 0)} m`;
+    document.getElementById('edges').textContent = DATA.edge_count;
+    document.getElementById('lane-loss').textContent = DATA.lane_loss_transitions.length;
+    document.getElementById('edge-list').value = DATA.edge_ids.join(' ');
+
+    const metrics = document.getElementById('metrics');
+    const modes = Object.keys(DATA.metrics || {});
+    if (!modes.length) {
+      metrics.innerHTML = '<p class="meta">No latest metrics found for this route.</p>';
+    } else {
+      metrics.innerHTML = `
+        <table>
+          <thead><tr><th>Mode</th><th>Status</th><th>Travel</th><th>Avg</th><th>Warnings</th></tr></thead>
+          <tbody>
+            ${modes.map((mode) => {
+              const row = DATA.metrics[mode];
+              const warnings = [
+                `teleport ${row.background_teleported || 0}`,
+                `route ${row.route_error_count || 0}`,
+                `stop ${row.emergency_stop_warning_count || 0}`,
+                `lane ${row.emergency_lane_connection_warning_count || 0}`
+              ].join('<br>');
+              return `<tr><td>${mode}</td><td>${row.final_status}</td><td>${fmt(row.emergency_travel_time_sec, 0)} s</td><td>${fmt(row.emergency_avg_speed_kmh)} km/h</td><td>${warnings}</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  </script>
+</body>
+</html>
