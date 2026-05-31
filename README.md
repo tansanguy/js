@@ -9,7 +9,7 @@
 - `B00`은 배경 차량 없이 신호등을 비활성화한 응급차 자유류 기준 run이다.
 - `B0`은 600초 warm-up 후에도 지속 투입되는 첨두시간 배경 수요에서 신호 조작이 없는 baseline이다.
 - `B2`는 B0과 같은 지속 배경 수요에서 corridor priority 신호 제어를 적용한다.
-- Bayesian Optimization은 Sobol/LHS 초기 theta 생성, 반복 추천, top3 재평가를 단계형 CLI로 실행한다.
+- Bayesian Optimization은 `--bo-stage loop`로 5개씩 10라운드 추천/실행/재학습을 자동 반복한다.
 
 ## 핵심 파이프라인
 
@@ -63,31 +63,26 @@ bash 00_setup/verify_env.sh
 
 ## Bayesian Optimization
 
-표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 먼저 초기 theta를 만든다.
+표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 기존 22-row 관측 CSV에서 시작해 5개씩 10라운드를 자동 실행한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage init \
-  --bo-initial-count 20 \
-  --bo-sampler sobol
-```
-
-이후 `results/metrics/parameter_input_sim_bo/{run_id}/bo_commands.sh`를 실행하고, 다음 추천은 자동 입력으로 돌린다.
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage suggest \
-  --bo-auto-inputs \
-  --bo-recommend-count 5
-```
-
-기존 22-row 관측 CSV로 바로 추천할 수도 있다.
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage suggest \
+  --bo-stage loop \
   --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 5
+  --bo-rounds 10 \
+  --bo-batch-size 5 \
+  --bo-eval-repeats 5 \
+  --workers 6 \
+  --manifest configs/final_experiment_manifest.json
+```
+
+중단된 loop는 `--bo-resume`으로 이어서 실행한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage loop \
+  --bo-resume \
+  --manifest configs/final_experiment_manifest.json
 ```
 
 출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`, `results/metrics/parameter_input_sim_bo/latest.json`, `results/metrics/parameter_input_sim_bo/state.json`, `configs/generated/` 아래에 생성된다.

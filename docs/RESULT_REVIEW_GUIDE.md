@@ -77,6 +77,45 @@ runs/final/{output_prefix}/{run_id}/
 - SUMO warning과 error 원본 로그.
 - route error, teleport, lane connection warning, emergency stop warning을 확인한다.
 
+## 2.1 BO loop 결과 파일
+
+`bo_loop_summary.json`:
+
+- batch BO 전체 요약이다.
+- `rounds_completed`, `final_status`, `best_theta_so_far`, `valid_observation_count`를 먼저 본다.
+
+`bo_rounds.csv`:
+
+- round별 진행표다.
+- 각 round의 추천 CSV, 실제 평가 결과 CSV, round 종료 후 best theta가 들어 있다.
+- `status`가 `PASS`가 아니면 해당 round에서 loop가 중단된 이유를 확인한다.
+
+`bo_all_results.csv`:
+
+- round 0 초기 관측과 round 1,2,...의 모든 theta 결과를 한 번에 보는 전체 BO 결과표다.
+- `bo_round_index=0`은 초기 관측 CSV이고, `bo_round_index=1`부터 실제 BO 추천 round 결과다.
+- theta별 `D_det`, `alpha`, `G_ext`, `score_sec`, `bo_score_sec`, `final_status`, `exclude_reason`을 함께 볼 수 있다.
+
+`bo_observations.csv`:
+
+- GP surrogate 학습에 실제로 들어간 유효 관측치다.
+- 같은 theta의 repeat 결과는 BO 내부에서 평균 `bo_score_sec`로 집계된다.
+
+`bo_excluded_observations.csv`:
+
+- 실패, 응급차 미도착, teleport, route error, SUMO 오류 등으로 GP 학습에서 제외된 row다.
+- `exclude_reason`을 보면 제외 이유를 알 수 있다.
+
+`bo_recommendations_round_XX.csv`:
+
+- 각 round에서 `scikit-optimize`가 추천한 theta 5개다.
+- 실제 실행용 CSV는 `configs/generated/b2_bo_round_{loop_run_id}_rXX.csv`에도 같이 저장된다.
+
+round별 `experiment_results.csv`:
+
+- 실제 B00/B2 시뮬레이션 결과다.
+- 위치는 `results/metrics/parameter_input_sim_bo_eval/{sim_run_id}/experiment_results.csv`다.
+
 ## 3. 모드 의미
 
 `B00`:

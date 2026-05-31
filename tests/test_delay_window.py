@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -276,6 +279,94 @@ class BayesianOptimizationInputTest(unittest.TestCase):
         )
 
         self.assertEqual(runner.resolve_bo_observation_inputs(args, {"latest_results_csvs": []}), [explicit.resolve()])
+
+    def test_skopt_dimensions_follow_expected_grid(self) -> None:
+        dimensions = runner.skopt_dimensions()
+
+        self.assertEqual(dimensions[0].categories[0], 300)
+        self.assertEqual(dimensions[0].categories[-1], 1000)
+        self.assertEqual(dimensions[1].categories[0], 0)
+        self.assertEqual(dimensions[1].categories[-1], 15)
+        self.assertEqual(dimensions[2].categories[0], 10)
+        self.assertEqual(dimensions[2].categories[-1], 60)
+
+    def test_bo_observations_are_aggregated_by_theta_mean(self) -> None:
+        observations = [
+            {"parameter_id": "a", "D_det": 500.0, "alpha": 5.0, "G_ext": 30.0, "score_sec": 100.0, "bo_score_sec": 110.0},
+            {"parameter_id": "a", "D_det": 500.0, "alpha": 5.0, "G_ext": 30.0, "score_sec": 120.0, "bo_score_sec": 130.0},
+            {"parameter_id": "b", "D_det": 700.0, "alpha": 7.0, "G_ext": 40.0, "score_sec": 90.0, "bo_score_sec": 95.0},
+        ]
+
+        aggregated = runner.aggregate_bo_observations_by_theta(observations)
+        by_theta = {(row["D_det"], row["alpha"], row["G_ext"]): row for row in aggregated}
+
+        self.assertEqual(len(aggregated), 2)
+        self.assertAlmostEqual(by_theta[(500.0, 5.0, 30.0)]["score_sec"], 110.0)
+        self.assertAlmostEqual(by_theta[(500.0, 5.0, 30.0)]["bo_score_sec"], 120.0)
+        self.assertEqual(by_theta[(500.0, 5.0, 30.0)]["repeat_count"], 2)
+
+    def test_skopt_batch_recommendations_exclude_existing_theta(self) -> None:
+        observations = [
+            {"parameter_id": "p1", "D_det": 500.0, "alpha": 5.0, "G_ext": 30.0, "score_sec": 1000.0, "bo_score_sec": 1000.0},
+            {"parameter_id": "p2", "D_det": 550.0, "alpha": 6.0, "G_ext": 35.0, "score_sec": 900.0, "bo_score_sec": 900.0},
+            {"parameter_id": "p3", "D_det": 600.0, "alpha": 7.0, "G_ext": 40.0, "score_sec": 800.0, "bo_score_sec": 800.0},
+        ]
+
+        recommendations = runner.recommend_bo_batch_skopt(observations, batch_size=5, seed=123, strategy="cl_min")
+        existing = {(500.0, 5.0, 30.0), (550.0, 6.0, 35.0), (600.0, 7.0, 40.0)}
+        recommended = {(float(row["D_det"]), float(row["alpha"]), float(row["G_ext"])) for row in recommendations}
+
+        self.assertEqual(len(recommendations), 5)
+        self.assertEqual(len(recommended), 5)
+        self.assertTrue(recommended.isdisjoint(existing))
+
+    def test_bo_loop_mock_runs_two_rounds_and_updates_state(self) -> None:
+        initial = self.write_rows(
+            [
+                {"mode": "B2", "parameter_id": "p1", "D_det": "500", "alpha": "5", "G_ext": "30", "A_delay_sec": "100", "N_delay_sec": "1", "T_recovery_sec": "1", "score_sec": "302", "bo_score_sec": "305", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "route_error_count": "0", "sumo_exit_code": "0"},
+                {"mode": "B2", "parameter_id": "p2", "D_det": "550", "alpha": "6", "G_ext": "35", "A_delay_sec": "90", "N_delay_sec": "1", "T_recovery_sec": "1", "score_sec": "272", "bo_score_sec": "276", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "route_error_count": "0", "sumo_exit_code": "0"},
+                {"mode": "B2", "parameter_id": "p3", "D_det": "600", "alpha": "7", "G_ext": "40", "A_delay_sec": "95", "N_delay_sec": "1", "T_recovery_sec": "1", "score_sec": "287", "bo_score_sec": "292", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "route_error_count": "0", "sumo_exit_code": "0"},
+            ]
+        )
+        state_file = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        state_file.close()
+        state_path = Path(state_file.name)
+        state_path.unlink()
+        command = [
+            sys.executable,
+            str(RUNNER_PATH),
+            "--bo-stage",
+            "loop",
+            "--bo-initial-results",
+            str(initial),
+            "--bo-rounds",
+            "2",
+            "--bo-batch-size",
+            "2",
+            "--bo-eval-repeats",
+            "1",
+            "--bo-output-prefix",
+            "parameter_input_sim_bo_unit",
+            "--bo-workflow-prefix",
+            "parameter_input_sim_bo_unit",
+            "--bo-eval-output-prefix",
+            "parameter_input_sim_bo_unit_eval",
+            "--bo-state",
+            str(state_path),
+            "--bo-mock-eval",
+        ]
+
+        completed = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, check=False)
+
+        self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["completed_round"], 2)
+        self.assertEqual(len(state["round_result_csvs"]), 2)
+        self.assertIn("top3_csv", state)
+        all_results = PROJECT_ROOT / state["latest_all_results_csv"]
+        all_rows = runner.read_csv(all_results)
+        self.assertTrue(all_results.is_file())
+        self.assertEqual({row["bo_round_index"] for row in all_rows}, {"0", "1", "2"})
 
 
 if __name__ == "__main__":

@@ -15,8 +15,10 @@
 | `--emergency-depart` | 응급차 출동 시각이다. 기본 실험은 600초다. |
 | `--timeout-steps` | 한 task의 최대 시뮬레이션 시간이다. 7200은 2시간이다. |
 | `--recovery-buffer-sec` | queue 회복 후 추가 관측 시간이다. 기본은 300초다. |
-| `--bo-stage` | BO 단계다. `init`, `suggest`, `top3` 중 하나다. |
+| `--bo-stage` | BO 단계다. 표준은 `loop`이고, `init/suggest/top3`는 수동 진단용이다. |
 | `--bo-auto-inputs` | BO가 이전 결과 CSV를 자동으로 찾게 한다. run id를 직접 넣지 않아도 된다. |
+| `--bo-rounds` | BO loop round 수다. 기본은 10이다. |
+| `--bo-batch-size` | round마다 추천할 theta 개수다. 기본은 5다. |
 
 결과 해석은 [RESULT_REVIEW_GUIDE.md](RESULT_REVIEW_GUIDE.md), BO 실행은 [BAYESIAN_OPTIMIZATION.md](BAYESIAN_OPTIMIZATION.md)를 따른다.
 
@@ -68,7 +70,7 @@ B2는 강제 preemption이 아니라 안전한 priority 제어다. 응급차 통
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization은 단계형 CLI로 초기 theta 생성, 반복 추천, top3 재평가를 수행한다.
+현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization은 `--bo-stage loop`로 5개씩 10라운드 추천/실행/재학습을 자동 반복한다.
 
 ## 3. 파이프라인: `parameter_input_sim`
 
@@ -140,48 +142,44 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 ## 6. Bayesian Optimization
 
-BO는 `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 workflow는 `latest.json`과 `state.json`으로 이전 stage 산출물을 자동으로 불러온다.
+BO는 `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 표준 workflow는 `scikit-optimize` GP optimizer가 round마다 새 theta를 추천하고, 같은 러너가 B00/B2를 실행한 뒤 그 결과를 다음 round에 다시 학습한다.
 
-초기 theta 생성:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage init \
-  --bo-initial-count 20 \
-  --bo-sampler sobol
-```
-
-누적 결과로 다음 theta 추천:
+표준 batch loop:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage suggest \
-  --bo-auto-inputs \
-  --bo-recommend-count 5
-```
-
-기존 22-row candidate summary로 바로 추천할 때:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage suggest \
+  --bo-stage loop \
   --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 5
+  --bo-rounds 10 \
+  --bo-batch-size 5 \
+  --bo-eval-repeats 5 \
+  --workers 6 \
+  --manifest configs/final_experiment_manifest.json
 ```
 
-실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 사유를 남긴다. acquisition은 minimization용 Expected Improvement이고 `xi=0.05`로 exploration을 유지한다.
+중단 후 재개:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage loop \
+  --bo-resume \
+  --manifest configs/final_experiment_manifest.json
+```
+
+실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 사유를 남긴다.
 
 출력:
 
 - `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_observations.csv`
 - `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_excluded_observations.csv`
-- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_recommendations.csv`
-- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_commands.sh`
-- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_summary.json`
+- `results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_loop_summary.json`
+- `results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_rounds.csv`
+- `results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_recommendations_round_XX.csv`
 - `results/metrics/parameter_input_sim_bo/latest.json`
 - `results/metrics/parameter_input_sim_bo/state.json`
-- `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`
-- `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`
+- `results/metrics/parameter_input_sim_bo_eval/{sim_run_id}/experiment_results.csv`
+- `configs/generated/b2_bo_round_{loop_run_id}_rXX.csv`
+- `configs/generated/b2_bo_top3_reeval_{loop_run_id}.csv`
 
 자세한 BO 실행 순서, 수동 run id fallback, 한계, top3 재평가, 최종 B0/B2 비교 절차는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
 

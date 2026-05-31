@@ -108,35 +108,39 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 ## Bayesian Optimization
 
-표준 BO는 단계형으로 실행한다. `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 target은 `bo_score_sec`이며, 기존 `score_sec`에 green extension과 phase switch 부담 penalty를 더한다.
+표준 BO는 `--bo-stage loop`로 실행한다. `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 target은 `bo_score_sec`이며, 기존 `score_sec`에 green extension과 phase switch 부담 penalty를 더한다.
 
-초기 theta 생성:
+기존 22-row 관측 CSV에서 시작해 5개씩 10라운드 자동 실행:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage init \
-  --bo-initial-count 20 \
-  --bo-sampler sobol
+  --bo-stage loop \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-rounds 10 \
+  --bo-batch-size 5 \
+  --bo-eval-repeats 5 \
+  --workers 6 \
+  --manifest configs/final_experiment_manifest.json
 ```
 
-누적 결과로 다음 theta 추천:
+중단 후 이어서 실행:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bo-stage suggest \
-  --bo-auto-inputs \
-  --bo-recommend-count 5
+  --bo-stage loop \
+  --bo-resume \
+  --manifest configs/final_experiment_manifest.json
 ```
 
 - `results/metrics/parameter_input_sim_bo/latest.json`과 `state.json`이 BO workflow 상태를 가리킨다.
-- `results/metrics/parameter_input_sim/latest.json`에서 최신 시뮬레이션 결과를 자동으로 읽는다.
-- 기존 22-row candidate summary는 `--bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv`로 직접 지정할 수 있다.
+- `scikit-optimize` GP optimizer가 round마다 5개 theta를 추천한다.
+- 각 round는 `B00 B2`를 실행하고 결과를 다음 round 학습 데이터에 추가한다.
 - 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 학습에서 제외된다.
-- 추천 결과는 `results/metrics/parameter_input_sim_bo/{bo_run_id}/`에 저장된다.
-- 실행용 CSV는 `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`, 상위 3개 재평가 CSV는 `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`로 생성된다.
-- `bo_commands.sh`에는 실제 CSV 경로가 들어간 실행 명령이 생성된다.
+- loop 결과는 `results/metrics/parameter_input_sim_bo/{loop_run_id}/`에 저장된다.
+- round별 SUMO 결과는 `results/metrics/parameter_input_sim_bo_eval/{sim_run_id}/`에 저장된다.
+- 실행용 CSV는 `configs/generated/b2_bo_round_{loop_run_id}_rXX.csv`, 상위 3개 재평가 CSV는 `configs/generated/b2_bo_top3_reeval_{loop_run_id}.csv`로 생성된다.
 
-추가 추천 theta 실행은 `A_delay_sec` 계산을 위해 `B00 B2`로 실행한다. 최종 B0/B2 비교는 `B00 B0 B2`를 최소 seed 3회로 실행하고, 가능하면 seed 5-10회로 늘린다.
+최종 B0/B2 비교는 BO 완료 후 top3 재평가 CSV로 `B00 B0 B2`를 최소 seed 3회 실행하고, 가능하면 seed 5-10회로 늘린다.
 
 상세한 BO 모델 설정, 수동 run id fallback, 입력 검증, 산출물, smoke test는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
 

@@ -9,6 +9,7 @@ import importlib.util
 import json
 import math
 import os
+import random
 import shlex
 import shutil
 import subprocess
@@ -40,6 +41,11 @@ DEFAULT_BO_SEED = 20260531
 DEFAULT_BO_T_CHANGE_SEC = 10
 DEFAULT_BO_INITIAL_COUNT = 20
 DEFAULT_BO_ROUND_RECOMMEND_COUNT = 5
+DEFAULT_BO_LOOP_ROUNDS = 10
+DEFAULT_BO_BATCH_SIZE = 5
+DEFAULT_BO_EVAL_REPEATS = 5
+DEFAULT_BO_BATCH_STRATEGY = "cl_min"
+DEFAULT_BO_EVAL_OUTPUT_PREFIX = "parameter_input_sim_bo_eval"
 BO_RECOMMEND_MIN = 1
 BO_RECOMMEND_MAX = 50
 BO_D_DET_BOUNDS = (300.0, 1000.0)
@@ -127,6 +133,51 @@ BO_RECOMMENDATION_FIELDS = [
     "posterior_mean",
     "posterior_std",
     "current_best_flag",
+]
+BO_ROUND_FIELDS = [
+    "loop_run_id",
+    "round_index",
+    "status",
+    "recommendation_count",
+    "valid_observation_count",
+    "excluded_observation_count",
+    "recommendations_csv",
+    "generated_params_csv",
+    "eval_results_csv",
+    "eval_return_code",
+    "best_parameter_id",
+    "best_D_det",
+    "best_alpha",
+    "best_G_ext",
+    "best_bo_score_sec",
+]
+BO_ALL_RESULT_FIELDS = [
+    "loop_run_id",
+    "bo_round_index",
+    "bo_round_label",
+    "source_csv",
+    "source_row",
+    "mode",
+    "parameter_id",
+    "repeat_id",
+    "route_id",
+    "D_det",
+    "alpha",
+    "G_ext",
+    "T_change_sec",
+    "A_delay_sec",
+    "N_delay_sec",
+    "T_recovery_sec",
+    "score_sec",
+    "bo_score_sec",
+    "signal_burden_penalty_sec",
+    "failure_penalty_sec",
+    "final_status",
+    "emergency_arrived",
+    "emergency_teleport",
+    "route_error_count",
+    "sumo_exit_code",
+    "exclude_reason",
 ]
 SCORE_COMPONENT_FIELDS = [
     "generated_at",
@@ -465,12 +516,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-nonfinal-background", action="store_true")
     parser.add_argument("--legacy-output-names", action="store_true")
     parser.add_argument("--bayesian", choices=["true", "false"], default="false")
-    parser.add_argument("--bo-stage", choices=["init", "suggest", "top3"], default=None)
+    parser.add_argument("--bo-stage", choices=["init", "suggest", "top3", "loop"], default=None)
     parser.add_argument("--bo-auto-inputs", action="store_true")
     parser.add_argument("--bo-initial-results", nargs="+", type=Path, default=[])
     parser.add_argument("--bo-initial-count", type=int, default=DEFAULT_BO_INITIAL_COUNT)
     parser.add_argument("--bo-sampler", choices=["sobol", "lhs"], default="sobol")
     parser.add_argument("--bo-recommend-count", type=int, default=DEFAULT_BO_ROUND_RECOMMEND_COUNT)
+    parser.add_argument("--bo-rounds", type=int, default=DEFAULT_BO_LOOP_ROUNDS)
+    parser.add_argument("--bo-batch-size", type=int, default=DEFAULT_BO_BATCH_SIZE)
+    parser.add_argument("--bo-eval-repeats", type=int, default=DEFAULT_BO_EVAL_REPEATS)
+    parser.add_argument("--bo-batch-strategy", choices=["cl_min", "cl_mean", "cl_max"], default=DEFAULT_BO_BATCH_STRATEGY)
+    parser.add_argument("--bo-eval-output-prefix", default=DEFAULT_BO_EVAL_OUTPUT_PREFIX)
+    parser.add_argument("--bo-resume", action="store_true")
+    parser.add_argument("--bo-mock-eval", action="store_true")
     parser.add_argument("--bo-output-prefix", default=DEFAULT_BO_OUTPUT_PREFIX)
     parser.add_argument("--bo-workflow-prefix", default=DEFAULT_BO_OUTPUT_PREFIX)
     parser.add_argument("--bo-results-prefix", default=DEFAULT_BO_RESULTS_PREFIX)
@@ -959,6 +1017,341 @@ def top_unique_bo_observations(observations: list[dict[str, Any]], limit: int = 
     return selected
 
 
+def bo_search_grid() -> list[tuple[float, float, float]]:
+    return [
+        (d_det, alpha, g_ext)
+        for d_det in bo_grid_values(*BO_D_DET_BOUNDS, 50)
+        for alpha in bo_grid_values(*BO_ALPHA_BOUNDS, 1)
+        for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 5)
+    ]
+
+
+def aggregate_bo_observations_by_theta(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[float, float, float], dict[str, Any]] = {}
+    for row in observations:
+        key = bo_theta_key(row["D_det"], row["alpha"], row["G_ext"])
+        entry = grouped.setdefault(
+            key,
+            {
+                "parameter_id": row.get("parameter_id", ""),
+                "D_det": float(row["D_det"]),
+                "alpha": float(row["alpha"]),
+                "G_ext": float(row["G_ext"]),
+                "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
+                "score_values": [],
+                "bo_score_values": [],
+                "repeat_count": 0,
+            },
+        )
+        entry["score_values"].append(float(row["score_sec"]))
+        entry["bo_score_values"].append(float(row.get("bo_score_sec", row["score_sec"])))
+        entry["repeat_count"] += 1
+    aggregated = []
+    for entry in grouped.values():
+        score_values = entry.pop("score_values")
+        bo_score_values = entry.pop("bo_score_values")
+        entry["score_sec"] = sum(score_values) / len(score_values)
+        entry["bo_score_sec"] = sum(bo_score_values) / len(bo_score_values)
+        aggregated.append(entry)
+    return sorted(aggregated, key=lambda row: (float(row["bo_score_sec"]), row["D_det"], row["alpha"], row["G_ext"]))
+
+
+def bo_best_observation(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    aggregated = aggregate_bo_observations_by_theta(observations)
+    if not aggregated:
+        return {}
+    return aggregated[0]
+
+
+def skopt_dimensions() -> list[Any]:
+    try:
+        from skopt.space import Categorical  # type: ignore
+    except Exception as exc:  # noqa: BLE001 - dependency availability is environment specific.
+        raise ExperimentError(f"bo_loop_dependencies_unavailable:{type(exc).__name__}:{exc}") from exc
+    return [
+        Categorical([int(value) for value in bo_grid_values(*BO_D_DET_BOUNDS, 50)], name="D_det"),
+        Categorical([int(value) for value in bo_grid_values(*BO_ALPHA_BOUNDS, 1)], name="alpha"),
+        Categorical([int(value) for value in bo_grid_values(*BO_G_EXT_BOUNDS, 5)], name="G_ext"),
+    ]
+
+
+def fit_skopt_optimizer(observations: list[dict[str, Any]], seed: int) -> Any:
+    if len(observations) < 2:
+        raise ExperimentError("bo_loop_requires_at_least_two_valid_observations")
+    try:
+        from skopt import Optimizer  # type: ignore
+    except Exception as exc:  # noqa: BLE001 - dependency availability is environment specific.
+        raise ExperimentError(f"bo_loop_dependencies_unavailable:{type(exc).__name__}:{exc}") from exc
+    aggregated = aggregate_bo_observations_by_theta(observations)
+    optimizer = Optimizer(
+        dimensions=skopt_dimensions(),
+        base_estimator="GP",
+        acq_func="EI",
+        random_state=seed,
+    )
+    x_values = [[int(row["D_det"]), int(row["alpha"]), int(row["G_ext"])] for row in aggregated]
+    y_values = [float(row["bo_score_sec"]) for row in aggregated]
+    optimizer.tell(x_values, y_values)
+    return optimizer
+
+
+def recommend_bo_batch_skopt(observations: list[dict[str, Any]], batch_size: int, seed: int, strategy: str) -> list[dict[str, Any]]:
+    if not (BO_RECOMMEND_MIN <= batch_size <= BO_RECOMMEND_MAX):
+        raise ExperimentError(f"bo_batch_size_must_be_{BO_RECOMMEND_MIN}_to_{BO_RECOMMEND_MAX}")
+    optimizer = fit_skopt_optimizer(observations, seed)
+    observed_keys = {bo_theta_key(row["D_det"], row["alpha"], row["G_ext"]) for row in observations}
+    recommendations: list[dict[str, Any]] = []
+    selected_keys: set[tuple[float, float, float]] = set()
+    asked = optimizer.ask(n_points=batch_size * 2, strategy=strategy)
+    for values in asked:
+        d_det, alpha, g_ext = (float(values[0]), float(values[1]), float(values[2]))
+        key = bo_theta_key(d_det, alpha, g_ext)
+        if key in observed_keys or key in selected_keys:
+            continue
+        selected_keys.add(key)
+        rank = len(recommendations) + 1
+        recommendations.append(
+            {
+                "parameter_id": bo_parameter_id("bo_loop", rank, d_det, alpha, g_ext),
+                "D_det": format_intish(d_det),
+                "alpha": format_intish(alpha),
+                "G_ext": format_intish(g_ext),
+                "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+                "acquisition": "",
+                "posterior_mean": "",
+                "posterior_std": "",
+                "current_best_flag": "False",
+            }
+        )
+        if len(recommendations) >= batch_size:
+            return recommendations
+    fallback = [theta for theta in bo_search_grid() if bo_theta_key(*theta) not in observed_keys and bo_theta_key(*theta) not in selected_keys]
+    random.Random(seed).shuffle(fallback)
+    for d_det, alpha, g_ext in fallback:
+        rank = len(recommendations) + 1
+        recommendations.append(
+            {
+                "parameter_id": bo_parameter_id("bo_loop", rank, d_det, alpha, g_ext),
+                "D_det": format_intish(d_det),
+                "alpha": format_intish(alpha),
+                "G_ext": format_intish(g_ext),
+                "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+                "acquisition": "fallback_unobserved_grid",
+                "posterior_mean": "",
+                "posterior_std": "",
+                "current_best_flag": "False",
+            }
+        )
+        if len(recommendations) >= batch_size:
+            return recommendations
+    if len(recommendations) < batch_size:
+        raise ExperimentError("bo_loop_unobserved_grid_exhausted")
+    return recommendations
+
+
+def mock_bo_score(d_det: float, alpha: float, g_ext: float, repeat_index: int) -> tuple[float, float, float, float, float]:
+    a_delay = 950.0 - 0.35 * d_det + 8.0 * abs(alpha - 6.0) + 0.8 * abs(g_ext - 35.0) + repeat_index
+    n_delay = 15.0 + 0.04 * max(g_ext - 25.0, 0.0) + 0.1 * alpha
+    t_recovery = 20.0 + 0.2 * max(g_ext - 30.0, 0.0)
+    score = SCORE_WEIGHT_A * a_delay + SCORE_WEIGHT_N * n_delay + SCORE_WEIGHT_RECOVERY * t_recovery
+    signal_penalty = BO_EXTENSION_PENALTY_WEIGHT * max(g_ext - 20.0, 0.0)
+    return a_delay, n_delay, t_recovery, score, score + signal_penalty
+
+
+def write_mock_bo_eval_results(args: argparse.Namespace, round_index: int, generated_at: str, loop_run_id: str, params_csv: Path) -> Path:
+    sim_run_id = f"{loop_run_id}_mock_r{round_index:02d}"
+    metrics_dir = PROJECT_ROOT / "results/metrics" / args.bo_eval_output_prefix / sim_run_id
+    results_csv = metrics_dir / "experiment_results.csv"
+    rows = []
+    for param in read_csv(params_csv):
+        for repeat in range(1, int(args.bo_eval_repeats) + 1):
+            repeat_id = f"repeat_{repeat:03d}"
+            rows.append(
+                {
+                    "generated_at": generated_at,
+                    "run_id": sim_run_id,
+                    "pipeline": args.pipeline,
+                    "output_prefix": args.bo_eval_output_prefix,
+                    "mode": "B00",
+                    "parameter_id": "B00",
+                    "repeat_id": repeat_id,
+                    "route_id": SEOUL_STATION_ROUTE_ID,
+                    "D_det": "",
+                    "alpha": "",
+                    "G_ext": "",
+                    "T_change_sec": "",
+                    "A_delay_sec": "0.00",
+                    "N_delay_sec": "0.00",
+                    "T_recovery_sec": "0.00",
+                    "score_sec": "0.00",
+                    "bo_score_sec": "0.00",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                    "route_error_count": "0",
+                    "sumo_exit_code": "0",
+                }
+            )
+            d_det = float(param["D_det"])
+            alpha = float(param["alpha"])
+            g_ext = float(param["G_ext"])
+            a_delay, n_delay, t_recovery, score, bo_score = mock_bo_score(d_det, alpha, g_ext, repeat)
+            rows.append(
+                {
+                    "generated_at": generated_at,
+                    "run_id": sim_run_id,
+                    "pipeline": args.pipeline,
+                    "output_prefix": args.bo_eval_output_prefix,
+                    "mode": "B2",
+                    "parameter_id": param["parameter_id"],
+                    "repeat_id": repeat_id,
+                    "route_id": SEOUL_STATION_ROUTE_ID,
+                    "D_det": param["D_det"],
+                    "alpha": param["alpha"],
+                    "G_ext": param["G_ext"],
+                    "T_change_sec": param.get("T_change_sec", str(DEFAULT_BO_T_CHANGE_SEC)),
+                    "A_delay_sec": sec(a_delay),
+                    "N_delay_sec": sec(n_delay),
+                    "T_recovery_sec": sec(t_recovery),
+                    "score_sec": sec(score),
+                    "bo_score_sec": sec(bo_score),
+                    "signal_burden_penalty_sec": sec(bo_score - score),
+                    "failure_penalty_sec": "0.00",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                    "route_error_count": "0",
+                    "sumo_exit_code": "0",
+                }
+            )
+    write_csv(results_csv, rows, EXPERIMENT_RESULT_FIELDS)
+    latest_json = PROJECT_ROOT / "results/metrics" / args.bo_eval_output_prefix / "latest.json"
+    write_json(
+        latest_json,
+        {
+            "generated_at": generated_at,
+            "run_id": sim_run_id,
+            "output_prefix": args.bo_eval_output_prefix,
+            "final_status": "PASS",
+            "results_csv": rel(results_csv),
+        },
+    )
+    return results_csv
+
+
+def bo_all_result_rows(loop_run_id: str, round_paths: list[tuple[int, Path]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for round_index, path in round_paths:
+        if not path.is_file():
+            continue
+        round_label = "initial" if round_index == 0 else f"round_{round_index:02d}"
+        for source_row, raw_row in enumerate(read_csv(path), start=2):
+            row = dict(raw_row)
+            if row.get("score_sec") in {"", None} and row.get("Score") not in {"", None}:
+                row["score_sec"] = row["Score"]
+            if numeric_cell(row, "D_det") is None or numeric_cell(row, "alpha") is None or numeric_cell(row, "G_ext") is None:
+                continue
+            if row.get("mode") not in {"B2", "", None}:
+                continue
+            exclude_reason = bo_row_exclusion_reason(row)
+            bo_score = bo_score_for_row(row)
+            a_delay = numeric_cell(row, "A_delay_sec")
+            n_delay = numeric_cell(row, "N_delay_sec")
+            t_recovery = numeric_cell(row, "T_recovery_sec")
+            score_value = numeric_cell(row, "score_sec")
+            if score_value is None:
+                score_value = numeric_cell(row, "Score")
+            signal_penalty = numeric_cell(row, "signal_burden_penalty_sec")
+            failure_penalty = numeric_cell(row, "failure_penalty_sec")
+            rows.append(
+                {
+                    "loop_run_id": loop_run_id,
+                    "bo_round_index": round_index,
+                    "bo_round_label": round_label,
+                    "source_csv": display_path(path),
+                    "source_row": source_row,
+                    "mode": row.get("mode", ""),
+                    "parameter_id": row.get("parameter_id", ""),
+                    "repeat_id": row.get("repeat_id", ""),
+                    "route_id": row.get("route_id", ""),
+                    "D_det": format_intish(numeric_cell(row, "D_det") or 0.0),
+                    "alpha": format_intish(numeric_cell(row, "alpha") or 0.0),
+                    "G_ext": format_intish(numeric_cell(row, "G_ext") or 0.0),
+                    "T_change_sec": format_intish(numeric_cell(row, "T_change_sec") or DEFAULT_BO_T_CHANGE_SEC),
+                    "A_delay_sec": sec(a_delay) if a_delay is not None else "",
+                    "N_delay_sec": sec(n_delay) if n_delay is not None else "",
+                    "T_recovery_sec": sec(t_recovery) if t_recovery is not None else "",
+                    "score_sec": sec(score_value) if score_value is not None else "",
+                    "bo_score_sec": sec(bo_score) if bo_score is not None else "",
+                    "signal_burden_penalty_sec": sec(signal_penalty) if signal_penalty is not None else "0.00",
+                    "failure_penalty_sec": sec(failure_penalty) if failure_penalty is not None else "0.00",
+                    "final_status": row.get("final_status", ""),
+                    "emergency_arrived": row.get("emergency_arrived", ""),
+                    "emergency_teleport": row.get("emergency_teleport", ""),
+                    "route_error_count": row.get("route_error_count", ""),
+                    "sumo_exit_code": row.get("sumo_exit_code", ""),
+                    "exclude_reason": exclude_reason,
+                }
+            )
+    return sorted(rows, key=lambda row: (int(row["bo_round_index"]), str(row["parameter_id"]), str(row["repeat_id"]), int(row["source_row"])))
+
+
+def run_bo_eval_subprocess(args: argparse.Namespace, params_csv: Path, log_path: Path) -> tuple[int, Path | None]:
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--pipeline",
+        args.pipeline,
+        "--output-prefix",
+        args.bo_eval_output_prefix,
+        "--modes",
+        "B00",
+        "B2",
+        "--b2-params",
+        str(params_csv),
+        "--repeats",
+        str(args.bo_eval_repeats),
+        "--workers",
+        str(args.workers),
+        "--emergency-depart",
+        str(args.emergency_depart),
+        "--timeout-steps",
+        str(args.timeout_steps),
+        "--timeout-sec",
+        str(args.timeout_sec),
+        "--time-to-teleport",
+        str(args.time_to_teleport),
+        "--collision-action",
+        str(args.collision_action),
+        "--recovery-buffer-sec",
+        str(args.recovery_buffer_sec),
+        "--run-root",
+        str(args.run_root),
+    ]
+    if args.manifest is not None:
+        command.extend(["--manifest", str(args.manifest)])
+    if args.allow_nonfinal_background:
+        command.append("--allow-nonfinal-background")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, check=False)
+    log_path.write_text(
+        "\n".join(
+            [
+                command_line(command),
+                "",
+                "STDOUT",
+                completed.stdout,
+                "",
+                "STDERR",
+                completed.stderr,
+            ]
+        ),
+        encoding="utf-8",
+    )
+    latest = load_latest_results_csv(args.bo_eval_output_prefix)
+    return completed.returncode, latest
+
+
 def command_line(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
@@ -1109,8 +1502,233 @@ def write_bo_commands(
     path.chmod(0o755)
 
 
+def run_bo_loop_mode(args: argparse.Namespace, generated_at: str, run_id: str) -> int:
+    if args.bo_rounds < 1:
+        raise ExperimentError("bo_rounds must be >= 1")
+    if args.bo_eval_repeats < 1:
+        raise ExperimentError("bo_eval_repeats must be >= 1")
+    safe_prefix = args.bo_output_prefix.strip()
+    workflow_prefix = args.bo_workflow_prefix.strip() or safe_prefix
+    if not safe_prefix:
+        raise ExperimentError("bo_output_prefix cannot be blank")
+    state_path = default_bo_state_path(args)
+    state = load_bo_state(state_path)
+    if args.bo_resume and state.get("loop_run_id"):
+        loop_run_id = str(state["loop_run_id"])
+        completed_round = int(state.get("completed_round") or 0)
+        initial_input_paths = resolve_bo_input_paths([Path(path) for path in state.get("initial_input_csvs", [])], require=False)
+        round_result_paths = resolve_bo_input_paths([Path(path) for path in state.get("round_result_csvs", [])], require=False)
+        input_paths = unique_paths([*initial_input_paths, *round_result_paths])
+    else:
+        loop_run_id = run_id
+        completed_round = 0
+        initial_input_paths = resolve_bo_observation_inputs(args, state, allow_default=True)
+        round_result_paths = []
+        input_paths = list(initial_input_paths)
+        state = {}
+    bo_dir = PROJECT_ROOT / "results/metrics" / safe_prefix / loop_run_id
+    generated_dir = PROJECT_ROOT / "configs/generated"
+    summary_json = bo_dir / "bo_loop_summary.json"
+    loop_state_json = bo_dir / "bo_loop_state.json"
+    rounds_csv = bo_dir / "bo_rounds.csv"
+    observations_csv = bo_dir / "bo_observations.csv"
+    all_results_csv = bo_dir / "bo_all_results.csv"
+    excluded_csv = bo_dir / "bo_excluded_observations.csv"
+    initial_input_csvs = [display_path(path) for path in initial_input_paths if path.is_file()]
+    round_result_csvs = [display_path(path) for path in round_result_paths if path.is_file()]
+    round_recommendation_csvs = [str(path) for path in state.get("round_recommendation_csvs", [])]
+    round_rows = read_csv(rounds_csv) if rounds_csv.is_file() else []
+    final_status = "PASS"
+    stop_reason = ""
+
+    observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+    if len(observations) < 2 and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file() and DEFAULT_BO_INITIAL_OBSERVATIONS.resolve() not in input_paths:
+        initial_input_paths = unique_paths([*initial_input_paths, DEFAULT_BO_INITIAL_OBSERVATIONS])
+        input_paths = unique_paths([*initial_input_paths, *round_result_paths])
+        initial_input_csvs = [display_path(path) for path in initial_input_paths if path.is_file()]
+        observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+    if len(observations) < 2:
+        raise ExperimentError("bo_loop_requires_at_least_two_valid_observations")
+
+    for round_index in range(completed_round + 1, int(args.bo_rounds) + 1):
+        recommendations = recommend_bo_batch_skopt(observations, int(args.bo_batch_size), args.bo_seed + round_index, args.bo_batch_strategy)
+        for idx, row in enumerate(recommendations, start=1):
+            row["parameter_id"] = bo_parameter_id(f"bo_r{round_index:02d}", idx, float(row["D_det"]), float(row["alpha"]), float(row["G_ext"]))
+        round_recommendations_csv = bo_dir / f"bo_recommendations_round_{round_index:02d}.csv"
+        generated_params_csv = generated_dir / f"b2_bo_round_{loop_run_id}_r{round_index:02d}.csv"
+        write_csv(round_recommendations_csv, recommendations, BO_RECOMMENDATION_FIELDS)
+        write_csv(generated_params_csv, recommendations, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+        if args.bo_mock_eval:
+            eval_return_code = 0
+            eval_results_csv = write_mock_bo_eval_results(args, round_index, generated_at, loop_run_id, generated_params_csv)
+        else:
+            eval_return_code, eval_results_csv = run_bo_eval_subprocess(args, generated_params_csv, bo_dir / f"bo_eval_round_{round_index:02d}.log")
+        status = "PASS"
+        if eval_return_code != 0 or eval_results_csv is None or not eval_results_csv.is_file():
+            status = "FAIL_EVAL_RETURN_CODE"
+            final_status = status
+            stop_reason = f"round_{round_index}_eval_failed"
+        else:
+            round_observations, _, _, _ = load_bo_observations([eval_results_csv])
+            if not round_observations:
+                status = "FAIL_NO_VALID_OBSERVATIONS_IN_ROUND"
+                final_status = status
+                stop_reason = f"round_{round_index}_no_valid_observations"
+            else:
+                input_paths = unique_paths([*input_paths, eval_results_csv])
+                round_result_paths.append(eval_results_csv.resolve())
+                round_result_csvs = [display_path(path) for path in round_result_paths if path.is_file()]
+                round_recommendation_csvs.append(display_path(generated_params_csv))
+                observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+                completed_round = round_index
+        best = bo_best_observation(observations)
+        round_rows.append(
+            {
+                "loop_run_id": loop_run_id,
+                "round_index": round_index,
+                "status": status,
+                "recommendation_count": len(recommendations),
+                "valid_observation_count": len(observations),
+                "excluded_observation_count": len(excluded),
+                "recommendations_csv": rel(round_recommendations_csv),
+                "generated_params_csv": rel(generated_params_csv),
+                "eval_results_csv": rel(eval_results_csv) if eval_results_csv else "",
+                "eval_return_code": eval_return_code,
+                "best_parameter_id": best.get("parameter_id", ""),
+                "best_D_det": format_intish(best.get("D_det", "")) if best else "",
+                "best_alpha": format_intish(best.get("alpha", "")) if best else "",
+                "best_G_ext": format_intish(best.get("G_ext", "")) if best else "",
+                "best_bo_score_sec": sec(best.get("bo_score_sec", "")) if best else "",
+            }
+        )
+        write_csv(rounds_csv, round_rows, BO_ROUND_FIELDS)
+        write_csv(observations_csv, observations, BO_OBSERVATION_FIELDS)
+        write_csv(excluded_csv, excluded, BO_EXCLUDED_FIELDS)
+        write_csv(
+            all_results_csv,
+            bo_all_result_rows(loop_run_id, [(0, path) for path in initial_input_paths] + [(idx, path) for idx, path in enumerate(round_result_paths, start=1)]),
+            BO_ALL_RESULT_FIELDS,
+        )
+        top3 = top_unique_bo_observations(observations, 3)
+        top3_csv = generated_dir / f"b2_bo_top3_reeval_{loop_run_id}.csv"
+        write_csv(top3_csv, top3, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+        best = bo_best_observation(observations)
+        state.update(
+            {
+                "loop_run_id": loop_run_id,
+                "completed_stage": "loop",
+                "completed_round": completed_round,
+                "round_result_csvs": round_result_csvs,
+                "round_recommendation_csvs": round_recommendation_csvs,
+                "initial_input_csvs": initial_input_csvs,
+                "latest_observations_csv": rel(observations_csv),
+                "latest_all_results_csv": rel(all_results_csv),
+                "top3_csv": rel(top3_csv),
+                "best_theta_so_far": {
+                    "parameter_id": best.get("parameter_id", ""),
+                    "D_det": best.get("D_det", ""),
+                    "alpha": best.get("alpha", ""),
+                    "G_ext": best.get("G_ext", ""),
+                    "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
+                },
+                "best_bo_score_so_far": best.get("bo_score_sec", ""),
+                "updated_at": utc_now(),
+            }
+        )
+        write_json(state_path, state)
+        write_json(loop_state_json, state)
+        if status != "PASS":
+            break
+
+    best = bo_best_observation(observations)
+    top3_csv = generated_dir / f"b2_bo_top3_reeval_{loop_run_id}.csv"
+    write_csv(
+        all_results_csv,
+        bo_all_result_rows(loop_run_id, [(0, path) for path in initial_input_paths] + [(idx, path) for idx, path in enumerate(round_result_paths, start=1)]),
+        BO_ALL_RESULT_FIELDS,
+    )
+    summary = {
+        "generated_at": generated_at,
+        "loop_run_id": loop_run_id,
+        "bo_stage": "loop",
+        "bo_output_prefix": safe_prefix,
+        "bo_eval_output_prefix": args.bo_eval_output_prefix,
+        "rounds_requested": int(args.bo_rounds),
+        "rounds_completed": completed_round,
+        "batch_size": int(args.bo_batch_size),
+        "eval_repeats": int(args.bo_eval_repeats),
+        "batch_strategy": args.bo_batch_strategy,
+        "mock_eval": bool(args.bo_mock_eval),
+        "input_csvs": [display_path(path) for path in input_paths],
+        "input_row_count": input_row_count,
+        "b2_row_count": b2_row_count,
+        "valid_observation_count": len(observations),
+        "excluded_observation_count": len(excluded),
+        "final_status": final_status,
+        "stop_reason": stop_reason,
+        "best_theta_so_far": {
+            "parameter_id": best.get("parameter_id", ""),
+            "D_det": best.get("D_det", ""),
+            "alpha": best.get("alpha", ""),
+            "G_ext": best.get("G_ext", ""),
+            "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
+            "bo_score_sec": best.get("bo_score_sec", ""),
+        },
+        "outputs": {
+            "bo_loop_summary_json": rel(summary_json),
+            "bo_loop_state_json": rel(loop_state_json),
+            "bo_rounds_csv": rel(rounds_csv),
+            "bo_observations_csv": rel(observations_csv),
+            "bo_all_results_csv": rel(all_results_csv),
+            "bo_excluded_observations_csv": rel(excluded_csv),
+            "generated_top3_reeval_csv": rel(top3_csv),
+        },
+    }
+    write_json(summary_json, summary)
+    latest_json = bo_workflow_root(workflow_prefix) / "latest.json"
+    write_json(
+        latest_json,
+        {
+            "generated_at": generated_at,
+            "run_id": loop_run_id,
+            "loop_run_id": loop_run_id,
+            "bo_stage": "loop",
+            "bo_output_prefix": safe_prefix,
+            "bo_workflow_prefix": workflow_prefix,
+            "summary_json": rel(summary_json),
+            "bo_loop_state_json": rel(loop_state_json),
+            "bo_rounds_csv": rel(rounds_csv),
+            "bo_observations_csv": rel(observations_csv),
+            "bo_all_results_csv": rel(all_results_csv),
+            "generated_top3_reeval_csv": rel(top3_csv),
+            "final_status": final_status,
+        },
+    )
+    state.update({"latest_run_id": loop_run_id, "latest_summary_json": rel(summary_json), "updated_at": utc_now()})
+    write_json(state_path, state)
+    print(
+        "\n".join(
+            [
+                "Bayesian optimization stage: loop",
+                "=================================",
+                f"loop_run_id: {loop_run_id}",
+                f"rounds_completed: {completed_round}/{args.bo_rounds}",
+                f"valid_observation_count: {len(observations)}",
+                f"excluded_observation_count: {len(excluded)}",
+                f"final_status: {final_status}",
+                f"bo_loop_summary_json: {rel(summary_json)}",
+                f"bo_rounds_csv: {rel(rounds_csv)}",
+                f"bo_state_json: {display_path(state_path)}",
+            ]
+        )
+    )
+    return 0 if final_status == "PASS" else 1
+
+
 def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) -> int:
     stage = args.bo_stage or "suggest"
+    if stage == "loop":
+        return run_bo_loop_mode(args, generated_at, run_id)
     safe_prefix = args.bo_output_prefix.strip()
     workflow_prefix = args.bo_workflow_prefix.strip() or safe_prefix
     if not safe_prefix:
@@ -1288,7 +1906,7 @@ def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) 
                 f"bo_commands_sh: {rel(commands_sh)}",
                 f"bo_summary_json: {rel(summary_json)}",
                 f"bo_latest_json: {rel(latest_json)}",
-                f"bo_state_json: {rel(state_path)}",
+                f"bo_state_json: {display_path(state_path)}",
             ]
         )
     )

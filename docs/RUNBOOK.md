@@ -13,6 +13,8 @@
 | `--repeats` | 반복 실행 횟수다. |
 | `--workers` | 병렬 worker 수다. |
 | `--emergency-depart` | 응급차 출동 시각이다. 기본 기준은 600초다. |
+| `--bo-stage loop` | 표준 batch BO를 자동 실행한다. 5개씩 추천하고 실행 결과를 다시 학습한다. |
+| `--bo-resume` | 중단된 BO loop를 이어서 실행한다. |
 
 결과 리뷰는 `docs/RESULT_REVIEW_GUIDE.md`를 따른다.
 
