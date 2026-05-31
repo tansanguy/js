@@ -32,5 +32,5 @@
     "background": "WARNING"
   },
   "final_background_required_substring": "warm0p15_sustain0p05_seed002_sustained_3600",
-  "notes": "B00/B0/B2 final single-route experiment manifest. Background demand uses a split-scale sustained TOPIS pattern: 0.15x for the 0-600s warm-up cycle and 0.05x for later cycles through 3600s, with emergency_depart_sec=600. The route is the Seoul Station straight fixed route ending at 619147738#0; its official reported route length is the fixed external-edge sum 2990.17m. Bayesian Optimization is out of scope; external optimizers may generate b2_parameter_sets.csv."
+  "notes": "B00/B0/B2 final single-route experiment manifest. Background demand uses a split-scale sustained TOPIS pattern: 0.15x for the 0-600s warm-up cycle and 0.05x for later cycles through 3600s, with emergency_depart_sec=600. The route is the Seoul Station straight fixed route ending at 619147738#0; its official reported route length is the fixed external-edge sum 2990.17m. Bayesian Optimization uses existing B2 result CSVs as initial observations and writes recommended B2 parameter CSVs under configs/generated/."
 }

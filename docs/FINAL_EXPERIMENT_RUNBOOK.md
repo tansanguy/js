@@ -41,7 +41,7 @@ B2는 강제 preemption이 아니라 안전한 priority 제어다. 안전 규칙
 - 보행자 최소 보행시간 보호를 위해 현재 phase를 단축하지 않는다.
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초만 허용한다.
 
-이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 기본 선택값은 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`이다. Bayesian Optimization 전체 구현은 추후 범위다.
+이번 단계의 성공 기준은 B2가 B0보다 빠른지만이 아니라, emergency teleport, emergency stop warning, lane connection warning 없이 끝나는지다. 기본 선택값은 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`이다.
 
 고정값:
 
@@ -86,6 +86,26 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 - `alpha`: 응급차 통과 후 초록 유지 시간(s). 정수 초만 허용한다.
 - `G_ext`: 초록 연장 상한(s). 정수 초만 허용한다.
 - `T_change_sec`: green이 아닐 때 green 전환 요청 전 대기시간(s). 정수 초만 허용한다. 이 시간 중 기존 sequence가 green에 도달하면 `green_arrived_before_t_change_extension_count`로 집계되고, 최종 action은 `extend_green`이 된다.
+
+## Bayesian Optimization 추천
+
+기존 40개 B2 결과를 initial design으로 사용한다. 새 LHS/Sobol 초기 샘플은 만들지 않는다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bayesian true \
+  --bo-initial-results path/to/existing_40_results.csv \
+  --bo-recommend-count 15
+```
+
+- 입력은 `experiment_results.csv` 또는 `score_components.csv`를 사용할 수 있고 여러 파일을 함께 넘길 수 있다.
+- BO는 `D_det`, `alpha`, `G_ext`만 추천하며 `T_change_sec=10`으로 고정한다.
+- 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 학습에서 제외된다.
+- 추천 결과는 `results/metrics/parameter_input_sim_bo/{bo_run_id}/`에 저장된다.
+- 실행용 CSV는 `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`, 상위 3개 재평가 CSV는 `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`로 생성된다.
+- `bo_commands.sh`에는 추가 추천 θ seed 1회 실행, 상위 3개 seed 3회 재평가, 최종 B0/B2 비교 명령이 들어간다.
+
+추가 추천 θ 실행은 `A_delay_sec` 계산을 위해 `B00 B2`로 실행한다. 최종 B0/B2 비교는 `B00 B0 B2`를 최소 seed 3회로 실행하고, 가능하면 seed 5~10회로 늘린다.
 
 ## 핵심 지표
 

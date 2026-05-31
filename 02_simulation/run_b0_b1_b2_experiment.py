@@ -7,7 +7,9 @@ import argparse
 import csv
 import importlib.util
 import json
+import math
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -32,6 +34,11 @@ DEFAULT_B2_PARAMS = PROJECT_ROOT / "configs/b2_parameter_sets.csv"
 DEFAULT_MANIFEST = PROJECT_ROOT / "configs/final_experiment_manifest.json"
 DEFAULT_CORRIDOR_EDGES = PROJECT_ROOT / "data_prepared/routes/corridor_spine_edges.csv"
 DEFAULT_SEOUL_STATION_MANUAL_ROUTE = PROJECT_ROOT / "data_prepared/manual/seoul_station_manual_route.json"
+DEFAULT_BO_OUTPUT_PREFIX = "parameter_input_sim_bo"
+DEFAULT_BO_SEED = 20260531
+DEFAULT_BO_T_CHANGE_SEC = 10
+BO_RECOMMEND_MIN = 10
+BO_RECOMMEND_MAX = 15
 
 LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
@@ -79,6 +86,36 @@ SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "619147738#0"
 SEOUL_STATION_POLICY = "straight_seoul_station_fixed"
 CONTROL_ACTIONS = {"extend_green", "alpha_hold_extend", "switch_to_green_after_t_change"}
+BO_OBSERVATION_FIELDS = [
+    "source_csv",
+    "source_row",
+    "parameter_id",
+    "D_det",
+    "alpha",
+    "G_ext",
+    "T_change_sec",
+    "A_delay_sec",
+    "N_delay_sec",
+    "T_recovery_sec",
+    "score_sec",
+    "final_status",
+    "emergency_arrived",
+    "emergency_teleport",
+    "route_error_count",
+    "sumo_exit_code",
+]
+BO_EXCLUDED_FIELDS = BO_OBSERVATION_FIELDS + ["exclude_reason"]
+BO_RECOMMENDATION_FIELDS = [
+    "parameter_id",
+    "D_det",
+    "alpha",
+    "G_ext",
+    "T_change_sec",
+    "acquisition",
+    "posterior_mean",
+    "posterior_std",
+    "current_best_flag",
+]
 SCORE_COMPONENT_FIELDS = [
     "generated_at",
     "run_id",
@@ -308,6 +345,13 @@ def rel(path: Path) -> str:
     return path.resolve().relative_to(PROJECT_ROOT).as_posix()
 
 
+def display_path(path: Path) -> str:
+    try:
+        return rel(path)
+    except ValueError:
+        return str(path)
+
+
 def load_step14_module() -> Any:
     spec = importlib.util.spec_from_file_location("step14_green_wave", STEP14_PATH)
     if spec is None or spec.loader is None:
@@ -396,6 +440,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-root", type=Path, default=PROJECT_ROOT / "runs/final")
     parser.add_argument("--allow-nonfinal-background", action="store_true")
     parser.add_argument("--legacy-output-names", action="store_true")
+    parser.add_argument("--bayesian", choices=["true", "false"], default="false")
+    parser.add_argument("--bo-initial-results", nargs="+", type=Path, default=[])
+    parser.add_argument("--bo-recommend-count", type=int, default=BO_RECOMMEND_MAX)
+    parser.add_argument("--bo-output-prefix", default=DEFAULT_BO_OUTPUT_PREFIX)
+    parser.add_argument("--bo-seed", type=int, default=DEFAULT_BO_SEED)
     return parser.parse_args()
 
 
@@ -458,6 +507,437 @@ def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None, 
         "summary_json": metrics_dir / "experiment_summary.json",
         "latest_json": PROJECT_ROOT / "results/metrics" / safe_prefix / "latest.json",
     }
+
+
+def bool_arg(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def bool_cell(value: Any) -> bool | None:
+    if value in {"", None}:
+        return None
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    return None
+
+
+def numeric_cell(row: dict[str, Any], key: str) -> float | None:
+    value = row.get(key)
+    if value in {"", None}:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(parsed) or math.isinf(parsed):
+        return None
+    return parsed
+
+
+def bo_theta_key(d_det: float, alpha: float, g_ext: float) -> tuple[float, float, float]:
+    return (round(float(d_det), 6), round(float(alpha), 6), round(float(g_ext), 6))
+
+
+def format_intish(value: float) -> str:
+    rounded = round(float(value))
+    if abs(float(value) - rounded) < 1e-9:
+        return str(int(rounded))
+    return f"{float(value):.6g}"
+
+
+def bo_parameter_id(prefix: str, rank: int, d_det: float, alpha: float, g_ext: float) -> str:
+    return (
+        f"{prefix}_{rank:02d}_"
+        f"d{format_intish(d_det)}_a{format_intish(alpha)}_g{format_intish(g_ext)}_t{DEFAULT_BO_T_CHANGE_SEC}"
+    )
+
+
+def resolve_bo_input_paths(paths: list[Path]) -> list[Path]:
+    resolved = []
+    for path in paths:
+        resolved_path = path if path.is_absolute() else PROJECT_ROOT / path
+        if not resolved_path.is_file():
+            raise ExperimentError(f"missing_bo_initial_results: {resolved_path}")
+        resolved.append(resolved_path.resolve())
+    if not resolved:
+        raise ExperimentError("--bo-initial-results is required when --bayesian true")
+    return resolved
+
+
+def bo_row_exclusion_reason(row: dict[str, Any]) -> str:
+    reasons = []
+    if row.get("mode") not in {"B2", "", None}:
+        reasons.append("not_b2_mode")
+    for key in ["D_det", "alpha", "G_ext", "A_delay_sec", "N_delay_sec", "T_recovery_sec"]:
+        if numeric_cell(row, key) is None:
+            reasons.append(f"missing_or_invalid_{key}")
+    if numeric_cell(row, "score_sec") is None:
+        reasons.append("missing_or_invalid_score_sec")
+    if str(row.get("final_status", "")).strip().upper() == "FAIL":
+        reasons.append("final_status_fail")
+    arrived = bool_cell(row.get("emergency_arrived"))
+    if arrived is False:
+        reasons.append("emergency_not_arrived")
+    teleported = bool_cell(row.get("emergency_teleport"))
+    if teleported is True:
+        reasons.append("emergency_teleport")
+    route_error_count = numeric_cell(row, "route_error_count")
+    if route_error_count is not None and route_error_count > 0:
+        reasons.append("route_error_count_gt_0")
+    sumo_exit_code = row.get("sumo_exit_code")
+    if sumo_exit_code not in {"", None} and numeric_cell(row, "sumo_exit_code") != 0:
+        reasons.append("sumo_exit_code_nonzero")
+    return ";".join(reasons)
+
+
+def load_bo_observations(paths: list[Path]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int, int]:
+    observations: list[dict[str, Any]] = []
+    excluded: list[dict[str, Any]] = []
+    input_row_count = 0
+    b2_row_count = 0
+    for path in paths:
+        rows = read_csv(path)
+        if not rows:
+            continue
+        header = set(rows[0].keys())
+        if "score_sec" not in header and "Score" not in header:
+            raise ExperimentError(f"missing_bo_required_columns:{display_path(path)}:score_sec_or_Score")
+        required = {"D_det", "alpha", "G_ext", "A_delay_sec", "N_delay_sec", "T_recovery_sec"}
+        missing = sorted(required - header)
+        if missing:
+            raise ExperimentError(f"missing_bo_required_columns:{display_path(path)}:{','.join(missing)}")
+        for row_index, raw_row in enumerate(rows, start=2):
+            input_row_count += 1
+            row = dict(raw_row)
+            if row.get("score_sec") in {"", None} and row.get("Score") not in {"", None}:
+                row["score_sec"] = row["Score"]
+            if row.get("mode") == "B2":
+                b2_row_count += 1
+            base = {field: row.get(field, "") for field in BO_OBSERVATION_FIELDS}
+            base["source_csv"] = display_path(path)
+            base["source_row"] = row_index
+            reason = bo_row_exclusion_reason(row)
+            if reason:
+                excluded.append({**base, "exclude_reason": reason})
+                continue
+            observations.append(
+                {
+                    **base,
+                    "D_det": numeric_cell(row, "D_det"),
+                    "alpha": numeric_cell(row, "alpha"),
+                    "G_ext": numeric_cell(row, "G_ext"),
+                    "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
+                    "A_delay_sec": numeric_cell(row, "A_delay_sec"),
+                    "N_delay_sec": numeric_cell(row, "N_delay_sec"),
+                    "T_recovery_sec": numeric_cell(row, "T_recovery_sec"),
+                    "score_sec": numeric_cell(row, "score_sec"),
+                }
+            )
+    return observations, excluded, input_row_count, b2_row_count
+
+
+def bo_grid_values(low: float, high: float, step: int) -> list[float]:
+    if abs(high - low) < 1e-9:
+        return [float(low)]
+    start = math.ceil(low / step) * step
+    stop = math.floor(high / step) * step
+    values = [float(value) for value in range(int(start), int(stop) + 1, step)]
+    values.extend([float(low), float(high)])
+    return sorted(set(round(value, 6) for value in values if low - 1e-9 <= value <= high + 1e-9))
+
+
+def fit_bo_and_recommend(observations: list[dict[str, Any]], recommend_count: int, seed: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if not (BO_RECOMMEND_MIN <= recommend_count <= BO_RECOMMEND_MAX):
+        raise ExperimentError(f"bo_recommend_count_must_be_{BO_RECOMMEND_MIN}_to_{BO_RECOMMEND_MAX}")
+    if len(observations) < 2:
+        raise ExperimentError("bo_requires_at_least_two_valid_observations")
+    try:
+        import numpy as np  # type: ignore
+        from scipy.stats import norm  # type: ignore
+        from sklearn.gaussian_process import GaussianProcessRegressor  # type: ignore
+        from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel  # type: ignore
+    except Exception as exc:  # noqa: BLE001 - dependency availability is environment specific.
+        raise ExperimentError(f"bo_dependencies_unavailable:{type(exc).__name__}:{exc}") from exc
+
+    x_raw = np.array([[row["D_det"], row["alpha"], row["G_ext"]] for row in observations], dtype=float)
+    y = np.array([row["score_sec"] for row in observations], dtype=float)
+    lows = x_raw.min(axis=0)
+    highs = x_raw.max(axis=0)
+    spans = np.where(np.abs(highs - lows) < 1e-9, 1.0, highs - lows)
+    x_scaled = (x_raw - lows) / spans
+    y_mean = float(y.mean())
+    y_std = float(y.std()) or 1.0
+    y_scaled = (y - y_mean) / y_std
+
+    kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=[1.0, 1.0, 1.0], nu=2.5) + WhiteKernel(noise_level=1e-5)
+    gp = GaussianProcessRegressor(kernel=kernel, alpha=1e-6, normalize_y=False, n_restarts_optimizer=5, random_state=seed)
+    gp.fit(x_scaled, y_scaled)
+
+    d_values = bo_grid_values(float(lows[0]), float(highs[0]), 50)
+    alpha_values = bo_grid_values(float(lows[1]), float(highs[1]), 1)
+    g_values = bo_grid_values(float(lows[2]), float(highs[2]), 5)
+    observed_keys = {bo_theta_key(row["D_det"], row["alpha"], row["G_ext"]) for row in observations}
+    candidates = [
+        (d_det, alpha, g_ext)
+        for d_det in d_values
+        for alpha in alpha_values
+        for g_ext in g_values
+        if bo_theta_key(d_det, alpha, g_ext) not in observed_keys
+    ]
+    if not candidates:
+        raise ExperimentError("bo_candidate_grid_empty_after_existing_theta_exclusion")
+    x_candidates_raw = np.array(candidates, dtype=float)
+    x_candidates_scaled = (x_candidates_raw - lows) / spans
+    mu_scaled, sigma_scaled = gp.predict(x_candidates_scaled, return_std=True)
+    sigma_scaled = np.maximum(sigma_scaled, 1e-12)
+    best_scaled = float(y_scaled.min())
+    improvement = best_scaled - mu_scaled - 0.05
+    z = improvement / sigma_scaled
+    ei = improvement * norm.cdf(z) + sigma_scaled * norm.pdf(z)
+    order = sorted(range(len(candidates)), key=lambda idx: (-float(ei[idx]), float(mu_scaled[idx]), candidates[idx]))
+
+    recommendations: list[dict[str, Any]] = []
+    for rank, idx in enumerate(order[:recommend_count], start=1):
+        d_det, alpha, g_ext = candidates[idx]
+        posterior_mean = float(mu_scaled[idx]) * y_std + y_mean
+        posterior_std = float(sigma_scaled[idx]) * y_std
+        recommendations.append(
+            {
+                "parameter_id": bo_parameter_id("bo", rank, d_det, alpha, g_ext),
+                "D_det": format_intish(d_det),
+                "alpha": format_intish(alpha),
+                "G_ext": format_intish(g_ext),
+                "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+                "acquisition": f"{float(ei[idx]):.8f}",
+                "posterior_mean": sec(posterior_mean),
+                "posterior_std": sec(posterior_std),
+                "current_best_flag": "False",
+            }
+        )
+    best_row = min(observations, key=lambda row: float(row["score_sec"]))
+    summary = {
+        "bounds": {
+            "D_det": [float(lows[0]), float(highs[0])],
+            "alpha": [float(lows[1]), float(highs[1])],
+            "G_ext": [float(lows[2]), float(highs[2])],
+        },
+        "candidate_grid_count": len(candidates),
+        "current_best": {
+            "parameter_id": best_row.get("parameter_id", ""),
+            "D_det": best_row["D_det"],
+            "alpha": best_row["alpha"],
+            "G_ext": best_row["G_ext"],
+            "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
+            "score_sec": best_row["score_sec"],
+        },
+        "gp_kernel": str(gp.kernel_),
+        "acquisition": "expected_improvement_minimization",
+        "xi": 0.05,
+    }
+    return recommendations, summary
+
+
+def top_unique_bo_observations(observations: list[dict[str, Any]], limit: int = 3) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen: set[tuple[float, float, float]] = set()
+    for row in sorted(observations, key=lambda item: float(item["score_sec"])):
+        key = bo_theta_key(row["D_det"], row["alpha"], row["G_ext"])
+        if key in seen:
+            continue
+        seen.add(key)
+        rank = len(selected) + 1
+        selected.append(
+            {
+                "parameter_id": bo_parameter_id("bo_top3", rank, row["D_det"], row["alpha"], row["G_ext"]),
+                "D_det": format_intish(row["D_det"]),
+                "alpha": format_intish(row["alpha"]),
+                "G_ext": format_intish(row["G_ext"]),
+                "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+            }
+        )
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def command_line(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def write_bo_commands(path: Path, recommendation_csv: Path, top3_csv: Path) -> None:
+    manifest = rel(DEFAULT_MANIFEST)
+    rec = rel(recommendation_csv)
+    top3 = rel(top3_csv)
+    commands = [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        "",
+        "# 1) 추가 BO 추천 theta를 seed 1회로 실행한다. A_delay 계산을 위해 B00도 함께 실행한다.",
+        command_line(
+            [
+                "python",
+                "02_simulation/run_b0_b1_b2_experiment.py",
+                "--manifest",
+                manifest,
+                "--pipeline",
+                "parameter_input_sim",
+                "--modes",
+                "B00",
+                "B2",
+                "--b2-params",
+                rec,
+                "--repeats",
+                "1",
+                "--workers",
+                "1",
+                "--emergency-depart",
+                "600",
+                "--timeout-steps",
+                "7200",
+                "--recovery-buffer-sec",
+                "300",
+            ]
+        ),
+        "",
+        "# 2) 기존+추가 결과를 합친 뒤 상위 3개 theta를 seed 3회 재평가한다.",
+        command_line(
+            [
+                "python",
+                "02_simulation/run_b0_b1_b2_experiment.py",
+                "--manifest",
+                manifest,
+                "--pipeline",
+                "parameter_input_sim",
+                "--modes",
+                "B00",
+                "B2",
+                "--b2-params",
+                top3,
+                "--repeats",
+                "3",
+                "--workers",
+                "1",
+                "--emergency-depart",
+                "600",
+                "--timeout-steps",
+                "7200",
+                "--recovery-buffer-sec",
+                "300",
+            ]
+        ),
+        "",
+        "# 3) 최종 B0/B2 비교는 최소 seed 3회로 실행한다. 가능하면 --repeats 5~10을 사용한다.",
+        command_line(
+            [
+                "python",
+                "02_simulation/run_b0_b1_b2_experiment.py",
+                "--manifest",
+                manifest,
+                "--pipeline",
+                "parameter_input_sim",
+                "--modes",
+                "B00",
+                "B0",
+                "B2",
+                "--b2-params",
+                top3,
+                "--repeats",
+                "3",
+                "--workers",
+                "1",
+                "--emergency-depart",
+                "600",
+                "--timeout-steps",
+                "7200",
+                "--recovery-buffer-sec",
+                "300",
+                "--output-prefix",
+                "parameter_input_sim_final_compare",
+            ]
+        ),
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(commands), encoding="utf-8")
+    path.chmod(0o755)
+
+
+def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) -> int:
+    input_paths = resolve_bo_input_paths(args.bo_initial_results)
+    safe_prefix = args.bo_output_prefix.strip()
+    if not safe_prefix:
+        raise ExperimentError("bo_output_prefix cannot be blank")
+    observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+    recommendations, model_summary = fit_bo_and_recommend(observations, args.bo_recommend_count, args.bo_seed)
+    top3 = top_unique_bo_observations(observations, 3)
+    if not top3:
+        raise ExperimentError("bo_top3_reevaluation_requires_valid_observations")
+
+    bo_dir = PROJECT_ROOT / "results/metrics" / safe_prefix / run_id
+    generated_dir = PROJECT_ROOT / "configs/generated"
+    recommendation_csv = generated_dir / f"b2_bo_recommendations_{run_id}.csv"
+    top3_csv = generated_dir / f"b2_bo_top3_reeval_{run_id}.csv"
+    bo_recommendations_csv = bo_dir / "bo_recommendations.csv"
+    commands_sh = bo_dir / "bo_commands.sh"
+    summary_json = bo_dir / "bo_summary.json"
+
+    write_csv(bo_dir / "bo_observations.csv", observations, BO_OBSERVATION_FIELDS)
+    write_csv(bo_dir / "bo_excluded_observations.csv", excluded, BO_EXCLUDED_FIELDS)
+    write_csv(bo_recommendations_csv, recommendations, BO_RECOMMENDATION_FIELDS)
+    write_csv(recommendation_csv, recommendations, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+    write_csv(top3_csv, top3, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+    write_bo_commands(commands_sh, recommendation_csv, top3_csv)
+
+    summary = {
+        "generated_at": generated_at,
+        "run_id": run_id,
+        "bo_output_prefix": safe_prefix,
+        "seed": args.bo_seed,
+        "input_csvs": [display_path(path) for path in input_paths],
+        "input_row_count": input_row_count,
+        "b2_row_count": b2_row_count,
+        "valid_observation_count": len(observations),
+        "excluded_observation_count": len(excluded),
+        "recommendation_count": len(recommendations),
+        "t_change_sec_policy": f"fixed_{DEFAULT_BO_T_CHANGE_SEC}",
+        "search_space_policy": "valid_observation_min_max",
+        "failed_trial_policy": "exclude_from_gp_training",
+        "outputs": {
+            "bo_observations_csv": rel(bo_dir / "bo_observations.csv"),
+            "bo_excluded_observations_csv": rel(bo_dir / "bo_excluded_observations.csv"),
+            "bo_recommendations_csv": rel(bo_recommendations_csv),
+            "generated_recommendations_csv": rel(recommendation_csv),
+            "generated_top3_reeval_csv": rel(top3_csv),
+            "bo_commands_sh": rel(commands_sh),
+            "bo_summary_json": rel(summary_json),
+        },
+        **model_summary,
+    }
+    write_json(summary_json, summary)
+    print(
+        "\n".join(
+            [
+                "Bayesian optimization recommendation mode",
+                "========================================",
+                f"run_id: {run_id}",
+                f"input_row_count: {input_row_count}",
+                f"b2_row_count: {b2_row_count}",
+                f"valid_observation_count: {len(observations)}",
+                f"excluded_observation_count: {len(excluded)}",
+                f"recommendation_count: {len(recommendations)}",
+                f"current_best: {model_summary['current_best']}",
+                f"bo_recommendations_csv: {rel(bo_recommendations_csv)}",
+                f"generated_recommendations_csv: {rel(recommendation_csv)}",
+                f"generated_top3_reeval_csv: {rel(top3_csv)}",
+                f"bo_commands_sh: {rel(commands_sh)}",
+                f"bo_summary_json: {rel(summary_json)}",
+            ]
+        )
+    )
+    return 0
 
 
 def write_sumo_files_for_task(
@@ -2490,6 +2970,8 @@ def main() -> int:
     lines = ["B00/B0/B2 experiment runner", "=======================", f"generated_at: {generated_at}", f"run_id: {run_id}"]
     try:
         manifest = apply_manifest(args)
+        if bool_arg(args.bayesian):
+            return run_bayesian_mode(args, generated_at, run_id)
         if args.pipeline and args.output_prefix is None:
             args.output_prefix = args.pipeline
         if args.output_prefix is None:

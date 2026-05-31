@@ -18,6 +18,7 @@ results/metrics/*.csv
 results/metrics/*.json
 results/metrics/*.xml
 results/html/*.html
+configs/generated/*.csv
 data_prepared/demand/*_scale_*.rou.xml
 data_prepared/demand/*_sustained_3600.rou.xml
 !data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml

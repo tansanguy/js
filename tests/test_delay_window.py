@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import math
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -127,6 +128,94 @@ class FixedSeoulStationRouteTest(unittest.TestCase):
             from_edge = self.sumo_net.getEdge(from_edge_id)
             to_edge = self.sumo_net.getEdge(to_edge_id)
             self.assertIn(to_edge, from_edge.getOutgoing(), f"{from_edge_id}->{to_edge_id}")
+
+
+class BayesianOptimizationInputTest(unittest.TestCase):
+    def write_rows(self, rows: list[dict[str, str]]) -> Path:
+        fieldnames = []
+        for row in rows:
+            for key in row:
+                if key not in fieldnames:
+                    fieldnames.append(key)
+        temp = tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="", suffix=".csv", delete=False)
+        with temp:
+            writer = runner.csv.DictWriter(temp, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        return Path(temp.name)
+
+    def test_bo_loads_score_alias_and_excludes_failed_rows(self) -> None:
+        path = self.write_rows(
+            [
+                {
+                    "mode": "B2",
+                    "parameter_id": "ok",
+                    "D_det": "500",
+                    "alpha": "5",
+                    "G_ext": "60",
+                    "A_delay_sec": "100",
+                    "N_delay_sec": "4",
+                    "T_recovery_sec": "10",
+                    "Score": "314",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                    "route_error_count": "0",
+                    "sumo_exit_code": "0",
+                },
+                {
+                    "mode": "B2",
+                    "parameter_id": "bad",
+                    "D_det": "700",
+                    "alpha": "5",
+                    "G_ext": "60",
+                    "A_delay_sec": "100",
+                    "N_delay_sec": "4",
+                    "T_recovery_sec": "10",
+                    "Score": "314",
+                    "final_status": "FAIL",
+                    "emergency_arrived": "False",
+                    "emergency_teleport": "False",
+                    "route_error_count": "0",
+                    "sumo_exit_code": "0",
+                },
+            ]
+        )
+
+        observations, excluded, input_count, b2_count = runner.load_bo_observations([path])
+
+        self.assertEqual(input_count, 2)
+        self.assertEqual(b2_count, 2)
+        self.assertEqual(len(observations), 1)
+        self.assertEqual(observations[0]["score_sec"], 314.0)
+        self.assertEqual(observations[0]["T_change_sec"], 10)
+        self.assertEqual(len(excluded), 1)
+        self.assertIn("final_status_fail", excluded[0]["exclude_reason"])
+        self.assertIn("emergency_not_arrived", excluded[0]["exclude_reason"])
+
+    def test_bo_missing_required_columns_fails_clearly(self) -> None:
+        path = self.write_rows([{"mode": "B2", "D_det": "500", "Score": "10"}])
+
+        with self.assertRaisesRegex(runner.ExperimentError, "missing_bo_required_columns"):
+            runner.load_bo_observations([path])
+
+    def test_bo_recommendations_exclude_existing_theta_and_fix_t_change(self) -> None:
+        observations = [
+            {"parameter_id": "p1", "D_det": 500.0, "alpha": 5.0, "G_ext": 30.0, "score_sec": 1000.0},
+            {"parameter_id": "p2", "D_det": 500.0, "alpha": 6.0, "G_ext": 60.0, "score_sec": 900.0},
+            {"parameter_id": "p3", "D_det": 700.0, "alpha": 5.0, "G_ext": 30.0, "score_sec": 800.0},
+            {"parameter_id": "p4", "D_det": 700.0, "alpha": 6.0, "G_ext": 60.0, "score_sec": 700.0},
+        ]
+
+        recommendations, summary = runner.fit_bo_and_recommend(observations, recommend_count=10, seed=123)
+        existing = {(500.0, 5.0, 30.0), (500.0, 6.0, 60.0), (700.0, 5.0, 30.0), (700.0, 6.0, 60.0)}
+
+        self.assertEqual(len(recommendations), 10)
+        for row in recommendations:
+            theta = (float(row["D_det"]), float(row["alpha"]), float(row["G_ext"]))
+            self.assertNotIn(theta, existing)
+            self.assertEqual(row["T_change_sec"], "10")
+        self.assertEqual(summary["current_best"]["parameter_id"], "p4")
 
 
 if __name__ == "__main__":

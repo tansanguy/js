@@ -50,11 +50,11 @@ B2는 강제 preemption이 아니라 안전한 priority 제어다. 응급차 통
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization 전체 구현은 추후 범위다.
+현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization 추천 모드는 기존 B2 결과 CSV를 초기 관측값으로 사용한다.
 
 ## 3. 파이프라인: `parameter_input_sim`
 
-목적은 추후 외부 Bayesian Optimization이 사용할 입력 지표를 만드는 것이다. 현재 저장소는 최적화를 직접 수행하지 않고, CSV에 있는 B2 파라미터 조합만 실행한다.
+목적은 Bayesian Optimization이 사용할 입력 지표를 만들고, 추천된 B2 파라미터 조합을 같은 러너로 실행하는 것이다.
 
 - route: **서울역 직선 고정 경로**. `FIRE_TO_SEOUL_STATION`, `straight_seoul_station_fixed`, 소방서 edge `-381802881#2`에서 서울역 edge `619147738#0`까지의 59-edge route다.
 - modes: `B00`, `B0`, `B2`.
@@ -118,7 +118,32 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 `result_score.csv`는 시행별 scoring 입력만 담는 경량 파일이다. 컬럼은 `run_id,pipeline,mode,parameter_id,repeat_id,route_id,A_delay_sec,N_delay_sec,T_recovery_sec`만 둔다.
 
-## 6. 판정 기준
+## 6. Bayesian Optimization 추천 모드
+
+BO 추천 모드는 SUMO를 실행하지 않는다. 기존 결과 CSV의 `mode=B2` row를 초기 관측값으로 사용해 추가 θ를 추천하고, 사용자가 실행할 명령어를 출력한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bayesian true \
+  --bo-initial-results results/metrics/parameter_input_sim/{run_id}/experiment_results.csv \
+  --bo-recommend-count 15
+```
+
+입력 CSV는 여러 개를 받을 수 있다. 필수 컬럼은 `D_det`, `alpha`, `G_ext`, `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`, `score_sec`이며, `Score`만 있으면 `score_sec`로 읽는다. 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 사유를 남긴다.
+
+BO는 `D_det`, `alpha`, `G_ext`만 최적화하고 `T_change_sec=10`으로 고정한다. 탐색 범위는 유효 기존 관측치의 min/max이며, 후보 격자는 `D_det` 50m, `alpha` 1초, `G_ext` 5초 단위다. acquisition은 minimization용 Expected Improvement이고 `xi=0.05`로 exploration을 유지한다.
+
+출력:
+
+- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_observations.csv`
+- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_excluded_observations.csv`
+- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_recommendations.csv`
+- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_commands.sh`
+- `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_summary.json`
+- `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`
+- `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`
+
+## 7. 판정 기준
 
 - emergency teleport는 `FAIL`.
 - background/general teleport는 `WARNING`.
