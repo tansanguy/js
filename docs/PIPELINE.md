@@ -125,7 +125,7 @@ BO 추천 모드는 SUMO를 실행하지 않는다. 기존 결과 CSV의 `mode=B
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/{run_id}/experiment_results.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
   --bo-recommend-count 15
 ```
 

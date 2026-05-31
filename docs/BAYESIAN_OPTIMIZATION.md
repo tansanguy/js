@@ -1,10 +1,10 @@
 # Bayesian Optimization 실행 안내
 
-이 문서는 B2 신호 제어 파라미터 `D_det`, `alpha`, `G_ext`를 기존 실험 결과로부터 추가 추천하는 절차를 설명한다. 새 LHS/Sobol initial design은 만들지 않고, 이미 실행한 B2 결과 CSV를 Bayesian Optimization의 초기 관측값으로 사용한다.
+이 문서는 B2 신호 제어 파라미터 `D_det`, `alpha`, `G_ext`를 기존 실험 결과로부터 추가 추천하는 절차를 설명한다. 새 LHS/Sobol initial design은 만들지 않고, 이미 실행한 B2 관측 CSV를 Bayesian Optimization의 초기 관측값으로 사용한다.
 
 ## 1. 목적
 
-- 기존 B2 결과 CSV의 `mode=B2` row를 GP surrogate model의 학습 데이터로 사용한다.
+- 기존 B2 관측 CSV의 `mode=B2` row 또는 candidate summary row를 GP surrogate model의 학습 데이터로 사용한다.
 - 기존 결과 중 `score_sec`가 가장 낮은 theta를 current best로 둔다.
 - acquisition function으로 추가 theta 10~15개를 추천한다.
 - 추천 theta는 바로 실행 가능한 B2 parameter CSV와 shell command로 출력한다.
@@ -13,7 +13,15 @@
 
 ## 2. 입력 CSV
 
-`--bo-initial-results`에는 기존 40개 결과 CSV를 넘긴다. 여러 CSV를 한 번에 넘길 수 있다.
+`--bo-initial-results`에는 기존 B2 관측 CSV를 넘긴다. 여러 CSV를 한 번에 넘길 수 있다.
+
+현재 GitHub에 포함된 기준 입력은 22-row candidate summary다.
+
+```text
+results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv
+```
+
+이 파일은 BO smoke와 초기 추천용 기준 파일이다. 22개가 “상위 22개”라고 단정하지 않고, 이미 확보된 candidate summary 관측값으로 취급한다.
 
 허용 파일:
 
@@ -73,7 +81,16 @@ print(sum(1 for row in rows if row.get("mode") == "B2"))
 PY
 ```
 
-기본 실행:
+기준 22-row candidate summary로 실행:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bayesian true \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-recommend-count 15
+```
+
+특정 run 결과로 실행:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
@@ -98,7 +115,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
-  --bo-initial-results path/to/existing_40_results.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
   --bo-recommend-count 15 \
   --bo-output-prefix parameter_input_sim_bo \
   --bo-seed 20260531
@@ -209,7 +226,7 @@ BO 추천 모드만 빠르게 확인할 때:
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
-  --bo-initial-results local_archive/20260531_cleanup/tracked/results/metrics/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
   --bo-recommend-count 10 \
   --bo-output-prefix parameter_input_sim_bo_smoke \
   --bo-seed 20260531

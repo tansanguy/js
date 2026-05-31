@@ -68,7 +68,7 @@ bash 00_setup/verify_env.sh
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
-  --bo-initial-results path/to/existing_40_results.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
   --bo-recommend-count 15
 ```
 

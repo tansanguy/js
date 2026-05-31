@@ -89,12 +89,12 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 ## Bayesian Optimization 추천
 
-기존 40개 B2 결과를 initial design으로 사용한다. 새 LHS/Sobol 초기 샘플은 만들지 않는다.
+기존 B2 관측 CSV를 initial design으로 사용한다. 새 LHS/Sobol 초기 샘플은 만들지 않는다. 현재 GitHub에는 22-row candidate summary가 기준 입력으로 포함되어 있다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
-  --bo-initial-results path/to/existing_40_results.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
   --bo-recommend-count 15
 ```
 
