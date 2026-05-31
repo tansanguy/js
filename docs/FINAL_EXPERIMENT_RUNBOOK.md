@@ -107,6 +107,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 추가 추천 θ 실행은 `A_delay_sec` 계산을 위해 `B00 B2`로 실행한다. 최종 B0/B2 비교는 `B00 B0 B2`를 최소 seed 3회로 실행하고, 가능하면 seed 5~10회로 늘린다.
 
+상세한 BO 모델 설정, 입력 검증, 산출물, smoke test는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
+
 ## 핵심 지표
 
 - `A_delay_sec`: B0/B2 응급차 통행시간에서 같은 route/repeat의 B00 통행시간을 뺀 값.

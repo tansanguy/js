@@ -74,4 +74,4 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`와 `configs/generated/` 아래에 생성된다.
 
-자세한 실행 절차는 `docs/PIPELINE.md`와 `docs/FINAL_EXPERIMENT_RUNBOOK.md`를 따른다.
+자세한 실행 절차는 `docs/PIPELINE.md`, `docs/FINAL_EXPERIMENT_RUNBOOK.md`, `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.

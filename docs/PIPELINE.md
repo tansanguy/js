@@ -143,6 +143,8 @@ BO는 `D_det`, `alpha`, `G_ext`만 최적화하고 `T_change_sec=10`으로 고�
 - `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`
 - `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`
 
+자세한 BO 실행 순서, 누적 실행, 상위 3개 재평가, 최종 B0/B2 비교 절차는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
+
 ## 7. 판정 기준
 
 - emergency teleport는 `FAIL`.
