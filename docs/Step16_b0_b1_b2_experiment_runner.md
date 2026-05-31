@@ -46,8 +46,17 @@ BO 표준 실행은 `--bo-stage loop`다. `D_det`, `alpha`, `G_ext`를 최적화
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
+```
+
+생성된 initial CSV를 실행해 만든 결과 CSV로 loop를 시작한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/{initial_run_id}/experiment_results.csv \
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --bo-eval-repeats 5 \
@@ -66,6 +75,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 - 기존 `--bayesian true`는 `--bo-stage suggest` alias로 유지한다.
 - BO target은 `bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec`다.
+- B2의 `G_ext`는 응급차 통과 전 green 확보 최대 상한이고, 통과 후 남은 green은 `alpha`초로 정리한다. `signal_burden_penalty_sec`는 `realized_extension_sec` 기준으로 계산한다.
 - 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 학습에서 제외한다.
 - loop 산출물은 `results/metrics/parameter_input_sim_bo/{loop_run_id}/`, `latest.json`, `state.json`, `configs/generated/`에 생성된다.
 - 표준 정책은 라운드당 추천 5개, 각 theta seed 5회, 총 10라운드다.

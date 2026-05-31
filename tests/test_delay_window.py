@@ -83,7 +83,77 @@ class OutputPathTest(unittest.TestCase):
 
     def test_final_result_fields_hide_tripinfo_length_and_count_sequence_extensions(self) -> None:
         self.assertIn("green_arrived_before_t_change_extension_count", runner.EXPERIMENT_RESULT_FIELDS)
+        self.assertIn("realized_extension_sec", runner.EXPERIMENT_RESULT_FIELDS)
+        self.assertIn("trimmed_green_sec", runner.EXPERIMENT_RESULT_FIELDS)
+        self.assertIn("post_pass_trim_count", runner.EXPERIMENT_RESULT_FIELDS)
         self.assertNotIn("emergency_tripinfo_route_length_m", runner.EXPERIMENT_RESULT_FIELDS)
+
+
+class FakeTrafficLight:
+    def __init__(self, phase: int, remaining: float) -> None:
+        self.phase = phase
+        self.next_switch = remaining
+        self.duration: float | None = None
+
+    def getPhase(self, tls_id: str) -> int:
+        return self.phase
+
+    def getNextSwitch(self, tls_id: str) -> float:
+        return self.next_switch
+
+    def setPhaseDuration(self, tls_id: str, duration: float) -> None:
+        self.duration = duration
+
+
+class FakeTraci:
+    def __init__(self, phase: int, remaining: float) -> None:
+        self.trafficlight = FakeTrafficLight(phase, remaining)
+
+
+class PostPassAlphaTrimTest(unittest.TestCase):
+    def test_post_pass_trim_cuts_remaining_g_ext_to_alpha(self) -> None:
+        traci = FakeTraci(phase=3, remaining=60.0)
+
+        action, phase_after, reason, remaining_before, set_duration, extension_delta, trimmed_green = runner.trim_green_after_pass_to_alpha(
+            traci,
+            {"tls_id": "tls-a", "green_phases": [3]},
+            alpha_sec=5,
+            sim_time=10.0,
+        )
+
+        self.assertEqual(action, "trim_green_after_pass_to_alpha")
+        self.assertEqual(phase_after, 3)
+        self.assertEqual(reason, "emergency_passed_tls_trim_to_alpha")
+        self.assertAlmostEqual(remaining_before, 50.0)
+        self.assertAlmostEqual(set_duration, 5.0)
+        self.assertAlmostEqual(extension_delta, 0.0)
+        self.assertAlmostEqual(trimmed_green, 45.0)
+        self.assertAlmostEqual(traci.trafficlight.duration or 0.0, 5.0)
+
+    def test_post_pass_trim_does_not_force_green_after_phase_changed(self) -> None:
+        traci = FakeTraci(phase=1, remaining=12.0)
+
+        action, phase_after, reason, remaining_before, set_duration, extension_delta, trimmed_green = runner.trim_green_after_pass_to_alpha(
+            traci,
+            {"tls_id": "tls-a", "green_phases": [3]},
+            alpha_sec=5,
+            sim_time=10.0,
+        )
+
+        self.assertEqual(action, "post_pass_no_green_trim")
+        self.assertEqual(phase_after, 1)
+        self.assertEqual(reason, "current_phase_not_emergency_green_no_force")
+        self.assertAlmostEqual(remaining_before, 2.0)
+        self.assertEqual(set_duration, "")
+        self.assertAlmostEqual(extension_delta, 0.0)
+        self.assertAlmostEqual(trimmed_green, 0.0)
+        self.assertIsNone(traci.trafficlight.duration)
+
+    def test_realized_extension_uses_trimmed_green(self) -> None:
+        total_extension = 60.0
+        trimmed_green = 45.0
+
+        self.assertAlmostEqual(max(total_extension - trimmed_green, 0.0), 15.0)
 
 
 class FixedSeoulStationRouteTest(unittest.TestCase):

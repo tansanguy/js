@@ -65,7 +65,7 @@ runs/final/{output_prefix}/{run_id}/
 `signal_events.csv`:
 
 - B2가 어느 신호에서 무엇을 했는지 기록한다.
-- green 연장, `T_change_sec` 이후 전환, alpha hold, skip, fail 같은 event를 확인한다.
+- green 연장, `T_change_sec` 이후 전환, 통과 후 `alpha` trim, skip, fail 같은 event를 확인한다.
 
 `queue_recovery_by_tls.csv`:
 
@@ -179,7 +179,7 @@ bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec
 - B2가 신호를 얼마나 많이/강하게 건드렸는지 반영하는 penalty.
 
 ```text
-signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_count
+signal_burden_penalty_sec = 0.5*realized_extension_sec + 30*phase_switch_count
 ```
 
 `failure_penalty_sec`:
@@ -292,7 +292,7 @@ signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_coun
 
 `G_ext`:
 
-- green extension 상한. 단위는 초.
+- 응급차가 TLS를 통과하기 전 green 확보의 최대 상한. 단위는 초. 통과 후 남은 green은 `alpha`초로 정리한다.
 
 `T_change_sec`:
 
@@ -316,11 +316,24 @@ signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_coun
 
 `total_extension_delta_sec`:
 
-- B2가 실제로 추가한 green extension 시간 총합.
+- B2가 접근 중 예약/추가한 green extension 시간 총합.
+
+`trimmed_green_sec`:
+
+- 응급차 통과 후 `alpha` 정리로 잘라낸 green 시간.
+
+`realized_extension_sec`:
+
+- `max(total_extension_delta_sec - trimmed_green_sec, 0)`.
+- BO penalty에 쓰는 실제 green 부담.
+
+`post_pass_trim_count`:
+
+- 응급차 통과 후 green을 `alpha`초로 재설정한 횟수.
 
 `alpha_hold_count`:
 
-- 응급차 통과 후 alpha hold를 시도한 횟수.
+- 응급차 통과 후 alpha 정리를 시도한 횟수.
 
 `alpha_effective_extension_sec`:
 
@@ -367,7 +380,7 @@ signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_coun
 1. `experiment_summary.json`에서 전체 `final_status`를 본다.
 2. `result_score.csv`에서 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`를 비교한다.
 3. `experiment_results.csv`에서 `emergency_arrived`, `emergency_teleport`, `route_error_count`를 확인한다.
-4. B2라면 `intervention_count`, `phase_switch_count`, `total_extension_delta_sec`, `signal_burden_penalty_sec`를 본다.
+4. B2라면 `intervention_count`, `phase_switch_count`, `total_extension_delta_sec`, `trimmed_green_sec`, `realized_extension_sec`, `signal_burden_penalty_sec`를 본다.
 5. `rolling_congestion_valid`와 구간별 속도로 정체가 유지됐는지 확인한다.
 6. 이상하면 `signal_events.csv`, `queue_recovery_by_tls.csv`, `sumo_stderr.log`를 본다.
 

@@ -35,25 +35,112 @@
 ```text
 bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec
 score_sec = 3*A_delay_sec + N_delay_sec + T_recovery_sec
-signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_count
+signal_burden_penalty_sec = 0.5*realized_extension_sec + 30*phase_switch_count
 ```
 
 `score_sec`는 연구 기본 점수로 유지한다. BO는 신호 부담까지 포함한 `bo_score_sec`를 낮추는 방향으로 theta를 고른다.
+`G_ext`는 응급차 통과 전 green 확보의 최대 상한이다. 통과 후 남은 green은 `alpha`초로 정리하므로 BO penalty는 예약된 전체 시간이 아니라 `realized_extension_sec`를 기준으로 계산한다.
 
 ## 표준 실행
 
-기존 22-row candidate summary에서 시작하는 기본 실행:
+새 B2 제어 로직 기준 initial design을 먼저 실행하는 것을 기본으로 한다. 기존 22-row candidate summary는 `legacy_pre_trim_control` 결과라서, 통과 후 alpha trim이 없는 과거 관측으로 취급한다.
+
+## Mac mini에서 10라운드 실행
+
+팀원 Mac mini에서는 아래 순서로 실행한다. `{run_id}`를 직접 찾지 않고 `latest.json`에서 필요한 CSV를 읽는다.
+
+1. 최신 코드와 Python 의존성을 맞춘다.
+
+```bash
+cd /Users/iseclient1/sumo-simulation
+git pull origin main
+source .venv/bin/activate
+pip install -r requirements.txt
+bash 00_setup/verify_env.sh
+```
+
+2. 새 B2 제어 로직 기준 initial theta 20개를 만든다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
+```
+
+3. 방금 생성된 initial CSV 경로를 자동으로 읽어서 seed 5회 실행한다.
+
+```bash
+INIT_CSV=$(python - <<'PY'
+import json
+from pathlib import Path
+latest = json.loads(Path("results/metrics/parameter_input_sim_bo/latest.json").read_text())
+print(latest["generated_initial_params_csv"])
+PY
+)
+
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --manifest configs/final_experiment_manifest.json \
+  --pipeline parameter_input_sim \
+  --output-prefix parameter_input_sim_bo_initial_eval \
+  --modes B00 B2 \
+  --b2-params "$INIT_CSV" \
+  --repeats 5 \
+  --workers 6 \
+  --emergency-depart 600 \
+  --timeout-steps 7200 \
+  --recovery-buffer-sec 300
+```
+
+4. initial 실행 결과를 자동 입력으로 잡고, 5개씩 10라운드 batch BO를 실행한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-auto-inputs \
+  --bo-results-prefix parameter_input_sim_bo_initial_eval \
+  --bo-output-prefix parameter_input_sim_bo \
+  --bo-workflow-prefix parameter_input_sim_bo \
+  --bo-eval-output-prefix parameter_input_sim_bo_eval \
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --bo-eval-repeats 5 \
   --workers 6 \
   --manifest configs/final_experiment_manifest.json
 ```
+
+이 명령은 각 round마다 `학습 -> theta 5개 추천 -> B00/B2 실행 -> 결과 재학습`을 자동 반복한다.
+
+5. 결과를 확인한다.
+
+```bash
+cat results/metrics/parameter_input_sim_bo/latest.json
+cat results/metrics/parameter_input_sim_bo/state.json
+```
+
+주요 파일:
+
+```text
+results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_all_results.csv
+results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_rounds.csv
+results/metrics/parameter_input_sim_bo/{loop_run_id}/bo_loop_summary.json
+configs/generated/b2_bo_top3_reeval_{loop_run_id}.csv
+```
+
+중간에 멈추면 다음 명령으로 이어서 실행한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage loop \
+  --bo-resume \
+  --bo-rounds 10 \
+  --bo-batch-size 5 \
+  --bo-eval-repeats 5 \
+  --workers 6 \
+  --manifest configs/final_experiment_manifest.json
+```
+
+`proj cannot find` 또는 SUMO/PROJ 관련 오류가 나오면 `bash 00_setup/verify_env.sh`를 먼저 다시 실행하고, `.venv`가 활성화되어 있는지 확인한다.
 
 최신 결과를 자동으로 이어 쓰는 실행:
 
@@ -143,7 +230,7 @@ configs/generated/b2_bo_top3_reeval_{loop_run_id}.csv
 
 ## Smoke Test
 
-SUMO 없이 loop 구조만 확인:
+SUMO 없이 loop 구조만 확인할 때는 명시적으로 관측 CSV를 넣는다. 아래 22-row 파일은 legacy 제어 결과라 구조 smoke 용도로만 쓴다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
@@ -158,7 +245,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-mock-eval
 ```
 
-기존 수동 추천 모드 확인:
+기존 수동 추천 모드 확인도 명시적 입력이 필요하다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \

@@ -63,6 +63,8 @@ B2는 강제 preemption이 아니라 안전한 priority 제어다. 응급차 통
 
 - `D_det` 안에서 이미 green이면 green을 연장한다.
 - `D_det` 안에서 green이 아니면 CSV의 `T_change_sec` 뒤 응급차 방향 green 전환을 요청한다.
+- `G_ext`는 응급차가 해당 TLS를 통과하기 전까지 확보할 수 있는 green의 최대 상한이다.
+- 응급차가 TLS를 통과하면 남은 `G_ext` green을 종료하고 `alpha`초만 유지하도록 `trim_green_after_pass_to_alpha`를 적용한다. 이미 다른 phase로 넘어갔으면 강제로 green으로 되돌리지 않는다.
 - 노란불과 교차로 clearance phase를 생략하지 않는다.
 - 직접 red→green 순간 점프는 금지하고, 전환 전 yellow/clearance 정리시간을 둔다.
 - 대기 중 기존 phase sequence가 응급차 green에 도달하면 `switch_to_green_after_t_change` 대신 `extend_green`으로 기록한다.
@@ -130,7 +132,10 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
 - `bo_score_sec`: BO target. `score_sec + signal_burden_penalty_sec + failure_penalty_sec`.
-- `signal_burden_penalty_sec`: B2 신호 개입 부담. 기본식은 `0.5*total_extension_delta_sec + 30*phase_switch_count`.
+- `signal_burden_penalty_sec`: B2 신호 개입 부담. 기본식은 `0.5*realized_extension_sec + 30*phase_switch_count`.
+- `total_extension_delta_sec`: 접근 중 예약/추가한 green 시간 총합이다.
+- `trimmed_green_sec`: 응급차 통과 후 `alpha` 정리로 잘라낸 green 시간이다.
+- `realized_extension_sec`: `max(total_extension_delta_sec - trimmed_green_sec, 0)`이며 BO penalty에 쓰는 실제 green 부담이다.
 - `emergency_route_length_m`: 공식 보고용 route 길이. 서울역 직선 고정 경로는 외부 edge 합산 `2990.17m`를 사용한다.
 - `rolling_congestion_valid`: 300초 rolling 평균 네트워크 속도가 관측창 동안 12~35km/h 안에 있으면 `True`다. 마지막 순간 속도는 보조 진단으로만 본다.
 
@@ -144,12 +149,19 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 BO는 `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 표준 workflow는 `scikit-optimize` GP optimizer가 round마다 새 theta를 추천하고, 같은 러너가 B00/B2를 실행한 뒤 그 결과를 다음 round에 다시 학습한다.
 
-표준 batch loop:
+표준 batch loop는 새 initial design 실행 결과에서 시작한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
+```
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/{initial_run_id}/experiment_results.csv \
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --bo-eval-repeats 5 \

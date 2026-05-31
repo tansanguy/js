@@ -103,19 +103,29 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 - `D_det`: 응급차가 이 거리 안에 들어오면 제어 후보가 되는 거리(m).
 - `alpha`: 응급차 통과 후 초록 유지 시간(s). 정수 초만 허용한다.
-- `G_ext`: 초록 연장 상한(s). 정수 초만 허용한다.
+- `G_ext`: 응급차가 해당 TLS를 통과하기 전 green 확보의 최대 상한(s). 정수 초만 허용한다.
 - `T_change_sec`: green이 아닐 때 green 전환 요청 전 대기시간(s). 정수 초만 허용한다. 이 시간 중 기존 sequence가 green에 도달하면 `green_arrived_before_t_change_extension_count`로 집계되고, 최종 action은 `extend_green`이 된다.
+- 응급차가 TLS를 통과하면 남은 `G_ext` green은 `alpha`초로 줄인다. 이미 다른 phase로 넘어갔으면 강제로 green으로 되돌리지 않는다.
 
 ## Bayesian Optimization
 
 표준 BO는 `--bo-stage loop`로 실행한다. `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 target은 `bo_score_sec`이며, 기존 `score_sec`에 green extension과 phase switch 부담 penalty를 더한다.
 
-기존 22-row 관측 CSV에서 시작해 5개씩 10라운드 자동 실행:
+새 B2 제어 로직 기준으로는 initial design을 새로 실행한 뒤 5개씩 10라운드 자동 실행한다. 기존 22-row 관측 CSV는 통과 후 alpha trim 이전의 legacy 결과로만 취급한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
+```
+
+생성된 initial CSV를 `--b2-params`로 실행한 뒤, 그 실행 결과 CSV로 loop를 시작한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/{initial_run_id}/experiment_results.csv \
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --bo-eval-repeats 5 \

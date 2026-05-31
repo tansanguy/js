@@ -100,7 +100,7 @@ SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "619147738#0"
 SEOUL_STATION_POLICY = "straight_seoul_station_fixed"
-CONTROL_ACTIONS = {"extend_green", "alpha_hold_extend", "switch_to_green_after_t_change"}
+CONTROL_ACTIONS = {"extend_green", "switch_to_green_after_t_change", "trim_green_after_pass_to_alpha"}
 BO_OBSERVATION_FIELDS = [
     "source_csv",
     "source_row",
@@ -115,6 +115,10 @@ BO_OBSERVATION_FIELDS = [
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
+    "total_extension_delta_sec",
+    "realized_extension_sec",
+    "trimmed_green_sec",
+    "post_pass_trim_count",
     "failure_penalty_sec",
     "final_status",
     "emergency_arrived",
@@ -171,6 +175,10 @@ BO_ALL_RESULT_FIELDS = [
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
+    "total_extension_delta_sec",
+    "realized_extension_sec",
+    "trimmed_green_sec",
+    "post_pass_trim_count",
     "failure_penalty_sec",
     "final_status",
     "emergency_arrived",
@@ -197,6 +205,10 @@ SCORE_COMPONENT_FIELDS = [
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
+    "total_extension_delta_sec",
+    "realized_extension_sec",
+    "trimmed_green_sec",
+    "post_pass_trim_count",
     "failure_penalty_sec",
     "final_status",
     "warning_reason",
@@ -262,6 +274,7 @@ EVENT_FIELDS = [
     "phase_remaining_before_sec",
     "set_duration_sec",
     "extension_delta_sec",
+    "trimmed_green_sec",
     "action",
     "reason",
     "restore_action",
@@ -302,6 +315,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "signal_burden_penalty_sec",
     "failure_penalty_sec",
     "total_extension_delta_sec",
+    "realized_extension_sec",
+    "trimmed_green_sec",
+    "post_pass_trim_count",
     "alpha_effective_extension_sec",
     "alpha_hold_count",
     "emergency_arrived",
@@ -878,6 +894,10 @@ def load_bo_observations(paths: list[Path]) -> tuple[list[dict[str, Any]], list[
                     "score_sec": numeric_cell(row, "score_sec"),
                     "bo_score_sec": bo_score,
                     "signal_burden_penalty_sec": numeric_cell(row, "signal_burden_penalty_sec") or 0.0,
+                    "total_extension_delta_sec": numeric_cell(row, "total_extension_delta_sec") or 0.0,
+                    "realized_extension_sec": numeric_cell(row, "realized_extension_sec") or 0.0,
+                    "trimmed_green_sec": numeric_cell(row, "trimmed_green_sec") or 0.0,
+                    "post_pass_trim_count": numeric_cell(row, "post_pass_trim_count") or 0.0,
                     "failure_penalty_sec": numeric_cell(row, "failure_penalty_sec") or 0.0,
                 }
             )
@@ -1216,6 +1236,10 @@ def write_mock_bo_eval_results(args: argparse.Namespace, round_index: int, gener
                     "score_sec": sec(score),
                     "bo_score_sec": sec(bo_score),
                     "signal_burden_penalty_sec": sec(bo_score - score),
+                    "total_extension_delta_sec": sec(max(g_ext - 20.0, 0.0)),
+                    "realized_extension_sec": sec(max(g_ext - 20.0, 0.0)),
+                    "trimmed_green_sec": "0.00",
+                    "post_pass_trim_count": "0",
                     "failure_penalty_sec": "0.00",
                     "final_status": "PASS",
                     "emergency_arrived": "True",
@@ -1262,6 +1286,10 @@ def bo_all_result_rows(loop_run_id: str, round_paths: list[tuple[int, Path]]) ->
             if score_value is None:
                 score_value = numeric_cell(row, "Score")
             signal_penalty = numeric_cell(row, "signal_burden_penalty_sec")
+            total_extension = numeric_cell(row, "total_extension_delta_sec")
+            realized_extension = numeric_cell(row, "realized_extension_sec")
+            trimmed_green = numeric_cell(row, "trimmed_green_sec")
+            post_pass_trim_count = numeric_cell(row, "post_pass_trim_count")
             failure_penalty = numeric_cell(row, "failure_penalty_sec")
             rows.append(
                 {
@@ -1284,6 +1312,10 @@ def bo_all_result_rows(loop_run_id: str, round_paths: list[tuple[int, Path]]) ->
                     "score_sec": sec(score_value) if score_value is not None else "",
                     "bo_score_sec": sec(bo_score) if bo_score is not None else "",
                     "signal_burden_penalty_sec": sec(signal_penalty) if signal_penalty is not None else "0.00",
+                    "total_extension_delta_sec": sec(total_extension) if total_extension is not None else "",
+                    "realized_extension_sec": sec(realized_extension) if realized_extension is not None else "",
+                    "trimmed_green_sec": sec(trimmed_green) if trimmed_green is not None else "",
+                    "post_pass_trim_count": format_intish(post_pass_trim_count) if post_pass_trim_count is not None else "",
                     "failure_penalty_sec": sec(failure_penalty) if failure_penalty is not None else "0.00",
                     "final_status": row.get("final_status", ""),
                     "emergency_arrived": row.get("emergency_arrived", ""),
@@ -1542,11 +1574,6 @@ def run_bo_loop_mode(args: argparse.Namespace, generated_at: str, run_id: str) -
     stop_reason = ""
 
     observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
-    if len(observations) < 2 and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file() and DEFAULT_BO_INITIAL_OBSERVATIONS.resolve() not in input_paths:
-        initial_input_paths = unique_paths([*initial_input_paths, DEFAULT_BO_INITIAL_OBSERVATIONS])
-        input_paths = unique_paths([*initial_input_paths, *round_result_paths])
-        initial_input_csvs = [display_path(path) for path in initial_input_paths if path.is_file()]
-        observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
     if len(observations) < 2:
         raise ExperimentError("bo_loop_requires_at_least_two_valid_observations")
 
@@ -1787,11 +1814,8 @@ def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) 
         )
 
     else:
-        input_paths = resolve_bo_observation_inputs(args, state, allow_default=True)
+        input_paths = resolve_bo_observation_inputs(args, state, allow_default=False)
         observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
-        if len(observations) < 2 and not args.bo_initial_results and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file() and DEFAULT_BO_INITIAL_OBSERVATIONS.resolve() not in input_paths:
-            input_paths = unique_paths([*input_paths, DEFAULT_BO_INITIAL_OBSERVATIONS])
-            observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
         if stage == "suggest":
             recommendations, model_summary = fit_bo_and_recommend(observations, args.bo_recommend_count, args.bo_seed)
             recommendation_csv = generated_dir / f"b2_bo_recommendations_{run_id}.csv"
@@ -2714,6 +2738,35 @@ def extend_current_green_without_shortening(traci: Any, tls: dict[str, Any], min
     return "wait_for_sequence_green", current_phase, "phase_sequence_preserved_wait_for_green", "", "", ""
 
 
+def trim_green_after_pass_to_alpha(
+    traci: Any,
+    tls: dict[str, Any],
+    alpha_sec: int,
+    sim_time: float,
+) -> tuple[str, int | str, str, float | str, float | str, float, float]:
+    tls_id = tls["tls_id"]
+    current_phase = int(traci.trafficlight.getPhase(tls_id))
+    green_phases = list(tls.get("green_phases") or [])
+    if not green_phases:
+        return "failed", current_phase, "no_green_phase_for_emergency_link_post_pass", "", "", 0.0, 0.0
+    current_remaining = phase_remaining_seconds(traci, tls_id, sim_time)
+    if current_phase not in green_phases:
+        return "post_pass_no_green_trim", current_phase, "current_phase_not_emergency_green_no_force", current_remaining, "", 0.0, 0.0
+    target_remaining = max(int(alpha_sec), 0)
+    extension_delta = max(float(target_remaining) - current_remaining, 0.0)
+    trimmed_green = max(current_remaining - float(target_remaining), 0.0)
+    traci.trafficlight.setPhaseDuration(tls_id, float(target_remaining))
+    return (
+        "trim_green_after_pass_to_alpha",
+        current_phase,
+        "emergency_passed_tls_trim_to_alpha",
+        current_remaining,
+        float(target_remaining),
+        extension_delta,
+        trimmed_green,
+    )
+
+
 def phase_duration_seconds(traci: Any, tls_id: str, phase_index: int, fallback: int) -> int:
     try:
         phases = traci.trafficlight.getAllProgramLogics(tls_id)[0].phases
@@ -3102,37 +3155,35 @@ def run_traci_experiment(
                             continue
                         if "pass_time" not in record:
                             record["pass_time"] = sim_time
-                            if alpha > 0:
-                                action, phase_after, reason, remaining_before, set_duration, extension_delta = extend_current_green_without_shortening(traci, record, alpha, sim_time)
-                                if action == "extend_green":
-                                    action = "alpha_hold_extend"
-                                events.append(
-                                    {
-                                        "time": sec(sim_time),
-                                        "route_id": args.route_id,
-                                        "vehicle_id": args.emergency_vehicle_id,
-                                        "tls_id": tls_id,
-                                        "junction_id": record["junction_id"],
-                                        "incoming": record["incoming"],
-                                        "outgoing": record["outgoing"],
-                                        "remaining_distance_m": "0.00",
-                                        "D_det": d_det,
-                                        "alpha": params.get("alpha", ""),
-                                        "G_ext": params.get("G_ext", ""),
-                                        "effective_alpha_sec": sec(alpha),
-                                        "effective_G_ext_sec": sec(effective_g_ext),
-                                        "current_road_id": road_id,
-                                        "phase_before": record["phase_after"],
-                                        "phase_after": phase_after,
-                                        "phase_remaining_before_sec": sec(remaining_before),
-                                        "set_duration_sec": sec(set_duration),
-                                        "extension_delta_sec": sec(extension_delta),
-                                        "action": action,
-                                        "reason": f"emergency_passed_tls_alpha_hold_{alpha}s:{reason}",
-                                        "restore_action": "",
-                                        "pass_time": sec(record.get("pass_time", "")),
-                                    }
-                                )
+                            action, phase_after, reason, remaining_before, set_duration, extension_delta, trimmed_green = trim_green_after_pass_to_alpha(traci, record, alpha, sim_time)
+                            events.append(
+                                {
+                                    "time": sec(sim_time),
+                                    "route_id": args.route_id,
+                                    "vehicle_id": args.emergency_vehicle_id,
+                                    "tls_id": tls_id,
+                                    "junction_id": record["junction_id"],
+                                    "incoming": record["incoming"],
+                                    "outgoing": record["outgoing"],
+                                    "remaining_distance_m": "0.00",
+                                    "D_det": d_det,
+                                    "alpha": params.get("alpha", ""),
+                                    "G_ext": params.get("G_ext", ""),
+                                    "effective_alpha_sec": sec(alpha),
+                                    "effective_G_ext_sec": sec(effective_g_ext),
+                                    "current_road_id": road_id,
+                                    "phase_before": record["phase_after"],
+                                    "phase_after": phase_after,
+                                    "phase_remaining_before_sec": sec(remaining_before),
+                                    "set_duration_sec": sec(set_duration),
+                                    "extension_delta_sec": sec(extension_delta),
+                                    "trimmed_green_sec": sec(trimmed_green),
+                                    "action": action,
+                                    "reason": reason,
+                                    "restore_action": "",
+                                    "pass_time": sec(record.get("pass_time", "")),
+                                }
+                            )
                         if sim_time < float(record["pass_time"]) + alpha:
                             continue
                         restore_action = "no_program_restore_needed_sequence_preserved"
@@ -3663,8 +3714,10 @@ def summarize_run(
     t_recovery = float(recovery["T_recovery_sec"])
     score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
     total_extension_delta_sec = 0.0
+    trimmed_green_sec = 0.0
     alpha_effective_extension_sec = 0.0
     alpha_hold_count = 0
+    post_pass_trim_count = 0
     for event in events:
         try:
             extension_delta = float(event.get("extension_delta_sec") or 0.0)
@@ -3672,11 +3725,21 @@ def summarize_run(
             extension_delta = 0.0
         extension_delta = max(extension_delta, 0.0)
         total_extension_delta_sec += extension_delta
-        if event.get("action") == "alpha_hold_extend":
+        try:
+            trimmed_delta = float(event.get("trimmed_green_sec") or 0.0)
+        except (TypeError, ValueError):
+            trimmed_delta = 0.0
+        trimmed_green_sec += max(trimmed_delta, 0.0)
+        if event.get("action") == "trim_green_after_pass_to_alpha":
+            post_pass_trim_count += 1
+            alpha_hold_count += 1
+            alpha_effective_extension_sec += extension_delta
+        elif event.get("action") == "alpha_hold_extend":
             alpha_hold_count += 1
             alpha_effective_extension_sec += extension_delta
     phase_switch_count = sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change")
-    signal_burden_penalty_sec = BO_EXTENSION_PENALTY_WEIGHT * total_extension_delta_sec + BO_PHASE_SWITCH_PENALTY_SEC * phase_switch_count
+    realized_extension_sec = max(total_extension_delta_sec - trimmed_green_sec, 0.0)
+    signal_burden_penalty_sec = BO_EXTENSION_PENALTY_WEIGHT * realized_extension_sec + BO_PHASE_SWITCH_PENALTY_SEC * phase_switch_count
     failure_penalty_sec = 0.0
     bo_score = score + signal_burden_penalty_sec + failure_penalty_sec
     safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
@@ -3753,6 +3816,9 @@ def summarize_run(
             "signal_burden_penalty_sec": sec(signal_burden_penalty_sec),
             "failure_penalty_sec": sec(failure_penalty_sec),
             "total_extension_delta_sec": sec(total_extension_delta_sec),
+            "realized_extension_sec": sec(realized_extension_sec),
+            "trimmed_green_sec": sec(trimmed_green_sec),
+            "post_pass_trim_count": post_pass_trim_count,
             "alpha_effective_extension_sec": sec(alpha_effective_extension_sec),
             "alpha_hold_count": alpha_hold_count,
             "emergency_corridor_actual_sec": sec(emergency_corridor_actual),

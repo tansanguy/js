@@ -63,12 +63,21 @@ bash 00_setup/verify_env.sh
 
 ## Bayesian Optimization
 
-표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 기존 22-row 관측 CSV에서 시작해 5개씩 10라운드를 자동 실행한다.
+표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 현재 B2는 `G_ext`를 통과 전 green 최대 상한으로 쓰고, 통과 후 남은 green을 `alpha`초로 정리한다. 기존 22-row 관측 CSV는 이 trim 로직 이전의 legacy 결과이므로 새 initial design을 다시 실행하는 흐름을 기본으로 한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
+```
+
+생성된 initial CSV를 `--b2-params`로 실행한 뒤 그 결과를 BO loop 입력으로 쓴다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results results/metrics/parameter_input_sim/{initial_run_id}/experiment_results.csv \
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --bo-eval-repeats 5 \
