@@ -1,0 +1,11 @@
+{
+  "schema": "theta_check_routes.v1",
+  "source_csv": "data_prepared/routes/emergency_routes_spine_v2.csv",
+  "output_csv": "05_theta_check_simulation/routes/b0_valid_18_routes.csv",
+  "source_route_count": 19,
+  "route_count": 18,
+  "excluded_routes": [
+    "ER_ACC_013"
+  ],
+  "exclude_reason": "B0 emergency teleport in prior b0_valid route screening"
+}

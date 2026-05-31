@@ -1,0 +1,2 @@
+scope,route_id,pair_count,B00_travel_time_sec,B0_mean_sec,B2_mean_sec,delta_mean_sec,improvement_pct_mean,delta_std_sec,delta_median_sec,delta_ci95_low_sec,delta_ci95_high_sec,warning_count,fail_count
+overall,ALL,90,,238.83,141.77,-97.07,40.44,22.93,-97.50,-101.80,-92.33,0,0

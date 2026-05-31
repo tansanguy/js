@@ -1,0 +1,4 @@
+rank,route_id,repeat_id,emergency_depart,B0_travel_time_sec,B2_travel_time_sec,B2_vs_B0_delta_sec,B2_vs_B0_pct,intervention_count,green_extension_count,t_change_switch_count,realized_extension_sec,final_status,selection_reason
+1,ER_ACC_010,repeat_001,1782.48,277.00,160.00,-117.00,-42.24,10,5,5,48.00,WARNING,largest valid B2 travel-time reduction with paired B0 and no emergency failure
+2,ER_ACC_008,repeat_001,1687.38,265.00,163.00,-102.00,-38.49,4,2,2,19.00,WARNING,largest valid B2 travel-time reduction with paired B0 and no emergency failure
+3,ER_ACC_012,repeat_001,2242.52,235.00,154.00,-81.00,-34.47,7,4,3,50.00,WARNING,largest valid B2 travel-time reduction with paired B0 and no emergency failure
