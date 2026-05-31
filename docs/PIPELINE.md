@@ -2,6 +2,24 @@
 
 이 문서는 최종 실행 기준만 설명한다. 최종 실험 명령은 `02_simulation/run_b0_b1_b2_experiment.py`만 사용한다.
 
+## 명령어 옵션 빠른 설명
+
+| 옵션 | 쉬운 뜻 |
+| --- | --- |
+| `--manifest` | 최종 net, demand, route, signal 설정을 한 번에 불러오는 파일이다. |
+| `--pipeline` | 실험 이름이자 결과 저장 prefix다. 현재 기본은 `parameter_input_sim`. |
+| `--modes` | 실행할 비교군이다. `B00`, `B0`, `B2` 중 선택한다. |
+| `--b2-params` | B2 파라미터 CSV 경로다. `D_det`, `alpha`, `G_ext`, `T_change_sec`가 들어간다. |
+| `--repeats` | 같은 조건을 반복 실행하는 횟수다. seed 평균을 내려면 3 이상을 쓴다. |
+| `--workers` | 동시에 실행할 worker 수다. 결과 의미는 바꾸지 않고 실행 속도와 자원 사용량만 바꾼다. |
+| `--emergency-depart` | 응급차 출동 시각이다. 기본 실험은 600초다. |
+| `--timeout-steps` | 한 task의 최대 시뮬레이션 시간이다. 7200은 2시간이다. |
+| `--recovery-buffer-sec` | queue 회복 후 추가 관측 시간이다. 기본은 300초다. |
+| `--bo-stage` | BO 단계다. `init`, `suggest`, `top3` 중 하나다. |
+| `--bo-auto-inputs` | BO가 이전 결과 CSV를 자동으로 찾게 한다. run id를 직접 넣지 않아도 된다. |
+
+결과 해석은 [RESULT_REVIEW_GUIDE.md](RESULT_REVIEW_GUIDE.md), BO 실행은 [BAYESIAN_OPTIMIZATION.md](BAYESIAN_OPTIMIZATION.md)를 따른다.
+
 ## 1. 공통 입력
 
 - manifest: `configs/final_experiment_manifest.json`

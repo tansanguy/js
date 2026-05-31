@@ -1,5 +1,26 @@
 # Bayesian Optimization 실행 안내
 
+## 명령어 옵션 빠른 설명
+
+BO 명령은 “theta CSV를 만들거나, 기존 결과로 다음 theta를 추천하는 명령”이다. SUMO 시뮬레이션을 실제로 오래 돌리는 단계와, BO가 추천 CSV만 만드는 단계를 구분해서 보면 쉽다.
+
+| 옵션 | 쉬운 뜻 |
+| --- | --- |
+| `--bo-stage init` | 처음 시험할 theta 묶음을 만든다. 기본은 Sobol 샘플이다. SUMO는 실행하지 않는다. |
+| `--bo-stage suggest` | 이미 나온 결과 CSV를 학습해서 다음 theta를 추천한다. SUMO는 실행하지 않는다. |
+| `--bo-stage top3` | 누적 결과에서 가장 좋은 theta 3개를 재평가용 CSV로 뽑는다. SUMO는 실행하지 않는다. |
+| `--bo-auto-inputs` | 사람이 run id를 직접 넣지 않도록 `state.json`과 `latest.json`에서 이전 결과를 자동으로 찾는다. |
+| `--bo-initial-results PATH ...` | 자동 입력 대신 직접 학습용 결과 CSV를 지정한다. 여러 파일을 한 번에 줄 수 있다. |
+| `--bo-initial-count 20` | `init`에서 만들 초기 theta 개수다. |
+| `--bo-sampler sobol` | 초기 theta를 고르게 뽑는 방법이다. `sobol` 또는 `lhs`를 쓴다. |
+| `--bo-recommend-count 5` | `suggest`에서 추천할 새 theta 개수다. |
+| `--bo-output-prefix NAME` | BO 산출물 저장 폴더 이름이다. 기본은 `parameter_input_sim_bo`. |
+| `--bo-workflow-prefix NAME` | BO의 `latest.json`, `state.json`을 찾을 workflow 이름이다. 보통 output prefix와 같다. |
+| `--bo-results-prefix parameter_input_sim` | 실제 시뮬레이션 결과를 찾을 prefix다. 기본은 `parameter_input_sim`. |
+| `--bayesian true` | 예전 호환 옵션이다. 내부적으로 `--bo-stage suggest`처럼 동작한다. 새 문서에서는 `--bo-stage`를 기본으로 쓴다. |
+
+BO가 만든 추천 CSV를 실제로 실행할 때는 일반 실험 명령의 `--b2-params`에 넣는다. 결과 컬럼 해석은 [RESULT_REVIEW_GUIDE.md](RESULT_REVIEW_GUIDE.md)를 참고한다.
+
 이 문서는 B2 신호 제어 파라미터 `D_det`, `alpha`, `G_ext`를 최적화하는 표준 절차다. `T_change_sec`는 `10s`로 고정한다.
 
 BO의 target은 `bo_score_sec`다.

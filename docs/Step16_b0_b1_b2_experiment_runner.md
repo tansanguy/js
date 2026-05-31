@@ -2,6 +2,23 @@
 
 `02_simulation/run_b0_b1_b2_experiment.py`는 최종 B00/B0/B2 route-level 실험의 단일 진입점이다.
 
+## 명령어 옵션 빠른 설명
+
+| 옵션 | 쉬운 뜻 |
+| --- | --- |
+| `--manifest` | 최종 실험 설정 묶음이다. 보통 `configs/final_experiment_manifest.json`을 쓴다. |
+| `--pipeline` | 실행 결과를 어떤 이름 아래 저장할지 정한다. 기본 실험은 `parameter_input_sim`이다. |
+| `--modes` | `B00`, `B0`, `B2` 중 어떤 task를 만들지 정한다. |
+| `--b2-params` | B2 제어 파라미터 CSV다. BO 추천 CSV도 이 옵션으로 실행한다. |
+| `--repeats` | 같은 조건 반복 횟수다. 실험 안정성을 보려면 여러 번 실행한다. |
+| `--workers` | 병렬 실행 수다. 너무 크게 잡으면 Mac에서 느려지거나 메모리를 많이 쓴다. |
+| `--emergency-depart` | 응급차 출동 시각이다. 현재 기준은 600초다. |
+| `--timeout-steps` | task별 최대 시뮬레이션 시간이다. 도착 실패를 무한히 기다리지 않기 위한 상한이다. |
+| `--recovery-buffer-sec` | 대기행렬 회복 뒤 추가 관측할 시간이다. |
+| `--legacy-output-names` | 과거 flat 파일명 출력 호환 옵션이다. 최종 실험에서는 보통 쓰지 않는다. |
+
+결과 컬럼 의미는 [RESULT_REVIEW_GUIDE.md](RESULT_REVIEW_GUIDE.md)에 정리되어 있다.
+
 ## 모드
 
 - `B00`: 배경 차량 없이 신호등을 비활성화한 응급차 자유류 기준.

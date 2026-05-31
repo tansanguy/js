@@ -1,5 +1,24 @@
 # 최종 실험 실행 안내서
 
+## 명령어 옵션 빠른 설명
+
+아래 옵션들은 대부분 실행 명령에 반복해서 등장한다. 처음 읽을 때는 “무엇을 바꾸는 스위치인지”만 이해하면 된다.
+
+| 옵션 | 쉬운 뜻 |
+| --- | --- |
+| `--manifest configs/final_experiment_manifest.json` | 최종 실험에 쓸 net, 수요, 신호, route 설정 묶음을 불러온다. 보통 그대로 둔다. |
+| `--pipeline parameter_input_sim` | 결과를 `parameter_input_sim` 실험으로 저장한다. 이 값이 결과 폴더 이름이 된다. |
+| `--modes B00 B0 B2` | 어떤 실험 모드를 돌릴지 고른다. `B00`은 자유류, `B0`은 무제어 baseline, `B2`는 신호 priority다. |
+| `--b2-params PATH` | B2에서 시험할 `D_det, alpha, G_ext, T_change_sec` CSV를 지정한다. BO가 만든 추천 CSV도 여기에 넣는다. |
+| `--repeats N` | 같은 조건을 seed/repeat 기준으로 몇 번 반복할지 정한다. 빠른 확인은 1, 최종 비교는 3 이상을 권장한다. |
+| `--workers N` | 동시에 돌릴 작업 수다. 값이 클수록 빠를 수 있지만 CPU와 메모리를 더 쓴다. |
+| `--emergency-depart 600` | 응급차 출동 시각이다. 현재 기본 실험은 600초 warm-up 후 출동한다. |
+| `--timeout-steps 7200` | 한 task가 최대 몇 초까지 돌 수 있는지 정한다. 7200은 2시간이다. |
+| `--recovery-buffer-sec 300` | queue 회복 후 추가로 몇 초 더 관측할지 정한다. |
+| `--output-prefix NAME` | 결과 폴더 이름을 직접 정할 때 쓴다. 없으면 보통 `--pipeline` 값을 쓴다. |
+
+결과 파일의 컬럼 의미는 [RESULT_REVIEW_GUIDE.md](RESULT_REVIEW_GUIDE.md)를 먼저 보면 된다.
+
 ## 단일 진입점
 
 최종 실험은 아래 러너만 사용한다.
