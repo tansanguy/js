@@ -40,6 +40,39 @@ D_det,alpha,G_ext,A_delay_sec,N_delay_sec,T_recovery_sec,score_sec
 
 ## 3. BO 추천 실행
 
+`{run_id}`는 실험 실행 시 자동으로 생성된 결과 폴더명이다. 직접 `run1`처럼 정하는 값이 아니며, 먼저 아래 명령으로 실제 폴더명을 확인한다.
+
+```bash
+ls results/metrics/parameter_input_sim
+```
+
+예시:
+
+```text
+20260531T034533_745237Z0000
+latest.json
+```
+
+가장 최근 run의 결과 CSV는 `latest.json`에서 바로 확인할 수 있다.
+
+```bash
+cat results/metrics/parameter_input_sim/latest.json
+```
+
+출력의 `results_csv` 값을 `--bo-initial-results`에 넣는다.
+
+BO 초기 관측으로는 B2 후보가 충분히 들어 있는 run을 골라야 한다. smoke처럼 B2 row가 1개뿐인 파일은 BO 품질이 낮거나 학습 데이터가 부족하다. CSV 안의 B2 row 개수는 아래처럼 확인한다.
+
+```bash
+python - <<'PY'
+import csv
+path = "results/metrics/parameter_input_sim/{run_id}/experiment_results.csv"
+with open(path, newline="", encoding="utf-8-sig") as f:
+    rows = list(csv.DictReader(f))
+print(sum(1 for row in rows if row.get("mode") == "B2"))
+PY
+```
+
 기본 실행:
 
 ```bash
