@@ -14,8 +14,8 @@ __pycache__/
 runs/
 results/raw/
 results/metrics/*/
-!results/metrics/parameter_input_sim/
-!results/metrics/parameter_input_sim/**
+#!results/metrics/parameter_input_sim/
+#!results/metrics/parameter_input_sim/**
 results/metrics/*.csv
 results/metrics/*.json
 results/metrics/*.xml
