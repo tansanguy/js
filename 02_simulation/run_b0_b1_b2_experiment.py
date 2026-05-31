@@ -711,7 +711,7 @@ def sample_bo_initial_parameters(count: int, sampler: str, seed: int) -> list[di
     if len(rows) < count:
         for d_det in bo_grid_values(*BO_D_DET_BOUNDS, 50):
             for alpha in bo_grid_values(*BO_ALPHA_BOUNDS, 1):
-                for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 5):
+                for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 1):
                     key = bo_theta_key(d_det, alpha, g_ext)
                     if key in seen:
                         continue
@@ -1039,7 +1039,7 @@ def bo_search_grid() -> list[tuple[float, float, float]]:
         (d_det, alpha, g_ext)
         for d_det in bo_grid_values(*BO_D_DET_BOUNDS, 50)
         for alpha in bo_grid_values(*BO_ALPHA_BOUNDS, 1)
-        for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 5)
+        for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 1)
     ]
 
 
@@ -1088,7 +1088,7 @@ def skopt_dimensions() -> list[Any]:
     return [
         Categorical([int(value) for value in bo_grid_values(*BO_D_DET_BOUNDS, 50)], name="D_det"),
         Categorical([int(value) for value in bo_grid_values(*BO_ALPHA_BOUNDS, 1)], name="alpha"),
-        Categorical([int(value) for value in bo_grid_values(*BO_G_EXT_BOUNDS, 5)], name="G_ext"),
+        Categorical([int(value) for value in bo_grid_values(*BO_G_EXT_BOUNDS, 1)], name="G_ext"),
     ]
 
 

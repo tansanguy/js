@@ -359,6 +359,7 @@ class BayesianOptimizationInputTest(unittest.TestCase):
         self.assertEqual(dimensions[1].categories[-1], 15)
         self.assertEqual(dimensions[2].categories[0], 10)
         self.assertEqual(dimensions[2].categories[-1], 60)
+        self.assertEqual(dimensions[2].categories[1], 11)
 
     def test_bo_observations_are_aggregated_by_theta_mean(self) -> None:
         observations = [
