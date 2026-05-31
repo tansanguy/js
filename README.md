@@ -13,8 +13,7 @@
 
 ## 핵심 파이프라인
 
-- `parameter_input_sim`: 소방서에서 서울역까지의 고정 직선 route로 파라미터 입력용 지표를 만든다.
-- `final_effect_validation_sim`: `b0_valid_18` route set에서 최종 파라미터 효과를 검증한다.
+- `parameter_input_sim`: **서울역 직선 고정 경로**(`FIRE_TO_SEOUL_STATION`, `straight_seoul_station_fixed`)로 파라미터 입력용 지표를 만든다.
 
 실행 진입점은 하나다.
 
@@ -39,6 +38,7 @@ bash 00_setup/verify_env.sh
 - `N_delay_sec`: 응급차 출동 이후 관측창에서 main/corridor edge와 internal edge를 제외한 비메인 도로의 차량-edge 지연시간 평균.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로 대기행렬 회복시간 중 최댓값.
 - `score_sec`: `3*A_delay_sec + N_delay_sec + T_recovery_sec`.
+- `emergency_route_length_m`: 공식 보고용 경로 길이. 서울역 직선 고정 경로는 외부 edge 합산 `2990.17m`를 사용한다.
 
 모든 시간 단위는 초(s), 소수 둘째자리로 저장한다.
 
@@ -54,11 +54,11 @@ bash 00_setup/verify_env.sh
 
 - net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
 - background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml`
-- emergency routes: `data_prepared/routes/emergency_routes_spine_v2.csv`
-- Seoul Station fixed route: `data_prepared/manual/seoul_station_manual_route.json`
+- Seoul Station straight fixed route: `data_prepared/manual/seoul_station_manual_route.json`
 - corridor edges: `data_prepared/routes/corridor_spine_edges.csv`
 - B2 parameters: `configs/b2_parameter_sets.csv`
 
 기본 결과는 `results/metrics/{output_prefix}/{run_id}/`에 시행별로 저장하고, SUMO 원본 로그는 `runs/final/{output_prefix}/{run_id}/...`에 저장한다.
+시행별 핵심 score 입력만 볼 때는 같은 폴더의 `result_score.csv`를 사용한다.
 
 자세한 실행 절차는 `docs/PIPELINE.md`와 `docs/FINAL_EXPERIMENT_RUNBOOK.md`를 따른다.

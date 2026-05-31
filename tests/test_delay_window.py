@@ -68,10 +68,18 @@ class OutputPathTest(unittest.TestCase):
             PROJECT_ROOT / "results/metrics/sample_prefix/run_001/score_components.csv",
         )
         self.assertEqual(
+            paths["result_score_csv"],
+            PROJECT_ROOT / "results/metrics/sample_prefix/run_001/result_score.csv",
+        )
+        self.assertEqual(
             paths["summary_json"],
             PROJECT_ROOT / "results/metrics/sample_prefix/run_001/experiment_summary.json",
         )
         self.assertEqual(paths["latest_json"], PROJECT_ROOT / "results/metrics/sample_prefix/latest.json")
+
+    def test_final_result_fields_hide_tripinfo_length_and_count_sequence_extensions(self) -> None:
+        self.assertIn("green_arrived_before_t_change_extension_count", runner.EXPERIMENT_RESULT_FIELDS)
+        self.assertNotIn("emergency_tripinfo_route_length_m", runner.EXPERIMENT_RESULT_FIELDS)
 
 
 class FixedSeoulStationRouteTest(unittest.TestCase):
@@ -84,6 +92,30 @@ class FixedSeoulStationRouteTest(unittest.TestCase):
         self.assertEqual(self.route["route_id"], runner.SEOUL_STATION_ROUTE_ID)
         self.assertEqual(self.route["selected_policy"], "straight_seoul_station_fixed")
         self.assertEqual(self.route["target_edge_id"], "619147738#0")
+
+    def test_fixed_route_length_is_official_external_edge_sum(self) -> None:
+        edge_ids = self.route["route_edges"].split()
+        external_length = runner.route_length_meters(runner.DEFAULT_NET, edge_ids)
+
+        self.assertEqual(len(edge_ids), 59)
+        self.assertAlmostEqual(float(self.route["route_length_m"]), 2990.17, places=2)
+        self.assertAlmostEqual(external_length, float(self.route["route_length_m"]), places=2)
+
+    def test_fixed_route_contains_manual_terminal_sequence(self) -> None:
+        edge_ids = self.route["route_edges"].split()
+        terminal_sequence = [
+            "781985787#0",
+            "218915135#3",
+            "218915135#4",
+            "781983104#0",
+            "781983104#1",
+            "333557072#3",
+            "333557072#5",
+            "619147738#0",
+        ]
+        start = edge_ids.index(terminal_sequence[0])
+
+        self.assertEqual(edge_ids[start:], terminal_sequence)
 
     def test_fixed_route_edges_are_connected_and_unique(self) -> None:
         edge_ids = self.route["route_edges"].split()

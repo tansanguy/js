@@ -1,2 +1,0 @@
-candidate_id,candidate_type,description,net_variant,route_variant,safe_to_apply,selected,decision,reason
-no_net_patch_background_jam_diagnostic,demand_interaction_diagnosis,"Connection and permissions are valid; emergency-only passes, B0 fails under local background jam. No net patch selected.",data_prepared/net/jungbu_ellipse_passenger.net.xml,original ER_ACC_013,False,False,EXCLUDE_PRELIMINARY,background demand jam on a valid internal TLS connection

@@ -26,12 +26,10 @@ STEP14_PATH = PROJECT_ROOT / "01_prepare/08_signal/step14_b1_green_wave_v1_er_ac
 
 DEFAULT_NET = PROJECT_ROOT / "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml"
 DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml"
-DEFAULT_EMERGENCY_ROUTES = PROJECT_ROOT / "data_prepared/routes/emergency_routes_spine_v2.csv"
 DEFAULT_TLS_AUDIT = PROJECT_ROOT / "data_prepared/signals/tls_phase_audit_spine_v2.csv"
 DEFAULT_PRIORITY_TERMINALS = PROJECT_ROOT / "data_prepared/signals/priority_terminal_candidates.csv"
 DEFAULT_B2_PARAMS = PROJECT_ROOT / "configs/b2_parameter_sets.csv"
 DEFAULT_MANIFEST = PROJECT_ROOT / "configs/final_experiment_manifest.json"
-DEFAULT_B0_SUMMARY = PROJECT_ROOT / "results/metrics/b0_baseline_19route_smoke_summary.csv"
 DEFAULT_CORRIDOR_EDGES = PROJECT_ROOT / "data_prepared/routes/corridor_spine_edges.csv"
 DEFAULT_SEOUL_STATION_MANUAL_ROUTE = PROJECT_ROOT / "data_prepared/manual/seoul_station_manual_route.json"
 
@@ -123,6 +121,17 @@ SCORE_COMPONENT_FIELDS = [
     "intervention_count",
     "t_change_switch_count",
     "run_dir",
+]
+RESULT_SCORE_FIELDS = [
+    "run_id",
+    "pipeline",
+    "mode",
+    "parameter_id",
+    "repeat_id",
+    "route_id",
+    "A_delay_sec",
+    "N_delay_sec",
+    "T_recovery_sec",
 ]
 EVENT_FIELDS = [
     "time",
@@ -235,6 +244,7 @@ EXPERIMENT_RESULT_FIELDS = [
     "analysis_stop_reason",
     "recovery_buffer_sec",
     "emergency_route_length_m",
+    "emergency_route_length_source",
     "emergency_avg_speed_kmh",
     "emergency_speed_factor",
     "emergency_speed_cap_kmh",
@@ -245,6 +255,7 @@ EXPERIMENT_RESULT_FIELDS = [
     "failed_tls_count",
     "intervention_count",
     "green_extension_count",
+    "green_arrived_before_t_change_extension_count",
     "phase_switch_count",
     "restore_count",
     "signal_event_count",
@@ -366,16 +377,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--net", type=Path, default=DEFAULT_NET)
     parser.add_argument("--background-route", type=Path, default=DEFAULT_BACKGROUND_ROUTE)
-    parser.add_argument("--emergency-routes", type=Path, default=DEFAULT_EMERGENCY_ROUTES)
     parser.add_argument("--tls-audit", type=Path, default=DEFAULT_TLS_AUDIT)
     parser.add_argument("--priority-terminals", type=Path, default=DEFAULT_PRIORITY_TERMINALS)
     parser.add_argument("--corridor-edges", type=Path, default=DEFAULT_CORRIDOR_EDGES)
     parser.add_argument("--b2-params", type=Path, default=DEFAULT_B2_PARAMS)
-    parser.add_argument("--b0-summary", type=Path, default=DEFAULT_B0_SUMMARY)
-    parser.add_argument("--pipeline", choices=["parameter_input_sim", "final_effect_validation_sim"], default=None)
+    parser.add_argument("--pipeline", choices=["parameter_input_sim"], default="parameter_input_sim")
     parser.add_argument("--modes", nargs="+", choices=["B00", "B0", "B2"], default=["B00", "B0", "B2"])
-    parser.add_argument("--route-set", choices=["b0_valid_18", "all_19", "seoul_station"], default=None)
-    parser.add_argument("--routes", nargs="*", default=[])
+    parser.add_argument("--route-set", choices=["seoul_station"], default="seoul_station")
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--workers", type=int, default=default_workers())
     parser.add_argument("--time-to-teleport", type=int, default=1200)
@@ -417,8 +425,6 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
         args.net = project_path(manifest.get("active_net"), args.net)
     if args.background_route == DEFAULT_BACKGROUND_ROUTE:
         args.background_route = project_path(manifest.get("background_route"), args.background_route)
-    if args.emergency_routes == DEFAULT_EMERGENCY_ROUTES:
-        args.emergency_routes = project_path(manifest.get("emergency_routes"), args.emergency_routes)
     if args.tls_audit == DEFAULT_TLS_AUDIT:
         args.tls_audit = project_path(manifest.get("tls_audit"), args.tls_audit)
     if args.priority_terminals == DEFAULT_PRIORITY_TERMINALS:
@@ -427,10 +433,6 @@ def apply_manifest(args: argparse.Namespace) -> dict[str, Any]:
         args.corridor_edges = project_path(manifest.get("corridor_edges"), args.corridor_edges)
     if args.b2_params == DEFAULT_B2_PARAMS:
         args.b2_params = project_path(manifest.get("b2_parameter_sets"), args.b2_params)
-    if args.b0_summary == DEFAULT_B0_SUMMARY:
-        args.b0_summary = project_path(manifest.get("b0_summary"), args.b0_summary)
-    if not args.routes and args.route_set is None and args.pipeline != "parameter_input_sim" and manifest.get("route_set"):
-        args.route_set = str(manifest["route_set"])
     return manifest
 
 
@@ -452,6 +454,7 @@ def output_paths(output_prefix: str, legacy: bool, pipeline: str | None = None, 
     return {
         "results_csv": metrics_dir / "experiment_results.csv",
         "score_components_csv": metrics_dir / "score_components.csv",
+        "result_score_csv": metrics_dir / "result_score.csv",
         "summary_json": metrics_dir / "experiment_summary.json",
         "latest_json": PROJECT_ROOT / "results/metrics" / safe_prefix / "latest.json",
     }
@@ -556,10 +559,6 @@ def current_git_commit() -> str:
     except (OSError, subprocess.TimeoutExpired):
         return ""
     return completed.stdout.strip() if completed.returncode == 0 else ""
-
-
-def load_routes(path: Path) -> dict[str, dict[str, str]]:
-    return {row["route_id"]: row for row in read_csv(path) if row.get("route_id")}
 
 
 def stitch_route_waypoints(sumo_net: Any, waypoints: list[str]) -> list[str]:
@@ -669,21 +668,6 @@ def synthetic_seoul_station_route(net_path: Path) -> dict[str, str]:
         "route_edge_count": str(len(route_edges)),
         "route_tls_count": str(route_tls_count),
     }
-
-
-def load_b0_valid_routes(path: Path) -> list[str]:
-    rows = read_csv(path)
-    route_ids = []
-    for row in rows:
-        if (
-            row.get("sumo_exit_code") == "0"
-            and row.get("emergency_departed") == "True"
-            and row.get("emergency_arrived") == "True"
-            and row.get("emergency_teleport") == "False"
-            and str(row.get("route_error_count", "0")) == "0"
-        ):
-            route_ids.append(row["route_id"])
-    return route_ids
 
 
 def load_b2_parameter_sets(path: Path) -> list[dict[str, Any]]:
@@ -1971,8 +1955,7 @@ def run_traci_experiment(
 
 def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     started = time.time()
-    routes = load_routes(Path(task["emergency_routes"]))
-    route_row = task.get("route_row") or routes[task["route_id"]]
+    route_row = task["route_row"]
     route_edges = route_row["route_edges"].split()
     validation_failures = S14.validate_route_edges(Path(task["net"]), route_edges)
     run_dir = Path(task["run_dir"])
@@ -2025,8 +2008,7 @@ def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, An
 
 def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     started = time.time()
-    routes = load_routes(Path(task["emergency_routes"]))
-    route_row = task.get("route_row") or routes[task["route_id"]]
+    route_row = task["route_row"]
     route_edges = route_row["route_edges"].split()
     validation_failures = S14.validate_route_edges(Path(task["net"]), route_edges)
     run_dir = Path(task["run_dir"])
@@ -2207,9 +2189,7 @@ def summarize_run(
     safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
     if safety_violation_count > 0:
         failures.append("safety_violation_detected")
-    emergency_route_length = tripinfo_float_attr(paths["tripinfo"], vehicle_id, "routeLength")
-    if emergency_route_length is None:
-        emergency_route_length = route_length_meters(Path(task["net"]), route_edges)
+    emergency_route_length = route_length_meters(Path(task["net"]), route_edges)
     emergency_travel_time = trip["emergency_travel_time"]
     emergency_avg_speed = (emergency_route_length / float(emergency_travel_time) * 3.6) if emergency_travel_time not in {"", None} and float(emergency_travel_time) > 0 else ""
     emergency_last_state = observations.get("emergency_last_state", {}) or {}
@@ -2318,6 +2298,7 @@ def summarize_run(
             "analysis_stop_reason": observations.get("analysis_stop_reason", ""),
             "recovery_buffer_sec": sec(task.get("recovery_buffer_sec", DEFAULT_RECOVERY_BUFFER_SEC)),
             "emergency_route_length_m": sec(emergency_route_length),
+            "emergency_route_length_source": "fixed_external_edges",
             "emergency_avg_speed_kmh": sec(emergency_avg_speed),
             "emergency_speed_factor": sec(EMERGENCY_SPEED_FACTOR),
             "emergency_speed_cap_kmh": sec(EMERGENCY_SPEED_CAP_KMH),
@@ -2329,6 +2310,11 @@ def summarize_run(
             "failed_tls_count": len(failed_tls),
             "intervention_count": sum(1 for event in events if event.get("action") in CONTROL_ACTIONS),
             "green_extension_count": sum(1 for event in events if event.get("action") == "extend_green"),
+            "green_arrived_before_t_change_extension_count": sum(
+                1
+                for event in events
+                if event.get("action") == "extend_green" and event.get("reason") == "green_arrived_before_t_change_then_extended"
+            ),
             "phase_switch_count": sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change"),
             "restore_count": sum(1 for event in events if event.get("action") == "restore"),
             "signal_event_count": len(events),
@@ -2490,6 +2476,13 @@ def score_component_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, An
     return rows
 
 
+def result_score_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for row in result_rows:
+        rows.append({field: row.get(field, "") for field in RESULT_SCORE_FIELDS})
+    return rows
+
+
 def main() -> int:
     args = parse_args()
     generated_at = utc_now()
@@ -2501,7 +2494,7 @@ def main() -> int:
             args.output_prefix = args.pipeline
         if args.output_prefix is None:
             raise ExperimentError("output_prefix is required unless --pipeline is provided")
-        for attr in ["net", "background_route", "emergency_routes", "tls_audit", "priority_terminals", "corridor_edges", "b2_params", "b0_summary"]:
+        for attr in ["net", "background_route", "tls_audit", "priority_terminals", "corridor_edges", "b2_params"]:
             path = getattr(args, attr).resolve()
             setattr(args, attr, path)
             if not path.is_file():
@@ -2522,25 +2515,8 @@ def main() -> int:
                 f"{rel(args.background_route)} does not contain '{required_substring}'. "
                 "Use --allow-nonfinal-background only for explicit diagnostics."
             )
-        if args.route_set is None:
-            args.route_set = "seoul_station" if args.pipeline == "parameter_input_sim" else "b0_valid_18"
-        routes = load_routes(args.emergency_routes)
-        routes[SEOUL_STATION_ROUTE_ID] = synthetic_seoul_station_route(args.net)
-        if args.routes:
-            route_ids = args.routes
-        elif args.route_set == "seoul_station":
-            route_ids = [SEOUL_STATION_ROUTE_ID]
-        elif args.route_set == "b0_valid_18":
-            route_ids = load_b0_valid_routes(args.b0_summary)
-        else:
-            route_ids = sorted(route_id for route_id in routes if route_id != SEOUL_STATION_ROUTE_ID)
-        missing_routes = [route_id for route_id in route_ids if route_id not in routes]
-        if missing_routes:
-            raise ExperimentError(f"missing_routes: {','.join(missing_routes)}")
-        excluded_routes = set(manifest.get("excluded_routes", ["ER_ACC_013"]) if manifest else ["ER_ACC_013"])
-        forbidden = sorted(excluded_routes & set(route_ids))
-        if args.route_set == "b0_valid_18" and forbidden:
-            raise ExperimentError(f"excluded_routes_present_in_route_set: {','.join(forbidden)}")
+        routes = {SEOUL_STATION_ROUTE_ID: synthetic_seoul_station_route(args.net)}
+        route_ids = [SEOUL_STATION_ROUTE_ID]
         b2_params = load_b2_parameter_sets(args.b2_params) if "B2" in args.modes else []
         background_vehicle_count = S14.count_vehicles(args.background_route)
         paths = output_paths(args.output_prefix, args.legacy_output_names, args.pipeline, run_id)
@@ -2550,7 +2526,6 @@ def main() -> int:
             "pipeline": args.pipeline or "",
             "net": str(args.net),
             "background_route": str(args.background_route),
-            "emergency_routes": str(args.emergency_routes),
             "tls_audit": str(args.tls_audit),
             "priority_terminals": str(args.priority_terminals),
             "corridor_edges": str(args.corridor_edges),
@@ -2646,7 +2621,6 @@ def main() -> int:
             "background_vehicle_count": background_vehicle_count,
             "route_set": args.route_set,
             "route_ids": route_ids,
-            "excluded_routes": sorted(excluded_routes),
             "modes": args.modes,
             "b2_parameter_ids": [row["parameter_id"] for row in b2_params],
             "repeats": args.repeats,
@@ -2661,15 +2635,16 @@ def main() -> int:
             "route_error_count_any": route_error_count_any,
             "status_counts": status_counts,
             "final_status": "FAIL" if status_counts.get("FAIL") else "WARNING" if status_counts.get("WARNING") else "PASS",
-            "outputs": [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(paths["latest_json"]), rel(LOG_PATH)]
+            "outputs": [rel(paths["results_csv"]), rel(paths["result_score_csv"]), rel(paths["summary_json"]), rel(paths["latest_json"]), rel(LOG_PATH)]
             if not args.legacy_output_names and paths.get("summary_json") is not None
-            else [rel(paths["results_csv"]), rel(paths["score_components_csv"]), rel(LOG_PATH)]
+            else [rel(paths["results_csv"]), rel(paths["score_components_csv"]), rel(paths["result_score_csv"]), rel(LOG_PATH)]
             if not args.legacy_output_names
             else [rel(paths["results_csv"]), rel(paths["summary_json"]), rel(paths["events_csv"]), rel(paths["compare_csv"]), rel(LOG_PATH)],
         }
         write_csv(paths["results_csv"], result_rows, EXPERIMENT_RESULT_FIELDS)
         if not args.legacy_output_names:
             write_csv(paths["score_components_csv"], score_component_rows(result_rows), SCORE_COMPONENT_FIELDS)
+            write_csv(paths["result_score_csv"], result_score_rows(result_rows), RESULT_SCORE_FIELDS)
         if args.legacy_output_names:
             write_csv(paths["events_csv"], event_rows)
             write_csv(paths["compare_csv"], compare)
@@ -2685,6 +2660,7 @@ def main() -> int:
                     "final_status": summary["final_status"],
                     "results_csv": rel(paths["results_csv"]),
                     "score_components_csv": rel(paths["score_components_csv"]),
+                    "result_score_csv": rel(paths["result_score_csv"]),
                     "summary_json": rel(paths["summary_json"]),
                 },
             )
@@ -2697,6 +2673,7 @@ def main() -> int:
         )
         if not args.legacy_output_names:
             lines.append(f"score_components_csv: {rel(paths['score_components_csv'])}")
+            lines.append(f"result_score_csv: {rel(paths['result_score_csv'])}")
         if paths.get("summary_json") is not None:
             lines.append(f"summary_json: {rel(paths['summary_json'])}")
         if paths.get("latest_json") is not None:

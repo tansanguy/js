@@ -13,5 +13,5 @@
     "781983104#1",
     "619147738#0"
   ],
-  "notes": "Canonical fixed Seoul Station route. The runner fails if this route id, start edge, target edge, passenger permissions, repeated-edge check, or SUMO connectivity check fails."
+  "notes": "Canonical Seoul Station straight fixed route. The expanded SUMO route has 59 external edges and official external-edge length 2990.17m. The runner fails if this route id, start edge, target edge, passenger permissions, repeated-edge check, or SUMO connectivity check fails."
 }

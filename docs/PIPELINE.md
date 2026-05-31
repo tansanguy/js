@@ -1,15 +1,13 @@
 # B00/B0/B2 실험 파이프라인
 
-이 문서는 최종 실행 기준만 설명한다. 과거 Step 문서는 준비와 진단 기록이며, 최종 실험 명령은 `02_simulation/run_b0_b1_b2_experiment.py`만 사용한다.
+이 문서는 최종 실행 기준만 설명한다. 최종 실험 명령은 `02_simulation/run_b0_b1_b2_experiment.py`만 사용한다.
 
 ## 1. 공통 입력
 
 - manifest: `configs/final_experiment_manifest.json`
 - net: `data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml`
 - background demand: `data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml`
-- route set: `results/metrics/b0_baseline_19route_smoke_summary.csv`에서 검증된 `b0_valid_18`
-- fixed Seoul Station route: `data_prepared/manual/seoul_station_manual_route.json`
-- 제외 route: `ER_ACC_013`
+- Seoul Station straight fixed route: `data_prepared/manual/seoul_station_manual_route.json`
 - B2 parameter CSV: `configs/b2_parameter_sets.csv`
 
 `configs/b2_parameter_sets.csv` 필수 컬럼:
@@ -20,7 +18,7 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 고정/입력 알고리즘 파라미터:
 
-- `T_change_sec`: `D_det` 안에서 red/yellow/clearance이면 후보 시간 뒤 응급차 방향 green 전환을 요청한다. CSV 입력값이며 정수 초만 허용한다.
+- `T_change_sec`: `D_det` 안에서 green이 아니면 후보 시간 뒤 응급차 방향 green 전환을 요청한다. 단 yellow/clearance는 생략하지 않으며, 대기 중 기존 phase sequence가 응급차 green에 도달하면 강제 전환하지 않고 그 green을 연장한다.
 - `w1=3.00`, `w2=1.00`, `w3=1.00`: `score_sec = w1*A_delay_sec + w2*N_delay_sec + w3*T_recovery_sec`.
 - net은 `speed50` 파생 파일을 사용하고, 응급차는 `speedFactor=1.40`, `maxSpeed=70km/h`, `has.bluelight.device=false`로 둔다. 단 `B00`은 자유류 기준이므로 SUMO `tls.all-off=true`로 신호등을 비활성화한다.
 - 배경 수요는 600초 TOPIS 패턴을 3600초까지 반복하되, 0~600초 warm-up은 0.15x, 이후 지속 수요는 0.05x(`sustained_calibration_seed_002`)를 사용한다. 기본 응급차 출동 시점은 600초다.
@@ -41,24 +39,27 @@ bash 00_setup/verify_env.sh
 
 ## 2.1 B2 안전 규칙
 
-B2는 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는다.
+B2는 강제 preemption이 아니라 안전한 priority 제어다. 응급차 통행을 우선하지만, 아래 규칙을 위반하지 않는다.
 
 - `D_det` 안에서 이미 green이면 green을 연장한다.
 - `D_det` 안에서 green이 아니면 CSV의 `T_change_sec` 뒤 응급차 방향 green 전환을 요청한다.
 - 노란불과 교차로 clearance phase를 생략하지 않는다.
 - 직접 red→green 순간 점프는 금지하고, 전환 전 yellow/clearance 정리시간을 둔다.
+- 대기 중 기존 phase sequence가 응급차 green에 도달하면 `switch_to_green_after_t_change` 대신 `extend_green`으로 기록한다.
+- `green_arrived_before_t_change_extension_count`는 이 경우를 별도 집계한다.
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
 현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization 전체 구현은 추후 범위다.
 
-## 3. 파이프라인 1: `parameter_input_sim`
+## 3. 파이프라인: `parameter_input_sim`
 
 목적은 추후 외부 Bayesian Optimization이 사용할 입력 지표를 만드는 것이다. 현재 저장소는 최적화를 직접 수행하지 않고, CSV에 있는 B2 파라미터 조합만 실행한다.
 
-- route: 소방서 edge `-381802881#2`에서 서울역 edge `619147738#0`까지의 고정 직선 route.
+- route: **서울역 직선 고정 경로**. `FIRE_TO_SEOUL_STATION`, `straight_seoul_station_fixed`, 소방서 edge `-381802881#2`에서 서울역 edge `619147738#0`까지의 59-edge route다.
 - modes: `B00`, `B0`, `B2`.
 - output: `results/metrics/parameter_input_sim/{run_id}/experiment_results.csv`.
+- score output: `results/metrics/parameter_input_sim/{run_id}/result_score.csv`.
 - latest pointer: `results/metrics/parameter_input_sim/latest.json`.
 - raw run dir: `runs/final/parameter_input_sim/{run_id}/...`.
 
@@ -72,26 +73,6 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --emergency-depart 600 \
   --timeout-steps 7200 \
   --recovery-buffer-sec 300
-```
-
-## 4. 파이프라인 2: `final_effect_validation_sim`
-
-목적은 최종 파라미터가 여러 목적지 route에서 효과가 있는지 검증하는 것이다.
-
-- route set: `b0_valid_18`.
-- excluded route: `ER_ACC_013`.
-- modes: `B00`, `B0`, `B2`.
-- output: `results/metrics/final_effect_validation_sim/{run_id}/experiment_results.csv`.
-- latest pointer: `results/metrics/final_effect_validation_sim/latest.json`.
-- raw run dir: `runs/final/final_effect_validation_sim/{run_id}/...`.
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --manifest configs/final_experiment_manifest.json \
-  --pipeline final_effect_validation_sim \
-  --modes B00 B0 B2 \
-  --repeats 5 \
-  --workers 4
 ```
 
 ## 5. CSV 지표 정의
@@ -115,7 +96,9 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `rolling_congestion_valid,rolling_congestion_reason,rolling_congestion_min_kmh,rolling_congestion_max_kmh`
 - `congestion_valid,congestion_valid_at_analysis_end,congestion_reason_at_analysis_end`
 - `analysis_end_time_sec,analysis_stop_reason,recovery_buffer_sec`
+- `emergency_route_length_m,emergency_route_length_source`
 - `emergency_speed_factor,emergency_speed_cap_kmh,emergency_bluelight_enabled`
+- `green_extension_count,green_arrived_before_t_change_extension_count,phase_switch_count`
 - `T_recovery_tls_count,T_recovery_max_tls_id,T_recovery_unrecovered_count`
 - `queue_recovery_csv`
 - `run_id,generated_at,timeout_steps,command_time_to_teleport`
@@ -126,11 +109,14 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `N_delay_sec`: 응급차 출동 시점부터 `analysis_end_time_sec`까지, 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. 출동 전부터 edge에 있던 차량은 출동 이후 겹친 체류분만 반영한다. `analysis_end_time_sec`에 아직 edge를 빠져나가지 못한 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 표시한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
+- `emergency_route_length_m`: 공식 보고용 route 길이. 서울역 직선 고정 경로는 외부 edge 합산 `2990.17m`를 사용한다.
 - `rolling_congestion_valid`: 300초 rolling 평균 네트워크 속도가 관측창 동안 12~35km/h 안에 있으면 `True`다. 마지막 순간 속도는 보조 진단으로만 본다.
 
 `timeout_steps=7200`은 최대 관측창이다. B0/B2의 primary metric 관측은 emergency가 도착하고, route TLS 대기열이 회복되고, `recovery_buffer_sec`가 지난 시점에서 종료한다. 이 종료 시점은 `analysis_end_time_sec`에 저장한다.
 
 `B00`의 `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`는 `0.00`이다.
+
+`result_score.csv`는 시행별 scoring 입력만 담는 경량 파일이다. 컬럼은 `run_id,pipeline,mode,parameter_id,repeat_id,route_id,A_delay_sec,N_delay_sec,T_recovery_sec`만 둔다.
 
 ## 6. 판정 기준
 

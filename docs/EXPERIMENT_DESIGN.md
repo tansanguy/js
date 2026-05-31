@@ -9,8 +9,7 @@
 - 공간 범위: 중부소방서 권역과 서울역 방향 corridor.
 - 시간대: 첨두시간 대표 수요.
 - 출동 차량: 시뮬레이션 1회당 응급차 1대.
-- 파라미터 입력 route: 소방서에서 서울역 edge `619147738#0`까지의 고정 직선 route.
-- 최종 검증 route: `b0_valid_18`, 단 `ER_ACC_013` 제외.
+- 파라미터 입력 route: **서울역 직선 고정 경로**. `FIRE_TO_SEOUL_STATION`, `straight_seoul_station_fixed`, 소방서에서 서울역 edge `619147738#0`까지의 59-edge route다.
 
 ## 비교군
 
@@ -28,5 +27,6 @@
 - `N_delay_sec`: 응급차 출동 이후 관측창의 전체 비메인 도로 일반차 지연시간 평균.
 - `T_recovery_sec`: 소방서→서울역 첫 교차로 대기행렬 회복시간.
 - `score_sec`: `3*A_delay_sec + N_delay_sec + T_recovery_sec`.
+- `emergency_route_length_m`: 공식 보고용 경로 길이. 서울역 직선 고정 경로는 외부 edge 합산 `2990.17m`로 고정한다.
 
 모든 시간 단위는 초(s), 소수 둘째자리로 저장한다.

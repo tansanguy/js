@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a standalone Leaflet HTML for the fixed Seoul Station route."""
+"""Build a standalone Leaflet HTML for the Seoul Station straight fixed route."""
 
 from __future__ import annotations
 
@@ -171,7 +171,7 @@ def render_html(payload: dict[str, Any]) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Seoul Station Fixed Route</title>
+  <title>Seoul Station Straight Fixed Route</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     html, body {{ height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #111827; }}
@@ -202,7 +202,7 @@ def render_html(payload: dict[str, Any]) -> str:
 <body>
   <div class="app">
     <aside>
-      <h1>서울역 고정 직선 경로</h1>
+      <h1>서울역 직선 고정 경로</h1>
       <p class="meta">실험에는 이 단일 경로만 사용한다. 빨간 점은 차로 수가 줄어드는 연결부다.</p>
       <div class="stat-grid">
         <div class="stat"><span class="stat-label">Route</span><span class="stat-value" id="route-id"></span></div>

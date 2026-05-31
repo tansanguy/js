@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diagnose bottlenecks on the fixed Seoul Station route from experiment outputs."""
+"""Diagnose bottlenecks on the Seoul Station straight fixed route."""
 
 from __future__ import annotations
 
