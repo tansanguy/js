@@ -111,7 +111,7 @@ parameter_id,D_det,alpha,G_ext,T_change_sec
 
 표준 BO는 `--bo-stage loop`로 실행한다. `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 target은 `bo_score_sec`이며, 기존 `score_sec`에 green extension과 phase switch 부담 penalty를 더한다.
 
-새 B2 제어 로직 기준으로는 initial design을 새로 실행한 뒤 5개씩 10라운드 자동 실행한다. 기존 22-row 관측 CSV는 통과 후 alpha trim 이전의 legacy 결과로만 취급한다.
+새 B2 제어 로직 기준으로는 initial design을 새로 실행한 뒤 5개씩 10라운드 자동 실행한다. 과거 관측 CSV는 자동 fallback으로 쓰지 않는다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \

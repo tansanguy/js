@@ -53,7 +53,6 @@ BO_ALPHA_BOUNDS = (0.0, 15.0)
 BO_G_EXT_BOUNDS = (10.0, 60.0)
 BO_EXTENSION_PENALTY_WEIGHT = 0.5
 BO_PHASE_SWITCH_PENALTY_SEC = 30.0
-DEFAULT_BO_INITIAL_OBSERVATIONS = PROJECT_ROOT / "results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv"
 
 LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
@@ -799,7 +798,7 @@ def auto_bo_input_paths(args: argparse.Namespace, state: dict[str, Any]) -> list
     return resolve_bo_input_paths(paths, require=False)
 
 
-def resolve_bo_observation_inputs(args: argparse.Namespace, state: dict[str, Any], allow_default: bool = False) -> list[Path]:
+def resolve_bo_observation_inputs(args: argparse.Namespace, state: dict[str, Any]) -> list[Path]:
     explicit = resolve_bo_input_paths(args.bo_initial_results, require=False)
     if explicit:
         return explicit
@@ -807,8 +806,6 @@ def resolve_bo_observation_inputs(args: argparse.Namespace, state: dict[str, Any
         auto = auto_bo_input_paths(args, state)
         if auto:
             return auto
-    if allow_default and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file():
-        return [DEFAULT_BO_INITIAL_OBSERVATIONS.resolve()]
     raise ExperimentError("--bo-initial-results is required unless --bo-auto-inputs can resolve prior results")
 
 
@@ -1554,7 +1551,7 @@ def run_bo_loop_mode(args: argparse.Namespace, generated_at: str, run_id: str) -
     else:
         loop_run_id = run_id
         completed_round = 0
-        initial_input_paths = resolve_bo_observation_inputs(args, state, allow_default=True)
+        initial_input_paths = resolve_bo_observation_inputs(args, state)
         round_result_paths = []
         input_paths = list(initial_input_paths)
         state = {}
@@ -1814,7 +1811,7 @@ def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) 
         )
 
     else:
-        input_paths = resolve_bo_observation_inputs(args, state, allow_default=False)
+        input_paths = resolve_bo_observation_inputs(args, state)
         observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
         if stage == "suggest":
             recommendations, model_summary = fit_bo_and_recommend(observations, args.bo_recommend_count, args.bo_seed)

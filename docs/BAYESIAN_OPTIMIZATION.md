@@ -43,7 +43,7 @@ signal_burden_penalty_sec = 0.5*realized_extension_sec + 30*phase_switch_count
 
 ## 표준 실행
 
-새 B2 제어 로직 기준 initial design을 먼저 실행하는 것을 기본으로 한다. 기존 22-row candidate summary는 `legacy_pre_trim_control` 결과라서, 통과 후 alpha trim이 없는 과거 관측으로 취급한다.
+새 B2 제어 로직 기준 initial design을 먼저 실행하는 것을 기본으로 한다. 과거 관측 CSV는 자동 fallback으로 쓰지 않는다.
 
 ## Mac mini에서 10라운드 실행
 
@@ -230,12 +230,22 @@ configs/generated/b2_bo_top3_reeval_{loop_run_id}.csv
 
 ## Smoke Test
 
-SUMO 없이 loop 구조만 확인할 때는 명시적으로 관측 CSV를 넣는다. 아래 22-row 파일은 legacy 제어 결과라 구조 smoke 용도로만 쓴다.
+SUMO 없이 loop 구조만 확인할 때도 명시적으로 관측 CSV를 넣는다. 새 initial evaluation을 한 번 만든 뒤 `latest.json`에서 그 결과 CSV를 읽어 사용한다.
+
+```bash
+INITIAL_RESULTS=$(python - <<'PY'
+import json
+from pathlib import Path
+latest = json.loads(Path("results/metrics/parameter_input_sim_bo_initial_eval/latest.json").read_text())
+print(latest["results_csv"])
+PY
+)
+```
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage loop \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results "$INITIAL_RESULTS" \
   --bo-rounds 1 \
   --bo-batch-size 5 \
   --bo-eval-repeats 1 \
@@ -250,6 +260,6 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bo-stage suggest \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-initial-results "$INITIAL_RESULTS" \
   --bo-recommend-count 3
 ```

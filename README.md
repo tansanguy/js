@@ -63,7 +63,7 @@ bash 00_setup/verify_env.sh
 
 ## Bayesian Optimization
 
-표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 현재 B2는 `G_ext`를 통과 전 green 최대 상한으로 쓰고, 통과 후 남은 green을 `alpha`초로 정리한다. 기존 22-row 관측 CSV는 이 trim 로직 이전의 legacy 결과이므로 새 initial design을 다시 실행하는 흐름을 기본으로 한다.
+표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 현재 B2는 `G_ext`를 통과 전 green 최대 상한으로 쓰고, 통과 후 남은 green을 `alpha`초로 정리한다. BO는 새 initial design과 그 실행 결과에서 시작한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
