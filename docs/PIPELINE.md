@@ -50,7 +50,7 @@ B2는 강제 preemption이 아니라 안전한 priority 제어다. 응급차 통
 - `alpha`, `G_ext`, `T_change_sec`는 정수 초로만 적용한다. `5.00`은 허용하지만 `5.5`는 실패 처리한다.
 - 현재 단계의 목표는 B2 성능 최적화가 아니라 emergency stop, lane connection warning, teleport 없이 무결한 시뮬레이션을 만드는 것이다.
 
-현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization 추천 모드는 기존 B2 결과 CSV를 초기 관측값으로 사용한다.
+현재 기본 `configs/b2_parameter_sets.csv`에는 선택 후보 `D_det=1000, alpha=5, G_ext=60, T_change_sec=10`을 둔다. Bayesian Optimization은 단계형 CLI로 초기 theta 생성, 반복 추천, top3 재평가를 수행한다.
 
 ## 3. 파이프라인: `parameter_input_sim`
 
@@ -84,7 +84,7 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `D_det,alpha,G_ext,T_change_sec,w1,w2,w3`
 - `effective_alpha_sec,effective_G_ext_sec`
 - `emergency_travel_time_sec,b00_emergency_travel_time_sec`
-- `A_delay_sec,N_delay_sec,T_recovery_sec,score_sec`
+- `A_delay_sec,N_delay_sec,T_recovery_sec,score_sec,bo_score_sec`
 - `emergency_arrived,emergency_teleport,background_vehicle_count,final_status,warning_reason,failure_reason,run_dir`
 - `safety_violation_count,emergency_stop_warning_count,emergency_lane_connection_warning_count,signal_events_csv`
 - `timeout_reached,remaining_vehicle_count,background_remaining_count,all_vehicles_arrived`
@@ -109,6 +109,8 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 - `N_delay_sec`: 응급차 출동 시점부터 `analysis_end_time_sec`까지, 전체 네트워크 일반차량 중 main/corridor edge와 internal edge를 제외한 비메인 도로에서 차량-edge별 `(실제 체류시간 - 자유류 통과시간)` 평균. 출동 전부터 edge에 있던 차량은 출동 이후 겹친 체류분만 반영한다. `analysis_end_time_sec`에 아직 edge를 빠져나가지 못한 기록은 종료 시점까지의 부분 체류시간으로 포함하고 `N_delay_censored_*` 컬럼에 별도 표시한다.
 - `T_recovery_sec`: B0/B2에서 emergency route의 모든 TLS 교차로를 대상으로, TLS별 접근 edge 대기열 합계가 emergency 통과 후 출발 전 기준 이하로 회복되는 시간의 최댓값.
 - `score_sec`: `3*A_delay_sec + 1*N_delay_sec + 1*T_recovery_sec`.
+- `bo_score_sec`: BO target. `score_sec + signal_burden_penalty_sec + failure_penalty_sec`.
+- `signal_burden_penalty_sec`: B2 신호 개입 부담. 기본식은 `0.5*total_extension_delta_sec + 30*phase_switch_count`.
 - `emergency_route_length_m`: 공식 보고용 route 길이. 서울역 직선 고정 경로는 외부 edge 합산 `2990.17m`를 사용한다.
 - `rolling_congestion_valid`: 300초 rolling 평균 네트워크 속도가 관측창 동안 12~35km/h 안에 있으면 `True`다. 마지막 순간 속도는 보조 진단으로만 본다.
 
@@ -118,20 +120,38 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
 
 `result_score.csv`는 시행별 scoring 입력만 담는 경량 파일이다. 컬럼은 `run_id,pipeline,mode,parameter_id,repeat_id,route_id,A_delay_sec,N_delay_sec,T_recovery_sec`만 둔다.
 
-## 6. Bayesian Optimization 추천 모드
+## 6. Bayesian Optimization
 
-BO 추천 모드는 SUMO를 실행하지 않는다. 기존 결과 CSV의 `mode=B2` row를 초기 관측값으로 사용해 추가 θ를 추천하고, 사용자가 실행할 명령어를 출력한다.
+BO는 `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다. 기본 workflow는 `latest.json`과 `state.json`으로 이전 stage 산출물을 자동으로 불러온다.
+
+초기 theta 생성:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 15
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
 ```
 
-입력 CSV는 여러 개를 받을 수 있다. 필수 컬럼은 `D_det`, `alpha`, `G_ext`, `A_delay_sec`, `N_delay_sec`, `T_recovery_sec`, `score_sec`이며, `Score`만 있으면 `score_sec`로 읽는다. 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 사유를 남긴다.
+누적 결과로 다음 theta 추천:
 
-BO는 `D_det`, `alpha`, `G_ext`만 최적화하고 `T_change_sec=10`으로 고정한다. 탐색 범위는 유효 기존 관측치의 min/max이며, 후보 격자는 `D_det` 50m, `alpha` 1초, `G_ext` 5초 단위다. acquisition은 minimization용 Expected Improvement이고 `xi=0.05`로 exploration을 유지한다.
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-auto-inputs \
+  --bo-recommend-count 5
+```
+
+기존 22-row candidate summary로 바로 추천할 때:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-recommend-count 5
+```
+
+실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 사유를 남긴다. acquisition은 minimization용 Expected Improvement이고 `xi=0.05`로 exploration을 유지한다.
 
 출력:
 
@@ -140,10 +160,12 @@ BO는 `D_det`, `alpha`, `G_ext`만 최적화하고 `T_change_sec=10`으로 고�
 - `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_recommendations.csv`
 - `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_commands.sh`
 - `results/metrics/parameter_input_sim_bo/{bo_run_id}/bo_summary.json`
+- `results/metrics/parameter_input_sim_bo/latest.json`
+- `results/metrics/parameter_input_sim_bo/state.json`
 - `configs/generated/b2_bo_recommendations_{bo_run_id}.csv`
 - `configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv`
 
-자세한 BO 실행 순서, 누적 실행, 상위 3개 재평가, 최종 B0/B2 비교 절차는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
+자세한 BO 실행 순서, 수동 run id fallback, 한계, top3 재평가, 최종 B0/B2 비교 절차는 `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
 
 ## 7. 판정 기준
 

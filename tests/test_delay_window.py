@@ -217,6 +217,66 @@ class BayesianOptimizationInputTest(unittest.TestCase):
             self.assertEqual(row["T_change_sec"], "10")
         self.assertEqual(summary["current_best"]["parameter_id"], "p4")
 
+    def test_bo_initial_sampler_generates_bounded_unique_rows(self) -> None:
+        rows = runner.sample_bo_initial_parameters(20, "sobol", seed=20260531)
+        keys = set()
+
+        self.assertEqual(len(rows), 20)
+        for row in rows:
+            d_det = float(row["D_det"])
+            alpha = float(row["alpha"])
+            g_ext = float(row["G_ext"])
+            self.assertGreaterEqual(d_det, 300.0)
+            self.assertLessEqual(d_det, 1000.0)
+            self.assertEqual(d_det % 50, 0)
+            self.assertGreaterEqual(alpha, 0.0)
+            self.assertLessEqual(alpha, 15.0)
+            self.assertEqual(alpha, round(alpha))
+            self.assertGreaterEqual(g_ext, 10.0)
+            self.assertLessEqual(g_ext, 60.0)
+            self.assertEqual(g_ext, round(g_ext))
+            self.assertEqual(row["T_change_sec"], "10")
+            keys.add((d_det, alpha, g_ext))
+        self.assertEqual(len(keys), 20)
+
+    def test_bo_score_uses_signal_burden_penalty(self) -> None:
+        row = {
+            "score_sec": "100",
+            "signal_burden_penalty_sec": "25.5",
+            "failure_penalty_sec": "0",
+        }
+
+        self.assertAlmostEqual(runner.bo_score_for_row(row), 125.5)
+
+    def test_bo_state_missing_file_starts_empty(self) -> None:
+        missing = Path(tempfile.gettempdir()) / "missing_bo_state_for_unit_test.json"
+        if missing.exists():
+            missing.unlink()
+
+        self.assertEqual(runner.load_bo_state(missing), {})
+
+    def test_explicit_bo_inputs_override_auto_inputs(self) -> None:
+        explicit = self.write_rows(
+            [
+                {
+                    "D_det": "500",
+                    "alpha": "5",
+                    "G_ext": "30",
+                    "A_delay_sec": "1",
+                    "N_delay_sec": "1",
+                    "T_recovery_sec": "1",
+                    "score_sec": "5",
+                }
+            ]
+        )
+        args = runner.SimpleNamespace(
+            bo_initial_results=[explicit],
+            bo_auto_inputs=True,
+            bo_results_prefix="parameter_input_sim",
+        )
+
+        self.assertEqual(runner.resolve_bo_observation_inputs(args, {"latest_results_csvs": []}), [explicit.resolve()])
+
 
 if __name__ == "__main__":
     unittest.main()

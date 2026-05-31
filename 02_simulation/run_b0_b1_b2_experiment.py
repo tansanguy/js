@@ -35,10 +35,19 @@ DEFAULT_MANIFEST = PROJECT_ROOT / "configs/final_experiment_manifest.json"
 DEFAULT_CORRIDOR_EDGES = PROJECT_ROOT / "data_prepared/routes/corridor_spine_edges.csv"
 DEFAULT_SEOUL_STATION_MANUAL_ROUTE = PROJECT_ROOT / "data_prepared/manual/seoul_station_manual_route.json"
 DEFAULT_BO_OUTPUT_PREFIX = "parameter_input_sim_bo"
+DEFAULT_BO_RESULTS_PREFIX = "parameter_input_sim"
 DEFAULT_BO_SEED = 20260531
 DEFAULT_BO_T_CHANGE_SEC = 10
-BO_RECOMMEND_MIN = 10
-BO_RECOMMEND_MAX = 15
+DEFAULT_BO_INITIAL_COUNT = 20
+DEFAULT_BO_ROUND_RECOMMEND_COUNT = 5
+BO_RECOMMEND_MIN = 1
+BO_RECOMMEND_MAX = 50
+BO_D_DET_BOUNDS = (300.0, 1000.0)
+BO_ALPHA_BOUNDS = (0.0, 15.0)
+BO_G_EXT_BOUNDS = (10.0, 60.0)
+BO_EXTENSION_PENALTY_WEIGHT = 0.5
+BO_PHASE_SWITCH_PENALTY_SEC = 30.0
+DEFAULT_BO_INITIAL_OBSERVATIONS = PROJECT_ROOT / "results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv"
 
 LOG_PATH = PROJECT_ROOT / "outputs/logs/b00_b0_b2_experiment.log"
 
@@ -98,6 +107,9 @@ BO_OBSERVATION_FIELDS = [
     "N_delay_sec",
     "T_recovery_sec",
     "score_sec",
+    "bo_score_sec",
+    "signal_burden_penalty_sec",
+    "failure_penalty_sec",
     "final_status",
     "emergency_arrived",
     "emergency_teleport",
@@ -132,6 +144,9 @@ SCORE_COMPONENT_FIELDS = [
     "N_delay_sec",
     "T_recovery_sec",
     "score_sec",
+    "bo_score_sec",
+    "signal_burden_penalty_sec",
+    "failure_penalty_sec",
     "final_status",
     "warning_reason",
     "failure_reason",
@@ -193,6 +208,9 @@ EVENT_FIELDS = [
     "current_road_id",
     "phase_before",
     "phase_after",
+    "phase_remaining_before_sec",
+    "set_duration_sec",
+    "extension_delta_sec",
     "action",
     "reason",
     "restore_action",
@@ -229,6 +247,12 @@ EXPERIMENT_RESULT_FIELDS = [
     "N_delay_sec",
     "T_recovery_sec",
     "score_sec",
+    "bo_score_sec",
+    "signal_burden_penalty_sec",
+    "failure_penalty_sec",
+    "total_extension_delta_sec",
+    "alpha_effective_extension_sec",
+    "alpha_hold_count",
     "emergency_arrived",
     "emergency_teleport",
     "background_vehicle_count",
@@ -441,9 +465,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-nonfinal-background", action="store_true")
     parser.add_argument("--legacy-output-names", action="store_true")
     parser.add_argument("--bayesian", choices=["true", "false"], default="false")
+    parser.add_argument("--bo-stage", choices=["init", "suggest", "top3"], default=None)
+    parser.add_argument("--bo-auto-inputs", action="store_true")
     parser.add_argument("--bo-initial-results", nargs="+", type=Path, default=[])
-    parser.add_argument("--bo-recommend-count", type=int, default=BO_RECOMMEND_MAX)
+    parser.add_argument("--bo-initial-count", type=int, default=DEFAULT_BO_INITIAL_COUNT)
+    parser.add_argument("--bo-sampler", choices=["sobol", "lhs"], default="sobol")
+    parser.add_argument("--bo-recommend-count", type=int, default=DEFAULT_BO_ROUND_RECOMMEND_COUNT)
     parser.add_argument("--bo-output-prefix", default=DEFAULT_BO_OUTPUT_PREFIX)
+    parser.add_argument("--bo-workflow-prefix", default=DEFAULT_BO_OUTPUT_PREFIX)
+    parser.add_argument("--bo-results-prefix", default=DEFAULT_BO_RESULTS_PREFIX)
+    parser.add_argument("--bo-state", type=Path, default=None)
     parser.add_argument("--bo-seed", type=int, default=DEFAULT_BO_SEED)
     return parser.parse_args()
 
@@ -555,16 +586,168 @@ def bo_parameter_id(prefix: str, rank: int, d_det: float, alpha: float, g_ext: f
     )
 
 
-def resolve_bo_input_paths(paths: list[Path]) -> list[Path]:
+def round_clamp(value: float, low: float, high: float, step: float) -> float:
+    rounded = round(float(value) / step) * step
+    return max(low, min(high, rounded))
+
+
+def sample_bo_initial_parameters(count: int, sampler: str, seed: int) -> list[dict[str, str]]:
+    if count < 1:
+        raise ExperimentError("bo_initial_count must be >= 1")
+    try:
+        import numpy as np  # type: ignore
+        from scipy.stats import qmc  # type: ignore
+    except Exception as exc:  # noqa: BLE001 - scipy is optional until BO init is used.
+        raise ExperimentError(f"bo_sampler_dependencies_unavailable:{type(exc).__name__}:{exc}") from exc
+
+    if sampler == "sobol":
+        exponent = math.ceil(math.log2(count))
+        engine = qmc.Sobol(d=3, scramble=True, seed=seed)
+        unit = engine.random_base2(exponent)[:count]
+    elif sampler == "lhs":
+        engine = qmc.LatinHypercube(d=3, seed=seed)
+        unit = engine.random(count)
+    else:
+        raise ExperimentError(f"unsupported_bo_sampler:{sampler}")
+
+    lows = np.array([BO_D_DET_BOUNDS[0], BO_ALPHA_BOUNDS[0], BO_G_EXT_BOUNDS[0]], dtype=float)
+    highs = np.array([BO_D_DET_BOUNDS[1], BO_ALPHA_BOUNDS[1], BO_G_EXT_BOUNDS[1]], dtype=float)
+    scaled = qmc.scale(unit, lows, highs)
+    rows: list[dict[str, str]] = []
+    seen: set[tuple[float, float, float]] = set()
+    for values in scaled:
+        d_det = round_clamp(float(values[0]), *BO_D_DET_BOUNDS, 50.0)
+        alpha = round_clamp(float(values[1]), *BO_ALPHA_BOUNDS, 1.0)
+        g_ext = round_clamp(float(values[2]), *BO_G_EXT_BOUNDS, 1.0)
+        key = bo_theta_key(d_det, alpha, g_ext)
+        if key in seen:
+            continue
+        seen.add(key)
+        rank = len(rows) + 1
+        rows.append(
+            {
+                "parameter_id": bo_parameter_id("bo_init", rank, d_det, alpha, g_ext),
+                "D_det": format_intish(d_det),
+                "alpha": format_intish(alpha),
+                "G_ext": format_intish(g_ext),
+                "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+            }
+        )
+        if len(rows) >= count:
+            break
+    if len(rows) < count:
+        for d_det in bo_grid_values(*BO_D_DET_BOUNDS, 50):
+            for alpha in bo_grid_values(*BO_ALPHA_BOUNDS, 1):
+                for g_ext in bo_grid_values(*BO_G_EXT_BOUNDS, 5):
+                    key = bo_theta_key(d_det, alpha, g_ext)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    rank = len(rows) + 1
+                    rows.append(
+                        {
+                            "parameter_id": bo_parameter_id("bo_init", rank, d_det, alpha, g_ext),
+                            "D_det": format_intish(d_det),
+                            "alpha": format_intish(alpha),
+                            "G_ext": format_intish(g_ext),
+                            "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
+                        }
+                    )
+                    if len(rows) >= count:
+                        return rows
+    return rows
+
+
+def bo_workflow_root(prefix: str) -> Path:
+    safe_prefix = prefix.strip()
+    if not safe_prefix:
+        raise ExperimentError("bo_workflow_prefix cannot be blank")
+    return PROJECT_ROOT / "results/metrics" / safe_prefix
+
+
+def default_bo_state_path(args: argparse.Namespace) -> Path:
+    if args.bo_state is not None:
+        return args.bo_state if args.bo_state.is_absolute() else PROJECT_ROOT / args.bo_state
+    return bo_workflow_root(args.bo_workflow_prefix) / "state.json"
+
+
+def load_bo_state(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    return load_json(path)
+
+
+def write_bo_state(path: Path, state: dict[str, Any]) -> None:
+    write_json(path, state)
+
+
+def load_latest_results_csv(prefix: str) -> Path | None:
+    latest = PROJECT_ROOT / "results/metrics" / prefix / "latest.json"
+    if not latest.is_file():
+        return None
+    payload = load_json(latest)
+    value = str(payload.get("results_csv") or "").strip()
+    if not value:
+        return None
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def unique_paths(paths: list[Path]) -> list[Path]:
+    result = []
+    seen = set()
+    for path in paths:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        result.append(resolved)
+    return result
+
+
+def resolve_bo_input_paths(paths: list[Path], require: bool = True) -> list[Path]:
     resolved = []
     for path in paths:
         resolved_path = path if path.is_absolute() else PROJECT_ROOT / path
         if not resolved_path.is_file():
             raise ExperimentError(f"missing_bo_initial_results: {resolved_path}")
         resolved.append(resolved_path.resolve())
-    if not resolved:
+    if require and not resolved:
         raise ExperimentError("--bo-initial-results is required when --bayesian true")
-    return resolved
+    return unique_paths(resolved)
+
+
+def auto_bo_input_paths(args: argparse.Namespace, state: dict[str, Any]) -> list[Path]:
+    paths = [Path(value) for value in state.get("latest_results_csvs", []) if value]
+    latest = load_latest_results_csv(args.bo_results_prefix)
+    if latest is not None:
+        paths.append(latest)
+    return resolve_bo_input_paths(paths, require=False)
+
+
+def resolve_bo_observation_inputs(args: argparse.Namespace, state: dict[str, Any], allow_default: bool = False) -> list[Path]:
+    explicit = resolve_bo_input_paths(args.bo_initial_results, require=False)
+    if explicit:
+        return explicit
+    if args.bo_auto_inputs:
+        auto = auto_bo_input_paths(args, state)
+        if auto:
+            return auto
+    if allow_default and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file():
+        return [DEFAULT_BO_INITIAL_OBSERVATIONS.resolve()]
+    raise ExperimentError("--bo-initial-results is required unless --bo-auto-inputs can resolve prior results")
+
+
+def bo_score_for_row(row: dict[str, Any]) -> float | None:
+    explicit = numeric_cell(row, "bo_score_sec")
+    if explicit is not None:
+        return explicit
+    score = numeric_cell(row, "score_sec")
+    if score is None:
+        score = numeric_cell(row, "Score")
+    if score is None:
+        return None
+    return score + (numeric_cell(row, "signal_burden_penalty_sec") or 0.0) + (numeric_cell(row, "failure_penalty_sec") or 0.0)
 
 
 def bo_row_exclusion_reason(row: dict[str, Any]) -> str:
@@ -574,7 +757,7 @@ def bo_row_exclusion_reason(row: dict[str, Any]) -> str:
     for key in ["D_det", "alpha", "G_ext", "A_delay_sec", "N_delay_sec", "T_recovery_sec"]:
         if numeric_cell(row, key) is None:
             reasons.append(f"missing_or_invalid_{key}")
-    if numeric_cell(row, "score_sec") is None:
+    if numeric_cell(row, "score_sec") is None and numeric_cell(row, "Score") is None:
         reasons.append("missing_or_invalid_score_sec")
     if str(row.get("final_status", "")).strip().upper() == "FAIL":
         reasons.append("final_status_fail")
@@ -614,6 +797,7 @@ def load_bo_observations(paths: list[Path]) -> tuple[list[dict[str, Any]], list[
             row = dict(raw_row)
             if row.get("score_sec") in {"", None} and row.get("Score") not in {"", None}:
                 row["score_sec"] = row["Score"]
+            bo_score = bo_score_for_row(row)
             if row.get("mode") == "B2":
                 b2_row_count += 1
             base = {field: row.get(field, "") for field in BO_OBSERVATION_FIELDS}
@@ -634,6 +818,9 @@ def load_bo_observations(paths: list[Path]) -> tuple[list[dict[str, Any]], list[
                     "N_delay_sec": numeric_cell(row, "N_delay_sec"),
                     "T_recovery_sec": numeric_cell(row, "T_recovery_sec"),
                     "score_sec": numeric_cell(row, "score_sec"),
+                    "bo_score_sec": bo_score,
+                    "signal_burden_penalty_sec": numeric_cell(row, "signal_burden_penalty_sec") or 0.0,
+                    "failure_penalty_sec": numeric_cell(row, "failure_penalty_sec") or 0.0,
                 }
             )
     return observations, excluded, input_row_count, b2_row_count
@@ -663,7 +850,7 @@ def fit_bo_and_recommend(observations: list[dict[str, Any]], recommend_count: in
         raise ExperimentError(f"bo_dependencies_unavailable:{type(exc).__name__}:{exc}") from exc
 
     x_raw = np.array([[row["D_det"], row["alpha"], row["G_ext"]] for row in observations], dtype=float)
-    y = np.array([row["score_sec"] for row in observations], dtype=float)
+    y = np.array([row.get("bo_score_sec", row["score_sec"]) for row in observations], dtype=float)
     lows = x_raw.min(axis=0)
     highs = x_raw.max(axis=0)
     spans = np.where(np.abs(highs - lows) < 1e-9, 1.0, highs - lows)
@@ -717,7 +904,7 @@ def fit_bo_and_recommend(observations: list[dict[str, Any]], recommend_count: in
                 "current_best_flag": "False",
             }
         )
-    best_row = min(observations, key=lambda row: float(row["score_sec"]))
+    best_row = min(observations, key=lambda row: float(row.get("bo_score_sec", row["score_sec"])))
     summary = {
         "bounds": {
             "D_det": [float(lows[0]), float(highs[0])],
@@ -732,6 +919,7 @@ def fit_bo_and_recommend(observations: list[dict[str, Any]], recommend_count: in
             "G_ext": best_row["G_ext"],
             "T_change_sec": DEFAULT_BO_T_CHANGE_SEC,
             "score_sec": best_row["score_sec"],
+            "bo_score_sec": best_row.get("bo_score_sec", best_row["score_sec"]),
         },
         "gp_kernel": str(gp.kernel_),
         "acquisition": "expected_improvement_minimization",
@@ -741,14 +929,24 @@ def fit_bo_and_recommend(observations: list[dict[str, Any]], recommend_count: in
 
 
 def top_unique_bo_observations(observations: list[dict[str, Any]], limit: int = 3) -> list[dict[str, Any]]:
-    selected: list[dict[str, Any]] = []
-    seen: set[tuple[float, float, float]] = set()
-    for row in sorted(observations, key=lambda item: float(item["score_sec"])):
+    grouped: dict[tuple[float, float, float], dict[str, Any]] = {}
+    for row in observations:
         key = bo_theta_key(row["D_det"], row["alpha"], row["G_ext"])
-        if key in seen:
-            continue
-        seen.add(key)
-        rank = len(selected) + 1
+        entry = grouped.setdefault(
+            key,
+            {
+                "D_det": row["D_det"],
+                "alpha": row["alpha"],
+                "G_ext": row["G_ext"],
+                "bo_scores": [],
+                "scores": [],
+            },
+        )
+        entry["bo_scores"].append(float(row.get("bo_score_sec", row["score_sec"])))
+        entry["scores"].append(float(row["score_sec"]))
+    ranked = sorted(grouped.values(), key=lambda entry: (sum(entry["bo_scores"]) / len(entry["bo_scores"]), entry["D_det"], entry["alpha"], entry["G_ext"]))
+    selected: list[dict[str, Any]] = []
+    for rank, row in enumerate(ranked[:limit], start=1):
         selected.append(
             {
                 "parameter_id": bo_parameter_id("bo_top3", rank, row["D_det"], row["alpha"], row["G_ext"]),
@@ -758,8 +956,6 @@ def top_unique_bo_observations(observations: list[dict[str, Any]], limit: int = 
                 "T_change_sec": str(DEFAULT_BO_T_CHANGE_SEC),
             }
         )
-        if len(selected) >= limit:
-            break
     return selected
 
 
@@ -767,173 +963,332 @@ def command_line(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
-def write_bo_commands(path: Path, recommendation_csv: Path, top3_csv: Path) -> None:
+def write_bo_commands(
+    path: Path,
+    stage: str,
+    output_prefix: str,
+    workflow_prefix: str,
+    params_csv: Path | None = None,
+    top3_csv: Path | None = None,
+) -> None:
     manifest = rel(DEFAULT_MANIFEST)
-    rec = rel(recommendation_csv)
-    top3 = rel(top3_csv)
     commands = [
         "#!/usr/bin/env bash",
         "set -euo pipefail",
         "",
-        "# 1) 추가 BO 추천 theta를 seed 1회로 실행한다. A_delay 계산을 위해 B00도 함께 실행한다.",
-        command_line(
-            [
-                "python",
-                "02_simulation/run_b0_b1_b2_experiment.py",
-                "--manifest",
-                manifest,
-                "--pipeline",
-                "parameter_input_sim",
-                "--modes",
-                "B00",
-                "B2",
-                "--b2-params",
-                rec,
-                "--repeats",
-                "1",
-                "--workers",
-                "1",
-                "--emergency-depart",
-                "600",
-                "--timeout-steps",
-                "7200",
-                "--recovery-buffer-sec",
-                "300",
-            ]
-        ),
-        "",
-        "# 2) 기존+추가 결과를 합친 뒤 상위 3개 theta를 seed 3회 재평가한다.",
-        command_line(
-            [
-                "python",
-                "02_simulation/run_b0_b1_b2_experiment.py",
-                "--manifest",
-                manifest,
-                "--pipeline",
-                "parameter_input_sim",
-                "--modes",
-                "B00",
-                "B2",
-                "--b2-params",
-                top3,
-                "--repeats",
-                "3",
-                "--workers",
-                "1",
-                "--emergency-depart",
-                "600",
-                "--timeout-steps",
-                "7200",
-                "--recovery-buffer-sec",
-                "300",
-            ]
-        ),
-        "",
-        "# 3) 최종 B0/B2 비교는 최소 seed 3회로 실행한다. 가능하면 --repeats 5~10을 사용한다.",
-        command_line(
-            [
-                "python",
-                "02_simulation/run_b0_b1_b2_experiment.py",
-                "--manifest",
-                manifest,
-                "--pipeline",
-                "parameter_input_sim",
-                "--modes",
-                "B00",
-                "B0",
-                "B2",
-                "--b2-params",
-                top3,
-                "--repeats",
-                "3",
-                "--workers",
-                "1",
-                "--emergency-depart",
-                "600",
-                "--timeout-steps",
-                "7200",
-                "--recovery-buffer-sec",
-                "300",
-                "--output-prefix",
-                "parameter_input_sim_final_compare",
-            ]
-        ),
-        "",
     ]
+    if stage in {"init", "suggest"} and params_csv is not None:
+        label = "초기 theta" if stage == "init" else "추천 theta"
+        commands.extend(
+            [
+                f"# 1) {label}를 seed 5회로 실행한다. A_delay 계산을 위해 B00도 함께 실행한다.",
+                command_line(
+                    [
+                        "python",
+                        "02_simulation/run_b0_b1_b2_experiment.py",
+                        "--manifest",
+                        manifest,
+                        "--pipeline",
+                        "parameter_input_sim",
+                        "--modes",
+                        "B00",
+                        "B2",
+                        "--b2-params",
+                        rel(params_csv),
+                        "--repeats",
+                        "5",
+                        "--workers",
+                        "1",
+                        "--emergency-depart",
+                        "600",
+                        "--timeout-steps",
+                        "7200",
+                        "--recovery-buffer-sec",
+                        "300",
+                    ]
+                ),
+                "",
+                "# 2) 방금 실행 결과를 latest.json에서 자동으로 불러와 다음 theta를 추천한다.",
+                command_line(
+                    [
+                        "python",
+                        "02_simulation/run_b0_b1_b2_experiment.py",
+                        "--bo-stage",
+                        "suggest",
+                        "--bo-auto-inputs",
+                        "--bo-output-prefix",
+                        output_prefix,
+                        "--bo-workflow-prefix",
+                        workflow_prefix,
+                        "--bo-recommend-count",
+                        str(DEFAULT_BO_ROUND_RECOMMEND_COUNT),
+                    ]
+                ),
+                "",
+                "# 3) 충분히 반복한 뒤 top3 재평가 CSV를 만든다.",
+                command_line(
+                    [
+                        "python",
+                        "02_simulation/run_b0_b1_b2_experiment.py",
+                        "--bo-stage",
+                        "top3",
+                        "--bo-auto-inputs",
+                        "--bo-output-prefix",
+                        output_prefix,
+                        "--bo-workflow-prefix",
+                        workflow_prefix,
+                    ]
+                ),
+                "",
+            ]
+        )
+    if stage == "top3" and top3_csv is not None:
+        commands.extend(
+            [
+                "# 1) BO 누적 결과 상위 3개 theta를 seed 5회로 재평가한다.",
+                command_line(
+                    [
+                        "python",
+                        "02_simulation/run_b0_b1_b2_experiment.py",
+                        "--manifest",
+                        manifest,
+                        "--pipeline",
+                        "parameter_input_sim",
+                        "--modes",
+                        "B00",
+                        "B2",
+                        "--b2-params",
+                        rel(top3_csv),
+                        "--repeats",
+                        "5",
+                        "--workers",
+                        "1",
+                        "--emergency-depart",
+                        "600",
+                        "--timeout-steps",
+                        "7200",
+                        "--recovery-buffer-sec",
+                        "300",
+                    ]
+                ),
+                "",
+                "# 2) 최종 B0/B2 비교는 최소 seed 3회, 가능하면 seed 5~10회로 실행한다.",
+                command_line(
+                    [
+                        "python",
+                        "02_simulation/run_b0_b1_b2_experiment.py",
+                        "--manifest",
+                        manifest,
+                        "--pipeline",
+                        "parameter_input_sim",
+                        "--modes",
+                        "B00",
+                        "B0",
+                        "B2",
+                        "--b2-params",
+                        rel(top3_csv),
+                        "--repeats",
+                        "5",
+                        "--workers",
+                        "1",
+                        "--emergency-depart",
+                        "600",
+                        "--timeout-steps",
+                        "7200",
+                        "--recovery-buffer-sec",
+                        "300",
+                        "--output-prefix",
+                        "parameter_input_sim_final_compare",
+                    ]
+                ),
+                "",
+            ]
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(commands), encoding="utf-8")
     path.chmod(0o755)
 
 
 def run_bayesian_mode(args: argparse.Namespace, generated_at: str, run_id: str) -> int:
-    input_paths = resolve_bo_input_paths(args.bo_initial_results)
+    stage = args.bo_stage or "suggest"
     safe_prefix = args.bo_output_prefix.strip()
+    workflow_prefix = args.bo_workflow_prefix.strip() or safe_prefix
     if not safe_prefix:
         raise ExperimentError("bo_output_prefix cannot be blank")
-    observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
-    recommendations, model_summary = fit_bo_and_recommend(observations, args.bo_recommend_count, args.bo_seed)
-    top3 = top_unique_bo_observations(observations, 3)
-    if not top3:
-        raise ExperimentError("bo_top3_reevaluation_requires_valid_observations")
-
     bo_dir = PROJECT_ROOT / "results/metrics" / safe_prefix / run_id
     generated_dir = PROJECT_ROOT / "configs/generated"
-    recommendation_csv = generated_dir / f"b2_bo_recommendations_{run_id}.csv"
-    top3_csv = generated_dir / f"b2_bo_top3_reeval_{run_id}.csv"
-    bo_recommendations_csv = bo_dir / "bo_recommendations.csv"
     commands_sh = bo_dir / "bo_commands.sh"
     summary_json = bo_dir / "bo_summary.json"
-
-    write_csv(bo_dir / "bo_observations.csv", observations, BO_OBSERVATION_FIELDS)
-    write_csv(bo_dir / "bo_excluded_observations.csv", excluded, BO_EXCLUDED_FIELDS)
-    write_csv(bo_recommendations_csv, recommendations, BO_RECOMMENDATION_FIELDS)
-    write_csv(recommendation_csv, recommendations, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
-    write_csv(top3_csv, top3, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
-    write_bo_commands(commands_sh, recommendation_csv, top3_csv)
-
+    state_path = default_bo_state_path(args)
+    state = load_bo_state(state_path)
+    outputs: dict[str, str] = {}
     summary = {
         "generated_at": generated_at,
         "run_id": run_id,
+        "bo_stage": stage,
         "bo_output_prefix": safe_prefix,
+        "bo_workflow_prefix": workflow_prefix,
         "seed": args.bo_seed,
-        "input_csvs": [display_path(path) for path in input_paths],
-        "input_row_count": input_row_count,
-        "b2_row_count": b2_row_count,
-        "valid_observation_count": len(observations),
-        "excluded_observation_count": len(excluded),
-        "recommendation_count": len(recommendations),
         "t_change_sec_policy": f"fixed_{DEFAULT_BO_T_CHANGE_SEC}",
-        "search_space_policy": "valid_observation_min_max",
-        "failed_trial_policy": "exclude_from_gp_training",
-        "outputs": {
-            "bo_observations_csv": rel(bo_dir / "bo_observations.csv"),
-            "bo_excluded_observations_csv": rel(bo_dir / "bo_excluded_observations.csv"),
-            "bo_recommendations_csv": rel(bo_recommendations_csv),
-            "generated_recommendations_csv": rel(recommendation_csv),
-            "generated_top3_reeval_csv": rel(top3_csv),
-            "bo_commands_sh": rel(commands_sh),
-            "bo_summary_json": rel(summary_json),
-        },
-        **model_summary,
+        "score_policy": "bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec",
+        "outputs": outputs,
     }
+
+    if stage == "init":
+        initial_rows = sample_bo_initial_parameters(args.bo_initial_count, args.bo_sampler, args.bo_seed)
+        initial_csv = generated_dir / f"b2_bo_initial_{run_id}.csv"
+        bo_initial_csv = bo_dir / "bo_initial_parameters.csv"
+        fields = ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"]
+        write_csv(initial_csv, initial_rows, fields)
+        write_csv(bo_initial_csv, initial_rows, fields)
+        write_bo_commands(commands_sh, stage, safe_prefix, workflow_prefix, params_csv=initial_csv)
+        outputs.update(
+            {
+                "generated_initial_params_csv": rel(initial_csv),
+                "bo_initial_params_csv": rel(bo_initial_csv),
+                "bo_commands_sh": rel(commands_sh),
+                "bo_summary_json": rel(summary_json),
+            }
+        )
+        state.update(
+            {
+                "initial_params_csv": rel(initial_csv),
+                "completed_stage": "init",
+                "latest_recommendations_csv": "",
+                "top3_csv": "",
+                "latest_results_csvs": [],
+                "round_index": 0,
+            }
+        )
+        summary.update(
+            {
+                "sampler": args.bo_sampler,
+                "initial_count": len(initial_rows),
+                "bounds": {"D_det": list(BO_D_DET_BOUNDS), "alpha": list(BO_ALPHA_BOUNDS), "G_ext": list(BO_G_EXT_BOUNDS)},
+            }
+        )
+
+    else:
+        input_paths = resolve_bo_observation_inputs(args, state, allow_default=True)
+        observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+        if len(observations) < 2 and not args.bo_initial_results and DEFAULT_BO_INITIAL_OBSERVATIONS.is_file() and DEFAULT_BO_INITIAL_OBSERVATIONS.resolve() not in input_paths:
+            input_paths = unique_paths([*input_paths, DEFAULT_BO_INITIAL_OBSERVATIONS])
+            observations, excluded, input_row_count, b2_row_count = load_bo_observations(input_paths)
+        if stage == "suggest":
+            recommendations, model_summary = fit_bo_and_recommend(observations, args.bo_recommend_count, args.bo_seed)
+            recommendation_csv = generated_dir / f"b2_bo_recommendations_{run_id}.csv"
+            bo_recommendations_csv = bo_dir / "bo_recommendations.csv"
+            write_csv(bo_dir / "bo_observations.csv", observations, BO_OBSERVATION_FIELDS)
+            write_csv(bo_dir / "bo_excluded_observations.csv", excluded, BO_EXCLUDED_FIELDS)
+            write_csv(bo_recommendations_csv, recommendations, BO_RECOMMENDATION_FIELDS)
+            write_csv(recommendation_csv, recommendations, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+            write_bo_commands(commands_sh, stage, safe_prefix, workflow_prefix, params_csv=recommendation_csv)
+            latest_results_csvs = unique_paths([*input_paths])
+            state.update(
+                {
+                    "latest_recommendations_csv": rel(recommendation_csv),
+                    "latest_results_csvs": [rel(path) for path in latest_results_csvs],
+                    "completed_stage": "suggest",
+                    "round_index": int(state.get("round_index") or 0) + 1,
+                    "top3_csv": state.get("top3_csv", ""),
+                    "initial_params_csv": state.get("initial_params_csv", ""),
+                }
+            )
+            outputs.update(
+                {
+                    "bo_observations_csv": rel(bo_dir / "bo_observations.csv"),
+                    "bo_excluded_observations_csv": rel(bo_dir / "bo_excluded_observations.csv"),
+                    "bo_recommendations_csv": rel(bo_recommendations_csv),
+                    "generated_recommendations_csv": rel(recommendation_csv),
+                    "bo_commands_sh": rel(commands_sh),
+                    "bo_summary_json": rel(summary_json),
+                }
+            )
+            summary.update(
+                {
+                    "input_csvs": [display_path(path) for path in input_paths],
+                    "input_row_count": input_row_count,
+                    "b2_row_count": b2_row_count,
+                    "valid_observation_count": len(observations),
+                    "excluded_observation_count": len(excluded),
+                    "recommendation_count": len(recommendations),
+                    "search_space_policy": "valid_observation_min_max",
+                    "failed_trial_policy": "exclude_from_gp_training",
+                    **model_summary,
+                }
+            )
+        elif stage == "top3":
+            top3 = top_unique_bo_observations(observations, 3)
+            if not top3:
+                raise ExperimentError("bo_top3_reevaluation_requires_valid_observations")
+            top3_csv = generated_dir / f"b2_bo_top3_reeval_{run_id}.csv"
+            write_csv(bo_dir / "bo_observations.csv", observations, BO_OBSERVATION_FIELDS)
+            write_csv(bo_dir / "bo_excluded_observations.csv", excluded, BO_EXCLUDED_FIELDS)
+            write_csv(top3_csv, top3, ["parameter_id", "D_det", "alpha", "G_ext", "T_change_sec"])
+            write_bo_commands(commands_sh, stage, safe_prefix, workflow_prefix, top3_csv=top3_csv)
+            latest_results_csvs = unique_paths([*input_paths])
+            state.update(
+                {
+                    "top3_csv": rel(top3_csv),
+                    "latest_results_csvs": [rel(path) for path in latest_results_csvs],
+                    "completed_stage": "top3",
+                    "round_index": int(state.get("round_index") or 0),
+                    "latest_recommendations_csv": state.get("latest_recommendations_csv", ""),
+                    "initial_params_csv": state.get("initial_params_csv", ""),
+                }
+            )
+            outputs.update(
+                {
+                    "bo_observations_csv": rel(bo_dir / "bo_observations.csv"),
+                    "bo_excluded_observations_csv": rel(bo_dir / "bo_excluded_observations.csv"),
+                    "generated_top3_reeval_csv": rel(top3_csv),
+                    "bo_commands_sh": rel(commands_sh),
+                    "bo_summary_json": rel(summary_json),
+                }
+            )
+            summary.update(
+                {
+                    "input_csvs": [display_path(path) for path in input_paths],
+                    "input_row_count": input_row_count,
+                    "b2_row_count": b2_row_count,
+                    "valid_observation_count": len(observations),
+                    "excluded_observation_count": len(excluded),
+                    "top3_count": len(top3),
+                    "top3_policy": "mean_bo_score_sec_by_theta",
+                    "failed_trial_policy": "exclude_from_top3_candidates",
+                }
+            )
+        else:
+            raise ExperimentError(f"unsupported_bo_stage:{stage}")
+
     write_json(summary_json, summary)
+    latest_json = bo_workflow_root(workflow_prefix) / "latest.json"
+    write_json(
+        latest_json,
+        {
+            "generated_at": generated_at,
+            "run_id": run_id,
+            "bo_stage": stage,
+            "bo_output_prefix": safe_prefix,
+            "bo_workflow_prefix": workflow_prefix,
+            "summary_json": rel(summary_json),
+            "bo_commands_sh": rel(commands_sh),
+            **outputs,
+        },
+    )
+    state.update({"latest_run_id": run_id, "latest_summary_json": rel(summary_json), "updated_at": generated_at})
+    write_bo_state(state_path, state)
     print(
         "\n".join(
             [
-                "Bayesian optimization recommendation mode",
-                "========================================",
+                f"Bayesian optimization stage: {stage}",
+                "===================================",
                 f"run_id: {run_id}",
-                f"input_row_count: {input_row_count}",
-                f"b2_row_count: {b2_row_count}",
-                f"valid_observation_count: {len(observations)}",
-                f"excluded_observation_count: {len(excluded)}",
-                f"recommendation_count: {len(recommendations)}",
-                f"current_best: {model_summary['current_best']}",
-                f"bo_recommendations_csv: {rel(bo_recommendations_csv)}",
-                f"generated_recommendations_csv: {rel(recommendation_csv)}",
-                f"generated_top3_reeval_csv: {rel(top3_csv)}",
+                *(f"{key}: {value}" for key, value in summary.items() if key.endswith("_count")),
                 f"bo_commands_sh: {rel(commands_sh)}",
                 f"bo_summary_json: {rel(summary_json)}",
+                f"bo_latest_json: {rel(latest_json)}",
+                f"bo_state_json: {rel(state_path)}",
             ]
         )
     )
@@ -1726,18 +2081,19 @@ def phase_remaining_seconds(traci: Any, tls_id: str, sim_time: float) -> float:
         return 0.0
 
 
-def extend_current_green_without_shortening(traci: Any, tls: dict[str, Any], min_remaining_sec: int, sim_time: float) -> tuple[str, int | str, str]:
+def extend_current_green_without_shortening(traci: Any, tls: dict[str, Any], min_remaining_sec: int, sim_time: float) -> tuple[str, int | str, str, float | str, float | str, float | str]:
     tls_id = tls["tls_id"]
     current_phase = int(traci.trafficlight.getPhase(tls_id))
     green_phases = list(tls.get("green_phases") or [])
     if not green_phases:
-        return "failed", current_phase, "no_green_phase_for_emergency_link"
+        return "failed", current_phase, "no_green_phase_for_emergency_link", "", "", ""
     if current_phase in green_phases:
         current_remaining = phase_remaining_seconds(traci, tls_id, sim_time)
         target_remaining = max(int(round(current_remaining)), int(min_remaining_sec))
+        extension_delta = max(float(target_remaining) - current_remaining, 0.0)
         traci.trafficlight.setPhaseDuration(tls_id, target_remaining)
-        return "extend_green", current_phase, "current_phase_already_green"
-    return "wait_for_sequence_green", current_phase, "phase_sequence_preserved_wait_for_green"
+        return "extend_green", current_phase, "current_phase_already_green", current_remaining, float(target_remaining), extension_delta
+    return "wait_for_sequence_green", current_phase, "phase_sequence_preserved_wait_for_green", "", "", ""
 
 
 def phase_duration_seconds(traci: Any, tls_id: str, phase_index: int, fallback: int) -> int:
@@ -1763,19 +2119,20 @@ def start_clearance_before_green(traci: Any, tls: dict[str, Any]) -> tuple[str, 
     return "clearance_before_green", clearance_phase, "t_change_elapsed_clearance_inserted_before_green", duration
 
 
-def switch_to_green_after_t_change(traci: Any, tls: dict[str, Any], g_ext: int) -> tuple[str, int | str, str]:
+def switch_to_green_after_t_change(traci: Any, tls: dict[str, Any], g_ext: int, sim_time: float) -> tuple[str, int | str, str, float | str, float | str, float | str]:
     tls_id = tls["tls_id"]
     green_phases = list(tls.get("green_phases") or [])
     if not green_phases:
-        return "failed", traci.trafficlight.getPhase(tls_id), "no_green_phase_for_emergency_link"
+        return "failed", traci.trafficlight.getPhase(tls_id), "no_green_phase_for_emergency_link", "", "", ""
     current_phase = int(traci.trafficlight.getPhase(tls_id))
     if current_phase in green_phases:
-        action, phase_after, reason = extend_current_green_without_shortening(traci, tls, g_ext, float("inf"))
-        return action, phase_after, f"green_arrived_before_t_change_switch:{reason}"
+        action, phase_after, reason, remaining_before, set_duration, extension_delta = extend_current_green_without_shortening(traci, tls, g_ext, sim_time)
+        return action, phase_after, f"green_arrived_before_t_change_switch:{reason}", remaining_before, set_duration, extension_delta
     target_phase = int(green_phases[0])
+    remaining_before = phase_remaining_seconds(traci, tls_id, sim_time)
     traci.trafficlight.setPhase(tls_id, target_phase)
     traci.trafficlight.setPhaseDuration(tls_id, g_ext)
-    return "switch_to_green_after_t_change", target_phase, "t_change_elapsed_clearance_completed_then_green"
+    return "switch_to_green_after_t_change", target_phase, "t_change_elapsed_clearance_completed_then_green", remaining_before, float(g_ext), float(g_ext)
 
 
 def actual_upcoming_corridor_tls(traci: Any, vehicle_id: str, corridor_tls_ids: set[str]) -> dict[str, Any] | None:
@@ -2128,7 +2485,7 @@ def run_traci_experiment(
                         if "pass_time" not in record:
                             record["pass_time"] = sim_time
                             if alpha > 0:
-                                action, phase_after, reason = extend_current_green_without_shortening(traci, record, alpha, sim_time)
+                                action, phase_after, reason, remaining_before, set_duration, extension_delta = extend_current_green_without_shortening(traci, record, alpha, sim_time)
                                 if action == "extend_green":
                                     action = "alpha_hold_extend"
                                 events.append(
@@ -2149,6 +2506,9 @@ def run_traci_experiment(
                                         "current_road_id": road_id,
                                         "phase_before": record["phase_after"],
                                         "phase_after": phase_after,
+                                        "phase_remaining_before_sec": sec(remaining_before),
+                                        "set_duration_sec": sec(set_duration),
+                                        "extension_delta_sec": sec(extension_delta),
                                         "action": action,
                                         "reason": f"emergency_passed_tls_alpha_hold_{alpha}s:{reason}",
                                         "restore_action": "",
@@ -2212,7 +2572,7 @@ def run_traci_experiment(
                     current_phase = int(traci.trafficlight.getPhase(tls_id))
                     if current_phase in pending.get("green_phases", []):
                         before = current_phase
-                        action, phase_after, reason = extend_current_green_without_shortening(traci, pending, effective_g_ext, sim_time)
+                        action, phase_after, reason, remaining_before, set_duration, extension_delta = extend_current_green_without_shortening(traci, pending, effective_g_ext, sim_time)
                         touched[tls_id] = {"action": action}
                         if action in CONTROL_ACTIONS:
                             controlled[tls_id] = {
@@ -2227,6 +2587,9 @@ def run_traci_experiment(
                                 "time": sec(sim_time),
                                 "phase_before": before,
                                 "phase_after": phase_after,
+                                "phase_remaining_before_sec": sec(remaining_before),
+                                "set_duration_sec": sec(set_duration),
+                                "extension_delta_sec": sec(extension_delta),
                                 "action": action,
                                 "reason": "green_arrived_before_t_change_then_extended" if action in CONTROL_ACTIONS else reason,
                                 "restore_action": "",
@@ -2272,7 +2635,7 @@ def run_traci_experiment(
                     if current_phase in pending.get("yellow_phases", []) + pending.get("clearance_phases", []):
                         continue
                     before = current_phase
-                    action, phase_after, reason = switch_to_green_after_t_change(traci, pending, effective_g_ext)
+                    action, phase_after, reason, remaining_before, set_duration, extension_delta = switch_to_green_after_t_change(traci, pending, effective_g_ext, sim_time)
                     touched[tls_id] = {"action": action}
                     if action in CONTROL_ACTIONS:
                         controlled[tls_id] = {
@@ -2287,6 +2650,9 @@ def run_traci_experiment(
                             "time": sec(sim_time),
                             "phase_before": before,
                             "phase_after": phase_after,
+                            "phase_remaining_before_sec": sec(remaining_before),
+                            "set_duration_sec": sec(set_duration),
+                            "extension_delta_sec": sec(extension_delta),
                             "action": action,
                             "reason": reason,
                             "restore_action": "",
@@ -2388,7 +2754,7 @@ def run_traci_experiment(
                     )
                     continue
                 before = current_phase
-                action, phase_after, reason = extend_current_green_without_shortening(traci, next_tls, effective_g_ext, sim_time)
+                action, phase_after, reason, remaining_before, set_duration, extension_delta = extend_current_green_without_shortening(traci, next_tls, effective_g_ext, sim_time)
                 touched[tls_id] = {"action": action}
                 if action in CONTROL_ACTIONS:
                     controlled[tls_id] = {
@@ -2397,7 +2763,19 @@ def run_traci_experiment(
                         "original_phase": before,
                         "phase_after": phase_after,
                     }
-                events.append({**event_base, "phase_before": before, "phase_after": phase_after, "action": action, "reason": reason, "restore_action": ""})
+                events.append(
+                    {
+                        **event_base,
+                        "phase_before": before,
+                        "phase_after": phase_after,
+                        "phase_remaining_before_sec": sec(remaining_before),
+                        "set_duration_sec": sec(set_duration),
+                        "extension_delta_sec": sec(extension_delta),
+                        "action": action,
+                        "reason": reason,
+                        "restore_action": "",
+                    }
+                )
             if traci.simulation.getTime() > int(task["timeout_steps"]):
                 events.append({"time": sec(traci.simulation.getTime()), "route_id": args.route_id, "action": "timeout", "reason": "controller_timeout_steps"})
             if wall_timeout:
@@ -2666,6 +3044,23 @@ def summarize_run(
     )
     t_recovery = float(recovery["T_recovery_sec"])
     score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
+    total_extension_delta_sec = 0.0
+    alpha_effective_extension_sec = 0.0
+    alpha_hold_count = 0
+    for event in events:
+        try:
+            extension_delta = float(event.get("extension_delta_sec") or 0.0)
+        except (TypeError, ValueError):
+            extension_delta = 0.0
+        extension_delta = max(extension_delta, 0.0)
+        total_extension_delta_sec += extension_delta
+        if event.get("action") == "alpha_hold_extend":
+            alpha_hold_count += 1
+            alpha_effective_extension_sec += extension_delta
+    phase_switch_count = sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change")
+    signal_burden_penalty_sec = BO_EXTENSION_PENALTY_WEIGHT * total_extension_delta_sec + BO_PHASE_SWITCH_PENALTY_SEC * phase_switch_count
+    failure_penalty_sec = 0.0
+    bo_score = score + signal_burden_penalty_sec + failure_penalty_sec
     safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
     if safety_violation_count > 0:
         failures.append("safety_violation_detected")
@@ -2736,6 +3131,12 @@ def summarize_run(
             "N_delay_sec": sec(general_delay["N_delay_sec"]),
             "T_recovery_sec": sec(t_recovery),
             "score_sec": sec(score),
+            "bo_score_sec": sec(bo_score),
+            "signal_burden_penalty_sec": sec(signal_burden_penalty_sec),
+            "failure_penalty_sec": sec(failure_penalty_sec),
+            "total_extension_delta_sec": sec(total_extension_delta_sec),
+            "alpha_effective_extension_sec": sec(alpha_effective_extension_sec),
+            "alpha_hold_count": alpha_hold_count,
             "emergency_corridor_actual_sec": sec(emergency_corridor_actual),
             "emergency_corridor_free_flow_sec": sec(emergency_corridor_free),
             "general_non_main_actual_sec": sec(general_delay["general_non_main_actual_sec"]),
@@ -2795,7 +3196,7 @@ def summarize_run(
                 for event in events
                 if event.get("action") == "extend_green" and event.get("reason") == "green_arrived_before_t_change_then_extended"
             ),
-            "phase_switch_count": sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change"),
+            "phase_switch_count": phase_switch_count,
             "restore_count": sum(1 for event in events if event.get("action") == "restore"),
             "signal_event_count": len(events),
             "t_change_request_count": sum(1 for event in events if event.get("action") == "request_green"),
@@ -2875,7 +3276,11 @@ def apply_b00_delay_fields(result_rows: list[dict[str, Any]]) -> None:
             row["A_delay_sec"] = sec(current - base)
         a_delay = row_float(row, "A_delay_sec")
         if a_delay is not None and n_delay is not None and t_recovery is not None:
-            row["score_sec"] = sec(SCORE_WEIGHT_A * a_delay + SCORE_WEIGHT_N * n_delay + SCORE_WEIGHT_RECOVERY * t_recovery)
+            score = SCORE_WEIGHT_A * a_delay + SCORE_WEIGHT_N * n_delay + SCORE_WEIGHT_RECOVERY * t_recovery
+            row["score_sec"] = sec(score)
+            signal_burden = row_float(row, "signal_burden_penalty_sec") or 0.0
+            failure_penalty = row_float(row, "failure_penalty_sec") or 0.0
+            row["bo_score_sec"] = sec(score + signal_burden + failure_penalty)
 
 
 def compare_rows(result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2970,7 +3375,11 @@ def main() -> int:
     lines = ["B00/B0/B2 experiment runner", "=======================", f"generated_at: {generated_at}", f"run_id: {run_id}"]
     try:
         manifest = apply_manifest(args)
-        if bool_arg(args.bayesian):
+        if bool_arg(args.bayesian) and args.bo_stage is None:
+            args.bo_stage = "suggest"
+            if not args.bo_initial_results:
+                args.bo_auto_inputs = True
+        if args.bo_stage is not None:
             return run_bayesian_mode(args, generated_at, run_id)
         if args.pipeline and args.output_prefix is None:
             args.output_prefix = args.pipeline

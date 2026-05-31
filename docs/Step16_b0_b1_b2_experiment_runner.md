@@ -23,21 +23,31 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --modes B00 B0 B2
 ```
 
-## Bayesian Optimization 추천 모드
+## Bayesian Optimization
 
-`--bayesian true`는 SUMO를 실행하지 않고 기존 B2 결과 CSV를 GP surrogate의 초기 관측값으로 사용해 추가 후보를 추천한다.
+BO는 단계형 CLI로 실행한다. `D_det`, `alpha`, `G_ext`를 최적화하고 `T_change_sec=10`은 고정한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results path/to/existing_40_results.csv \
-  --bo-recommend-count 15
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
 ```
 
-- 최적화 변수는 `D_det`, `alpha`, `G_ext`이며 `T_change_sec=10`은 고정한다.
+추천 stage는 이전 결과를 자동으로 찾을 수 있다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-auto-inputs \
+  --bo-recommend-count 5
+```
+
+- 기존 `--bayesian true`는 `--bo-stage suggest` alias로 유지한다.
+- BO target은 `bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec`다.
 - 실패, emergency 미도착, emergency teleport, route error, SUMO 오류 row는 학습에서 제외한다.
-- 추천 CSV와 실행 명령은 `results/metrics/parameter_input_sim_bo/{bo_run_id}/`와 `configs/generated/`에 생성된다.
-- 추가 θ는 우선 seed 1회, 상위 3개 θ는 seed 3회 재평가한다.
+- 추천 CSV와 실행 명령은 `results/metrics/parameter_input_sim_bo/{bo_run_id}/`, `latest.json`, `state.json`, `configs/generated/`에 생성된다.
+- 표준 정책은 초기 20개 seed 5회, 라운드당 추천 5개 seed 5회, top3 seed 5회 재평가다.
 
 ## 출력
 

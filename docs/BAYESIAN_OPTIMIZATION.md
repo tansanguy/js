@@ -1,207 +1,222 @@
 # Bayesian Optimization 실행 안내
 
-이 문서는 B2 신호 제어 파라미터 `D_det`, `alpha`, `G_ext`를 기존 실험 결과로부터 추가 추천하는 절차를 설명한다. 새 LHS/Sobol initial design은 만들지 않고, 이미 실행한 B2 관측 CSV를 Bayesian Optimization의 초기 관측값으로 사용한다.
+이 문서는 B2 신호 제어 파라미터 `D_det`, `alpha`, `G_ext`를 최적화하는 표준 절차다. `T_change_sec`는 `10s`로 고정한다.
 
-## 1. 목적
-
-- 기존 B2 관측 CSV의 `mode=B2` row 또는 candidate summary row를 GP surrogate model의 학습 데이터로 사용한다.
-- 기존 결과 중 `score_sec`가 가장 낮은 theta를 current best로 둔다.
-- acquisition function으로 추가 theta 10~15개를 추천한다.
-- 추천 theta는 바로 실행 가능한 B2 parameter CSV와 shell command로 출력한다.
-- 추가 실행 후 전체 누적 결과에서 상위 3개 theta를 seed 3회 재평가한다.
-- 최종 B0/B2 비교는 최소 seed 3회, 가능하면 seed 5~10회로 실행한다.
-
-## 2. 입력 CSV
-
-`--bo-initial-results`에는 기존 B2 관측 CSV를 넘긴다. 여러 CSV를 한 번에 넘길 수 있다.
-
-현재 GitHub에 포함된 기준 입력은 22-row candidate summary다.
+BO의 target은 `bo_score_sec`다.
 
 ```text
-results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv
+bo_score_sec = score_sec + signal_burden_penalty_sec + failure_penalty_sec
+score_sec = 3*A_delay_sec + N_delay_sec + T_recovery_sec
+signal_burden_penalty_sec = 0.5*total_extension_delta_sec + 30*phase_switch_count
 ```
 
-이 파일은 BO smoke와 초기 추천용 기준 파일이다. 22개가 “상위 22개”라고 단정하지 않고, 이미 확보된 candidate summary 관측값으로 취급한다.
+`score_sec`는 기존 연구 지표로 유지하고, BO는 긴 green extension과 phase switch 부담까지 포함한 `bo_score_sec`를 낮추는 방향으로 추천한다.
 
-허용 파일:
+## Step 1. 초기 theta 생성
 
-- `experiment_results.csv`
-- `score_components.csv`
-- 같은 필수 컬럼을 가진 candidate summary CSV
-
-필수 컬럼:
-
-```csv
-D_det,alpha,G_ext,A_delay_sec,N_delay_sec,T_recovery_sec,score_sec
-```
-
-`score_sec` 대신 `Score` 컬럼만 있으면 내부에서 `score_sec`로 읽는다. `T_change_sec`는 BO 최적화 대상이 아니며 추천 CSV에는 항상 `10`으로 고정해 쓴다.
-
-다음 row는 GP 학습에서 제외하고 `bo_excluded_observations.csv`에 제외 사유를 남긴다.
-
-- `final_status=FAIL`
-- `emergency_arrived=False`
-- `emergency_teleport=True`
-- `route_error_count>0`
-- `sumo_exit_code!=0`
-- 필수 수치 컬럼 누락 또는 숫자 변환 실패
-
-## 3. BO 추천 실행
-
-`{run_id}`는 실험 실행 시 자동으로 생성된 결과 폴더명이다. 직접 `run1`처럼 정하는 값이 아니며, 먼저 아래 명령으로 실제 폴더명을 확인한다.
+명령어:
 
 ```bash
-ls results/metrics/parameter_input_sim
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
 ```
 
-예시:
+입력:
 
-```text
-20260531T034533_745237Z0000
-latest.json
-```
+- 없음
 
-가장 최근 run의 결과 CSV는 `latest.json`에서 바로 확인할 수 있다.
+출력:
 
-```bash
-cat results/metrics/parameter_input_sim/latest.json
-```
+- `configs/generated/b2_bo_initial_{run_id}.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_initial_parameters.csv`
+- `results/metrics/parameter_input_sim_bo/latest.json`
+- `results/metrics/parameter_input_sim_bo/state.json`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_commands.sh`
 
-출력의 `results_csv` 값을 `--bo-initial-results`에 넣는다.
+다음 단계에서 쓸 파일:
 
-BO 초기 관측으로는 B2 후보가 충분히 들어 있는 run을 골라야 한다. smoke처럼 B2 row가 1개뿐인 파일은 BO 품질이 낮거나 학습 데이터가 부족하다. CSV 안의 B2 row 개수는 아래처럼 확인한다.
+- `configs/generated/b2_bo_initial_{run_id}.csv`
+- `{run_id}`는 직접 외울 필요가 없다. `bo_commands.sh`에 실제 경로가 들어간다.
+
+## Step 2. 초기 theta 실행
+
+Step 1에서 생성된 `bo_commands.sh`의 첫 번째 시뮬레이션 명령을 실행한다. 파일 경로는 `latest.json`에서 자동으로 확인할 수 있다.
 
 ```bash
 python - <<'PY'
-import csv
-path = "results/metrics/parameter_input_sim/{run_id}/experiment_results.csv"
-with open(path, newline="", encoding="utf-8-sig") as f:
-    rows = list(csv.DictReader(f))
-print(sum(1 for row in rows if row.get("mode") == "B2"))
+import json
+from pathlib import Path
+latest = json.loads(Path("results/metrics/parameter_input_sim_bo/latest.json").read_text())
+print(Path(latest["bo_commands_sh"]).read_text())
 PY
 ```
 
-기준 22-row candidate summary로 실행:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 15
-```
-
-특정 run 결과로 실행:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/{run_id}/experiment_results.csv \
-  --bo-recommend-count 15
-```
-
-여러 결과 CSV를 누적해서 학습할 때:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results \
-    results/metrics/parameter_input_sim/{initial_run_id}/experiment_results.csv \
-    results/metrics/parameter_input_sim/{bo_run_id}/experiment_results.csv \
-  --bo-recommend-count 15
-```
-
-재현성을 고정할 때:
-
-```bash
-python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 15 \
-  --bo-output-prefix parameter_input_sim_bo \
-  --bo-seed 20260531
-```
-
-## 4. 모델과 추천 기준
-
-- 모델: `sklearn.gaussian_process.GaussianProcessRegressor`
-- kernel: `ConstantKernel * Matern(nu=2.5) + WhiteKernel`
-- target: `score_sec`
-- acquisition: minimization용 Expected Improvement
-- exploration: `xi=0.05`
-- 탐색 범위: 유효 기존 관측치의 `D_det`, `alpha`, `G_ext` min/max
-- 후보 격자:
-  - `D_det`: 50m 단위
-  - `alpha`: 1초 단위
-  - `G_ext`: 5초 단위
-- 이미 실행된 theta와 같은 `D_det,alpha,G_ext` 조합은 추천에서 제외한다.
-
-## 5. 출력 파일
-
-BO 추천 모드는 SUMO를 실행하지 않는다. 추천 결과와 실행 명령만 만든다.
-
-```text
-results/metrics/{bo_output_prefix}/{bo_run_id}/
-  bo_observations.csv
-  bo_excluded_observations.csv
-  bo_recommendations.csv
-  bo_commands.sh
-  bo_summary.json
-```
-
-추가로 기존 러너가 바로 읽을 수 있는 B2 parameter CSV를 만든다.
-
-```text
-configs/generated/b2_bo_recommendations_{bo_run_id}.csv
-configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv
-```
-
-`configs/generated/*.csv`와 `results/metrics/*/`는 생성 산출물이므로 GitHub에 올리지 않는다.
-
-## 6. 추천 theta 실행
-
-`bo_commands.sh`에는 3개 명령이 들어간다.
-
-1. 추가 추천 theta를 seed 1회 실행
+위 출력의 첫 번째 `python 02_simulation/run_b0_b1_b2_experiment.py ... --b2-params ...` 명령을 실행한다. 직접 실행 형식은 아래와 같다.
+`bo_commands.sh` 전체를 바로 실행하면 뒤의 suggest/top3 명령까지 이어서 실행될 수 있으므로, 표준 절차에서는 단계별로 필요한 명령만 실행한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B2 \
-  --b2-params configs/generated/b2_bo_recommendations_{bo_run_id}.csv \
-  --repeats 1 \
+  --b2-params configs/generated/b2_bo_initial_{run_id}.csv \
+  --repeats 5 \
   --workers 1 \
   --emergency-depart 600 \
   --timeout-steps 7200 \
   --recovery-buffer-sec 300
 ```
 
-`B00`을 함께 실행하는 이유는 `A_delay_sec`와 `score_sec` 계산에 같은 run의 자유류 기준이 필요하기 때문이다.
+입력:
 
-2. 누적 결과에서 상위 3개 theta를 seed 3회 재평가
+- 초기 theta CSV
+
+출력:
+
+- `results/metrics/parameter_input_sim/{sim_run_id}/experiment_results.csv`
+- `results/metrics/parameter_input_sim/latest.json`
+
+다음 단계에서 쓸 파일:
+
+- 자동 모드에서는 `latest.json`을 읽으므로 수동 입력이 필요 없다.
+
+## Step 3. 누적 결과로 다음 theta 추천
+
+명령어:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-auto-inputs \
+  --bo-recommend-count 5
+```
+
+입력:
+
+- `results/metrics/parameter_input_sim_bo/state.json`
+- `results/metrics/parameter_input_sim/latest.json`
+
+자동 입력 규칙:
+
+- `state.json.latest_results_csvs`를 먼저 읽는다.
+- `results/metrics/parameter_input_sim/latest.json`의 `results_csv`를 추가한다.
+- 중복 CSV는 제거한다.
+- 유효 관측치가 2개 미만이면 GitHub에 포함된 22-row 기준 관측 CSV를 fallback으로 추가한다.
+
+출력:
+
+- `configs/generated/b2_bo_recommendations_{run_id}.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_observations.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_excluded_observations.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_recommendations.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_commands.sh`
+
+다음 단계에서 쓸 파일:
+
+- `configs/generated/b2_bo_recommendations_{run_id}.csv`
+- 자동 생성된 `bo_commands.sh`에 실제 경로가 들어간다.
+
+## Step 4. 추천 theta 실행
+
+Step 3의 `bo_commands.sh` 첫 번째 시뮬레이션 명령을 실행한다. 기본 정책은 추천 theta 5개를 seed 5회 실행하는 것이다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B2 \
-  --b2-params configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv \
-  --repeats 3 \
+  --b2-params configs/generated/b2_bo_recommendations_{run_id}.csv \
+  --repeats 5 \
   --workers 1 \
   --emergency-depart 600 \
   --timeout-steps 7200 \
   --recovery-buffer-sec 300
 ```
 
-3. 최종 B0/B2 비교
+입력:
+
+- 추천 theta CSV
+
+출력:
+
+- `results/metrics/parameter_input_sim/{sim_run_id}/experiment_results.csv`
+- `results/metrics/parameter_input_sim/latest.json`
+
+## Step 5. Step 3-4 반복
+
+권장 반복:
+
+- 4라운드
+- 라운드당 추천 theta 5개
+- 각 theta seed 5회
+
+반복할 때는 다시 자동 추천 명령만 실행한다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-auto-inputs \
+  --bo-recommend-count 5
+```
+
+주의:
+
+- `latest.json`은 마지막 실행만 가리킨다.
+- 여러 prefix를 섞어 실행했다면 `--bo-initial-results path1 path2 ...`로 직접 누적 CSV를 지정하는 편이 더 안전하다.
+
+## Step 6. Top3 재평가 CSV 생성
+
+명령어:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage top3 \
+  --bo-auto-inputs
+```
+
+입력:
+
+- 자동으로 누적된 관측 CSV
+
+출력:
+
+- `configs/generated/b2_bo_top3_reeval_{run_id}.csv`
+- `results/metrics/parameter_input_sim_bo/{run_id}/bo_commands.sh`
+
+선정 기준:
+
+- 같은 theta가 여러 seed로 실행됐으면 `bo_score_sec` 평균을 쓴다.
+- `bo_score_sec`가 없으면 `score_sec`를 fallback으로 쓴다.
+- 실패, 미도착, teleport, route error row는 후보에서 제외한다.
+
+## Step 7. Top3 재평가와 최종 비교
+
+Top3 재평가:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --manifest configs/final_experiment_manifest.json \
+  --pipeline parameter_input_sim \
+  --modes B00 B2 \
+  --b2-params configs/generated/b2_bo_top3_reeval_{run_id}.csv \
+  --repeats 5 \
+  --workers 1 \
+  --emergency-depart 600 \
+  --timeout-steps 7200 \
+  --recovery-buffer-sec 300
+```
+
+최종 B0/B2 비교:
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json \
   --pipeline parameter_input_sim \
   --modes B00 B0 B2 \
-  --b2-params configs/generated/b2_bo_top3_reeval_{bo_run_id}.csv \
-  --repeats 3 \
+  --b2-params configs/generated/b2_bo_top3_reeval_{run_id}.csv \
+  --repeats 5 \
   --workers 1 \
   --emergency-depart 600 \
   --timeout-steps 7200 \
@@ -209,27 +224,96 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --output-prefix parameter_input_sim_final_compare
 ```
 
-최종 비교는 최소 seed 3회로 실행하고, 시간이 허용되면 `--repeats 5`에서 `--repeats 10`까지 늘린다.
+최종 비교는 최소 seed 3회, 가능하면 seed 5-10회를 권장한다.
 
-## 7. 해석
+## 기존 22-row 관측 CSV로 시작하기
 
-- `bo_summary.json`의 `current_best`는 기존 관측 중 `score_sec`가 가장 낮은 theta다.
-- `bo_recommendations.csv`의 `posterior_mean`은 GP가 예측한 score 평균이다.
-- `posterior_std`가 클수록 불확실성이 크고 exploration 성격이 강하다.
-- `acquisition`이 클수록 다음 실행 후보로 우선순위가 높다.
-- 추천 결과는 확정 최적값이 아니라 추가 실행 후보이므로, 반드시 seed 1회 실행 후 누적 결과로 다시 BO를 돌리거나 상위 3개 재평가로 검증한다.
+GitHub에는 smoke와 초기 추천용 22-row candidate summary가 들어 있다.
 
-## 8. Smoke Test
+```text
+results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv
+```
 
-BO 추천 모드만 빠르게 확인할 때:
+이 파일로 바로 추천하려면:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-recommend-count 5
+```
+
+기존 호환 alias도 동작한다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
   --bayesian true \
   --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 10 \
-  --bo-output-prefix parameter_input_sim_bo_smoke \
-  --bo-seed 20260531
+  --bo-recommend-count 5
 ```
 
-이 smoke는 SUMO를 실행하지 않고, 기존 CSV 읽기, GP 학습, 추천 CSV/명령어 생성만 검증한다.
+## 수동 run id 찾기
+
+자동 입력이 실패하거나 다른 컴퓨터에서 `state.json`이 없으면 수동으로 경로를 확인한다.
+
+```bash
+ls results/metrics/parameter_input_sim_bo
+cat results/metrics/parameter_input_sim_bo/latest.json
+cat results/metrics/parameter_input_sim_bo/state.json
+cat results/metrics/parameter_input_sim/latest.json
+```
+
+`latest.json`의 `results_csv` 값을 직접 넘긴다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-initial-results \
+    results/metrics/parameter_input_sim/{run_id_1}/experiment_results.csv \
+    results/metrics/parameter_input_sim/{run_id_2}/experiment_results.csv \
+  --bo-recommend-count 5
+```
+
+## 한계
+
+- GitHub에 올라간 결과가 로컬 최신 결과와 다를 수 있다.
+- `state.json`은 로컬 workflow 상태라 다른 컴퓨터에서는 없거나 오래됐을 수 있다.
+- `latest.json`은 마지막 실행 하나만 가리킨다.
+- 여러 실험 prefix를 섞으면 자동 누적이 잘못된 CSV를 읽을 수 있다.
+- 자동 모드는 같은 route/pipeline/mode 기준 결과를 쓰도록 설계했지만, 의심스러우면 `--bo-initial-results`로 직접 지정한다.
+
+## Alpha 진단
+
+`alpha`는 계속 최적화 변수로 둔다. 다만 현재 신호 로직에서는 이미 green extension이 충분히 크면 `alpha`가 결과를 바꾸지 않을 수 있다.
+
+진단 컬럼:
+
+- `alpha_hold_count`
+- `alpha_effective_extension_sec`
+- `total_extension_delta_sec`
+- `signal_burden_penalty_sec`
+
+`alpha_effective_extension_sec=0`이 반복되면 현재 구조에서는 `alpha` 민감도가 낮다고 해석한다.
+
+## Smoke Test
+
+SUMO를 실행하지 않고 BO CSV 생성만 확인:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage init \
+  --bo-initial-count 5 \
+  --bo-output-prefix parameter_input_sim_bo_smoke \
+  --bo-workflow-prefix parameter_input_sim_bo_smoke
+```
+
+기존 22-row 관측으로 추천만 확인:
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-recommend-count 3 \
+  --bo-output-prefix parameter_input_sim_bo_smoke \
+  --bo-workflow-prefix parameter_input_sim_bo_smoke
+```

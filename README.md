@@ -9,7 +9,7 @@
 - `B00`은 배경 차량 없이 신호등을 비활성화한 응급차 자유류 기준 run이다.
 - `B0`은 600초 warm-up 후에도 지속 투입되는 첨두시간 배경 수요에서 신호 조작이 없는 baseline이다.
 - `B2`는 B0과 같은 지속 배경 수요에서 corridor priority 신호 제어를 적용한다.
-- Bayesian Optimization은 기존 B2 결과 CSV를 초기 관측값으로 사용해 추가 후보를 추천한다. 새 LHS/Sobol 초기 샘플은 만들지 않는다.
+- Bayesian Optimization은 Sobol/LHS 초기 theta 생성, 반복 추천, top3 재평가를 단계형 CLI로 실행한다.
 
 ## 핵심 파이프라인
 
@@ -63,15 +63,33 @@ bash 00_setup/verify_env.sh
 
 ## Bayesian Optimization
 
-기존 B2 결과를 기반으로 추가 후보만 추천할 때는 `--bayesian true`를 사용한다. 이 모드는 SUMO를 실행하지 않고 추천 CSV와 실행 명령어만 만든다.
+표준 BO는 run id를 사람이 넣지 않도록 `latest.json`과 `state.json`을 사용한다. 먼저 초기 theta를 만든다.
 
 ```bash
 python 02_simulation/run_b0_b1_b2_experiment.py \
-  --bayesian true \
-  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
-  --bo-recommend-count 15
+  --bo-stage init \
+  --bo-initial-count 20 \
+  --bo-sampler sobol
 ```
 
-출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`와 `configs/generated/` 아래에 생성된다.
+이후 `results/metrics/parameter_input_sim_bo/{run_id}/bo_commands.sh`를 실행하고, 다음 추천은 자동 입력으로 돌린다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-auto-inputs \
+  --bo-recommend-count 5
+```
+
+기존 22-row 관측 CSV로 바로 추천할 수도 있다.
+
+```bash
+python 02_simulation/run_b0_b1_b2_experiment.py \
+  --bo-stage suggest \
+  --bo-initial-results results/metrics/parameter_input_sim/initial_observations/parameter_input_sim_candidate_summary.csv \
+  --bo-recommend-count 5
+```
+
+출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`, `results/metrics/parameter_input_sim_bo/latest.json`, `results/metrics/parameter_input_sim_bo/state.json`, `configs/generated/` 아래에 생성된다.
 
 자세한 실행 절차는 `docs/PIPELINE.md`, `docs/FINAL_EXPERIMENT_RUNBOOK.md`, `docs/BAYESIAN_OPTIMIZATION.md`를 따른다.
