@@ -58,6 +58,31 @@ class DelayWindowTest(unittest.TestCase):
         self.assertTrue(math.isclose(summary["N_delay_sec"], expected_delay))
         self.assertEqual(summary["general_non_main_vehicle_edge_count"], 2)
 
+    def test_queue_recovery_waits_for_post_peak_stable_recovery(self) -> None:
+        history = []
+        for time_value in range(0, 1001, 10):
+            if time_value < 700:
+                queue = 2
+            elif time_value < 760:
+                queue = 12
+            elif time_value < 840:
+                queue = 4
+            else:
+                queue = 2
+            history.append((float(time_value), queue))
+
+        detail = runner.queue_recovery_detail(history, pass_time=700.0, emergency_depart=600.0)
+
+        self.assertEqual(detail["post_peak_queue"], 12)
+        self.assertAlmostEqual(detail["recovery_threshold_queue"], 3.0)
+        self.assertAlmostEqual(float(detail["recovered_time_sec"]), 840.0)
+        self.assertAlmostEqual(detail["recovery_sec"], 140.0)
+
+    def test_recovery_speed_penalty_uses_preferred_congestion_floor(self) -> None:
+        penalty = runner.recovery_speed_penalty_sec(12.0, 300.0)
+
+        self.assertAlmostEqual(penalty, 60.0)
+
 
 class OutputPathTest(unittest.TestCase):
     def test_nonlegacy_outputs_are_scoped_by_run_id(self) -> None:

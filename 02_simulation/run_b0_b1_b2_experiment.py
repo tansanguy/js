@@ -84,6 +84,12 @@ CONGESTION_MIN_KMH = 12.0
 CONGESTION_MAX_KMH = 35.0
 PREFERRED_CONGESTION_MIN_KMH = 15.0
 PREFERRED_CONGESTION_MAX_KMH = 30.0
+RECOVERY_PRE_BASELINE_START_SEC = 120.0
+RECOVERY_PRE_BASELINE_END_SEC = 30.0
+RECOVERY_POST_PEAK_WINDOW_SEC = 300.0
+RECOVERY_STABLE_WINDOW_SEC = 30.0
+RECOVERY_POST_PEAK_FRACTION = 0.2
+RECOVERY_BASELINE_MARGIN_QUEUE = 1.0
 FREE_FLOW_SPEED_CAP_KMH = 50.0
 FREE_FLOW_SPEED_CAP_MPS = FREE_FLOW_SPEED_CAP_KMH / 3.6
 EMERGENCY_SPEED_FACTOR = 1.4
@@ -111,6 +117,8 @@ BO_OBSERVATION_FIELDS = [
     "A_delay_sec",
     "N_delay_sec",
     "T_recovery_sec",
+    "T_recovery_queue_sec",
+    "T_recovery_speed_penalty_sec",
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
@@ -171,6 +179,8 @@ BO_ALL_RESULT_FIELDS = [
     "A_delay_sec",
     "N_delay_sec",
     "T_recovery_sec",
+    "T_recovery_queue_sec",
+    "T_recovery_speed_penalty_sec",
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
@@ -201,6 +211,8 @@ SCORE_COMPONENT_FIELDS = [
     "A_delay_sec",
     "N_delay_sec",
     "T_recovery_sec",
+    "T_recovery_queue_sec",
+    "T_recovery_speed_penalty_sec",
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
@@ -217,6 +229,8 @@ SCORE_COMPONENT_FIELDS = [
     "background_teleported",
     "background_remaining_count",
     "network_avg_speed_kmh",
+    "general_vehicle_avg_speed_kmh",
+    "general_vehicle_speed_sample_count",
     "network_avg_speed_at_analysis_end_kmh",
     "network_running_at_analysis_end",
     "network_speed_pre_emergency_kmh",
@@ -309,6 +323,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "A_delay_sec",
     "N_delay_sec",
     "T_recovery_sec",
+    "T_recovery_queue_sec",
+    "T_recovery_speed_penalty_sec",
     "score_sec",
     "bo_score_sec",
     "signal_burden_penalty_sec",
@@ -350,6 +366,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "background_remaining_at_sim_end",
     "all_vehicles_arrived",
     "network_avg_speed_kmh",
+    "general_vehicle_avg_speed_kmh",
+    "general_vehicle_speed_sample_count",
     "network_avg_speed_at_analysis_end_kmh",
     "network_running_at_analysis_end",
     "network_speed_pre_emergency_kmh",
@@ -1200,6 +1218,8 @@ def write_mock_bo_eval_results(args: argparse.Namespace, round_index: int, gener
                     "A_delay_sec": "0.00",
                     "N_delay_sec": "0.00",
                     "T_recovery_sec": "0.00",
+                    "T_recovery_queue_sec": "0.00",
+                    "T_recovery_speed_penalty_sec": "0.00",
                     "score_sec": "0.00",
                     "bo_score_sec": "0.00",
                     "final_status": "PASS",
@@ -1230,6 +1250,8 @@ def write_mock_bo_eval_results(args: argparse.Namespace, round_index: int, gener
                     "A_delay_sec": sec(a_delay),
                     "N_delay_sec": sec(n_delay),
                     "T_recovery_sec": sec(t_recovery),
+                    "T_recovery_queue_sec": sec(t_recovery),
+                    "T_recovery_speed_penalty_sec": "0.00",
                     "score_sec": sec(score),
                     "bo_score_sec": sec(bo_score),
                     "signal_burden_penalty_sec": sec(bo_score - score),
@@ -1279,6 +1301,8 @@ def bo_all_result_rows(loop_run_id: str, round_paths: list[tuple[int, Path]]) ->
             a_delay = numeric_cell(row, "A_delay_sec")
             n_delay = numeric_cell(row, "N_delay_sec")
             t_recovery = numeric_cell(row, "T_recovery_sec")
+            t_recovery_queue = numeric_cell(row, "T_recovery_queue_sec")
+            t_recovery_speed_penalty = numeric_cell(row, "T_recovery_speed_penalty_sec")
             score_value = numeric_cell(row, "score_sec")
             if score_value is None:
                 score_value = numeric_cell(row, "Score")
@@ -1306,6 +1330,8 @@ def bo_all_result_rows(loop_run_id: str, round_paths: list[tuple[int, Path]]) ->
                     "A_delay_sec": sec(a_delay) if a_delay is not None else "",
                     "N_delay_sec": sec(n_delay) if n_delay is not None else "",
                     "T_recovery_sec": sec(t_recovery) if t_recovery is not None else "",
+                    "T_recovery_queue_sec": sec(t_recovery_queue) if t_recovery_queue is not None else "",
+                    "T_recovery_speed_penalty_sec": sec(t_recovery_speed_penalty) if t_recovery_speed_penalty is not None else "",
                     "score_sec": sec(score_value) if score_value is not None else "",
                     "bo_score_sec": sec(bo_score) if bo_score is not None else "",
                     "signal_burden_penalty_sec": sec(signal_penalty) if signal_penalty is not None else "0.00",
@@ -2554,19 +2580,76 @@ def analysis_end_congestion_diagnostic(network_speed_kmh: float, running_count: 
     return False, "weak_congestion_over_25_kmh"
 
 
-def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: float | None, emergency_depart: float) -> float:
-    if pass_time is None or not queue_history:
+def median_value(values: list[float]) -> float:
+    if not values:
         return 0.0
-    baseline_candidates = [queue for time_value, queue in queue_history if time_value <= emergency_depart]
-    baseline_queue = baseline_candidates[-1] if baseline_candidates else queue_history[0][1]
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (float(ordered[middle - 1]) + float(ordered[middle])) / 2.0
+
+
+def queue_recovery_detail(
+    queue_history: list[tuple[float, int]],
+    pass_time: float | None,
+    emergency_depart: float,
+) -> dict[str, Any]:
+    if pass_time is None or not queue_history:
+        return {
+            "pre_baseline_queue": 0.0,
+            "recovery_threshold_queue": 0.0,
+            "post_peak_queue": 0,
+            "post_peak_time_sec": "",
+            "recovered": False,
+            "recovered_time_sec": "",
+            "recovery_sec": 0.0,
+            "max_queue_after_pass": 0,
+        }
+    history = sorted((float(time_value), int(queue)) for time_value, queue in queue_history)
+    baseline_start = float(emergency_depart) - RECOVERY_PRE_BASELINE_START_SEC
+    baseline_end = float(emergency_depart) - RECOVERY_PRE_BASELINE_END_SEC
+    baseline_values = [float(queue) for time_value, queue in history if baseline_start <= time_value <= baseline_end]
+    if not baseline_values:
+        baseline_values = [float(queue) for time_value, queue in history if time_value <= float(emergency_depart)]
+    pre_baseline = median_value(baseline_values) if baseline_values else float(history[0][1])
+    post_window_end = float(pass_time) + RECOVERY_POST_PEAK_WINDOW_SEC
+    post_window = [(time_value, queue) for time_value, queue in history if float(pass_time) <= time_value <= post_window_end]
+    post_history = [(time_value, queue) for time_value, queue in history if time_value >= float(pass_time)]
+    if not post_window:
+        post_window = post_history
+    max_queue_after_pass = max((queue for _, queue in post_history), default=0)
+    post_peak = max((queue for _, queue in post_window), default=0)
+    post_peak_time = next((time_value for time_value, queue in post_window if queue == post_peak), float(pass_time))
+    recovery_threshold = max(pre_baseline + RECOVERY_BASELINE_MARGIN_QUEUE, math.ceil(post_peak * RECOVERY_POST_PEAK_FRACTION))
     recovery_time = None
-    for time_value, queue in queue_history:
-        if time_value >= pass_time and queue <= baseline_queue:
+    for idx, (time_value, queue) in enumerate(history):
+        if time_value < post_peak_time or queue > recovery_threshold:
+            continue
+        stable_until = time_value + RECOVERY_STABLE_WINDOW_SEC
+        stable_samples = [(sample_time, sample_queue) for sample_time, sample_queue in history[idx:] if sample_time <= stable_until]
+        if not stable_samples or stable_samples[-1][0] < stable_until:
+            continue
+        if all(sample_queue <= recovery_threshold for _, sample_queue in stable_samples):
             recovery_time = time_value
             break
+    recovered = recovery_time is not None
     if recovery_time is None:
-        recovery_time = queue_history[-1][0]
-    return max(float(recovery_time) - float(pass_time), 0.0)
+        recovery_time = history[-1][0]
+    return {
+        "pre_baseline_queue": pre_baseline,
+        "recovery_threshold_queue": recovery_threshold,
+        "post_peak_queue": post_peak,
+        "post_peak_time_sec": post_peak_time,
+        "recovered": recovered,
+        "recovered_time_sec": recovery_time if recovered else "",
+        "recovery_sec": max(float(recovery_time) - float(pass_time), 0.0),
+        "max_queue_after_pass": max_queue_after_pass,
+    }
+
+
+def queue_recovery_seconds(queue_history: list[tuple[float, int]], pass_time: float | None, emergency_depart: float) -> float:
+    return float(queue_recovery_detail(queue_history, pass_time, emergency_depart)["recovery_sec"])
 
 
 def queue_recovery_detail_rows(
@@ -2582,28 +2665,21 @@ def queue_recovery_detail_rows(
         pass_time = pass_time_by_tls.get(tls_id)
         if pass_time is None or not history:
             continue
-        baseline_candidates = [queue for time_value, queue in history if time_value <= emergency_depart]
-        baseline_queue = baseline_candidates[-1] if baseline_candidates else history[0][1]
-        recovery_time = None
-        max_queue_after_pass = 0
-        for time_value, queue in history:
-            if time_value >= pass_time:
-                max_queue_after_pass = max(max_queue_after_pass, queue)
-                if recovery_time is None and queue <= baseline_queue:
-                    recovery_time = time_value
-        recovered = recovery_time is not None
-        if recovery_time is None:
-            recovery_time = history[-1][0]
+        detail = queue_recovery_detail(history, pass_time, emergency_depart)
         rows.append(
             {
                 "tls_id": tls_id,
                 "junction_id": tls.get("junction_id", ""),
                 "passed_time_sec": sec(pass_time),
-                "baseline_queue": baseline_queue,
-                "recovered": recovered,
-                "recovered_time_sec": sec(recovery_time) if recovered else "",
-                "recovery_sec": sec(max(float(recovery_time) - float(pass_time), 0.0)),
-                "max_queue_after_pass": max_queue_after_pass,
+                "pre_baseline_queue": sec(detail["pre_baseline_queue"]),
+                "recovery_threshold_queue": sec(detail["recovery_threshold_queue"]),
+                "post_peak_queue": detail["post_peak_queue"],
+                "post_peak_time_sec": sec(detail["post_peak_time_sec"]) if detail["post_peak_time_sec"] != "" else "",
+                "stable_window_sec": sec(RECOVERY_STABLE_WINDOW_SEC),
+                "recovered": detail["recovered"],
+                "recovered_time_sec": sec(detail["recovered_time_sec"]) if detail["recovered_time_sec"] != "" else "",
+                "recovery_sec": sec(detail["recovery_sec"]),
+                "max_queue_after_pass": detail["max_queue_after_pass"],
             }
         )
     return rows
@@ -2637,6 +2713,15 @@ def queue_recovery_summary(
         "T_recovery_max_tls_id": max_tls,
         "T_recovery_unrecovered_count": unrecovered,
     }
+
+
+def recovery_speed_penalty_sec(post_recovery_speed_kmh: float | str, recovery_buffer_sec: float) -> float:
+    if post_recovery_speed_kmh in {"", None}:
+        return 0.0
+    speed = float(post_recovery_speed_kmh)
+    if speed >= PREFERRED_CONGESTION_MIN_KMH:
+        return 0.0
+    return max(0.0, float(recovery_buffer_sec)) * (PREFERRED_CONGESTION_MIN_KMH - speed) / PREFERRED_CONGESTION_MIN_KMH
 
 
 def build_tasks(args: argparse.Namespace, route_ids: list[str], b2_params: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2922,6 +3007,8 @@ def run_traci_experiment(
     dynamic_emergency_insert = bool(task.get("dynamic_emergency_insert"))
     dynamic_emergency_inserted = not dynamic_emergency_insert
     emergency_last_state: dict[str, Any] = {}
+    general_vehicle_speed_sum_kmh = 0.0
+    general_vehicle_speed_sample_count = 0
 
     def append_general_non_main_record(edge_id: str, entered_at: float, left_at: float, censored: bool = False) -> bool:
         record = windowed_edge_delay_record(
@@ -2968,6 +3055,13 @@ def run_traci_experiment(
                 traci.simulationStep()
                 sim_time = float(traci.simulation.getTime())
                 vehicle_ids = set(traci.vehicle.getIDList())
+                general_vehicle_ids = [vehicle_id for vehicle_id in vehicle_ids if vehicle_id != args.emergency_vehicle_id]
+                for general_vehicle_id in general_vehicle_ids:
+                    try:
+                        general_vehicle_speed_sum_kmh += float(traci.vehicle.getSpeed(general_vehicle_id)) * 3.6
+                        general_vehicle_speed_sample_count += 1
+                    except Exception:
+                        continue
                 if dynamic_emergency_insert and not dynamic_emergency_inserted and sim_time >= float(task["emergency_depart"]):
                     try:
                         traci.vehicle.add(
@@ -3034,8 +3128,11 @@ def run_traci_experiment(
                     if sim_time <= float(task["emergency_depart"]):
                         baseline_queue_by_tls[tls_id] = queue
                     pass_time = recovery_pass_time_by_tls.get(tls_id)
-                    if pass_time is not None and tls_id not in recovery_time_by_tls and sim_time >= pass_time and queue <= baseline_queue_by_tls.get(tls_id, 0):
-                        recovery_time_by_tls[tls_id] = sim_time
+                    if pass_time is not None and tls_id not in recovery_time_by_tls and sim_time >= pass_time:
+                        if sim_time >= pass_time + RECOVERY_POST_PEAK_WINDOW_SEC + RECOVERY_STABLE_WINDOW_SEC:
+                            detail = queue_recovery_detail(queue_history_by_tls.get(tls_id, []), pass_time, float(task["emergency_depart"]))
+                            if detail["recovered"]:
+                                recovery_time_by_tls[tls_id] = float(detail["recovered_time_sec"])
                 if vehicle_present:
                     road_id = traci.vehicle.getRoadID(args.emergency_vehicle_id)
                     if road_id and not road_id.startswith(":"):
@@ -3474,6 +3571,8 @@ def run_traci_experiment(
         "lane_connection_warning_count": len(lane_connection_warnings),
         "wall_timeout": wall_timeout,
         "emergency_last_state": emergency_last_state,
+        "general_vehicle_avg_speed_kmh": general_vehicle_speed_sum_kmh / general_vehicle_speed_sample_count if general_vehicle_speed_sample_count else "",
+        "general_vehicle_speed_sample_count": general_vehicle_speed_sample_count,
     }
 
 
@@ -3706,10 +3805,22 @@ def summarize_run(
     write_csv(
         queue_recovery_csv,
         queue_recovery_rows,
-        ["tls_id", "junction_id", "passed_time_sec", "baseline_queue", "recovered", "recovered_time_sec", "recovery_sec", "max_queue_after_pass"],
+        [
+            "tls_id",
+            "junction_id",
+            "passed_time_sec",
+            "pre_baseline_queue",
+            "recovery_threshold_queue",
+            "post_peak_queue",
+            "post_peak_time_sec",
+            "stable_window_sec",
+            "recovered",
+            "recovered_time_sec",
+            "recovery_sec",
+            "max_queue_after_pass",
+        ],
     )
-    t_recovery = float(recovery["T_recovery_sec"])
-    score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
+    t_recovery_queue = float(recovery["T_recovery_sec"])
     total_extension_delta_sec = 0.0
     trimmed_green_sec = 0.0
     alpha_effective_extension_sec = 0.0
@@ -3738,7 +3849,6 @@ def summarize_run(
     realized_extension_sec = max(total_extension_delta_sec - trimmed_green_sec, 0.0)
     signal_burden_penalty_sec = BO_EXTENSION_PENALTY_WEIGHT * realized_extension_sec + BO_PHASE_SWITCH_PENALTY_SEC * phase_switch_count
     failure_penalty_sec = 0.0
-    bo_score = score + signal_burden_penalty_sec + failure_penalty_sec
     safety_violation_count = sum(1 for event in events if event.get("action") == "safety_violation")
     if safety_violation_count > 0:
         failures.append("safety_violation_detected")
@@ -3782,6 +3892,10 @@ def summarize_run(
     else:
         congestion_valid, congestion_reason = False, "not_applicable_no_background"
         congestion_valid_at_analysis_end, congestion_reason_at_analysis_end = False, "not_applicable_no_background"
+    t_recovery_speed_penalty = recovery_speed_penalty_sec(post_congestion["speed_kmh"], recovery_buffer_sec)
+    t_recovery = t_recovery_queue + t_recovery_speed_penalty
+    score = SCORE_WEIGHT_N * float(general_delay["N_delay_sec"]) + SCORE_WEIGHT_RECOVERY * t_recovery
+    bo_score = score + signal_burden_penalty_sec + failure_penalty_sec
     if failures:
         final_status = "FAIL"
     elif background_teleported > 0:
@@ -3808,6 +3922,8 @@ def summarize_run(
             "A_delay_sec": "",
             "N_delay_sec": sec(general_delay["N_delay_sec"]),
             "T_recovery_sec": sec(t_recovery),
+            "T_recovery_queue_sec": sec(t_recovery_queue),
+            "T_recovery_speed_penalty_sec": sec(t_recovery_speed_penalty),
             "score_sec": sec(score),
             "bo_score_sec": sec(bo_score),
             "signal_burden_penalty_sec": sec(signal_burden_penalty_sec),
@@ -3839,6 +3955,8 @@ def summarize_run(
             "background_remaining_at_sim_end": background_remaining_count,
             "all_vehicles_arrived": all_vehicles_arrived,
             "network_avg_speed_kmh": round(network_avg_speed, 6),
+            "general_vehicle_avg_speed_kmh": sec(observations.get("general_vehicle_avg_speed_kmh", "")),
+            "general_vehicle_speed_sample_count": observations.get("general_vehicle_speed_sample_count", 0),
             "network_avg_speed_at_analysis_end_kmh": round(network_avg_speed_at_analysis_end, 6),
             "network_running_at_analysis_end": network_running_at_analysis_end,
             "network_speed_pre_emergency_kmh": sec(pre_congestion["speed_kmh"]),

@@ -42,6 +42,13 @@ DEFAULT_DEPART_MAX = 650.0
 DEFAULT_TIMEOUT_STEPS = 7200
 DEFAULT_TIMEOUT_SEC = 7200
 DEFAULT_RECOVERY_BUFFER_SEC = 300
+RECOVERY_PRE_BASELINE_START_SEC = 120.0
+RECOVERY_PRE_BASELINE_END_SEC = 30.0
+RECOVERY_POST_PEAK_WINDOW_SEC = 300.0
+RECOVERY_STABLE_WINDOW_SEC = 30.0
+RECOVERY_POST_PEAK_FRACTION = 0.2
+RECOVERY_BASELINE_MARGIN_QUEUE = 1.0
+PREFERRED_CONGESTION_MIN_KMH = 15.0
 EXCLUDED_ROUTE = "ER_ACC_013"
 RUN_NAMESPACE = "05_theta_check_simulation"
 COMPLETED_STATUSES = {"PASS", "WARNING", "FAIL"}
@@ -81,6 +88,8 @@ RESULT_FIELDS = [
     "A_delay_sec",
     "N_delay_sec",
     "T_recovery_sec",
+    "T_recovery_queue_sec",
+    "T_recovery_speed_penalty_sec",
     "score_sec",
     "B2_vs_B0_travel_time_delta_sec",
     "B2_vs_B0_pct",
@@ -90,6 +99,8 @@ RESULT_FIELDS = [
     "background_teleport_ratio",
     "route_error_count",
     "network_avg_speed_kmh",
+    "general_vehicle_avg_speed_kmh",
+    "general_vehicle_speed_sample_count",
     "sim_end_time",
     "intervention_count",
     "t_change_switch_count",
@@ -695,6 +706,17 @@ def parse_summary_output(path: Path) -> dict[str, Any]:
     }
 
 
+def summary_window_stats(steps: list[dict[str, float]], start_time: float, end_time: float) -> dict[str, float | str]:
+    samples = [step for step in steps if start_time <= step["time"] <= end_time]
+    if not samples:
+        return {"speed_kmh": "", "sample_count": 0}
+    speed_den = sum(step["running"] for step in samples if step["running"] > 0)
+    if not speed_den:
+        return {"speed_kmh": "", "sample_count": len(samples)}
+    speed_kmh = sum(step["mean_speed_mps"] * step["running"] for step in samples if step["running"] > 0) / speed_den * 3.6
+    return {"speed_kmh": speed_kmh, "sample_count": len(samples)}
+
+
 def parse_tripinfo(path: Path, vehicle_id: str) -> dict[str, Any]:
     root = parse_xml_with_retry(path).getroot()
     for tripinfo in root.findall("tripinfo"):
@@ -914,23 +936,75 @@ def event_row(
     }
 
 
+def median_value(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (float(ordered[middle - 1]) + float(ordered[middle])) / 2.0
+
+
+def queue_recovery_detail(queue_history: list[tuple[float, int]], pass_time: float | None, emergency_depart: float) -> dict[str, Any]:
+    if pass_time is None or not queue_history:
+        return {"recovered": False, "recovered_time_sec": "", "recovery_sec": 0.0}
+    history = sorted((float(time_value), int(queue)) for time_value, queue in queue_history)
+    baseline_start = float(emergency_depart) - RECOVERY_PRE_BASELINE_START_SEC
+    baseline_end = float(emergency_depart) - RECOVERY_PRE_BASELINE_END_SEC
+    baseline_values = [float(queue) for time_value, queue in history if baseline_start <= time_value <= baseline_end]
+    if not baseline_values:
+        baseline_values = [float(queue) for time_value, queue in history if time_value <= float(emergency_depart)]
+    pre_baseline = median_value(baseline_values) if baseline_values else float(history[0][1])
+    post_window_end = float(pass_time) + RECOVERY_POST_PEAK_WINDOW_SEC
+    post_window = [(time_value, queue) for time_value, queue in history if float(pass_time) <= time_value <= post_window_end]
+    post_history = [(time_value, queue) for time_value, queue in history if time_value >= float(pass_time)]
+    if not post_window:
+        post_window = post_history
+    post_peak = max((queue for _, queue in post_window), default=0)
+    post_peak_time = next((time_value for time_value, queue in post_window if queue == post_peak), float(pass_time))
+    recovery_threshold = max(pre_baseline + RECOVERY_BASELINE_MARGIN_QUEUE, math.ceil(post_peak * RECOVERY_POST_PEAK_FRACTION))
+    recovery_time = None
+    for idx, (time_value, queue) in enumerate(history):
+        if time_value < post_peak_time or queue > recovery_threshold:
+            continue
+        stable_until = time_value + RECOVERY_STABLE_WINDOW_SEC
+        stable_samples = [(sample_time, sample_queue) for sample_time, sample_queue in history[idx:] if sample_time <= stable_until]
+        if not stable_samples or stable_samples[-1][0] < stable_until:
+            continue
+        if all(sample_queue <= recovery_threshold for _, sample_queue in stable_samples):
+            recovery_time = time_value
+            break
+    recovered = recovery_time is not None
+    if recovery_time is None:
+        recovery_time = history[-1][0]
+    return {"recovered": recovered, "recovered_time_sec": recovery_time if recovered else "", "recovery_sec": max(float(recovery_time) - float(pass_time), 0.0)}
+
+
 def queue_recovery_summary(queue_history_by_tls: dict[str, list[tuple[float, int]]], pass_time_by_tls: dict[str, float], emergency_depart: float) -> dict[str, Any]:
     recoveries = []
+    recovered_times = []
     for tls_id, pass_time in pass_time_by_tls.items():
         history = queue_history_by_tls.get(tls_id, [])
         if not history:
             continue
-        baseline_candidates = [queue for time_value, queue in history if time_value <= emergency_depart]
-        baseline_queue = baseline_candidates[-1] if baseline_candidates else history[0][1]
-        recovery_time = None
-        for time_value, queue in history:
-            if time_value >= pass_time and queue <= baseline_queue:
-                recovery_time = time_value
-                break
-        if recovery_time is None:
-            recovery_time = history[-1][0]
-        recoveries.append(max(recovery_time - pass_time, 0.0))
-    return {"T_recovery_sec": max(recoveries) if recoveries else 0.0}
+        detail = queue_recovery_detail(history, pass_time, emergency_depart)
+        recoveries.append(float(detail["recovery_sec"]))
+        if detail["recovered_time_sec"] != "":
+            recovered_times.append(float(detail["recovered_time_sec"]))
+    return {
+        "T_recovery_sec": max(recoveries) if recoveries else 0.0,
+        "latest_queue_recovery_time": max(recovered_times) if recovered_times else "",
+    }
+
+
+def recovery_speed_penalty_sec(post_recovery_speed_kmh: float | str, recovery_buffer_sec: float) -> float:
+    if post_recovery_speed_kmh in {"", None}:
+        return 0.0
+    speed = float(post_recovery_speed_kmh)
+    if speed >= PREFERRED_CONGESTION_MIN_KMH:
+        return 0.0
+    return max(0.0, float(recovery_buffer_sec)) * (PREFERRED_CONGESTION_MIN_KMH - speed) / PREFERRED_CONGESTION_MIN_KMH
 
 
 def summarize_general_non_main_delay(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -970,6 +1044,8 @@ def run_traci_loop(task: dict[str, Any], paths: dict[str, Path], vehicle_id: str
         "switched_tls": set(),
         "trimmed_tls": set(),
         "emergency_arrival_time": None,
+        "general_vehicle_speed_sum_kmh": 0.0,
+        "general_vehicle_speed_sample_count": 0,
     }
     sumo_net = read_sumo_net(str(task["net"]))
     corridor_edges = load_corridor_edge_ids(Path(task["corridor_edges"]))
@@ -1015,6 +1091,14 @@ def run_traci_loop(task: dict[str, Any], paths: dict[str, Path], vehicle_id: str
                     emergency_inserted = True
                     events.append({"time": sec(sim_time), "mode": task["mode"], "parameter_id": task["parameter_id"], "repeat_id": task["repeat_id"], "route_id": task["route_id"], "vehicle_id": vehicle_id, "action": "dynamic_emergency_insert", "reason": f"depart_{sec(task['emergency_depart'])}"})
                 vehicle_ids = set(traci.vehicle.getIDList())
+                for vid in vehicle_ids:
+                    if vid == vehicle_id:
+                        continue
+                    try:
+                        observations["general_vehicle_speed_sum_kmh"] += float(traci.vehicle.getSpeed(vid)) * 3.6
+                        observations["general_vehicle_speed_sample_count"] += 1
+                    except Exception:
+                        continue
                 if vehicle_id in vehicle_ids:
                     observations["emergency_seen"] = True
                     road_id = traci.vehicle.getRoadID(vehicle_id)
@@ -1061,6 +1145,10 @@ def run_traci_loop(task: dict[str, Any], paths: dict[str, Path], vehicle_id: str
                         vehicle_edge_state[vid] = (road_id, sim_time)
         finally:
             traci.close(False)
+    sample_count = int(observations["general_vehicle_speed_sample_count"])
+    observations["general_vehicle_avg_speed_kmh"] = (
+        float(observations["general_vehicle_speed_sum_kmh"]) / sample_count if sample_count else ""
+    )
     return events, observations
 
 
@@ -1116,6 +1204,7 @@ def run_task(task: dict[str, Any]) -> dict[str, Any]:
         if task["mode"] == "B2" and not tls_plan:
             raise ParameterSimError(f"no_tls_plan:{task['route_id']}")
         events, observations = run_traci_loop(task, paths, vehicle_id, route_edges, tls_plan, background_count)
+        summary_steps = parse_summary_steps(paths["summary"])
         summary = parse_summary_output(paths["summary"])
         trip = parse_tripinfo(paths["tripinfo"], vehicle_id)
         stderr_text = paths["stderr"].read_text(encoding="utf-8", errors="replace") if paths["stderr"].is_file() else ""
@@ -1139,6 +1228,15 @@ def run_task(task: dict[str, Any]) -> dict[str, Any]:
         if background_teleported:
             warnings.append("background_teleports_present")
         queue_summary = queue_recovery_summary(observations["queue_history_by_tls"], observations["pass_time_by_tls"], float(task["emergency_depart"]))
+        recovery_anchor = queue_summary.get("latest_queue_recovery_time") or observations.get("emergency_arrival_time") or summary["sim_end_time"]
+        post_recovery = summary_window_stats(
+            summary_steps,
+            float(recovery_anchor),
+            min(float(recovery_anchor) + float(task["recovery_buffer_sec"]), float(summary["sim_end_time"])),
+        )
+        t_recovery_queue = float(queue_summary["T_recovery_sec"])
+        t_recovery_speed_penalty = recovery_speed_penalty_sec(post_recovery["speed_kmh"], float(task["recovery_buffer_sec"]))
+        t_recovery = t_recovery_queue + t_recovery_speed_penalty
         delay_summary = summarize_general_non_main_delay(observations["general_non_main_records"])
         signal_events_csv = run_dir / "signal_events.csv"
         write_csv(signal_events_csv, events, EVENT_FIELDS)
@@ -1155,13 +1253,17 @@ def run_task(task: dict[str, Any]) -> dict[str, Any]:
                 "emergency_teleport": bool(emergency_tp),
                 "emergency_travel_time_sec": sec(trip["emergency_travel_time_sec"]) if trip["emergency_travel_time_sec"] != "" else "",
                 "N_delay_sec": sec(delay_summary["N_delay_sec"]),
-                "T_recovery_sec": sec(queue_summary["T_recovery_sec"]),
+                "T_recovery_sec": sec(t_recovery),
+                "T_recovery_queue_sec": sec(t_recovery_queue),
+                "T_recovery_speed_penalty_sec": sec(t_recovery_speed_penalty),
                 "background_departed": background_departed,
                 "background_arrived": background_arrived,
                 "background_teleported": background_teleported,
                 "background_teleport_ratio": round(background_teleported / background_departed, 6) if background_departed else 0.0,
                 "route_error_count": route_errors,
                 "network_avg_speed_kmh": sec(summary["network_avg_speed_kmh"]),
+                "general_vehicle_avg_speed_kmh": sec(observations.get("general_vehicle_avg_speed_kmh", "")),
+                "general_vehicle_speed_sample_count": observations.get("general_vehicle_speed_sample_count", 0),
                 "sim_end_time": sec(summary["sim_end_time"]),
                 "intervention_count": sum(1 for event in events if event.get("action") in {"extend_green", "switch_to_green_after_t_change"}),
                 "t_change_switch_count": sum(1 for event in events if event.get("action") == "switch_to_green_after_t_change"),

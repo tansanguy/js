@@ -44,6 +44,28 @@ class ThetaCheckDeparturesTest(unittest.TestCase):
             self.assertLessEqual(depart, 650)
 
 
+class ThetaCheckRecoveryMetricTest(unittest.TestCase):
+    def test_queue_recovery_uses_post_peak_stable_window(self) -> None:
+        history = []
+        for time_value in range(0, 1001, 10):
+            if time_value < 700:
+                queue = 2
+            elif time_value < 760:
+                queue = 12
+            elif time_value < 840:
+                queue = 4
+            else:
+                queue = 2
+            history.append((float(time_value), queue))
+
+        detail = runner.queue_recovery_detail(history, pass_time=700.0, emergency_depart=600.0)
+
+        self.assertAlmostEqual(detail["recovery_sec"], 140.0)
+
+    def test_speed_penalty_is_zero_at_or_above_recovery_floor(self) -> None:
+        self.assertEqual(runner.recovery_speed_penalty_sec(15.0, 300.0), 0.0)
+
+
 class ThetaCheckResumeTest(unittest.TestCase):
     def make_task(self, status_path: Path) -> dict[str, str]:
         return {
