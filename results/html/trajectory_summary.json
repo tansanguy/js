@@ -1,0 +1,171 @@
+{
+  "run_id": "20260531T050037_201238Z0000",
+  "output": "results/html/trajectory_summary.json",
+  "trajectories": {
+    "B0": [],
+    "B00": [
+      {
+        "parameter_id": "freeflow",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 227.0,
+        "avg_speed_kmh": 47.42,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS",
+        "warning": ""
+      }
+    ],
+    "B2": [
+      {
+        "parameter_id": "bo_01_d500_a7_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_02_d500_a8_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_03_d500_a6_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_04_d500_a9_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_05_d500_a5_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_06_d500_a10_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1791.0,
+        "avg_speed_kmh": 6.01,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_07_d900_a7_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 969.0,
+        "avg_speed_kmh": 11.11,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_08_d900_a8_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1689.0,
+        "avg_speed_kmh": 6.37,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_09_d900_a6_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1157.0,
+        "avg_speed_kmh": 9.3,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_10_d900_a9_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1782.0,
+        "avg_speed_kmh": 6.04,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_11_d900_a5_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1872.0,
+        "avg_speed_kmh": 5.75,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_12_d900_a10_g55_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1518.0,
+        "avg_speed_kmh": 7.09,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_13_d550_a7_g60_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1703.0,
+        "avg_speed_kmh": 6.32,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_14_d550_a8_g60_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1703.0,
+        "avg_speed_kmh": 6.32,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      },
+      {
+        "parameter_id": "bo_15_d550_a6_g60_t10",
+        "repeat_id": "repeat_001",
+        "travel_time_sec": 1703.0,
+        "avg_speed_kmh": 6.32,
+        "arrived": true,
+        "teleported": false,
+        "status": "PASS_WITH_REMAINING_BACKGROUND",
+        "warning": ""
+      }
+    ]
+  }
+}
