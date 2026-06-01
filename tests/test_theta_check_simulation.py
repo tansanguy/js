@@ -9,11 +9,17 @@ from types import SimpleNamespace
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNNER_PATH = PROJECT_ROOT / "05_theta_check_simulation/parameter_sim.py"
+FINAL_RUNNER_PATH = PROJECT_ROOT / "02_simulation/run_b0_b1_b2_experiment.py"
 
 spec = importlib.util.spec_from_file_location("theta_parameter_sim", RUNNER_PATH)
 assert spec and spec.loader
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
+
+final_spec = importlib.util.spec_from_file_location("final_experiment_runner", FINAL_RUNNER_PATH)
+assert final_spec and final_spec.loader
+final_runner = importlib.util.module_from_spec(final_spec)
+final_spec.loader.exec_module(final_runner)
 
 
 class ThetaCheckRouteSelectionTest(unittest.TestCase):
@@ -64,6 +70,39 @@ class ThetaCheckRecoveryMetricTest(unittest.TestCase):
 
     def test_speed_penalty_is_zero_at_or_above_recovery_floor(self) -> None:
         self.assertEqual(runner.recovery_speed_penalty_sec(15.0, 300.0), 0.0)
+
+    def test_recovery_metric_matches_final_experiment_runner(self) -> None:
+        for name in [
+            "RECOVERY_PRE_BASELINE_START_SEC",
+            "RECOVERY_PRE_BASELINE_END_SEC",
+            "RECOVERY_POST_PEAK_WINDOW_SEC",
+            "RECOVERY_STABLE_WINDOW_SEC",
+            "RECOVERY_POST_PEAK_FRACTION",
+            "RECOVERY_BASELINE_MARGIN_QUEUE",
+            "PREFERRED_CONGESTION_MIN_KMH",
+        ]:
+            self.assertEqual(getattr(runner, name), getattr(final_runner, name))
+
+        history = []
+        for time_value in range(0, 1001, 10):
+            if time_value < 700:
+                queue = 2
+            elif time_value < 760:
+                queue = 12
+            elif time_value < 840:
+                queue = 4
+            else:
+                queue = 2
+            history.append((float(time_value), queue))
+
+        theta_detail = runner.queue_recovery_detail(history, pass_time=700.0, emergency_depart=600.0)
+        final_detail = final_runner.queue_recovery_detail(history, pass_time=700.0, emergency_depart=600.0)
+
+        self.assertAlmostEqual(theta_detail["recovery_sec"], final_detail["recovery_sec"])
+        self.assertEqual(
+            runner.recovery_speed_penalty_sec(12.0, 300.0),
+            final_runner.recovery_speed_penalty_sec(12.0, 300.0),
+        )
 
 
 class ThetaCheckResumeTest(unittest.TestCase):
