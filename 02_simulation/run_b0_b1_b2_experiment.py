@@ -548,6 +548,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-root", type=Path, default=PROJECT_ROOT / "runs/final")
     parser.add_argument("--allow-nonfinal-background", action="store_true")
     parser.add_argument("--legacy-output-names", action="store_true")
+    parser.add_argument(
+        "--emit-fcd",
+        action="store_true",
+        help="Emit per-step FCD output (geo) for visualization re-runs; off by default.",
+    )
     parser.add_argument("--bayesian", choices=["true", "false"], default="false")
     parser.add_argument("--bo-stage", choices=["init", "suggest", "top3", "loop"], default=None)
     parser.add_argument("--bo-auto-inputs", action="store_true")
@@ -1972,6 +1977,7 @@ def write_sumo_files_for_task(
         "sumocfg": args.run_dir / "scenario.sumocfg",
         "tripinfo": args.run_dir / "tripinfo.xml",
         "summary": args.run_dir / "summary.xml",
+        "fcd": args.run_dir / "fcd.xml",
         "stdout": args.run_dir / "sumo_stdout.log",
         "stderr": args.run_dir / "sumo_stderr.log",
     }
@@ -3036,6 +3042,13 @@ def run_traci_experiment(
     analysis_stop_reason = "simulation_completed"
     controller_started = False
     cmd = [sumo, "-c", str(paths["sumocfg"]), "--error-log", str(paths["stderr"])]
+    if task.get("emit_fcd"):
+        cmd += [
+            "--fcd-output", str(paths["fcd"]),
+            "--fcd-output.geo", "true",
+            "--fcd-output.distance", "true",
+            "--device.fcd.begin", str(task.get("emergency_depart", 0)),
+        ]
     started_wall = time.time()
     wall_timeout = False
     with paths["stdout"].open("w", encoding="utf-8") as stdout:
@@ -4232,7 +4245,7 @@ def main() -> int:
         for task in build_tasks(args, route_ids, b2_params):
             run_dir = args.run_root / args.output_prefix / run_id / task["mode"] / task["parameter_id"] / task["repeat_id"] / task["route_id"]
             task_background_count = background_vehicle_count if task.get("include_background", True) else 0
-            tasks.append({**base_task, **task, "background_vehicle_count": task_background_count, "route_row": routes[task["route_id"]], "run_dir": str(run_dir)})
+            tasks.append({**base_task, **task, "emit_fcd": args.emit_fcd, "background_vehicle_count": task_background_count, "route_row": routes[task["route_id"]], "run_dir": str(run_dir)})
         lines.extend(
             [
                 f"route_count: {len(route_ids)}",

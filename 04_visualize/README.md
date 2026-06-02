@@ -7,15 +7,46 @@
 ```
 04_visualize/
 ├── config.py                      # 경로 및 상수 설정
-├── extract_trajectory_data.py    # 궤적 데이터 추출
-├── compare_b0_b2_trajectory.py   # B0/B2 비교 시각화
+├── extract_trajectory_data.py    # 궤적 데이터 추출(요약)
+├── compare_b0_b2_trajectory.py   # B0/B2 요약 지표 비교(정적 카드)
 ├── visualize_bo_progress.py      # BO 진행상황 시각화
+├── extract_emergency_fcd.py      # FCD → 애니메이션 JSON 추출
+├── animate_b0_b2_progress.py     # B0/B2 진행 애니메이션 엔트리
+├── mock/make_mock_fcd.py         # mock FCD 생성(개발/검증용)
 └── utils/
     ├── sumo_result_loader.py     # SUMO 결과 로드
-    ├── trajectory_parser.py      # 궤적 데이터 파싱
+    ├── trajectory_parser.py      # 궤적 자료구조
+    ├── fcd_parser.py             # FCD 스트리밍 파서
     ├── color_schemes.py          # 색상 팔레트
-    └── leaflet_builder.py        # Leaflet 맵 빌더
+    ├── leaflet_builder.py        # Leaflet 정적 맵 빌더
+    └── animation_builder.py      # 2분할 추적 애니메이션 빌더
 ```
+
+## B0 vs B2 진행 애니메이션 (메인)
+
+응급차가 출발점→끝점을 진행하는 모습을 B0/B2 좌우 2분할 추적 카메라로 비교한다.
+시간별 위치·속도는 **FCD 출력**에서 나오며, FCD는 `--emit-fcd` 토글로 켤 때만 생성된다
+(상세: [FCD_DATA_SPEC.md](FCD_DATA_SPEC.md), 진행상황: [PROGRESS.md](PROGRESS.md)).
+
+```bash
+# 1) FCD 켜고 B0/B2 재실행 (B00은 스코어링용)
+.venv/bin/python 02_simulation/run_b0_b1_b2_experiment.py \
+  --manifest configs/final_experiment_manifest.json --pipeline parameter_input_sim \
+  --modes B00 B0 B2 --b2-params configs/generated/b2_viz_optimal.csv \
+  --repeats 1 --workers 3 --emergency-depart 600 --timeout-steps 7200 \
+  --recovery-buffer-sec 300 --output-prefix parameter_input_sim_viz --emit-fcd
+
+# 2) 추출 + 애니메이션 HTML 생성
+cd 04_visualize && python animate_b0_b2_progress.py \
+  --b0-fcd <run>/B0/.../fcd.xml \
+  --b2-fcd <run>/B2/.../fcd.xml \
+  --b2-signals <run>/B2/.../signal_events.csv
+# 인자 없이 실행하면 mock/data 픽스처로 동작 (실데이터 불필요)
+```
+
+결과: `results/html/b0_b2_progress_animation.html` (+ `b0_b2_animation.json`)
+
+주요 옵션: `--bg-radius-m`(추적영역 배경 차량 반경, 기본 250), `--title`, `--output`.
 
 ## 사용 방법
 

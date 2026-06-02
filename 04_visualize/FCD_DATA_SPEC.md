@@ -30,10 +30,13 @@ SUMO 실행 커맨드(runner의 `cmd` 리스트, `run_b0_b1_b2_experiment.py:295
 | `--fcd-output` | `<run_dir>/fcd.xml` | 시간별 차량 상태 기록 |
 | `--fcd-output.geo` | `true` | x,y(미터) 대신 **lon/lat(경위도)** 로 출력 → 지도에 바로 사용 |
 | `--fcd-output.distance` | `true` | 누적 주행거리(odometer) 추가 → 진행률·시간-거리 그래프 |
-| `--fcd-output.begin` | `<emergency_depart>` (예: `600`) | 응급차 출발 이후만 기록 → **파일 용량 절감** (워밍업 구간 제외) |
+| `--device.fcd.begin` | `<emergency_depart>` (예: `600`) | 응급차 출발 이후만 기록 → **파일 용량 절감** (워밍업 구간 제외). ⚠️ `--fcd-output.begin`은 존재하지 않음 — device 옵션을 사용. 미적용 시 추출 단계에서 출발前 타임스텝을 버려도 됨 |
 
 > 권장 추가(선택): `--fcd-output.acceleration true` (가속도). 필수는 아님.
 > 차량 필터링은 하지 **않는다** — 추적 카메라 안의 배경(지류) 차량 점도 그려야 하므로 **모든 차량**이 필요하다. begin 시간창 제한으로 용량을 관리한다.
+
+> **권장 구현 방식:** runner를 `--emit-fcd` 토글(기본 off)로 만들어, BO/일반 실험엔 영향 없이 시각화 재실행에서만 켠다. 변경은 `02_simulation/run_b0_b1_b2_experiment.py` 한 파일의 4곳:
+> ① `parse_args`에 `--emit-fcd` ② task dict에 `"emit_fcd": args.emit_fcd` ③ `write_sumo_files_for_task` paths에 `"fcd"` 경로 ④ `run_traci_experiment`의 `cmd`에 조건부 FCD 옵션 추가. (워커가 task dict를 받으므로 argparse만으론 전파 안 됨에 주의.)
 
 ### 1-3. 이미 생성되지만 **보존**해야 하는 파일
 - **`<run_dir>/signal_events.csv`** — B2 컨트롤러가 교차로별 녹색요청/연장을 기록(이미 생성됨). B2 신호 오버레이의 원천. 별도 작업 없이 런 디렉토리에 남기기만 하면 된다. (B0는 컨트롤러가 없어 미생성 — 정상)
