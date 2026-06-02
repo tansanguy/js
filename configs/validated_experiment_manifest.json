@@ -1,0 +1,48 @@
+{
+  "schema": "validated_experiment_manifest.v1",
+  "active_net": "data_prepared/validated/net/jungbu_ellipse_passenger_speed50_lanes_repaired.net.xml",
+  "background_route": "data_prepared/validated/demand/background_routes_validated_warm0p25_sustain0p1.rou.xml",
+  "background_demand_design": {
+    "source_pattern": "data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml",
+    "method": "validated_lane_repair_repeat_600s_topis_pattern_with_split_scale",
+    "warmup_sec": 600,
+    "warmup_scale": 0.25,
+    "sustain_scale": 0.1,
+    "sampling_seed": "validated_scale_grid_v1",
+    "emergency_depart_sec": 600,
+    "sustained_duration_sec": 3600
+  },
+  "route_set": "seoul_station",
+  "tls_audit": "data_prepared/signals/tls_phase_audit_spine_v2.csv",
+  "priority_terminals": "data_prepared/signals/priority_terminal_candidates.csv",
+  "corridor_edges": "data_prepared/routes/corridor_spine_edges.csv",
+  "b2_parameter_sets": "configs/b2_parameter_sets.csv",
+  "optimization_route": {
+    "route_id": "FIRE_TO_SEOUL_STATION",
+    "start_edge_id": "-381802881#2",
+    "target_edge_id": "619147738#0",
+    "route_policy": "straight_seoul_station_fixed",
+    "route_name_ko": "서울역 직선 고정 경로",
+    "official_route_length_m": 2990.17,
+    "route_length_source": "fixed_external_edges",
+    "usage": "final_single_route_experiment"
+  },
+  "teleport_policy": {
+    "emergency": "FAIL",
+    "background": "WARNING"
+  },
+  "final_background_required_substring": "background_routes_validated_warm0p25_sustain0p1.rou.xml",
+  "notes": "Selected validated manifest from lane-repaired B0 scale sweep.",
+  "validated_inputs": {
+    "base_manifest": "configs/final_experiment_manifest.json",
+    "lane_repaired_net": "data_prepared/validated/net/jungbu_ellipse_passenger_speed50_lanes_repaired.net.xml",
+    "selected_demand": "data_prepared/validated/demand/background_routes_validated_warm0p25_sustain0p1.rou.xml"
+  },
+  "validated_selection": {
+    "selected_scale_label": "warm0p25_sustain0p1",
+    "selection_score": 10044.749910999999,
+    "sweep_summary": "results/metrics/validated_b0_scale_sweep/sweep_summary.csv",
+    "validation_summary_json": "results/metrics/validated_b0_reality/warm0p25_sustain0p1_20260602T074813_595815Z0000/validation_summary.json",
+    "needs_downstream_or_tls_calibration": true
+  }
+}

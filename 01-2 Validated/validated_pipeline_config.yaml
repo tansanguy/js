@@ -1,0 +1,18 @@
+reference_csv: toegye_ro_mainstream_segments_english.csv
+base_net: data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml
+base_manifest: configs/final_experiment_manifest.json
+base_demand_pattern: data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml
+
+outputs:
+  segment_edge_mapping: data_prepared/validated/map/toegye_segment_edge_mapping.csv
+  lane_overrides: data_prepared/validated/map/lane_overrides.csv
+  repaired_net: data_prepared/validated/net/jungbu_ellipse_passenger_speed50_lanes_repaired.net.xml
+  validated_manifest: configs/validated_experiment_manifest.json
+
+demand_scale_grid:
+  - {warmup_scale: 0.15, sustain_scale: 0.05}
+  - {warmup_scale: 0.25, sustain_scale: 0.10}
+  - {warmup_scale: 0.40, sustain_scale: 0.15}
+  - {warmup_scale: 0.60, sustain_scale: 0.25}
+  - {warmup_scale: 0.80, sustain_scale: 0.35}
+  - {warmup_scale: 1.00, sustain_scale: 0.50}

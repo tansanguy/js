@@ -1,0 +1,23 @@
+﻿segment_id,start_intersection,end_intersection,segment_length_m,upbound_lanes_to_seoul_station,downbound_lanes_to_seongdong_high_school,speed_limit_kmh,start_signal_phase,end_signal_phase,avg_speed_kmh_upbound,avg_speed_kmh_downbound,travel_time_s_upbound,travel_time_s_downbound,avg_stop_time_s_from_sumo,peak_hour_volume_veh_per_h_reference,start_latitude,start_longitude,end_latitude,end_longitude,is_start_critical_intersection,is_end_critical_intersection
+S1,Sindang Station,Seongdong Global Business High School,356.9,3,3,50,4.0,,18.3,14.5,70.2,88.6,,1128,37.565319,127.016594,37.564829,127.012585,TRUE,FALSE
+S2,Seongdong Global Business High School,Hanyang Technical High School Front,181.0,3,3,50,,2.0,19.2,15.7,33.9,41.5,,1128,37.564829,127.012585,37.564852,127.010528,FALSE,FALSE
+S3,Hanyang Technical High School Front,Toyoko Inn Hotel Front,129.2,3,3,50,2.0,2.0,19.2,16.5,24.2,28.2,,1128,37.564852,127.010528,37.564375,127.009188,FALSE,FALSE
+S4,Toyoko Inn Hotel Front,Lane Change Point (127.0078),125.9,3,3,50,2.0,,18.3,16.5,24.8,27.5,,1128,37.564375,127.009188,37.564099,127.0078,FALSE,FALSE
+S5,Lane Change Point (127.0078),Gwanghui Intersection,40.1,2,3,50,,3.0,16.4,15.7,8.8,9.2,,1128,37.564099,127.0078,37.564011,127.007358,FALSE,FALSE
+S6,Gwanghui Intersection,Toegye-ro 5-ga,444.6,2,3,50,3.0,3.0,16.4,15.7,97.6,101.9,,1128,37.564011,127.007358,37.563021,127.002462,FALSE,FALSE
+S7,Toegye-ro 5-ga,Lane Change Point (126.9986),342.2,2,3,50,3.0,,16.4,15.7,75.1,78.5,,1128,37.563021,127.002462,37.56241,126.99865,FALSE,FALSE
+S8,Lane Change Point (126.9986),Toegye-ro 4-ga,45.2,3,2,50,,3.0,18.3,14.2,8.9,11.5,,759,37.56241,126.99865,37.562329,126.998147,FALSE,FALSE
+S9,Toegye-ro 4-ga,Chungmuro Station (Toegye-ro 3-ga),468.9,3,2,50,3.0,4.0,16.8,14.2,100.5,118.9,,759,37.562329,126.998147,37.5609,126.993133,FALSE,TRUE
+S10,Chungmuro Station (Toegye-ro 3-ga),Lane Change Point (126.9907),214.5,2,3,50,4.0,,16.4,14.5,47.1,53.3,,759,37.5609,126.993133,37.561016,126.9907,TRUE,FALSE
+S11,Lane Change Point (126.9907),Toegye-ro 2-ga,128.9,2,2,50,,2.0,17.3,14.2,26.8,32.7,,759,37.561016,126.9907,37.561086,126.989238,FALSE,FALSE
+S12,Toegye-ro 2-ga,Lane Change Point (126.9869),201.3,2,2,50,2.0,,16.4,14.9,44.2,48.6,,759,37.561086,126.989238,37.561062,126.98695,FALSE,FALSE
+S13,Lane Change Point (126.9869),Myeongdong Station Front,64.0,3,3,50,,2.0,19.2,15.7,12.0,14.7,,759,37.561062,126.98695,37.561054,126.986223,FALSE,FALSE
+S14,Myeongdong Station Front,Days Hotel Front,202.3,3,3,50,2.0,2.0,19.2,16.5,37.9,44.1,,759,37.561054,126.986223,37.560611,126.983993,FALSE,FALSE
+S15,Days Hotel Front,Hoehyeon Intersection,163.1,3,3,50,2.0,4.0,16.8,16.5,34.9,35.6,,759,37.560611,126.983993,37.560753,126.982148,FALSE,TRUE
+S16,Hoehyeon Intersection,Shinsegae Department Store,220.6,3,3,50,4.0,3.0,18.3,14.5,43.4,54.8,,759,37.560753,126.982148,37.559606,126.9801,TRUE,FALSE
+S17,Shinsegae Department Store,Namdaemun Market,171.2,3,3,50,3.0,2.0,19.2,15.7,32.1,39.3,,759,37.559606,126.9801,37.558839,126.978412,FALSE,FALSE
+S18,Namdaemun Market,Samseon Building,182.6,3,3,50,2.0,3.0,18.3,16.5,35.9,39.8,,759,37.558839,126.978412,37.557583,126.977072,FALSE,FALSE
+S19,Samseon Building,Severance Building,277.8,3,3,50,3.0,3.0,18.3,15.7,54.6,63.7,,759,37.557583,126.977072,37.556492,126.974231,FALSE,FALSE
+S20,Severance Building,Lane Change Point (126.9741),17.2,3,3,50,3.0,,18.3,15.7,3.4,3.9,,759,37.556492,126.974231,37.556433,126.97405,FALSE,FALSE
+S21,Lane Change Point (126.9741),Seoul Square Front,82.1,3,2,50,,3.0,18.3,14.2,16.2,20.8,,759,37.556433,126.97405,37.556152,126.973187,FALSE,FALSE
+S22,Seoul Square Front,Seoul Station Rotary,120.2,3,2,50,3.0,4.0,16.8,14.2,25.8,30.5,,759,37.556152,126.973187,37.557032,126.97239,FALSE,TRUE

@@ -1,0 +1,9 @@
+{
+  "schema": "toegye_segment_edge_mapping.v1",
+  "generated_at": "2026-06-02T07:39:00.208734+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "net_file": "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml",
+  "row_count": 265,
+  "repair_target_count": 197,
+  "segment_direction_count": 44
+}
