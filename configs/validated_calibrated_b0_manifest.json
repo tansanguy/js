@@ -1,0 +1,67 @@
+{
+  "schema": "validated_calibrated_b0_manifest.v1",
+  "active_net": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml",
+  "background_route": "data_prepared/validated/calibrated/demand/background_routes_validated_reference_distributed_od_v2.rou.xml",
+  "background_demand_design": {
+    "source_pattern": "data_prepared/demand/background_routes_am_imputed_a17_a19.rou.xml",
+    "method": "validated_reference_distributed_od_demand_v2",
+    "warmup_sec": 600,
+    "warmup_scale": 1.0,
+    "sustain_scale": 1.0,
+    "sampling_seed": "greedy_existing_od_template_selection_v2",
+    "emergency_depart_sec": 600,
+    "sustained_duration_sec": 3600,
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv"
+  },
+  "route_set": "seoul_station",
+  "tls_audit": "data_prepared/signals/tls_phase_audit_spine_v2.csv",
+  "priority_terminals": "data_prepared/signals/priority_terminal_candidates.csv",
+  "corridor_edges": "data_prepared/routes/corridor_spine_edges.csv",
+  "b2_parameter_sets": "configs/b2_parameter_sets.csv",
+  "optimization_route": {
+    "route_id": "FIRE_TO_SEOUL_STATION",
+    "start_edge_id": "-381802881#2",
+    "target_edge_id": "619147738#0",
+    "route_policy": "straight_seoul_station_fixed",
+    "route_name_ko": "서울역 직선 고정 경로",
+    "official_route_length_m": 2990.17,
+    "route_length_source": "fixed_external_edges",
+    "usage": "final_single_route_experiment"
+  },
+  "teleport_policy": {
+    "emergency": "FAIL",
+    "background": "WARNING"
+  },
+  "final_background_required_substring": "background_routes_validated_reference_distributed_od_v2.rou.xml",
+  "notes": "Selected calibrated B0 baseline manifest from TLS/boundary sweep. B1/B2 control logic remains unchanged.",
+  "validated_inputs": {
+    "base_manifest": "configs/final_experiment_manifest.json",
+    "lane_repaired_net": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml",
+    "selected_demand": "data_prepared/validated/calibrated/demand/background_routes_validated_reference_distributed_od_v2.rou.xml"
+  },
+  "validated_calibration": {
+    "candidate_id": "tls_up0_dp0_off0_meter_none",
+    "candidate_index": "1",
+    "net_file": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml",
+    "summary_json": "results/metrics/validated_tls_boundary_candidates/tls_up0_dp0_off0_meter_none.json",
+    "up_delta_sec": "0.0",
+    "down_delta_sec": "0.0",
+    "offset_sec": "0.0",
+    "boundary_metering": "none",
+    "changed_phase_count": "0",
+    "metered_edge_count": "0",
+    "demand_variant": "reference_distributed_od_v2"
+  },
+  "validated_calibrated_selection": {
+    "selected_candidate_id": "tls_up0_dp0_off0_meter_none",
+    "sweep_summary": "results/metrics/validated_b0_tls_boundary_sweep/sweep_summary.csv",
+    "selection_score": 4633.685692,
+    "usable_candidate": false,
+    "speed_mae_kmh": "15.098632",
+    "edge_speed_mae_kmh": "16.090438",
+    "geh_pass_warn_ratio": "0.068182",
+    "background_teleported": "16",
+    "remaining_vehicle_count": "3440",
+    "s15_s22_over_open_edge_count": "28"
+  }
+}

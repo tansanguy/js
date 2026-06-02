@@ -1,6 +1,6 @@
 {
   "schema": "validated_lane_repair_report.v1",
-  "generated_at": "2026-06-02T07:40:33.490113+00:00",
+  "generated_at": "2026-06-02T09:12:49.962273+00:00",
   "base_net": "data_prepared/net/jungbu_ellipse_passenger_speed50.net.xml",
   "output_net": "data_prepared/validated/net/jungbu_ellipse_passenger_speed50_lanes_repaired.net.xml",
   "overrides_csv": "data_prepared/validated/map/lane_overrides.csv",
@@ -16,8 +16,8 @@
   "rewrite_summary": {
     "edge_xml": "data_prepared/validated/net/plain_work/plain/validated_plain.edg.xml",
     "output_xml": "data_prepared/validated/net/plain_work/plain/validated_plain_lanes_repaired.edg.xml",
-    "override_count": 138,
-    "changed_count": 95,
+    "override_count": 118,
+    "changed_count": 89,
     "changed_rows": [
       {
         "edge_id": "-174870621#0",
@@ -80,33 +80,18 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "-218773868#0",
-        "old_numLanes": 2,
+        "edge_id": "-381802847#0",
+        "old_numLanes": 1,
         "new_numLanes": 3
       },
       {
-        "edge_id": "-218773868#2",
-        "old_numLanes": 2,
+        "edge_id": "-381802847#1",
+        "old_numLanes": 1,
         "new_numLanes": 3
       },
       {
-        "edge_id": "-218773868#3",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "-218773868#4",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "-218773868#5",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "-218773868#6",
-        "old_numLanes": 2,
+        "edge_id": "-381802847#2",
+        "old_numLanes": 1,
         "new_numLanes": 3
       },
       {
@@ -120,9 +105,19 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "-800229255",
-        "old_numLanes": 2,
+        "edge_id": "-955312947#1",
+        "old_numLanes": 1,
         "new_numLanes": 3
+      },
+      {
+        "edge_id": "1109231376",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1109231377#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
       },
       {
         "edge_id": "1206223939",
@@ -140,22 +135,17 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "1455497343#0",
-        "old_numLanes": 2,
+        "edge_id": "1395426737#0",
+        "old_numLanes": 1,
+        "new_numLanes": 3
+      },
+      {
+        "edge_id": "1395426737#1",
+        "old_numLanes": 1,
         "new_numLanes": 3
       },
       {
         "edge_id": "1455497343#1",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "1455497343#2",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "1455497343#3",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
@@ -166,21 +156,6 @@
       },
       {
         "edge_id": "1455497345",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "1455512066",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "1455512069",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "1455512070",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
@@ -240,18 +215,13 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "180368918#8",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
         "edge_id": "183272387#0",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
       {
-        "edge_id": "183272654",
-        "old_numLanes": 4,
+        "edge_id": "183272647",
+        "old_numLanes": 1,
         "new_numLanes": 3
       },
       {
@@ -305,14 +275,9 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "219696193#0",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "219696193#1",
-        "old_numLanes": 2,
-        "new_numLanes": 3
+        "edge_id": "219696191#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
       },
       {
         "edge_id": "333557072#3",
@@ -350,6 +315,21 @@
         "new_numLanes": 3
       },
       {
+        "edge_id": "381802847#0",
+        "old_numLanes": 1,
+        "new_numLanes": 3
+      },
+      {
+        "edge_id": "381802847#1",
+        "old_numLanes": 1,
+        "new_numLanes": 3
+      },
+      {
+        "edge_id": "381802847#2",
+        "old_numLanes": 1,
+        "new_numLanes": 3
+      },
+      {
         "edge_id": "578313748#0",
         "old_numLanes": 2,
         "new_numLanes": 3
@@ -360,17 +340,7 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "585341906#0",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
         "edge_id": "585341906#2",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "585341907#0",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
@@ -381,11 +351,6 @@
       },
       {
         "edge_id": "615671502",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "615671503",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
@@ -435,6 +400,16 @@
         "new_numLanes": 3
       },
       {
+        "edge_id": "620607766#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "773060736",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
         "edge_id": "781983103#1",
         "old_numLanes": 2,
         "new_numLanes": 3
@@ -460,24 +435,24 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "781985784",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
         "edge_id": "781985787#0",
         "old_numLanes": 2,
         "new_numLanes": 3
       },
       {
-        "edge_id": "781985792#3",
-        "old_numLanes": 2,
-        "new_numLanes": 3
+        "edge_id": "782892492#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
       },
       {
-        "edge_id": "785130598#0",
-        "old_numLanes": 2,
-        "new_numLanes": 3
+        "edge_id": "782892492#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "783692390#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
       },
       {
         "edge_id": "785130600#3",
@@ -485,14 +460,9 @@
         "new_numLanes": 3
       },
       {
-        "edge_id": "800229255",
-        "old_numLanes": 2,
-        "new_numLanes": 3
-      },
-      {
-        "edge_id": "921117704#0",
-        "old_numLanes": 2,
-        "new_numLanes": 3
+        "edge_id": "913702834",
+        "old_numLanes": 1,
+        "new_numLanes": 2
       }
     ]
   },
@@ -524,7 +494,7 @@
     "--tllogic-files",
     "/Users/junlee/Desktop/js/data_prepared/validated/net/plain_work/plain/validated_plain.tll.xml"
   ],
-  "primary_rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Could not set connection from '1206223944_1' to '615671505#0_2'.\nWarning: Could not set connection from '1206223944_1' to '615671505#0_3'.\nWarning: Could not set connection from '615671502_1' to '183272654_3'.\nError: Invalid lane index '2' for edge '615671505#0'.\nError: Invalid lane index '3' for edge '615671505#0'.\nQuitting (on error).\n",
+  "primary_rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Could not set connection from '1206223944_1' to '615671505#0_2'.\nWarning: Could not set connection from '1206223944_1' to '615671505#0_3'.\nError: Invalid lane index '2' for edge '615671505#0'.\nError: Invalid lane index '3' for edge '615671505#0'.\nQuitting (on error).\n",
   "fallback_rebuild_command": [
     "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
     "--node-files",
@@ -538,7 +508,7 @@
     "--tls.rebuild",
     "true"
   ],
-  "fallback_rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Ambiguity in turnarounds computation at junction '2471514433'.\nWarning: Ambiguity in turnarounds computation at junction '2509327423'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_3846493853_3846493855_3846493856'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_7297185989_8484654727'.\nWarning: Found sharp turn with radius 7.06 at the end of edge '-1380857658'.\nWarning: Found sharp turn with radius 5.11 at the start of edge '-272229588#0'.\nWarning: Found sharp turn with radius 3.02 at the start of edge '-273638833#5'.\nWarning: Found sharp turn with radius 8.13 at the start of edge '-273896156#0'.\nWarning: Found sharp turn with radius 4.35 at the start of edge '-327035702#0'.\nWarning: Found angle of 143.00 degrees at edge '-381452120#0', segment 1.\nWarning: Found angle of 108.41 degrees at edge '-775222468#16', segment 25.\nWarning: Found angle of 143.00 degrees at edge '420317541#2', segment 0.\nWarning: Found angle of 108.41 degrees at edge '775222468#9', segment 3.\nWarning: Shape for junction '13442121607' has distance 21.54 to its given position.\nWarning: Shape for junction '13732389957' has distance 24.02 to its given position.\nWarning: Shape for junction '1936511519' has distance 20.92 to its given position.\nWarning: Shape for junction '5217304021' has distance 22.09 to its given position.\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.80, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.91).\nWarning: Speed of straight connection '1465558140_2->1465558145_1' reduced by 5.27 due to turning radius of 13.51 (length=5.15, angle=38.21).\nWarning: Speed of straight connection '1465558140_3->1465558145_2' reduced by 5.76 due to turning radius of 12.03 (length=4.55, angle=38.21).\nWarning: Speed of straight connection '1465558140_4->1465558145_3' reduced by 6.45 due to turning radius of 10.05 (length=3.75, angle=38.21).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' has a high cycle time of 348.00.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 28 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+  "fallback_rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Ambiguity in turnarounds computation at junction '2471514433'.\nWarning: Ambiguity in turnarounds computation at junction '2509327423'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_3846493853_3846493855_3846493856'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_7297185989_8484654727'.\nWarning: Found sharp turn with radius 7.06 at the end of edge '-1380857658'.\nWarning: Found sharp turn with radius 5.11 at the start of edge '-272229588#0'.\nWarning: Found sharp turn with radius 3.02 at the start of edge '-273638833#5'.\nWarning: Found sharp turn with radius 8.13 at the start of edge '-273896156#0'.\nWarning: Found sharp turn with radius 4.35 at the start of edge '-327035702#0'.\nWarning: Found angle of 143.00 degrees at edge '-381452120#0', segment 1.\nWarning: Found angle of 108.41 degrees at edge '-775222468#16', segment 25.\nWarning: Found angle of 143.00 degrees at edge '420317541#2', segment 0.\nWarning: Found angle of 108.41 degrees at edge '775222468#9', segment 3.\nWarning: Shape for junction '13442121607' has distance 21.54 to its given position.\nWarning: Shape for junction '13732389957' has distance 24.02 to its given position.\nWarning: Shape for junction '1936511519' has distance 20.92 to its given position.\nWarning: Shape for junction '5217304021' has distance 22.09 to its given position.\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.80, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.91).\nWarning: Speed of straight connection '1465558140_2->1465558145_1' reduced by 5.27 due to turning radius of 13.51 (length=5.15, angle=38.21).\nWarning: Speed of straight connection '1465558140_3->1465558145_2' reduced by 5.76 due to turning radius of 12.03 (length=4.55, angle=38.21).\nWarning: Speed of straight connection '1465558140_4->1465558145_3' reduced by 6.45 due to turning radius of 10.05 (length=3.75, angle=38.21).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' has a high cycle time of 348.00.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 27 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
   "fallback_used": true,
-  "rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Ambiguity in turnarounds computation at junction '2471514433'.\nWarning: Ambiguity in turnarounds computation at junction '2509327423'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_3846493853_3846493855_3846493856'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_7297185989_8484654727'.\nWarning: Found sharp turn with radius 7.06 at the end of edge '-1380857658'.\nWarning: Found sharp turn with radius 5.11 at the start of edge '-272229588#0'.\nWarning: Found sharp turn with radius 3.02 at the start of edge '-273638833#5'.\nWarning: Found sharp turn with radius 8.13 at the start of edge '-273896156#0'.\nWarning: Found sharp turn with radius 4.35 at the start of edge '-327035702#0'.\nWarning: Found angle of 143.00 degrees at edge '-381452120#0', segment 1.\nWarning: Found angle of 108.41 degrees at edge '-775222468#16', segment 25.\nWarning: Found angle of 143.00 degrees at edge '420317541#2', segment 0.\nWarning: Found angle of 108.41 degrees at edge '775222468#9', segment 3.\nWarning: Shape for junction '13442121607' has distance 21.54 to its given position.\nWarning: Shape for junction '13732389957' has distance 24.02 to its given position.\nWarning: Shape for junction '1936511519' has distance 20.92 to its given position.\nWarning: Shape for junction '5217304021' has distance 22.09 to its given position.\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.80, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.91).\nWarning: Speed of straight connection '1465558140_2->1465558145_1' reduced by 5.27 due to turning radius of 13.51 (length=5.15, angle=38.21).\nWarning: Speed of straight connection '1465558140_3->1465558145_2' reduced by 5.76 due to turning radius of 12.03 (length=4.55, angle=38.21).\nWarning: Speed of straight connection '1465558140_4->1465558145_3' reduced by 6.45 due to turning radius of 10.05 (length=3.75, angle=38.21).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' has a high cycle time of 348.00.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 28 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n"
+  "rebuild_stderr": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\nWarning: Ambiguity in turnarounds computation at junction '2471514433'.\nWarning: Ambiguity in turnarounds computation at junction '2509327423'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_3846493853_3846493855_3846493856'.\nWarning: Ambiguity in turnarounds computation at junction 'cluster_7297185989_8484654727'.\nWarning: Found sharp turn with radius 7.06 at the end of edge '-1380857658'.\nWarning: Found sharp turn with radius 5.11 at the start of edge '-272229588#0'.\nWarning: Found sharp turn with radius 3.02 at the start of edge '-273638833#5'.\nWarning: Found sharp turn with radius 8.13 at the start of edge '-273896156#0'.\nWarning: Found sharp turn with radius 4.35 at the start of edge '-327035702#0'.\nWarning: Found angle of 143.00 degrees at edge '-381452120#0', segment 1.\nWarning: Found angle of 108.41 degrees at edge '-775222468#16', segment 25.\nWarning: Found angle of 143.00 degrees at edge '420317541#2', segment 0.\nWarning: Found angle of 108.41 degrees at edge '775222468#9', segment 3.\nWarning: Shape for junction '13442121607' has distance 21.54 to its given position.\nWarning: Shape for junction '13732389957' has distance 24.02 to its given position.\nWarning: Shape for junction '1936511519' has distance 20.92 to its given position.\nWarning: Shape for junction '5217304021' has distance 22.09 to its given position.\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.80, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.91).\nWarning: Speed of straight connection '1465558140_2->1465558145_1' reduced by 5.27 due to turning radius of 13.51 (length=5.15, angle=38.21).\nWarning: Speed of straight connection '1465558140_3->1465558145_2' reduced by 5.76 due to turning radius of 12.03 (length=4.55, angle=38.21).\nWarning: Speed of straight connection '1465558140_4->1465558145_3' reduced by 6.45 due to turning radius of 10.05 (length=3.75, angle=38.21).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#0_0' and lane '1467498054_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11203001806_11203001814_13721232731_5851251250_#6more' has a high cycle time of 348.00.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 27 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n"
 }

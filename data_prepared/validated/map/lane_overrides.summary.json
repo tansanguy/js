@@ -1,6 +1,7 @@
 {
   "schema": "lane_overrides.v1",
-  "generated_at": "2026-06-02T07:39:09.886505+00:00",
-  "override_count": 138,
-  "changed_override_count": 95
+  "generated_at": "2026-06-02T09:12:20.590288+00:00",
+  "override_count": 118,
+  "changed_override_count": 89,
+  "manual_override_count": 23
 }

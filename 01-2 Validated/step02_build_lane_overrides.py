@@ -3,16 +3,29 @@ from __future__ import annotations
 
 import argparse
 
-from validated_pipeline import DEFAULT_LANE_OVERRIDES_CSV, DEFAULT_MAPPING_CSV, build_lane_overrides, project_path, read_csv, rel, write_csv, write_json
+from validated_pipeline import (
+    DEFAULT_LANE_OVERRIDES_CSV,
+    DEFAULT_MANUAL_LANE_OVERRIDES_CSV,
+    DEFAULT_MAPPING_CSV,
+    build_lane_overrides,
+    load_manual_lane_overrides,
+    project_path,
+    read_csv,
+    rel,
+    write_csv,
+    write_json,
+)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build edge lane override table from Toegye-ro mapping.")
     parser.add_argument("--mapping", default=str(DEFAULT_MAPPING_CSV))
+    parser.add_argument("--manual-overrides", default=str(DEFAULT_MANUAL_LANE_OVERRIDES_CSV))
     parser.add_argument("--output", default=str(DEFAULT_LANE_OVERRIDES_CSV))
     args = parser.parse_args()
     output = project_path(args.output)
-    rows, summary = build_lane_overrides(read_csv(project_path(args.mapping)))
+    manual_overrides = load_manual_lane_overrides(project_path(args.manual_overrides))
+    rows, summary = build_lane_overrides(read_csv(project_path(args.mapping)), manual_overrides)
     write_csv(
         output,
         rows,
@@ -24,11 +37,14 @@ def main() -> int:
             "source_segment_ids",
             "source_directions",
             "source_row_count",
+            "dominant_segment_ids",
+            "dominant_directions",
+            "dominant_match_ratio",
             "repair_reason",
         ],
     )
     write_json(output.with_suffix(".summary.json"), summary)
-    print(f"wrote {rel(output)} overrides={len(rows)} changed={summary['changed_override_count']}")
+    print(f"wrote {rel(output)} overrides={len(rows)} changed={summary['changed_override_count']} manual={summary['manual_override_count']}")
     return 0
 
 
