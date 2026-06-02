@@ -1,0 +1,23 @@
+{
+  "schema": "custom_destination_point_candidates.v1",
+  "generated_at": "2026-06-02T12:10:59.954280+00:00",
+  "net_file": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml",
+  "destination_count": 2,
+  "candidate_row_count": 10,
+  "destinations": [
+    {
+      "destination_id": "JUNG_GU_PILDONG2_84_101",
+      "geocode_status": "PASS",
+      "coordinate_source": "user_manual_coordinate",
+      "candidate_count": 5,
+      "recommended_edge_id": "-273640070#3"
+    },
+    {
+      "destination_id": "JUNG_GU_HOEHYEON1_147_23",
+      "geocode_status": "FAIL",
+      "coordinate_source": "user_manual_coordinate",
+      "candidate_count": 5,
+      "recommended_edge_id": "-769488211"
+    }
+  ]
+}

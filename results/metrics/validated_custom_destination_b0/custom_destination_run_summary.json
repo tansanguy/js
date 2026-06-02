@@ -1,0 +1,41 @@
+{
+  "schema": "custom_destination_b0_run.v1",
+  "generated_at": "2026-06-02T12:13:03.138987+00:00",
+  "manifest": "configs/validated_calibrated_b0_manifest.json",
+  "accepted_routes": "data_prepared/validated/custom_routes/accepted_custom_routes.csv",
+  "output_prefix": "validated_custom_destination_b0",
+  "command": [
+    "/Users/junlee/Desktop/js/.venv/bin/python",
+    "/Users/junlee/Desktop/js/02_simulation/run_b0_b1_b2_experiment.py",
+    "--manifest",
+    "/Users/junlee/Desktop/js/configs/validated_calibrated_b0_manifest.json",
+    "--route-set",
+    "custom_accepted",
+    "--custom-routes",
+    "/Users/junlee/Desktop/js/data_prepared/validated/custom_routes/accepted_custom_routes.csv",
+    "--modes",
+    "B0",
+    "--repeats",
+    "1",
+    "--workers",
+    "1",
+    "--emit-fcd",
+    "--output-prefix",
+    "validated_custom_destination_b0",
+    "--allow-nonfinal-background"
+  ],
+  "returncode": 0,
+  "stdout_tail": " Retrying in 1 seconds\n Retrying in 1 seconds\nB00/B0/B2 experiment runner\n=======================\ngenerated_at: 2026-06-02T12:11:44.215793+00:00\nrun_id: 20260602T121144_215793Z0000\nroute_count: 2\nroutes: CUSTOM_JUNG_GU_HOEHYEON1_147_23 CUSTOM_JUNG_GU_PILDONG2_84_101\nmodes: B0\nrepeats: 1\nworkers: 1\ntask_count: 2\nbackground_vehicle_count: 6430\nstatus_counts: {'WARNING': 1, 'PASS_WITH_REMAINING_BACKGROUND': 1}\nfinal_status: WARNING\nresults_csv: results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/experiment_results.csv\nscore_components_csv: results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/score_components.csv\nresult_score_csv: results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/result_score.csv\nsummary_json: results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/experiment_summary.json\nlatest_json: results/metrics/validated_custom_destination_b0/latest.json\n",
+  "stderr_tail": "",
+  "latest_json": "results/metrics/validated_custom_destination_b0/latest.json",
+  "latest": {
+    "generated_at": "2026-06-02T12:11:44.215793+00:00",
+    "run_id": "20260602T121144_215793Z0000",
+    "output_prefix": "validated_custom_destination_b0",
+    "final_status": "WARNING",
+    "results_csv": "results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/experiment_results.csv",
+    "score_components_csv": "results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/score_components.csv",
+    "result_score_csv": "results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/result_score.csv",
+    "summary_json": "results/metrics/validated_custom_destination_b0/20260602T121144_215793Z0000/experiment_summary.json"
+  }
+}

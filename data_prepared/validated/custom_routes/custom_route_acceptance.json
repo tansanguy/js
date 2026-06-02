@@ -1,0 +1,15 @@
+{
+  "schema": "custom_destination_route_acceptance.v1",
+  "decisions": [
+    {
+      "destination_id": "JUNG_GU_PILDONG2_84_101",
+      "decision": "accept",
+      "candidate_route_id": "CUSTOM_JUNG_GU_PILDONG2_84_101_MAX_TOEGYE"
+    },
+    {
+      "destination_id": "JUNG_GU_HOEHYEON1_147_23",
+      "decision": "accept",
+      "candidate_route_id": "CUSTOM_JUNG_GU_HOEHYEON1_147_23_MAX_TOEGYE"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "custom_destination_point_acceptance.v1",
+  "decisions": [
+    {
+      "destination_id": "JUNG_GU_PILDONG2_84_101",
+      "address": "서울 중구 필동2가 84-101",
+      "label_ko": "필동2가 84-101",
+      "decision": "accept",
+      "lat": 37.556682,
+      "lon": 126.993665,
+      "target_edge_id": "-273640070#3"
+    },
+    {
+      "destination_id": "JUNG_GU_HOEHYEON1_147_23",
+      "address": "HX4J+6G 서울특별시 / 서울 중구 회현동1가 147-23",
+      "label_ko": "회현동1가 147-23",
+      "decision": "accept",
+      "lat": 37.555766,
+      "lon": 126.981288,
+      "target_edge_id": "-769488211"
+    }
+  ]
+}

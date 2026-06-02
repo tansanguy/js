@@ -1,0 +1,13 @@
+{
+  "schema": "custom_destination_route_candidates.v1",
+  "generated_at": "2026-06-02T12:11:14.800055+00:00",
+  "net_file": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml",
+  "point_acceptance": "data_prepared/validated/custom_destinations/custom_destination_point_acceptance.json",
+  "start_edge_id": "-381802881#2",
+  "candidate_count": 8,
+  "destination_count": 2,
+  "recommended_route_ids": {
+    "JUNG_GU_HOEHYEON1_147_23": "CUSTOM_JUNG_GU_HOEHYEON1_147_23_TOEGYE_SPINE",
+    "JUNG_GU_PILDONG2_84_101": "CUSTOM_JUNG_GU_PILDONG2_84_101_TOEGYE_SPINE"
+  }
+}

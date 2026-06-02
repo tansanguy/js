@@ -105,6 +105,7 @@ SEOUL_STATION_ROUTE_ID = "FIRE_TO_SEOUL_STATION"
 SEOUL_STATION_START_EDGE = "-381802881#2"
 SEOUL_STATION_TARGET_EDGE = "619147738#0"
 SEOUL_STATION_POLICY = "straight_seoul_station_fixed"
+DEFAULT_CUSTOM_ACCEPTED_ROUTES = PROJECT_ROOT / "data_prepared/validated/custom_routes/accepted_custom_routes.csv"
 CONTROL_ACTIONS = {"extend_green", "switch_to_green_after_t_change", "trim_green_after_pass_to_alpha"}
 BO_OBSERVATION_FIELDS = [
     "source_csv",
@@ -535,7 +536,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--b2-params", type=Path, default=DEFAULT_B2_PARAMS)
     parser.add_argument("--pipeline", choices=["parameter_input_sim"], default="parameter_input_sim")
     parser.add_argument("--modes", nargs="+", choices=["B00", "B0", "B2"], default=["B00", "B0", "B2"])
-    parser.add_argument("--route-set", choices=["seoul_station"], default="seoul_station")
+    parser.add_argument("--route-set", choices=["seoul_station", "custom_accepted"], default="seoul_station")
+    parser.add_argument("--custom-routes", type=Path, default=None)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--workers", type=int, default=default_workers())
     parser.add_argument("--time-to-teleport", type=int, default=1200)
@@ -2174,6 +2176,51 @@ def synthetic_seoul_station_route(net_path: Path) -> dict[str, str]:
         "route_edge_count": str(len(route_edges)),
         "route_tls_count": str(route_tls_count),
     }
+
+
+def _custom_routes_from_json(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    for key in ["routes", "accepted_routes", "decisions"]:
+        value = payload.get(key)
+        if isinstance(value, list):
+            return [row for row in value if isinstance(row, dict)]
+    if all(key in payload for key in ["route_id", "route_edges"]):
+        return [payload]
+    raise ExperimentError("custom_routes_json_missing_routes")
+
+
+def load_custom_accepted_routes(path: Path) -> dict[str, dict[str, str]]:
+    path = path if path.is_absolute() else PROJECT_ROOT / path
+    if not path.is_file():
+        raise ExperimentError(f"missing_custom_routes: {path}")
+    if path.suffix.lower() == ".json":
+        rows = _custom_routes_from_json(load_json(path))
+    else:
+        rows = read_csv(path)
+    required = {"route_id", "scenario_id", "target_edge_id", "selected_policy", "route_edges"}
+    if rows:
+        missing = sorted(required - set(rows[0].keys()))
+    else:
+        missing = sorted(required)
+    if missing:
+        raise ExperimentError(f"custom_routes_missing_columns:{','.join(missing)}")
+    routes: dict[str, dict[str, str]] = {}
+    for index, row in enumerate(rows, start=1):
+        route_id = str(row.get("route_id", "")).strip()
+        route_edges = str(row.get("route_edges", "")).strip()
+        if not route_id:
+            raise ExperimentError(f"custom_route_blank_route_id:{index}")
+        if route_id in routes:
+            raise ExperimentError(f"custom_route_duplicate_route_id:{route_id}")
+        if not route_edges:
+            raise ExperimentError(f"custom_route_blank_route_edges:{route_id}")
+        route = {key: str(value) for key, value in row.items()}
+        route.setdefault("scenario_id", route_id)
+        route.setdefault("target_edge_id", route_edges.split()[-1])
+        route.setdefault("selected_policy", "custom_accepted")
+        routes[route_id] = route
+    if not routes:
+        raise ExperimentError(f"custom_routes_empty:{path}")
+    return routes
 
 
 def load_b2_parameter_sets(path: Path) -> list[dict[str, Any]]:
@@ -4208,6 +4255,10 @@ def main() -> int:
             raise ExperimentError("workers must be >= 1")
         if args.output_prefix.strip() == "experiment" and not args.legacy_output_names:
             raise ExperimentError("reserved_output_prefix: experiment is only allowed with --legacy-output-names")
+        if args.route_set == "custom_accepted":
+            if "B00" in args.modes or "B2" in args.modes:
+                raise ExperimentError("custom_accepted_route_set_supports_b0_only")
+            args.custom_routes = (args.custom_routes or DEFAULT_CUSTOM_ACCEPTED_ROUTES).resolve()
         if manifest:
             required_substring = str(manifest.get("final_background_required_substring") or "warm0p15_sustain0p05_seed002_sustained_3600")
         else:
@@ -4218,8 +4269,12 @@ def main() -> int:
                 f"{rel(args.background_route)} does not contain '{required_substring}'. "
                 "Use --allow-nonfinal-background only for explicit diagnostics."
             )
-        routes = {SEOUL_STATION_ROUTE_ID: synthetic_seoul_station_route(args.net)}
-        route_ids = [SEOUL_STATION_ROUTE_ID]
+        if args.route_set == "seoul_station":
+            routes = {SEOUL_STATION_ROUTE_ID: synthetic_seoul_station_route(args.net)}
+            route_ids = [SEOUL_STATION_ROUTE_ID]
+        else:
+            routes = load_custom_accepted_routes(args.custom_routes or DEFAULT_CUSTOM_ACCEPTED_ROUTES)
+            route_ids = sorted(routes)
         b2_params = load_b2_parameter_sets(args.b2_params) if "B2" in args.modes else []
         background_vehicle_count = S14.count_vehicles(args.background_route)
         paths = output_paths(args.output_prefix, args.legacy_output_names, args.pipeline, run_id)

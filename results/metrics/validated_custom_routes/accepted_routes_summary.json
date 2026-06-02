@@ -1,0 +1,11 @@
+{
+  "schema": "custom_destination_accepted_routes.v1",
+  "generated_at": "2026-06-02T12:11:39.278403+00:00",
+  "candidates_csv": "data_prepared/validated/custom_routes/custom_route_candidates.csv",
+  "acceptance_json": "data_prepared/validated/custom_routes/custom_route_acceptance.json",
+  "accepted_route_count": 2,
+  "route_ids": [
+    "CUSTOM_JUNG_GU_PILDONG2_84_101",
+    "CUSTOM_JUNG_GU_HOEHYEON1_147_23"
+  ]
+}

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom Destination Point Accept</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#16202a; }
+    main { display:grid; grid-template-columns:minmax(380px, 470px) 1fr; min-height:100vh; }
+    aside { padding:18px; overflow:auto; border-right:1px solid #d9e1e8; background:#f7f9fb; }
+    #map { min-height:100vh; }
+    h1 { font-size:20px; margin:0 0 12px; }
+    .dest { background:white; border:1px solid #d9e1e8; border-radius:8px; padding:12px; margin:12px 0; }
+    label { display:block; margin:8px 0; font-size:13px; }
+    input[type="number"] { width:46%; padding:6px; margin-right:4px; }
+    button { padding:9px 11px; border:1px solid #0b65c2; background:#0b65c2; color:white; border-radius:6px; cursor:pointer; }
+    code { font-size:12px; }
+    .muted { color:#5f6b77; font-size:13px; }
+    .edge { border-top:1px solid #edf1f5; padding:8px 6px; border-radius:6px; }
+    .edge.active { background:#e9f3ff; outline:2px solid #0b65c2; }
+    .edge.unreachable { color:#8a1f11; background:#fff5f2; }
+    .rank { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#e2e8f0; font-weight:700; margin-right:4px; }
+    .candidate-meta { display:block; color:#475569; margin:3px 0 0 28px; }
+    .rank-marker { display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; border:2px solid white; color:white; font-weight:700; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body>
+<main>
+  <aside>
+    <h1>목적지 지점 Accept</h1>
+    <p class="muted">각 목적지의 좌표와 target edge를 확인한 뒤 JSON을 내려받아 <code>data_prepared/validated/custom_destinations/custom_destination_point_acceptance.json</code>에 저장하면 다음 route 후보 단계로 진행됩니다. 지도 번호는 후보 edge 중심점입니다.</p>
+    <div id="controls"></div>
+    <button id="download">Accept JSON 다운로드</button>
+  </aside>
+  <div id="map"></div>
+</main>
+<script>
+const DATA = {"summary": {"schema": "custom_destination_point_candidates.v1", "generated_at": "2026-06-02T12:10:59.954280+00:00", "net_file": "data_prepared/validated/calibrated/net/jungbu_ellipse_passenger_speed50_lanes_repaired_tls_up0_dp0_off0_meter_none.net.xml", "destination_count": 2, "candidate_row_count": 10, "destinations": [{"destination_id": "JUNG_GU_PILDONG2_84_101", "geocode_status": "PASS", "coordinate_source": "user_manual_coordinate", "candidate_count": 5, "recommended_edge_id": "-273640070#3"}, {"destination_id": "JUNG_GU_HOEHYEON1_147_23", "geocode_status": "FAIL", "coordinate_source": "user_manual_coordinate", "candidate_count": 5, "recommended_edge_id": "-769488211"}]}, "destinations": [{"destination_id": "JUNG_GU_PILDONG2_84_101", "label_ko": "필동2가 84-101", "address": "서울 중구 필동2가 84-101", "coordinate_source": "user_manual_coordinate", "geocode_status": "PASS", "geocode_reason": "", "lat": 37.556682, "lon": 126.993665, "geocode_display_name": "서울 중구 필동2가 84-101", "recommended_edge_id": "-273640070#3", "edge_candidates": [{"rank": 1, "edge_id": "-273640070#3", "distance_m": 3.075, "lane_count": 1, "speed_kmh": 50.004, "length_m": 159.52, "edge_mid_lon": 126.99436855896562, "edge_mid_lat": 37.55680259932281, "reachable_from_start": true, "shortest_route_edge_count": 37, "shortest_route_length_m": 1838.86, "route_error": "", "shape": [[126.9953523732243, 37.55697270058685], [126.99491532564973, 37.55692093661088], [126.99443709848858, 37.55681755262542], [126.99436855896562, 37.55680259932281], [126.9938881980377, 37.55669863613745], [126.99359827442125, 37.55663999535069]]}, {"rank": 2, "edge_id": "273640070#0", "distance_m": 6.287, "lane_count": 1, "speed_kmh": 50.004, "length_m": 159.2, "edge_mid_lon": 126.99444667299966, "edge_mid_lat": 37.556789777666715, "reachable_from_start": true, "shortest_route_edge_count": 42, "shortest_route_length_m": 2195.73, "route_error": "", "shape": [[126.99360717514267, 37.556612028765386], [126.9938973249615, 37.5566706733742], [126.99437813349978, 37.556774824370265], [126.99444667299966, 37.556789777666715], [126.99492287776397, 37.55689258652451], [126.99535766456566, 37.55694422194947]]}, {"rank": 3, "edge_id": "-244221646#1", "distance_m": 12.944, "lane_count": 1, "speed_kmh": 50.004, "length_m": 74.45, "edge_mid_lon": 126.99325114163452, "edge_mid_lat": 37.55670952519586, "reachable_from_start": true, "shortest_route_edge_count": 38, "shortest_route_length_m": 1913.31, "route_error": "", "shape": [[126.99351852832007, 37.556675679551425], [126.99348925955098, 37.55671177127005], [126.99343891378453, 37.55671911638004], [126.99325114163452, 37.55670952519586], [126.9927567577969, 37.55671058085269], [126.9927060474223, 37.556727292079216]]}, {"rank": 4, "edge_id": "244221646#0", "distance_m": 16.266, "lane_count": 1, "speed_kmh": 50.004, "length_m": 71.29, "edge_mid_lon": 126.99343674994992, "edge_mid_lat": 37.556690060479404, "reachable_from_start": true, "shortest_route_edge_count": 41, "shortest_route_length_m": 2036.53, "route_error": "", "shape": [[126.99269215923009, 37.55670065028531], [126.9927496059213, 37.55668180059519], [126.99325214126476, 37.55668070332427], [126.99343674994992, 37.556690060479404], [126.99346732044866, 37.556685623539956], [126.99348148290203, 37.55666829063263]]}, {"rank": 5, "edge_id": "-244221646#2", "distance_m": 17.857, "lane_count": 1, "speed_kmh": 50.004, "length_m": 18.86, "edge_mid_lon": 126.99354836427318, "edge_mid_lat": 37.55655091794162, "reachable_from_start": true, "shortest_route_edge_count": 41, "shortest_route_length_m": 2042.33, "route_error": "", "shape": [[126.99356807385774, 37.55638164440481], [126.99354836427318, 37.55655091794162]]}]}, {"destination_id": "JUNG_GU_HOEHYEON1_147_23", "label_ko": "회현동1가 147-23", "address": "HX4J+6G 서울특별시 / 서울 중구 회현동1가 147-23", "coordinate_source": "user_manual_coordinate", "geocode_status": "FAIL", "geocode_reason": "no_nominatim_result", "lat": 37.555766, "lon": 126.981288, "geocode_display_name": "HX4J+6G 서울특별시 / 서울 중구 회현동1가 147-23", "recommended_edge_id": "-769488211", "edge_candidates": [{"rank": 1, "edge_id": "769488211", "distance_m": 24.638, "lane_count": 1, "speed_kmh": 50.004, "length_m": 37.55, "edge_mid_lon": 126.98108224608185, "edge_mid_lat": 37.55604164894515, "reachable_from_start": false, "shortest_route_edge_count": "", "shortest_route_length_m": "", "route_error": "No shortest route: 769488211", "shape": [[126.98098552325034, 37.55571213305982], [126.98108224608185, 37.55604164894515]]}, {"rank": 2, "edge_id": "-769488211", "distance_m": 27.836, "lane_count": 1, "speed_kmh": 50.004, "length_m": 37.55, "edge_mid_lon": 126.98095025268354, "edge_mid_lat": 37.55571873938641, "reachable_from_start": true, "shortest_route_edge_count": 62, "shortest_route_length_m": 2649.93, "route_error": "", "shape": [[126.98104697536552, 37.556048255296034], [126.98095025268354, 37.55571873938641]]}, {"rank": 3, "edge_id": "-315658900#8", "distance_m": 43.442, "lane_count": 1, "speed_kmh": 50.004, "length_m": 225.7, "edge_mid_lon": 126.98116452849443, "edge_mid_lat": 37.555387874576056, "reachable_from_start": false, "shortest_route_edge_count": "", "shortest_route_length_m": "", "route_error": "No shortest route: -315658900#8", "shape": [[126.98207026513136, 37.55568084762097], [126.98194602299579, 37.555326439061794], [126.9818258648191, 37.55525706381998], [126.98171065429878, 37.55524346804105], [126.98154731738894, 37.55532277526436], [126.98116452849443, 37.555387874576056], [126.98101775896097, 37.555356615237606], [126.98087812725186, 37.55542578284221], [126.98081717497622, 37.555511526879506], [126.98075222232185, 37.55560288008231], [126.98042109606784, 37.556068819123304]]}, {"rank": 4, "edge_id": "-464459668#2", "distance_m": 44.202, "lane_count": 1, "speed_kmh": 50.004, "length_m": 47.03, "edge_mid_lon": 126.98063914021564, "edge_mid_lat": 37.556059752826926, "reachable_from_start": true, "shortest_route_edge_count": 59, "shortest_route_length_m": 2740.68, "route_error": "", "shape": [[126.98046780140844, 37.55609151779988], [126.98049066943663, 37.556074695935635], [126.98063914021564, 37.556059752826926], [126.98098916551317, 37.55608466669618]]}, {"rank": 5, "edge_id": "315658900#6", "distance_m": 46.657, "lane_count": 1, "speed_kmh": 50.004, "length_m": 234.48, "edge_mid_lon": 126.9811655570486, "edge_mid_lat": 37.55535815213809, "reachable_from_start": true, "shortest_route_edge_count": 63, "shortest_route_length_m": 2889.51, "route_error": "", "shape": [[126.98038461574328, 37.55606152589822], [126.98072068408524, 37.5555886420554], [126.98078563676421, 37.55549728887051], [126.98085106375657, 37.55540513266955], [126.98101203273063, 37.555325515551445], [126.9811655570486, 37.55535815213809], [126.98153378506763, 37.555295687680214], [126.98170308825429, 37.555213418378244], [126.98183996479705, 37.55522954755889], [126.98197751158412, 37.55530895320908], [126.9821051121619, 37.55567315226065]]}]}]};
+const map = L.map('map').setView([37.559, 126.995], 15);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20, attribution: '&copy; OpenStreetMap' }).addTo(map);
+const colors = ['#0b65c2', '#c2410c', '#047857', '#7c3aed', '#b91c1c'];
+const controls = document.getElementById('controls');
+const bounds = [];
+const layersByDestination = new Map();
+function markerIcon(rank, color) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="rank-marker" style="background:${color}">${rank}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+}
+function updateDestinationStyles(destinationId) {
+  const selected = document.querySelector(`input[name="edge-${destinationId}"]:checked`);
+  const selectedEdge = selected ? selected.value : '';
+  document.querySelectorAll(`[data-destination="${destinationId}"]`).forEach(el => {
+    el.classList.toggle('active', el.dataset.edge === selectedEdge);
+  });
+  (layersByDestination.get(destinationId) || []).forEach(item => {
+    const active = item.edgeId === selectedEdge;
+    item.poly.setStyle({ weight: active ? 8 : 3, opacity: active ? 0.95 : 0.35 });
+    item.connector.setStyle({ weight: active ? 3 : 1, opacity: active ? 0.75 : 0.18 });
+  });
+}
+DATA.destinations.forEach((dest, dIndex) => {
+  const section = document.createElement('section');
+  section.className = 'dest';
+  const lat = dest.lat || '';
+  const lon = dest.lon || '';
+  section.innerHTML = `<strong>${dest.label_ko}</strong><br><span class="muted">${dest.address}</span>
+    <label>lat/lon<br><input type="number" step="0.0000001" id="lat-${dest.destination_id}" value="${lat}"><input type="number" step="0.0000001" id="lon-${dest.destination_id}" value="${lon}"></label>
+    <div class="muted">coordinate: ${dest.coordinate_source || ''} / geocode: ${dest.geocode_status} ${dest.geocode_reason || ''}</div>`;
+  layersByDestination.set(dest.destination_id, []);
+  dest.edge_candidates.forEach((edge, index) => {
+    const div = document.createElement('div');
+    div.className = 'edge';
+    if (!edge.reachable_from_start) div.classList.add('unreachable');
+    div.dataset.destination = dest.destination_id;
+    div.dataset.edge = edge.edge_id;
+    const checked = edge.edge_id === dest.recommended_edge_id ? 'checked' : '';
+    const routeStatus = edge.reachable_from_start ? `reachable · route=${edge.shortest_route_length_m.toFixed(1)}m/${edge.shortest_route_edge_count} edges` : `NO ROUTE · ${edge.route_error || ''}`;
+    div.innerHTML = `<label><input type="radio" name="edge-${dest.destination_id}" value="${edge.edge_id}" ${checked} ${edge.reachable_from_start ? '' : 'disabled'}> <span class="rank">${edge.rank}</span><code>${edge.edge_id}</code></label><span class="candidate-meta">${edge.distance_m.toFixed(1)}m · lanes=${edge.lane_count} · speed=${edge.speed_kmh.toFixed(1)}km/h · length=${edge.length_m.toFixed(1)}m<br>${routeStatus}</span>`;
+    section.appendChild(div);
+    const color = colors[index % colors.length];
+    const poly = L.polyline(edge.shape.map(p => [p[1], p[0]]), {color, weight: index === 0 ? 8 : 3, opacity: index === 0 ? 0.95 : 0.35}).addTo(map);
+    poly.bindPopup(`${dest.label_ko} candidate #${edge.rank}<br>${edge.edge_id}<br>${edge.distance_m.toFixed(1)}m`);
+    const midpoint = [edge.edge_mid_lat, edge.edge_mid_lon];
+    L.marker(midpoint, {icon: markerIcon(edge.rank, color)}).addTo(map).bindPopup(`${dest.label_ko} #${edge.rank}<br>${edge.edge_id}`);
+    const connector = L.polyline([[Number(lat), Number(lon)], midpoint], {color, weight: index === 0 ? 3 : 1, opacity: index === 0 ? 0.75 : 0.18, dashArray:'5 5'}).addTo(map);
+    layersByDestination.get(dest.destination_id).push({edgeId: edge.edge_id, poly, connector});
+    edge.shape.forEach(p => bounds.push([p[1], p[0]]));
+    bounds.push(midpoint);
+  });
+  controls.appendChild(section);
+  if (lat && lon) {
+    const marker = L.marker([Number(lat), Number(lon)]).addTo(map);
+    marker.bindPopup(`${dest.label_ko}<br>${dest.address}`);
+    bounds.push([Number(lat), Number(lon)]);
+  }
+  section.querySelectorAll(`input[name="edge-${dest.destination_id}"]`).forEach(input => {
+    input.addEventListener('change', () => updateDestinationStyles(dest.destination_id));
+  });
+  updateDestinationStyles(dest.destination_id);
+});
+if (bounds.length) map.fitBounds(bounds, {padding:[30,30]});
+document.getElementById('download').onclick = () => {
+  const decisions = DATA.destinations.map(dest => {
+    const edge = document.querySelector(`input[name="edge-${dest.destination_id}"]:checked`);
+    return {
+      destination_id: dest.destination_id,
+      address: dest.address,
+      label_ko: dest.label_ko,
+      decision: edge ? 'accept' : 'review_needed',
+      lat: Number(document.getElementById(`lat-${dest.destination_id}`).value),
+      lon: Number(document.getElementById(`lon-${dest.destination_id}`).value),
+      target_edge_id: edge ? edge.value : ''
+    };
+  });
+  const blob = new Blob([JSON.stringify({schema:'custom_destination_point_acceptance.v1', decisions}, null, 2) + '\n'], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'custom_destination_point_acceptance.json';
+  a.click();
+};
+</script>
+</body>
+</html>
