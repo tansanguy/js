@@ -7,14 +7,25 @@ from typing import Any
 
 class TrajectoryPoint:
     """Single point in vehicle trajectory."""
-    
-    def __init__(self, time: float, edge_id: str, lat: float, lon: float, speed_kmh: float):
+
+    def __init__(
+        self,
+        time: float,
+        edge_id: str,
+        lat: float,
+        lon: float,
+        speed_kmh: float,
+        angle: float = 0.0,
+        dist_m: float = 0.0,
+    ):
         self.time = time
         self.edge_id = edge_id
         self.lat = lat
         self.lon = lon
         self.speed_kmh = speed_kmh
-    
+        self.angle = angle      # heading in degrees (0=north, clockwise)
+        self.dist_m = dist_m    # cumulative odometer distance along route
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -23,6 +34,8 @@ class TrajectoryPoint:
             "lat": self.lat,
             "lon": self.lon,
             "speed_kmh": self.speed_kmh,
+            "angle": self.angle,
+            "dist_m": self.dist_m,
         }
 
 
@@ -40,9 +53,9 @@ class EmergencyTrajectory:
     
     def add_point(self, point: TrajectoryPoint) -> None:
         """Add a point to trajectory."""
-        self.points.append(point)
-        if not self.points[:-1]:  # First point
+        if not self.points:  # first point
             self.start_time = point.time
+        self.points.append(point)
         self.end_time = point.time
         self.total_travel_time_sec = self.end_time - self.start_time
     

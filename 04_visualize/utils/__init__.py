@@ -13,6 +13,12 @@ from .trajectory_parser import (
     load_trajectory_geojson,
     save_trajectory_geojson,
 )
+from .fcd_parser import (
+    FcdResult,
+    parse_fcd,
+    lane_to_edge,
+    infer_mode,
+)
 from .color_schemes import (
     get_mode_color,
     get_speed_color,
@@ -30,6 +36,10 @@ __all__ = [
     "EmergencyTrajectory",
     "load_trajectory_geojson",
     "save_trajectory_geojson",
+    "FcdResult",
+    "parse_fcd",
+    "lane_to_edge",
+    "infer_mode",
     "get_mode_color",
     "get_speed_color",
     "get_status_color",

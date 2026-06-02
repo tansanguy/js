@@ -27,3 +27,6 @@ data_prepared/demand/*_sustained_3600.rou.xml
 
 # Local archives
 local_archive/
+
+# Visualization: generated mock FCD fixtures (regenerate via mock/make_mock_fcd.py)
+04_visualize/mock/data/
