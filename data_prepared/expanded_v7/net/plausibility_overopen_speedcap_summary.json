@@ -1,0 +1,28 @@
+{
+  "schema": "expanded_v7_plausibility_overopen_speedcap_net.v1",
+  "generated_at": "2026-06-03T16:11:59.647496+00:00",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed_plausibility_overopen.net.xml",
+  "source_edge_speed_csv": "results/metrics/expanded_v7_validation/20260603T160056_543450Z0000/b0_edge_speed_recall.csv",
+  "speedcap_csv": "data_prepared/expanded_v7/net/overopen_metering_speedcap_edges.csv",
+  "target_edge_count": 38,
+  "written_edge_count": 38,
+  "changed_edge_count": 36,
+  "changed_lane_count": 102,
+  "excluded_firetruck_route_edge_count": 0,
+  "selected_for_manifest": true,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS",
+  "note": "V7 plausibility-first net: only currently over-open non-route edges are capped to reduce free-flow artifacts. This is not a demand recall calibration."
+}

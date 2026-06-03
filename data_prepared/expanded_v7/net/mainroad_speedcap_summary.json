@@ -1,0 +1,32 @@
+{
+  "schema": "expanded_v7_mainroad_speedcap_net.v1",
+  "generated_at": "2026-06-03T10:52:38.552687+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "mapping_csv": "data_prepared/expanded_v7/map/toegye_segment_edge_mapping.csv",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_speedcap.net.xml",
+  "speedcap_csv": "data_prepared/expanded_v7/net/mainroad_speedcap_edges.csv",
+  "target_edge_count": 204,
+  "written_edge_count": 204,
+  "changed_edge_count": 204,
+  "changed_lane_count": 571,
+  "margin_kmh": 25.0,
+  "min_cap_kmh": 35.0,
+  "max_cap_kmh": 50.0,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS",
+  "note": "V7-only main-road speed cap for congestion-flow recall. This avoids free-flow artifacts on Toegye-ro where imported SUMO speed limits are much higher than the real CSV congested speeds.",
+  "selected_for_manifest": false,
+  "selection_reason": "not_selected:broad_mainroad_speedcap_increased_runtime_and_gridlock_risk"
+}

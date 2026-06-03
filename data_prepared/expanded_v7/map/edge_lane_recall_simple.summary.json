@@ -1,0 +1,10 @@
+{
+  "schema": "expanded_v7_edge_lane_recall_simple.v1",
+  "generated_at": "2026-06-03T02:25:34.780616+00:00",
+  "target_csv": "data_prepared/expanded_v7/map/edge_lane_targets_simple.csv",
+  "recall_csv": "data_prepared/expanded_v7/map/edge_lane_recall_simple.csv",
+  "edge_target_count": 204,
+  "pass_edge_count": 204,
+  "edge_level_lane_recall": 1.0,
+  "status": "PASS"
+}

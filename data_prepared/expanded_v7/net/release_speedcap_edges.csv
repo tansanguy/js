@@ -1,0 +1,12 @@
+edge_id,old_min_speed_kmh,old_max_speed_kmh,speed_cap_kmh,changed,reason
+218773869#4,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+218773869#5,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+218915133#1,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+218915133#2,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+218915133#3,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+219696193#1,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+219696193#2,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+347237859#0,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+347237859#1,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+781985793#0,100.008,100.008,35.0,True,release_group_over_open_speed_cap
+781985793#1,100.008,100.008,35.0,True,release_group_over_open_speed_cap

@@ -47,7 +47,12 @@ bash 00_setup/verify_env.sh
 - `01_prepare`: 네트워크, 수요, route, 신호 audit 준비.
 - `02_simulation`: B00/B0/B2 실행 러너.
 - `03_results`: 결과 분석용 작업 영역.
-- `configs`: 최종 manifest와 B2 파라미터 CSV.
+- `config`: 초기 지도/수요 준비 단계에서 쓰는 YAML과 run plan. 최종 실험 입력의 기준은 아니다.
+- `configs`: 최종 manifest, B2 파라미터 CSV, 명시적으로 보존할 실험 설정.
+- `configs/generated`: BO가 만든 임시 추천 CSV 산출물. 기본적으로 git 추적 대상이 아니며, 최종 후보는 `configs/` 또는 `05_theta_check_simulation/`의 명시 파일로 승격해서 보존한다.
+- `data_prepared`: 재현에 필요한 준비된 입력 데이터. 단, scale/sustained 실험 변형 파일은 최종 입력 예외를 제외하고 산출물로 취급한다.
+- `runs`: SUMO 원본 로그와 task별 실행 산출물. 기본적으로 git 추적 대상이 아니다.
+- `results`: 사람이 보는 요약 결과와 보고서. 반복 실행 결과 디렉터리는 기본적으로 git 추적 대상이 아니며, 최종 보고용 스냅샷만 명시적으로 보존한다.
 - `docs`: 한국어 실행 문서와 과거 단계별 기록.
 
 ## 기본 입력
@@ -94,6 +99,6 @@ python 02_simulation/run_b0_b1_b2_experiment.py \
   --manifest configs/final_experiment_manifest.json
 ```
 
-출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`, `results/metrics/parameter_input_sim_bo/latest.json`, `results/metrics/parameter_input_sim_bo/state.json`, `configs/generated/` 아래에 생성된다.
+출력은 `results/metrics/parameter_input_sim_bo/{run_id}/`, `results/metrics/parameter_input_sim_bo/latest.json`, `results/metrics/parameter_input_sim_bo/state.json`, `configs/generated/` 아래에 생성된다. 이 BO 산출물은 기본적으로 artifact로 취급한다. 최종 재현 입력으로 쓰려면 선택된 CSV를 명시적인 설정 파일로 승격해 보존한다.
 
 자세한 실행 절차는 `docs/PIPELINE.md`, `docs/FINAL_EXPERIMENT_RUNBOOK.md`, `docs/BAYESIAN_OPTIMIZATION.md`를 따른다. 결과 CSV 컬럼과 리뷰 순서는 `docs/RESULT_REVIEW_GUIDE.md`를 따른다.

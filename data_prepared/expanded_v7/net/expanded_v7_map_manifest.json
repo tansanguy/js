@@ -1,0 +1,51 @@
+{
+  "schema": "expanded_v7_map_manifest.v1",
+  "generated_at": "2026-06-02T17:11:28.484921+00:00",
+  "bbox_wgs84": {
+    "min_lon": 126.96115603197852,
+    "min_lat": 37.54501369437562,
+    "max_lon": 127.02566108487788,
+    "max_lat": 37.57835337532412
+  },
+  "expansion_m_each_direction": 100.0,
+  "osm_file": "data_prepared/expanded_v7/osm/jungbu_bbox_expanded_v7.osm.xml",
+  "osm_file_sha256": "7665ea03f53e6eedfbf40b08774bf15f89b493f8c683be17ed090aa4184529a6",
+  "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger.net.xml",
+  "net_file_sha256": "3d462577aec3230f059604b8e0461bc0fdc606b86211ae5718de3bb8c1d98cc2",
+  "downloaded": false,
+  "download_url": "",
+  "osm_counts": {
+    "node_count": 38208,
+    "way_count": 8002,
+    "relation_count": 0
+  },
+  "net_counts": {
+    "edge_count": 23510,
+    "junction_count": 14903,
+    "traffic_light_count": 367,
+    "lane_count": 69959
+  },
+  "sumo_version": "Eclipse SUMO sumo 1.26.0",
+  "netconvert_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--osm-files",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/osm/jungbu_bbox_expanded_v7.osm.xml",
+    "--output-file",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger.net.xml",
+    "--tls.guess",
+    "true",
+    "--tls.join",
+    "true",
+    "--junctions.join",
+    "true",
+    "--geometry.remove",
+    "true",
+    "--remove-edges.isolated",
+    "true",
+    "--no-turnarounds",
+    "true"
+  ],
+  "edge_feature_count": 23510,
+  "skipped_edge_count": 0,
+  "edges_geojson": "data_prepared/expanded_v7/geojson/expanded_v7_edges.geojson"
+}

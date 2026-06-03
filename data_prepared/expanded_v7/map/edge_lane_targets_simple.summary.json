@@ -1,0 +1,10 @@
+{
+  "schema": "expanded_v7_edge_lane_targets_simple.v1",
+  "generated_at": "2026-06-03T02:25:25.700952+00:00",
+  "mapping_csv": "data_prepared/expanded_v7/map/toegye_segment_edge_mapping.csv",
+  "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger.net.xml",
+  "edge_target_count": 204,
+  "changed_edge_count": 163,
+  "smoothed_edge_count": 22,
+  "method": "one_edge_one_weighted_majority_lane_target_with_isolated_gap_smoothing"
+}

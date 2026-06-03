@@ -1,0 +1,25 @@
+{
+  "schema": "expanded_v7_release_junction_fixed_net.v1",
+  "generated_at": "2026-06-03T13:40:43.155356+00:00",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed.net.xml",
+  "changes_csv": "data_prepared/expanded_v7/net/release_junction_fixed_changes.csv",
+  "changed_connection_count": 55,
+  "changed_edge_priority_count": 1,
+  "target_edge_count": 20,
+  "selected_for_manifest": true,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS",
+  "note": "V7-only release-junction candidate. It does not add more green time; it stabilizes selected firetruck-route release connections and non-TLS priorities where complete stop-flow formed."
+}

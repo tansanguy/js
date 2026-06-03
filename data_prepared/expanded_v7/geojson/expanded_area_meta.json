@@ -1,0 +1,30 @@
+{
+  "schema": "expanded_v7_area.v1",
+  "generated_at": "2026-06-02T16:35:08.200418+00:00",
+  "source_analysis_meta": "data_prepared/geojson/analysis_area_meta.json",
+  "expansion_m_each_direction": 100.0,
+  "source_bbox_wgs84": {
+    "min_lon": 126.96229053834942,
+    "min_lat": 37.54591301473934,
+    "max_lon": 127.02452657850698,
+    "max_lat": 37.5774540549604
+  },
+  "bbox_wgs84": {
+    "min_lon": 126.96115603197852,
+    "min_lat": 37.54501369437562,
+    "max_lon": 127.02566108487788,
+    "max_lat": 37.57835337532412
+  },
+  "locations": {
+    "jungbu_fire_station": {
+      "name": "Jungbu Fire Station",
+      "lat": 37.564875,
+      "lon": 127.015376
+    },
+    "seoul_station": {
+      "name": "Seoul Station Reference",
+      "lat": 37.558488,
+      "lon": 126.971443
+    }
+  }
+}

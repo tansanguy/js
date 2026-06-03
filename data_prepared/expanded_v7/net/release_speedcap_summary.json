@@ -1,0 +1,41 @@
+{
+  "schema": "expanded_v7_release_speedcap_net.v1",
+  "generated_at": "2026-06-03T11:08:26.246597+00:00",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_speedcap.net.xml",
+  "speedcap_csv": "data_prepared/expanded_v7/net/release_speedcap_edges.csv",
+  "cap_kmh": 35.0,
+  "target_edges": [
+    "218773869#4",
+    "218773869#5",
+    "218915133#1",
+    "218915133#2",
+    "218915133#3",
+    "219696193#1",
+    "219696193#2",
+    "347237859#0",
+    "347237859#1",
+    "781985793#0",
+    "781985793#1"
+  ],
+  "target_edge_count": 11,
+  "written_edge_count": 11,
+  "changed_edge_count": 11,
+  "changed_lane_count": 30,
+  "selected_for_manifest": true,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS",
+  "note": "V7-only targeted speed cap for over-open bottleneck approach edges. It is narrower than the main-road speedcap and avoids reducing capacity on the already slow downstream release edges.",
+  "selection_reason": "base_component:selected_release_low_speed_for_firetruck_bottleneck"
+}

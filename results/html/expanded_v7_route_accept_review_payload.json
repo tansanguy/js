@@ -1,0 +1,92 @@
+{
+  "schema": "expanded_v7_blue_start_left_turn_visualization.v1",
+  "html": "results/html/expanded_v7_route_accept_review.html",
+  "tile_zoom": 16,
+  "tile_count": 27,
+  "canvas_width_px": 2304,
+  "canvas_height_px": 768,
+  "start_edge": "420331801#1",
+  "second_edge": "-174870621#8",
+  "target_edge": "619147738#1",
+  "start_latlon": [
+    37.56432993808588,
+    127.0155724596601
+  ],
+  "target_latlon": [
+    37.556802521662945,
+    126.97301030249254
+  ],
+  "route_edge_count": 61,
+  "route_length_m": 3037.18,
+  "spine_length_ratio": 0.907291,
+  "route_main_edge_count": 60,
+  "main_road_edge_count": 204,
+  "validation": {
+    "schema": "expanded_v7_blue_start_left_turn_route_validation.v1",
+    "status": "PASS",
+    "sumo_exit_code": 0,
+    "route_edge_count": 61,
+    "start_edge": "420331801#1",
+    "second_edge": "-174870621#8",
+    "target_edge": "619147738#1",
+    "route_length_m": 3037.18,
+    "depart_sec": 600,
+    "depart_pos": "0",
+    "arrived": true,
+    "teleport_detected": false,
+    "tripinfo": {
+      "id": "firetruck_expanded_v7_B0",
+      "depart": "600.00",
+      "departLane": "420331801#1_0",
+      "departPos": "0.00",
+      "departSpeed": "10.83",
+      "departDelay": "0.00",
+      "arrival": "1225.00",
+      "arrivalLane": "619147738#1_1",
+      "arrivalPos": "11.57",
+      "arrivalSpeed": "7.01",
+      "duration": "625.00",
+      "routeLength": "4081.41",
+      "waitingTime": "364.00",
+      "waitingCount": "4",
+      "stopTime": "0.00",
+      "timeLoss": "410.43",
+      "rerouteNo": "0",
+      "devices": "tripinfo_firetruck_expanded_v7_B0 fcd_firetruck_expanded_v7_B0",
+      "vType": "firetruck_emergency",
+      "speedFactor": "1.30",
+      "vaporized": ""
+    },
+    "fcd_vehicle_sample_count": 625,
+    "fcd_first_time": 600.0,
+    "fcd_first_latlon": [
+      37.56433,
+      127.015572
+    ],
+    "fcd_last_time": 1224.0,
+    "fcd_last_latlon": [
+      37.556771,
+      126.973065
+    ],
+    "outputs": {
+      "tripinfo_xml": "results/metrics/expanded_v7_route_validation/direct_station_smoke/tripinfo.xml",
+      "fcd_xml": "results/metrics/expanded_v7_route_validation/direct_station_smoke/fcd.xml",
+      "review_html": "results/html/expanded_v7_route_accept_review.html"
+    }
+  },
+  "accept_payload": {
+    "schema": "expanded_v7_firetruck_route_acceptance.v2",
+    "accepted_candidate_route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT_MAX_TOEGYE",
+    "decision": "accept",
+    "fixed_start_style": "blue_marker_go_north_then_left",
+    "start_edge_id": "420331801#1",
+    "fixed_start_edge_id": "420331801#1",
+    "start_join_edge_id": "-174870621#8",
+    "depart_pos": "0",
+    "direct_station_target_edge_id": "619147738#1",
+    "trimmed_after_edge_id": "619147738#1",
+    "old_route_edge_count": 81,
+    "route_edge_count": 61,
+    "note": "Start at the blue marker, go north on 420331801#1, turn left onto Toegye-ro at -174870621#8, and treat the straight Seoul Station front edge as arrival."
+  }
+}

@@ -1,0 +1,30 @@
+edge_id,source_segment_ids,source_directions,observed_row_count,edge_length_m,reference_speed_kmh,max_simulated_speed_kmh,max_speed_error_kmh,speed_cap_kmh,old_min_speed_kmh,old_max_speed_kmh,changed,reason
+-174870621#0,S1 S2,upbound,2,73.79,18.3,73.548,55.248,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+-174870621#2,S1 S2,upbound,2,64.77,18.3,66.348,48.048,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+1455497345,S7 S8 S9,upbound,3,84.17,16.4,51.768,35.368,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+180368918#5,S3 S4,upbound,2,19.42,19.2,41.652,23.352,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+180368918#6,S3 S4,upbound,2,19.66,19.2,41.688,23.388,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+180445419,S12,upbound,1,85.68,16.4,51.048,34.648,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#0,S6,upbound,1,17.42,16.4,55.152,38.752,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#2,S6,upbound,1,47.11,16.4,73.908,57.508,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#3,S6,upbound,1,21.48,16.4,90.864,74.464,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#4,S6,upbound,1,60.24,16.4,94.464,78.064,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#5,S6,upbound,1,47.99,16.4,88.272,71.872,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773868#6,S6,upbound,1,12.02,16.4,63.18,46.78,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773869#1,S9,upbound,1,31.38,16.8,81.504,64.704,31.8,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773869#3,S9,upbound,1,23.35,16.8,53.352,36.552,31.8,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218773869#6,S9,upbound,1,82.25,16.8,44.244,27.444,31.8,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218915135#3,S16,upbound,1,114.15,18.3,68.184,49.884,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+218915135#4,S16 S17,upbound,2,34.68,18.3,68.436,50.136,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+333557072#1,S18 S19,upbound,2,22.66,18.3,95.04,76.74,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+333557072#2,S18 S19,upbound,2,46.24,18.3,95.256,76.956,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+333557072#3,S19,upbound,1,63.69,18.3,84.744,66.444,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+420361196,S10 S11 S12,upbound,3,182.02,16.4,62.316,45.916,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+428260110,S6 S7,upbound,2,34.75,16.4,65.268,48.868,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+578313748#0,S2,upbound,1,11.92,19.2,73.62,54.42,34.2,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+578313748#2,S2 S3,upbound,2,10.42,19.2,70.524,51.324,34.2,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+781983104#0,S16 S17,upbound,2,91.34,18.3,68.04,49.74,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+781983104#1,S17 S18 S19,upbound,3,197.28,19.2,62.064,43.764,33.3,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+785130600#0,S7,upbound,1,38.93,16.4,61.272,44.872,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+785130600#1,S7,upbound,1,11.66,16.4,85.104,68.704,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall
+785130600#2,S7,upbound,1,126.93,16.4,73.476,57.076,31.4,100.008,100.008,True,firetruck_route_edge_overopen_35kmh_congestion_recall

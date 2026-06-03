@@ -1,0 +1,9 @@
+{
+  "schema": "toegye_segment_edge_mapping.v1",
+  "generated_at": "2026-06-02T16:37:44.676427+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger.net.xml",
+  "row_count": 295,
+  "repair_target_count": 115,
+  "segment_direction_count": 44
+}

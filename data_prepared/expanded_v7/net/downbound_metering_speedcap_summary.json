@@ -1,0 +1,34 @@
+{
+  "schema": "expanded_v7_downbound_metering_speedcap_net.v1",
+  "generated_at": "2026-06-03T11:35:47.172244+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "mapping_csv": "data_prepared/expanded_v7/map/toegye_segment_edge_mapping.csv",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_speedcap.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_downbound_metered.net.xml",
+  "speedcap_csv": "data_prepared/expanded_v7/net/downbound_metering_speedcap_edges.csv",
+  "direction_filter": "downbound",
+  "target_edge_count": 105,
+  "written_edge_count": 105,
+  "changed_edge_count": 105,
+  "changed_lane_count": 290,
+  "margin_kmh": 20.0,
+  "min_cap_kmh": 35.0,
+  "max_cap_kmh": 45.0,
+  "excluded_firetruck_route_edge_count": 61,
+  "selected_for_manifest": false,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS",
+  "note": "V7-only downbound metering speed cap. It suppresses unrealistic downbound free-flow while leaving the accepted firetruck route edges untouched.",
+  "selection_reason": "not_selected:broad_downbound_metering_increased_runtime_and_gridlock_risk"
+}

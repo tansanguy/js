@@ -1,0 +1,15 @@
+{
+  "schema": "expanded_v7_firetruck_route_acceptance.v2",
+  "accepted_candidate_route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT_MAX_TOEGYE",
+  "decision": "accept",
+  "fixed_start_style": "blue_marker_go_north_then_left",
+  "start_edge_id": "420331801#1",
+  "fixed_start_edge_id": "420331801#1",
+  "start_join_edge_id": "-174870621#8",
+  "depart_pos": "0",
+  "direct_station_target_edge_id": "619147738#1",
+  "trimmed_after_edge_id": "619147738#1",
+  "old_route_edge_count": 81,
+  "route_edge_count": 61,
+  "note": "Start at the blue marker, go north on 420331801#1, turn left onto Toegye-ro at -174870621#8, and treat the straight Seoul Station front edge as arrival."
+}

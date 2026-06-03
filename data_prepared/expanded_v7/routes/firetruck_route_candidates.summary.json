@@ -1,0 +1,8 @@
+{
+  "schema": "expanded_v7_firetruck_route_candidates.v1",
+  "generated_at": "2026-06-02T16:39:03.122798+00:00",
+  "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired.net.xml",
+  "candidate_count": 336,
+  "recommended_candidate_route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT_MAX_TOEGYE",
+  "acceptance_json": "data_prepared/expanded_v7/routes/firetruck_route_acceptance.json"
+}

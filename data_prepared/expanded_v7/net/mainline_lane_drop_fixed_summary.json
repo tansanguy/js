@@ -1,0 +1,92 @@
+{
+  "schema": "expanded_v7_mainline_lane_drop_fixed_net.v1",
+  "generated_at": "2026-06-03T15:17:44.253066+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed.net.xml",
+  "overrides_csv": "data_prepared/expanded_v7/net/mainline_lane_drop_fixed_overrides.csv",
+  "work_dir": "data_prepared/expanded_v7/net/lane_drop_fixed_plain_work",
+  "plain_export_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--sumo-net-file",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed.net.xml",
+    "--plain-output-prefix",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed_plain"
+  ],
+  "plain_export_stderr": "arning: Lane '-1015398733#2_0' is not connected from any incoming edge at junction '9366717011'.\nWarning: Edge '-1016508137' is not connected to outgoing edges at junction '9375696071'.\nWarning: Lane '-1063461197_0' is not connected from any incoming edge at junction '3063260459'.\nWarning: Lane '-1063461198_0' is not connected from any incoming edge at junction '3063260472'.\nWarning: Lane '-1063461199_0' is not connected from any incoming edge at junction '3063260466'.\nWarning: Minor green from edge '-218769263#0' to edge '-1455529488#2' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '1458160300#6' to edge '218769242' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '1110186416#9' to edge '183272312#4' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-636449776#0' to edge '-1147603098#0' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-636449776#0' to edge '446744658#1' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Speed of straight connection '26268355_0->1499936625#1_0' reduced by 8.12 due to turning radius of 51.82 (length=16.09, angle=33.06).\nWarning: Speed of straight connection '26268355_0->1499936625#1_1' reduced by 7.23 due to turning radius of 57.42 (length=17.85, angle=33.06).\nWarning: Speed of straight connection '-1176532866#2_0->-1176532866#1_0' reduced by 6.85 due to turning radius of 9.01 (length=3.12, angle=36.80).\nWarning: Speed of straight connection '1176532866#1_0->1176532866#2_0' reduced by 9.48 due to turning radius of 3.54 (length=1.04, angle=36.80).\nWarning: Speed of straight connection '238545960_0->1392913187#0_0' reduced by 14.16 due to turning radius of 21.36 (length=8.49, angle=38.66).\nWarning: Intersecting left turns at junction '3807475570' from lane '377373709#1_0' and lane '-464419339#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3807475575' from lane '1506939312#1_0' and lane '-1506939312#2_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3830592101' from lane '416195452_0' and lane '-416195453#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3847634220' from lane '381570304#0_0' and lane '-381570304#1_0' (increase junction radius to avoid this).\nWarning: Connection '1116326093#0_0->616037664#1_0' is only 0.06m short.\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Connection '-671981404#21_0->-183272433#3_0' is only 0.02m short.\nWarning: Connection '616037664#1_0->1116326093#0_0' is only 0.01m short.\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: 86 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 7 total messages of type: Connection '%_%->%_%' is only %m short.\nWarning: 175 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 45 total messages of type: Found angle of % degrees at edge '%', segment %.\nWarning: 83 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 90 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 161 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 101 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 6 total messages of type: Shape for junction '%' has distance % to its given position.\nWarning: 333 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+  "edge_rewrite": {
+    "edge_xml": "data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed_plain.edg.xml",
+    "output_xml": "data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed.edg.xml",
+    "target_edge_count": 205,
+    "written_edge_count": 205,
+    "changed_edge_count": 157,
+    "changed_lane_count": 1,
+    "changed_speed_count": 156
+  },
+  "connection_rewrite": {
+    "connection_xml": "data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed_plain.con.xml",
+    "output_xml": "data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed.con.xml",
+    "protected_pair_count": 150,
+    "added_connection_count": 54
+  },
+  "rebuild_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--node-files",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed_plain.nod.xml",
+    "--edge-files",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed.edg.xml",
+    "--output-file",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed.net.xml",
+    "--no-turnarounds",
+    "true",
+    "--connection-files",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed.con.xml",
+    "--tllogic-files",
+    "/Users/junlee/Desktop/js/data_prepared/expanded_v7/net/lane_drop_fixed_plain_work/plain/expanded_v7_lane_drop_fixed_plain.tll.xml"
+  ],
+  "rebuild_stderr": "arning: Lane '-1015398733#2_0' is not connected from any incoming edge at junction '9366717011'.\nWarning: Edge '-1016508137' is not connected to outgoing edges at junction '9375696071'.\nWarning: Lane '-1063461197_0' is not connected from any incoming edge at junction '3063260459'.\nWarning: Lane '-1063461198_0' is not connected from any incoming edge at junction '3063260472'.\nWarning: Lane '-1063461199_0' is not connected from any incoming edge at junction '3063260466'.\nWarning: Minor green from edge '-218769263#0' to edge '-1455529488#2' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '1458160300#6' to edge '218769242' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '1110186416#9' to edge '183272312#4' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-636449776#0' to edge '-1147603098#0' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-636449776#0' to edge '446744658#1' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Speed of straight connection '26268355_0->1499936625#1_0' reduced by 8.12 due to turning radius of 51.82 (length=16.09, angle=33.06).\nWarning: Speed of straight connection '26268355_0->1499936625#1_1' reduced by 7.23 due to turning radius of 57.42 (length=17.85, angle=33.06).\nWarning: Speed of straight connection '-1176532866#2_0->-1176532866#1_0' reduced by 6.85 due to turning radius of 9.01 (length=3.12, angle=36.80).\nWarning: Speed of straight connection '1176532866#1_0->1176532866#2_0' reduced by 9.48 due to turning radius of 3.54 (length=1.04, angle=36.80).\nWarning: Speed of straight connection '238545960_0->1392913187#0_0' reduced by 14.16 due to turning radius of 21.36 (length=8.49, angle=38.66).\nWarning: Intersecting left turns at junction '3807475570' from lane '377373709#1_0' and lane '-464419339#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3807475575' from lane '1506939312#1_0' and lane '-1506939312#2_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3830592101' from lane '416195452_0' and lane '-416195453#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction '3847634220' from lane '381570304#0_0' and lane '-381570304#1_0' (increase junction radius to avoid this).\nWarning: Connection '1116326093#0_0->616037664#1_0' is only 0.06m short.\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Connection '-671981404#21_0->-183272433#3_0' is only 0.02m short.\nWarning: Connection '616037664#1_0->1116326093#0_0' is only 0.01m short.\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: 86 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 7 total messages of type: Connection '%_%->%_%' is only %m short.\nWarning: 175 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 45 total messages of type: Found angle of % degrees at edge '%', segment %.\nWarning: 83 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 90 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 162 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 100 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 6 total messages of type: Shape for junction '%' has distance % to its given position.\nWarning: 323 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+  "fallback_command": [],
+  "fallback_stderr": "",
+  "fallback_used": false,
+  "changed_edge_count": 157,
+  "changed_lane_count": 1,
+  "changed_speed_count": 156,
+  "added_connection_count": 54,
+  "selected_for_manifest": true,
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "road_integrity_audit": {
+    "schema": "expanded_v7_road_integrity_audit.v1",
+    "generated_at": "2026-06-03T15:17:44.251230+00:00",
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+    "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed.net.xml",
+    "protected_edge_count": 205,
+    "protected_one_lane_edge_count": 0,
+    "protected_short_lt_10m_count": 34,
+    "protected_speed_gt_50_count": 0,
+    "lane_drop_3_to_1_count": 0,
+    "lane_drop_3_to_2_count": 15,
+    "lane_drop_2_to_1_count": 0,
+    "connection_issue_count": 15,
+    "edge_csv": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_edges.csv",
+    "connection_csv": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_connections.csv",
+    "html": "results/html/expanded_v7_road_integrity_audit.html",
+    "status": "PASS",
+    "note": "Connectivity PASS only means routes are connected. This audit checks whether protected Toegye-ro/mainline edges have plausible lane continuity and speed limits.",
+    "summary_json": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_audit_summary.json"
+  },
+  "status": "PASS",
+  "note": "V7-only road integrity candidate. It fixes protected Toegye-ro/firetruck-route lane drops through plain netconvert round-trip and caps implausible 100km/h protected edges."
+}

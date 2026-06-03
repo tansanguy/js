@@ -1,0 +1,643 @@
+{
+  "schema": "expanded_v7_route_tls_green_split_fix.v2",
+  "generated_at": "2026-06-03T11:08:20.981988+00:00",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed.net.xml",
+  "min_route_green_sec": 18,
+  "severe_route_green_sec": 30,
+  "fixed_tls_count": 2,
+  "fixed_target_count": 6,
+  "fixed_tls": [
+    {
+      "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+      "target_links": [
+        18
+      ],
+      "target_connections": [
+        "781985787#0 -> 218915135#3@18"
+      ],
+      "before_cycle_sec": 90,
+      "after_cycle_sec": 90,
+      "before_link_green_sec": {
+        "18": 6
+      },
+      "after_link_green_sec": {
+        "18": 30
+      },
+      "before_link_yellow_sec": {
+        "18": 6
+      },
+      "after_link_yellow_sec": {
+        "18": 6
+      },
+      "phase_duration_before": [
+        {
+          "index": 0,
+          "duration": 11,
+          "state": "GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr"
+        },
+        {
+          "index": 1,
+          "duration": 6,
+          "state": "Grrrrrrrrrrrrrrrrrrrryyyyyyyyyrrrrrrr"
+        },
+        {
+          "index": 2,
+          "duration": 14,
+          "state": "GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 3,
+          "duration": 6,
+          "state": "yyyrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 4,
+          "duration": 6,
+          "state": "rrrggGGrrrrrrrrrrrGggrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 5,
+          "duration": 6,
+          "state": "rrryyyyrrrrrrrrrrryyyrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 6,
+          "duration": 14,
+          "state": "GrrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 7,
+          "duration": 6,
+          "state": "Grrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 8,
+          "duration": 14,
+          "state": "GGGrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG"
+        },
+        {
+          "index": 9,
+          "duration": 6,
+          "state": "yyyrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy"
+        },
+        {
+          "index": 10,
+          "duration": 1,
+          "state": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+        }
+      ],
+      "phase_duration_after": [
+        {
+          "index": 0,
+          "duration": 11,
+          "state": "GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr"
+        },
+        {
+          "index": 1,
+          "duration": 6,
+          "state": "Grrrrrrrrrrrrrrrrrrrryyyyyyyyyrrrrrrr"
+        },
+        {
+          "index": 2,
+          "duration": 6,
+          "state": "GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 3,
+          "duration": 6,
+          "state": "yyyrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 4,
+          "duration": 30,
+          "state": "rrrggGGrrrrrrrrrrrGggrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 5,
+          "duration": 6,
+          "state": "rrryyyyrrrrrrrrrrryyyrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 6,
+          "duration": 6,
+          "state": "GrrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 7,
+          "duration": 6,
+          "state": "Grrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 8,
+          "duration": 6,
+          "state": "GGGrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG"
+        },
+        {
+          "index": 9,
+          "duration": 6,
+          "state": "yyyrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy"
+        },
+        {
+          "index": 10,
+          "duration": 1,
+          "state": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+        }
+      ],
+      "phase_adjustments": [
+        {
+          "phase_index": 4,
+          "old_duration": 6,
+          "new_duration": 30,
+          "delta": 24,
+          "reason": "increase_route_link_18_green"
+        },
+        {
+          "phase_index": 2,
+          "old_duration": 14,
+          "new_duration": 6,
+          "delta": -8,
+          "reason": "donor_non_route_green_min_6s"
+        },
+        {
+          "phase_index": 6,
+          "old_duration": 14,
+          "new_duration": 6,
+          "delta": -8,
+          "reason": "donor_non_route_green_min_6s"
+        },
+        {
+          "phase_index": 8,
+          "old_duration": 14,
+          "new_duration": 6,
+          "delta": -8,
+          "reason": "donor_non_route_green_min_6s"
+        }
+      ]
+    },
+    {
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "target_links": [
+        8,
+        9,
+        10,
+        25,
+        26
+      ],
+      "target_connections": [
+        "218773869#7 -> 218773869#8@8",
+        "218773869#7 -> 218773869#8@9",
+        "218773869#7 -> 218773869#8@10",
+        "218773869#9 -> 219696193#1@25",
+        "218773869#9 -> 219696193#1@26"
+      ],
+      "before_cycle_sec": 90,
+      "after_cycle_sec": 90,
+      "before_link_green_sec": {
+        "8": 12,
+        "9": 12,
+        "10": 12,
+        "25": 12,
+        "26": 12
+      },
+      "after_link_green_sec": {
+        "8": 18,
+        "9": 18,
+        "10": 18,
+        "25": 18,
+        "26": 18
+      },
+      "before_link_yellow_sec": {
+        "8": 6,
+        "9": 6,
+        "10": 6,
+        "25": 6,
+        "26": 6
+      },
+      "after_link_yellow_sec": {
+        "8": 6,
+        "9": 6,
+        "10": 6,
+        "25": 6,
+        "26": 6
+      },
+      "phase_duration_before": [
+        {
+          "index": 0,
+          "duration": 12,
+          "state": "GGGGGGrrrrrGGGGrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 1,
+          "duration": 6,
+          "state": "yyyyyyrrrrryyyyrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 2,
+          "duration": 12,
+          "state": "rrrrrrrrGGGrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 3,
+          "duration": 6,
+          "state": "rrrrrrrryyyrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 4,
+          "duration": 12,
+          "state": "GGGrrrGGrrrrrrrGGGGrrrrrrrrrr"
+        },
+        {
+          "index": 5,
+          "duration": 6,
+          "state": "GGGrrrGGrrrrrrrGyyyrrrrrrrrrr"
+        },
+        {
+          "index": 6,
+          "duration": 12,
+          "state": "GGGrrrGGrrrrrrrGrrrGGGGGrrrrr"
+        },
+        {
+          "index": 7,
+          "duration": 6,
+          "state": "yyyrrrGGrrrrrrrGrrryyyyyrrrrr"
+        },
+        {
+          "index": 8,
+          "duration": 12,
+          "state": "rrrrrrGGrrrrrrrGrrrrrrrrGGGGG"
+        },
+        {
+          "index": 9,
+          "duration": 6,
+          "state": "rrrrrryyrrrrrrryrrrrrrrryyyyy"
+        }
+      ],
+      "phase_duration_after": [
+        {
+          "index": 0,
+          "duration": 6,
+          "state": "GGGGGGrrrrrGGGGrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 1,
+          "duration": 6,
+          "state": "yyyyyyrrrrryyyyrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 2,
+          "duration": 18,
+          "state": "rrrrrrrrGGGrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 3,
+          "duration": 6,
+          "state": "rrrrrrrryyyrrrrrrrrrrrrrrrrrr"
+        },
+        {
+          "index": 4,
+          "duration": 6,
+          "state": "GGGrrrGGrrrrrrrGGGGrrrrrrrrrr"
+        },
+        {
+          "index": 5,
+          "duration": 6,
+          "state": "GGGrrrGGrrrrrrrGyyyrrrrrrrrrr"
+        },
+        {
+          "index": 6,
+          "duration": 12,
+          "state": "GGGrrrGGrrrrrrrGrrrGGGGGrrrrr"
+        },
+        {
+          "index": 7,
+          "duration": 6,
+          "state": "yyyrrrGGrrrrrrrGrrryyyyyrrrrr"
+        },
+        {
+          "index": 8,
+          "duration": 18,
+          "state": "rrrrrrGGrrrrrrrGrrrrrrrrGGGGG"
+        },
+        {
+          "index": 9,
+          "duration": 6,
+          "state": "rrrrrryyrrrrrrryrrrrrrrryyyyy"
+        }
+      ],
+      "phase_adjustments": [
+        {
+          "phase_index": 2,
+          "old_duration": 12,
+          "new_duration": 18,
+          "delta": 6,
+          "reason": "increase_route_link_8_green"
+        },
+        {
+          "phase_index": 8,
+          "old_duration": 12,
+          "new_duration": 18,
+          "delta": 6,
+          "reason": "increase_route_link_25_green"
+        },
+        {
+          "phase_index": 0,
+          "old_duration": 12,
+          "new_duration": 6,
+          "delta": -6,
+          "reason": "donor_non_route_green_min_6s"
+        },
+        {
+          "phase_index": 4,
+          "old_duration": 12,
+          "new_duration": 6,
+          "delta": -6,
+          "reason": "donor_non_route_green_min_6s"
+        }
+      ]
+    }
+  ],
+  "short_green_targets": [
+    {
+      "route_index": 50,
+      "from_edge": "781985787#0",
+      "to_edge": "218915135#3",
+      "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+      "link_index": 18,
+      "current_green_sec": 6,
+      "target_green_sec": 30,
+      "direction": "s",
+      "from_lane": 1,
+      "to_lane": 1
+    },
+    {
+      "route_index": 35,
+      "from_edge": "218773869#7",
+      "to_edge": "218773869#8",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "link_index": 8,
+      "current_green_sec": 12,
+      "target_green_sec": 18,
+      "direction": "s",
+      "from_lane": 0,
+      "to_lane": 0
+    },
+    {
+      "route_index": 35,
+      "from_edge": "218773869#7",
+      "to_edge": "218773869#8",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "link_index": 9,
+      "current_green_sec": 12,
+      "target_green_sec": 18,
+      "direction": "s",
+      "from_lane": 1,
+      "to_lane": 1
+    },
+    {
+      "route_index": 35,
+      "from_edge": "218773869#7",
+      "to_edge": "218773869#8",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "link_index": 10,
+      "current_green_sec": 12,
+      "target_green_sec": 18,
+      "direction": "s",
+      "from_lane": 2,
+      "to_lane": 2
+    },
+    {
+      "route_index": 37,
+      "from_edge": "218773869#9",
+      "to_edge": "219696193#1",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "link_index": 25,
+      "current_green_sec": 12,
+      "target_green_sec": 18,
+      "direction": "s",
+      "from_lane": 0,
+      "to_lane": 0
+    },
+    {
+      "route_index": 37,
+      "from_edge": "218773869#9",
+      "to_edge": "219696193#1",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "link_index": 26,
+      "current_green_sec": 12,
+      "target_green_sec": 18,
+      "direction": "s",
+      "from_lane": 1,
+      "to_lane": 1
+    }
+  ],
+  "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+  "target_connection": "781985787#0 -> 218915135#3",
+  "target_link_index": 18,
+  "related_link_indices": [
+    17,
+    18,
+    19,
+    20
+  ],
+  "before_cycle_sec": 90,
+  "after_cycle_sec": 90,
+  "cycle_status": "PASS",
+  "before_link_green_sec": {
+    "18": 6
+  },
+  "after_link_green_sec": {
+    "18": 30
+  },
+  "before_link_yellow_sec": {
+    "18": 6
+  },
+  "after_link_yellow_sec": {
+    "18": 6
+  },
+  "phase_duration_before": [
+    {
+      "index": 0,
+      "duration": 11,
+      "state": "GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr"
+    },
+    {
+      "index": 1,
+      "duration": 6,
+      "state": "Grrrrrrrrrrrrrrrrrrrryyyyyyyyyrrrrrrr"
+    },
+    {
+      "index": 2,
+      "duration": 14,
+      "state": "GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 3,
+      "duration": 6,
+      "state": "yyyrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 4,
+      "duration": 6,
+      "state": "rrrggGGrrrrrrrrrrrGggrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 5,
+      "duration": 6,
+      "state": "rrryyyyrrrrrrrrrrryyyrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 6,
+      "duration": 14,
+      "state": "GrrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 7,
+      "duration": 6,
+      "state": "Grrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 8,
+      "duration": 14,
+      "state": "GGGrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG"
+    },
+    {
+      "index": 9,
+      "duration": 6,
+      "state": "yyyrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy"
+    },
+    {
+      "index": 10,
+      "duration": 1,
+      "state": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    }
+  ],
+  "phase_duration_after": [
+    {
+      "index": 0,
+      "duration": 11,
+      "state": "GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr"
+    },
+    {
+      "index": 1,
+      "duration": 6,
+      "state": "Grrrrrrrrrrrrrrrrrrrryyyyyyyyyrrrrrrr"
+    },
+    {
+      "index": 2,
+      "duration": 6,
+      "state": "GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 3,
+      "duration": 6,
+      "state": "yyyrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 4,
+      "duration": 30,
+      "state": "rrrggGGrrrrrrrrrrrGggrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 5,
+      "duration": 6,
+      "state": "rrryyyyrrrrrrrrrrryyyrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 6,
+      "duration": 6,
+      "state": "GrrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 7,
+      "duration": 6,
+      "state": "Grrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "index": 8,
+      "duration": 6,
+      "state": "GGGrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG"
+    },
+    {
+      "index": 9,
+      "duration": 6,
+      "state": "yyyrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy"
+    },
+    {
+      "index": 10,
+      "duration": 1,
+      "state": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    }
+  ],
+  "phase_adjustments": [
+    {
+      "phase_index": 4,
+      "old_duration": 6,
+      "new_duration": 30,
+      "delta": 24,
+      "reason": "increase_route_link_18_green"
+    },
+    {
+      "phase_index": 2,
+      "old_duration": 14,
+      "new_duration": 6,
+      "delta": -8,
+      "reason": "donor_non_route_green_min_6s"
+    },
+    {
+      "phase_index": 6,
+      "old_duration": 14,
+      "new_duration": 6,
+      "delta": -8,
+      "reason": "donor_non_route_green_min_6s"
+    },
+    {
+      "phase_index": 8,
+      "old_duration": 14,
+      "new_duration": 6,
+      "delta": -8,
+      "reason": "donor_non_route_green_min_6s"
+    },
+    {
+      "phase_index": 2,
+      "old_duration": 12,
+      "new_duration": 18,
+      "delta": 6,
+      "reason": "increase_route_link_8_green"
+    },
+    {
+      "phase_index": 8,
+      "old_duration": 12,
+      "new_duration": 18,
+      "delta": 6,
+      "reason": "increase_route_link_25_green"
+    },
+    {
+      "phase_index": 0,
+      "old_duration": 12,
+      "new_duration": 6,
+      "delta": -6,
+      "reason": "donor_non_route_green_min_6s"
+    },
+    {
+      "phase_index": 4,
+      "old_duration": 12,
+      "new_duration": 6,
+      "delta": -6,
+      "reason": "donor_non_route_green_min_6s"
+    }
+  ],
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "route_connectivity": {
+    "checked": true,
+    "status": "PASS",
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "connected": true
+  },
+  "status": "PASS"
+}

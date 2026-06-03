@@ -1,0 +1,205 @@
+edge_id,target_lanes,current_lanes,lane_delta,source_segment_ids,source_directions,source_row_count,dominant_segment_ids,dominant_directions,dominant_match_ratio,repair_reason
+-180368918#0,3,2,1,S2 S3,downbound,2,S2 S3,downbound,0.642857,edge_weighted_majority_lane_target
+-180368918#5,3,2,1,S3 S4,downbound,2,S3 S4,downbound,0.357143,edge_weighted_majority_lane_target
+-180368918#6,3,2,1,S3 S4,downbound,2,S3 S4,downbound,0.642857,edge_weighted_majority_lane_target
+-180368918#8,3,2,1,S4 S5 S6,downbound,3,S4 S5 S6,downbound,1.0,edge_weighted_majority_lane_target
+-218773868#0,3,2,1,S5 S6,downbound,2,S5 S6,downbound,0.166667,edge_weighted_majority_lane_target
+-315658884#1,3,1,2,S18,downbound,1,S18,downbound,0.15,edge_weighted_majority_lane_target
+1395426737#0,3,1,2,S4 S5 S6,downbound,3,S4 S5 S6,downbound,1.0,edge_weighted_majority_lane_target
+1395426737#1,3,1,2,S4 S5 S6,downbound,3,S4 S5 S6,downbound,1.0,edge_weighted_majority_lane_target
+1455512066,3,2,1,S6 S7,downbound,2,S6 S7,downbound,0.194444,edge_weighted_majority_lane_target
+174870621#0,3,2,1,S1 S2,downbound,2,S1 S2,downbound,0.7,edge_weighted_majority_lane_target
+183272647,3,1,2,S2 S3,downbound,2,S2 S3,downbound,0.5,edge_weighted_majority_lane_target
+218923178#7,3,3,0,S2 S3,downbound,2,S2 S3,downbound,0.1,edge_weighted_majority_lane_target
+381802847#0,3,1,2,S1 S2,downbound,2,S1 S2,downbound,0.75,edge_weighted_majority_lane_target
+585341903#0,2,2,0,S22,downbound,1,S22,downbound,0.071429,edge_weighted_majority_lane_target
+585341903#1,2,2,0,S22,downbound,1,S22,downbound,0.357143,edge_weighted_majority_lane_target
+585341908#0,2,2,0,S22,downbound,1,S22,downbound,0.285714,edge_weighted_majority_lane_target
+585341908#1,2,2,0,S22,downbound,1,S22,downbound,0.285714,edge_weighted_majority_lane_target
+619147739#3,3,2,1,S18 S19,downbound,2,S18 S19,downbound,0.448276,edge_weighted_majority_lane_target
+619147739#6,3,2,1,S17 S18,downbound,2,S17 S18,downbound,0.6,edge_weighted_majority_lane_target
+619147740,3,2,1,S19 S20 S21,downbound,3,S19 S20 S21,downbound,1.0,edge_weighted_majority_lane_target
+773060736,3,1,2,S10 S11,downbound,2,S10 S11,downbound,0.357143,isolated_lane_gap_smoothing
+781983103#2,3,2,1,S16 S17,downbound,2,S16 S17,downbound,0.631579,edge_weighted_majority_lane_target
+781985783,2,2,0,S10 S11 S12,downbound,3,S10 S11 S12,downbound,1.0,edge_weighted_majority_lane_target
+781985786#6,3,3,0,S13 S14,downbound,2,S13 S14,downbound,0.5,edge_weighted_majority_lane_target
+781985786#7,3,3,0,S12 S13 S14,downbound,3,S12 S13 S14,downbound,1.0,edge_weighted_majority_lane_target
+781985792#3,3,2,1,S10 S9,downbound,2,S10 S9,downbound,0.347826,edge_weighted_majority_lane_target
+782892492#1,2,1,1,S10 S11,downbound,2,S10 S11,downbound,0.714286,edge_weighted_majority_lane_target
+783692390#1,2,1,1,S11,downbound,1,S11,downbound,0.071429,edge_weighted_majority_lane_target
+785130598#8,2,2,0,S8 S9,downbound,2,S8 S9,downbound,0.833333,edge_weighted_majority_lane_target
+785130603,3,1,2,S6 S7,downbound,2,S6 S7,downbound,0.194444,edge_weighted_majority_lane_target
+619147739#4,3,2,1,S18 S19,downbound,2,S18 S19,downbound,0.3,edge_weighted_majority_lane_target
+1455497343#0,3,2,1,S7 S8,downbound,2,S7 S8,downbound,0.666667,edge_weighted_majority_lane_target
+785130598#0,2,2,0,S10 S9,downbound,2,S10 S9,downbound,0.142857,edge_weighted_majority_lane_target
+273638834#2,2,1,1,S10 S9,downbound,2,S10 S9,downbound,0.102041,edge_weighted_majority_lane_target
+781985786#3,3,3,0,S14 S15,downbound,2,S14 S15,downbound,0.454545,edge_weighted_majority_lane_target
+785130598#1,3,2,1,S10 S9,downbound,2,S10 S9,downbound,0.163265,isolated_lane_gap_smoothing
+174870621#2,3,2,1,S1 S2,downbound,2,S1 S2,downbound,0.27027,edge_weighted_majority_lane_target
+781985779#0,3,2,1,S10 S11,downbound,2,S10 S11,downbound,0.304348,edge_weighted_majority_lane_target
+-800229255,3,2,1,S2 S3,downbound,2,S2 S3,downbound,0.3,edge_weighted_majority_lane_target
+578313749#0,3,3,0,S2,downbound,1,S2,downbound,0.3,edge_weighted_majority_lane_target
+1206223943,2,2,0,S22,downbound,1,S22,downbound,0.357143,edge_weighted_majority_lane_target
+1109231377#1,2,1,1,S11 S12,downbound,2,S11 S12,downbound,0.428571,edge_weighted_majority_lane_target
+781985786#8,2,3,-1,S12 S13,downbound,2,S12 S13,downbound,0.5,edge_weighted_majority_lane_target
+1206223946#0,2,2,0,S21 S22,downbound,2,S21 S22,downbound,0.5,edge_weighted_majority_lane_target
+781985786#1,3,3,0,S15,downbound,1,S15,downbound,0.111111,edge_weighted_majority_lane_target
+381802847#1,3,1,2,S1,downbound,1,S1,downbound,0.216216,edge_weighted_majority_lane_target
+1455512070,3,2,1,S6,downbound,1,S6,downbound,0.282609,edge_weighted_majority_lane_target
+-578313748#2,3,2,1,S2 S3,downbound,2,S2 S3,downbound,0.4,edge_weighted_majority_lane_target
+785130598#2,2,2,0,S9,downbound,1,S9,downbound,0.44898,edge_weighted_majority_lane_target
+578313749#1,3,3,0,S2,downbound,1,S2,downbound,0.4,edge_weighted_majority_lane_target
+921117704#0,3,2,1,S16 S17,downbound,2,S16 S17,downbound,0.333333,edge_weighted_majority_lane_target
+1455497343#1,3,2,1,S7,downbound,1,S7,downbound,0.416667,edge_weighted_majority_lane_target
+781985779#1,3,2,1,S10,downbound,1,S10,downbound,0.478261,edge_weighted_majority_lane_target
+619147739#0,3,2,1,S19 S20,downbound,2,S19 S20,downbound,0.666667,edge_weighted_majority_lane_target
+-180368918#3,3,2,1,S3 S4,downbound,2,S3 S4,downbound,0.642857,edge_weighted_majority_lane_target
+-218773868#6,3,2,1,S6,downbound,1,S6,downbound,0.173913,edge_weighted_majority_lane_target
+-180368918#7,3,2,1,S4 S5,downbound,2,S4 S5,downbound,0.714286,edge_weighted_majority_lane_target
+1109231376,2,1,1,S12,downbound,1,S12,downbound,0.363636,edge_weighted_majority_lane_target
+219696191#1,2,1,1,S21,downbound,1,S21,downbound,0.8,edge_weighted_majority_lane_target
+781983103#1,3,2,1,S17 S18,downbound,2,S17 S18,downbound,0.684211,edge_weighted_majority_lane_target
+174870621#4,3,2,1,S1,downbound,1,S1,downbound,0.324324,edge_weighted_majority_lane_target
+381802847#2,3,1,2,S1,downbound,1,S1,downbound,0.135135,edge_weighted_majority_lane_target
+1206223946#1,2,2,0,S21,downbound,1,S21,downbound,0.8,edge_weighted_majority_lane_target
+782892492#0,2,1,1,S11 S12,downbound,2,S11 S12,downbound,0.714286,edge_weighted_majority_lane_target
+620607766#0,2,1,1,S12,downbound,1,S12,downbound,0.363636,edge_weighted_majority_lane_target
+781985786#2,3,3,0,S15,downbound,1,S15,downbound,0.777778,edge_weighted_majority_lane_target
+619147739#5,3,2,1,S18 S19,downbound,2,S18 S19,downbound,0.7,edge_weighted_majority_lane_target
+-578313748#0,3,2,1,S2,downbound,1,S2,downbound,0.45,edge_weighted_majority_lane_target
+-218773868#5,3,2,1,S6,downbound,1,S6,downbound,0.23913,edge_weighted_majority_lane_target
+174870621#5,3,2,1,S1,downbound,1,S1,downbound,0.189189,edge_weighted_majority_lane_target
+781985792#0,3,2,1,S10,downbound,1,S10,downbound,0.391304,edge_weighted_majority_lane_target
+620607766#1,3,1,2,S12,downbound,1,S12,downbound,0.363636,isolated_lane_gap_smoothing
+955312947#1,3,1,2,S17,downbound,1,S17,downbound,0.315789,edge_weighted_majority_lane_target
+1455497343#2,3,2,1,S7,downbound,1,S7,downbound,0.277778,edge_weighted_majority_lane_target
+781985786#4,3,3,0,S14,downbound,1,S14,downbound,0.454545,edge_weighted_majority_lane_target
+785130598#3,3,2,1,S9,downbound,1,S9,downbound,0.204082,isolated_lane_gap_smoothing
+174870621#6,3,2,1,S1,downbound,1,S1,downbound,0.243243,edge_weighted_majority_lane_target
+619147739#1,3,2,1,S19,downbound,1,S19,downbound,0.275862,edge_weighted_majority_lane_target
+781985792#1,3,2,1,S10,downbound,1,S10,downbound,0.347826,edge_weighted_majority_lane_target
+781985784,2,2,0,S12,downbound,1,S12,downbound,0.772727,edge_weighted_majority_lane_target
+620607766#2,2,1,1,S12,downbound,1,S12,downbound,0.318182,edge_weighted_majority_lane_target
+785130598#4,2,2,0,S9,downbound,1,S9,downbound,0.183673,edge_weighted_majority_lane_target
+-218773868#4,3,2,1,S6,downbound,1,S6,downbound,0.26087,edge_weighted_majority_lane_target
+174870621#7,3,2,1,S1,downbound,1,S1,downbound,0.216216,edge_weighted_majority_lane_target
+-381453320#0,3,1,2,S7,downbound,1,S7,downbound,0.194444,edge_weighted_majority_lane_target
+619147739#2,3,2,1,S19,downbound,1,S19,downbound,0.310345,edge_weighted_majority_lane_target
+1455497343#3,3,2,1,S7,downbound,1,S7,downbound,0.333333,edge_weighted_majority_lane_target
+783692390#0,2,1,1,S12,downbound,1,S12,downbound,0.772727,edge_weighted_majority_lane_target
+785130598#5,2,2,0,S9,downbound,1,S9,downbound,0.244898,edge_weighted_majority_lane_target
+781985792#2,3,2,1,S10,downbound,1,S10,downbound,0.521739,edge_weighted_majority_lane_target
+781985786#5,3,3,0,S14,downbound,1,S14,downbound,0.409091,edge_weighted_majority_lane_target
+477063271,3,2,1,S22,downbound,1,S22,downbound,0.571429,isolated_lane_gap_smoothing
+-218773868#3,3,2,1,S6,downbound,1,S6,downbound,0.173913,edge_weighted_majority_lane_target
+174870621#8,3,2,1,S1,downbound,1,S1,downbound,0.351351,edge_weighted_majority_lane_target
+785130598#6,3,2,1,S9,downbound,1,S9,downbound,0.204082,isolated_lane_gap_smoothing
+1455497343#4,3,2,1,S7,downbound,1,S7,downbound,0.388889,edge_weighted_majority_lane_target
+-218773868#2,3,2,1,S6,downbound,1,S6,downbound,0.217391,edge_weighted_majority_lane_target
+174870621#9,3,2,1,S1,downbound,1,S1,downbound,0.216216,edge_weighted_majority_lane_target
+785130598#7,3,2,1,S9,downbound,1,S9,downbound,0.142857,isolated_lane_gap_smoothing
+174870621#10,3,2,1,S1,downbound,1,S1,downbound,0.243243,edge_weighted_majority_lane_target
+218684411#0,3,2,1,S1,downbound,1,S1,downbound,0.162162,edge_weighted_majority_lane_target
+218684411#1,3,2,1,S1,downbound,1,S1,downbound,0.135135,edge_weighted_majority_lane_target
+218684411#2,3,2,1,S1,downbound,1,S1,downbound,0.027027,edge_weighted_majority_lane_target
+273638834#1,3,1,2,S10,downbound,1,S10,downbound,0.086957,edge_weighted_majority_lane_target
+315658897#0,3,1,2,S19,downbound,1,S19,downbound,0.034483,edge_weighted_majority_lane_target
+-174870621#2,3,2,1,S1 S2,upbound,2,S1 S2,upbound,0.25,edge_weighted_majority_lane_target
+-218684411#1,3,3,0,S1,upbound,1,S1,upbound,0.108108,edge_weighted_majority_lane_target
+-273638834#1,3,1,2,S10,upbound,1,S10,upbound,0.086957,isolated_lane_gap_smoothing
+-273638834#2,3,1,2,S10 S9,upbound,2,S10 S9,upbound,0.122449,edge_weighted_majority_lane_target
+-315658897#0,3,1,2,S19,upbound,1,S19,upbound,0.034483,edge_weighted_majority_lane_target
+180368915#0,2,2,0,S10 S11,upbound,2,S10 S11,upbound,0.285714,edge_weighted_majority_lane_target
+180368915#3,2,2,0,S11 S12,upbound,2,S11 S12,upbound,0.5,edge_weighted_majority_lane_target
+180368918#3,3,2,1,S3 S4,upbound,2,S3 S4,upbound,0.642857,edge_weighted_majority_lane_target
+180368918#7,3,2,1,S4 S5,upbound,2,S4 S5,upbound,0.714286,edge_weighted_majority_lane_target
+180368918#8,3,2,1,S4 S5 S6,upbound,3,S4 S5 S6,upbound,1.0,isolated_lane_gap_smoothing
+218773869#9,3,2,1,S10 S9,upbound,2,S10 S9,upbound,0.142857,edge_weighted_majority_lane_target
+218915135#4,3,2,1,S16 S17,upbound,2,S16 S17,upbound,0.315789,edge_weighted_majority_lane_target
+333557072#1,3,2,1,S18 S19,upbound,2,S18 S19,upbound,0.3,edge_weighted_majority_lane_target
+347237859#0,3,2,1,S12 S13,upbound,2,S12 S13,upbound,0.75,isolated_lane_gap_smoothing
+347237859#1,3,2,1,S12 S13 S14,upbound,3,S12 S13 S14,upbound,1.0,edge_weighted_majority_lane_target
+347237859#4,3,2,1,S14 S15,upbound,2,S14 S15,upbound,0.590909,edge_weighted_majority_lane_target
+37402371,3,2,1,S22,upbound,1,S22,upbound,0.071429,edge_weighted_majority_lane_target
+420361196,2,2,0,S10 S11 S12,upbound,3,S10 S11 S12,upbound,1.0,edge_weighted_majority_lane_target
+578313748#2,3,2,1,S2 S3,upbound,2,S2 S3,upbound,0.4,edge_weighted_majority_lane_target
+585341906#0,3,2,1,S22,upbound,1,S22,upbound,0.285714,edge_weighted_majority_lane_target
+585341907#0,3,2,1,S22,upbound,1,S22,upbound,0.285714,edge_weighted_majority_lane_target
+781983104#1,3,2,1,S17 S18 S19,upbound,3,S17 S18 S19,upbound,1.0,edge_weighted_majority_lane_target
+781985793#1,2,2,0,S10 S11,upbound,2,S10 S11,upbound,0.434783,edge_weighted_majority_lane_target
+785130600#3,2,2,0,S7 S8,upbound,2,S7 S8,upbound,0.833333,edge_weighted_majority_lane_target
+800229255,3,2,1,S2 S3,upbound,2,S2 S3,upbound,0.3,edge_weighted_majority_lane_target
+180368918#5,3,2,1,S3 S4,upbound,2,S3 S4,upbound,0.357143,edge_weighted_majority_lane_target
+347237859#2,3,2,1,S13 S14,upbound,2,S13 S14,upbound,0.5,edge_weighted_majority_lane_target
+-218684411#0,3,3,0,S1,upbound,1,S1,upbound,0.162162,edge_weighted_majority_lane_target
+218773868#0,2,2,0,S6,upbound,1,S6,upbound,0.130435,edge_weighted_majority_lane_target
+428260110,2,2,0,S6 S7,upbound,2,S6 S7,upbound,0.222222,edge_weighted_majority_lane_target
+1455497345,3,2,1,S7 S8 S9,upbound,3,S7 S8 S9,upbound,1.0,edge_weighted_majority_lane_target
+180368915#1,3,2,1,S10 S11,upbound,2,S10 S11,upbound,0.357143,isolated_lane_gap_smoothing
+333557072#2,3,2,1,S18 S19,upbound,2,S18 S19,upbound,0.310345,edge_weighted_majority_lane_target
+781985789#0,3,1,2,S16,upbound,1,S16,upbound,0.333333,edge_weighted_majority_lane_target
+-174870621#10,3,2,1,S1,upbound,1,S1,upbound,0.216216,edge_weighted_majority_lane_target
+585341906#2,3,2,1,S22,upbound,1,S22,upbound,0.5,edge_weighted_majority_lane_target
+347237859#5,3,2,1,S14 S15,upbound,2,S14 S15,upbound,0.5,edge_weighted_majority_lane_target
+218915133#0,2,2,0,S12,upbound,1,S12,upbound,0.272727,edge_weighted_majority_lane_target
+219696193#1,2,2,0,S10 S9,upbound,2,S10 S9,upbound,0.478261,edge_weighted_majority_lane_target
+-174870621#9,3,2,1,S1,upbound,1,S1,upbound,0.216216,edge_weighted_majority_lane_target
+218773868#2,3,2,1,S6,upbound,1,S6,upbound,0.195652,isolated_lane_gap_smoothing
+218773869#1,3,2,1,S9,upbound,1,S9,upbound,0.22449,edge_weighted_majority_lane_target
+785130600#0,3,2,1,S7,upbound,1,S7,upbound,0.305556,isolated_lane_gap_smoothing
+781985789#1,3,1,2,S16,upbound,1,S16,upbound,0.333333,edge_weighted_majority_lane_target
+585341907#2,3,2,1,S22,upbound,1,S22,upbound,0.571429,edge_weighted_majority_lane_target
+180368918#0,3,2,1,S2 S3,upbound,2,S2 S3,upbound,0.642857,edge_weighted_majority_lane_target
+-381802847#0,3,1,2,S1 S2,upbound,2,S1 S2,upbound,0.8,edge_weighted_majority_lane_target
+347237859#3,3,2,1,S13 S14,upbound,2,S13 S14,upbound,0.681818,edge_weighted_majority_lane_target
+180368918#6,3,2,1,S3 S4,upbound,2,S3 S4,upbound,0.571429,edge_weighted_majority_lane_target
+218915133#1,3,2,1,S12,upbound,1,S12,upbound,0.454545,isolated_lane_gap_smoothing
+-174870621#8,3,2,1,S1,upbound,1,S1,upbound,0.324324,edge_weighted_majority_lane_target
+913702834,2,1,1,S4 S5,upbound,2,S4 S5,upbound,0.5,edge_weighted_majority_lane_target
+218773868#3,2,2,0,S6,upbound,1,S6,upbound,0.152174,edge_weighted_majority_lane_target
+218773869#3,3,2,1,S9,upbound,1,S9,upbound,0.183673,edge_weighted_majority_lane_target
+-174870621#0,3,2,1,S1 S2,upbound,2,S1 S2,upbound,0.7,edge_weighted_majority_lane_target
+333557072#3,3,2,1,S19,upbound,1,S19,upbound,0.37931,edge_weighted_majority_lane_target
+785130600#1,3,2,1,S7,upbound,1,S7,upbound,0.222222,isolated_lane_gap_smoothing
+619147738#0,3,2,1,S19 S20 S21,upbound,3,S19 S20 S21,upbound,1.0,edge_weighted_majority_lane_target
+180368915#2,3,2,1,S11,upbound,1,S11,upbound,0.642857,isolated_lane_gap_smoothing
+218773869#4,3,2,1,S9,upbound,1,S9,upbound,0.22449,edge_weighted_majority_lane_target
+381453320#0,3,1,2,S7,upbound,1,S7,upbound,0.166667,isolated_lane_gap_smoothing
+781983104#0,3,2,1,S16 S17,upbound,2,S16 S17,upbound,0.842105,edge_weighted_majority_lane_target
+-174870621#7,3,2,1,S1,upbound,1,S1,upbound,0.216216,edge_weighted_majority_lane_target
+218773868#4,3,2,1,S6,upbound,1,S6,upbound,0.23913,isolated_lane_gap_smoothing
+1206223947,3,2,1,S22,upbound,1,S22,upbound,0.642857,edge_weighted_majority_lane_target
+180445419,2,2,0,S12,upbound,1,S12,upbound,0.818182,edge_weighted_majority_lane_target
+619147738#1,3,2,1,S22,upbound,1,S22,upbound,0.357143,edge_weighted_majority_lane_target
+-174870621#6,3,2,1,S1,upbound,1,S1,upbound,0.243243,edge_weighted_majority_lane_target
+219696193#2,3,2,1,S10,upbound,1,S10,upbound,0.434783,isolated_lane_gap_smoothing
+218773869#5,3,2,1,S9,upbound,1,S9,upbound,0.22449,edge_weighted_majority_lane_target
+218915133#2,3,2,1,S12,upbound,1,S12,upbound,0.5,isolated_lane_gap_smoothing
+1206223945,3,2,1,S22,upbound,1,S22,upbound,0.714286,edge_weighted_majority_lane_target
+781985787#0,3,2,1,S15,upbound,1,S15,upbound,0.722222,edge_weighted_majority_lane_target
+-955312947#1,3,1,2,S17,upbound,1,S17,upbound,0.368421,edge_weighted_majority_lane_target
+-174870621#5,3,2,1,S1,upbound,1,S1,upbound,0.189189,edge_weighted_majority_lane_target
+218915135#3,3,2,1,S16,upbound,1,S16,upbound,0.708333,edge_weighted_majority_lane_target
+183272387#0,3,2,1,S2,upbound,1,S2,upbound,0.4,edge_weighted_majority_lane_target
+218773868#5,2,2,0,S6,upbound,1,S6,upbound,0.195652,edge_weighted_majority_lane_target
+785130600#2,2,2,0,S7,upbound,1,S7,upbound,0.583333,edge_weighted_majority_lane_target
+578313748#0,3,2,1,S2,upbound,1,S2,upbound,0.45,edge_weighted_majority_lane_target
+-381802847#2,3,1,2,S1,upbound,1,S1,upbound,0.162162,edge_weighted_majority_lane_target
+218773869#6,3,2,1,S9,upbound,1,S9,upbound,0.306122,edge_weighted_majority_lane_target
+-174870621#4,3,2,1,S1,upbound,1,S1,upbound,0.297297,edge_weighted_majority_lane_target
+781985793#0,2,2,0,S10,upbound,1,S10,upbound,0.304348,edge_weighted_majority_lane_target
+218773868#6,2,2,0,S6,upbound,1,S6,upbound,0.130435,edge_weighted_majority_lane_target
+1206223939,3,2,1,S22,upbound,1,S22,upbound,0.428571,edge_weighted_majority_lane_target
+218915133#3,3,2,1,S12,upbound,1,S12,upbound,0.363636,isolated_lane_gap_smoothing
+333557072#5,3,2,1,S19,upbound,1,S19,upbound,0.448276,edge_weighted_majority_lane_target
+183272387#1,3,2,1,S2,upbound,1,S2,upbound,0.35,edge_weighted_majority_lane_target
+615671503,3,2,1,S22,upbound,1,S22,upbound,0.285714,edge_weighted_majority_lane_target
+-1455512070,3,2,1,S6,upbound,1,S6,upbound,0.282609,isolated_lane_gap_smoothing
+-381802847#1,3,1,2,S1,upbound,1,S1,upbound,0.216216,edge_weighted_majority_lane_target
+218773869#7,3,2,1,S9,upbound,1,S9,upbound,0.244898,edge_weighted_majority_lane_target
+218773869#8,3,2,1,S9,upbound,1,S9,upbound,0.142857,edge_weighted_majority_lane_target
+615671502,3,2,1,S22,upbound,1,S22,upbound,0.357143,edge_weighted_majority_lane_target
+183272387#2,3,2,1,S2,upbound,1,S2,upbound,0.2,edge_weighted_majority_lane_target
+183272654,3,4,-1,S22,upbound,1,S22,upbound,0.214286,edge_weighted_majority_lane_target
+315658884#1,3,1,2,S18,upbound,1,S18,upbound,0.15,edge_weighted_majority_lane_target
+913372757,3,1,2,S15,upbound,1,S15,upbound,0.166667,edge_weighted_majority_lane_target

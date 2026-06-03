@@ -2024,25 +2024,63 @@ def write_sumo_files_for_task(
     return paths
 
 
-def set_congested_emergency_departure(path: Path) -> None:
+def conservative_emergency_profile(task: dict[str, Any] | None = None, profile: str | None = None) -> bool:
+    value = profile if profile is not None else str((task or {}).get("emergency_behavior_profile", ""))
+    return value == "conservative_firetruck_b0"
+
+
+def set_congested_emergency_departure(
+    path: Path,
+    vtype_attrs: dict[str, Any] | None = None,
+    behavior_profile: str = "",
+) -> None:
+    conservative = conservative_emergency_profile(profile=behavior_profile)
     tree = ET.parse(path)
     root = tree.getroot()
+    desired_type_id = str((vtype_attrs or {}).get("id") or "")
+    replaced_type_ids: set[str] = set()
     for vtype in root.findall("vType"):
-        vtype.set("speedFactor", f"{EMERGENCY_SPEED_FACTOR:.2f}")
-        vtype.set("maxSpeed", f"{EMERGENCY_SPEED_CAP_KMH / 3.6:.6f}")
-        vtype.set("lcStrategic", "10.0")
-        vtype.set("lcCooperative", "0.0")
-        vtype.set("lcSpeedGain", "5.0")
-        vtype.set("lcKeepRight", "0.0")
-        vtype.set("lcAssertive", "5.0")
+        old_type_id = vtype.get("id", "")
+        if conservative:
+            vtype.set("speedFactor", "1.05")
+            vtype.set("maxSpeed", f"{60.0 / 3.6:.6f}")
+            vtype.set("lcStrategic", "3.0")
+            vtype.set("lcCooperative", "0.7")
+            vtype.set("lcSpeedGain", "1.0")
+            vtype.set("lcKeepRight", "0.0")
+            vtype.set("lcAssertive", "1.0")
+            vtype.set("impatience", "0.2")
+        else:
+            vtype.set("speedFactor", f"{EMERGENCY_SPEED_FACTOR:.2f}")
+            vtype.set("maxSpeed", f"{EMERGENCY_SPEED_CAP_KMH / 3.6:.6f}")
+            vtype.set("lcStrategic", "10.0")
+            vtype.set("lcCooperative", "0.0")
+            vtype.set("lcSpeedGain", "5.0")
+            vtype.set("lcKeepRight", "0.0")
+            vtype.set("lcAssertive", "5.0")
+        for key, value in (vtype_attrs or {}).items():
+            if key == "id":
+                continue
+            vtype.set(str(key), str(value))
+        if desired_type_id:
+            vtype.set("id", desired_type_id)
+            if old_type_id:
+                replaced_type_ids.add(old_type_id)
         for param in vtype.findall("param"):
             if param.get("key") == "has.bluelight.device":
                 param.set("value", "true" if EMERGENCY_BLUELIGHT_ENABLED else "false")
     for vehicle in root.findall("vehicle"):
-        vehicle.set("departLane", "free")
-        vehicle.set("departPos", "last")
-        vehicle.set("departSpeed", "max")
-        vehicle.set("insertionChecks", "none")
+        if desired_type_id and (not replaced_type_ids or vehicle.get("type") in replaced_type_ids):
+            vehicle.set("type", desired_type_id)
+        if conservative:
+            vehicle.set("departLane", "best")
+            vehicle.set("departSpeed", "0")
+            vehicle.attrib.pop("insertionChecks", None)
+        else:
+            vehicle.set("departLane", "free")
+            vehicle.set("departPos", "last")
+            vehicle.set("departSpeed", "max")
+            vehicle.set("insertionChecks", "none")
     tree.write(path, encoding="utf-8", xml_declaration=True)
 
 
@@ -2057,6 +2095,8 @@ def remove_vehicle_elements(path: Path) -> None:
 def configure_dynamic_emergency_departure(task: dict[str, Any], emergency_route_xml: Path) -> dict[str, Any]:
     if task["mode"] == "B00" or float(task["emergency_depart"]) <= 0:
         return task
+    if conservative_emergency_profile(task) or bool(task.get("disable_dynamic_emergency_insert")):
+        return {**task, "dynamic_emergency_insert": False}
     remove_vehicle_elements(emergency_route_xml)
     return {**task, "dynamic_emergency_insert": True}
 
@@ -3059,6 +3099,10 @@ def run_traci_experiment(
     n_delay_window_start = float(task["emergency_depart"])
     dynamic_emergency_insert = bool(task.get("dynamic_emergency_insert"))
     dynamic_emergency_inserted = not dynamic_emergency_insert
+    conservative_lane_guidance_disabled = (
+        conservative_emergency_profile(task)
+        and str(task.get("emergency_lane_guidance_mode", "disabled")) == "disabled"
+    )
     emergency_last_state: dict[str, Any] = {}
     general_vehicle_speed_sum_kmh = 0.0
     general_vehicle_speed_sample_count = 0
@@ -3127,7 +3171,7 @@ def run_traci_experiment(
                         traci.vehicle.add(
                             args.emergency_vehicle_id,
                             args.route_id,
-                            typeID="b1_emergency_type",
+                            typeID=str((task.get("emergency_vtype_attrs") or {}).get("id") or "b1_emergency_type"),
                             depart="now",
                             departLane="free",
                             departPos="last",
@@ -3213,7 +3257,12 @@ def run_traci_experiment(
                         next_edge_id = route_edges[route_index + 1]
                         connected_lane_indices = connected_lanes_by_transition.get((road_id, next_edge_id), set())
                         current_lane_index = lane_index_from_id(lane_id)
-                        if connected_lane_indices and current_lane_index is not None and current_lane_index not in connected_lane_indices:
+                        if (
+                            not conservative_lane_guidance_disabled
+                            and connected_lane_indices
+                            and current_lane_index is not None
+                            and current_lane_index not in connected_lane_indices
+                        ):
                             target_lane_index = min(connected_lane_indices, key=lambda item: abs(item - current_lane_index))
                             try:
                                 traci.vehicle.changeLane(args.emergency_vehicle_id, target_lane_index, 20)
@@ -3663,7 +3712,11 @@ def run_b0_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, An
     emergency_route_xml = run_dir / f"{vehicle_id}.rou.xml"
     S14.write_emergency_route_xml(emergency_route_xml, route_row, vehicle_id, float(task["emergency_depart"]))
     if float(task["emergency_depart"]) > 0:
-        set_congested_emergency_departure(emergency_route_xml)
+        set_congested_emergency_departure(
+            emergency_route_xml,
+            task.get("emergency_vtype_attrs"),
+            str(task.get("emergency_behavior_profile", "")),
+        )
     task = configure_dynamic_emergency_departure(task, emergency_route_xml)
     args = SimpleNamespace(
         net=Path(task["net"]),
@@ -3744,7 +3797,11 @@ def run_control_task(task: dict[str, Any]) -> tuple[dict[str, Any], list[dict[st
     emergency_route_xml = run_dir / f"{vehicle_id}.rou.xml"
     S14.write_emergency_route_xml(emergency_route_xml, route_row, vehicle_id, float(task["emergency_depart"]))
     if float(task["emergency_depart"]) > 0:
-        set_congested_emergency_departure(emergency_route_xml)
+        set_congested_emergency_departure(
+            emergency_route_xml,
+            task.get("emergency_vtype_attrs"),
+            str(task.get("emergency_behavior_profile", "")),
+        )
     task = configure_dynamic_emergency_departure(task, emergency_route_xml)
     args = SimpleNamespace(
         net=Path(task["net"]),
@@ -4295,6 +4352,10 @@ def main() -> int:
             "timeout_sec": args.timeout_sec,
             "recovery_buffer_sec": args.recovery_buffer_sec,
             "output_prefix": args.output_prefix,
+            "emergency_vtype_attrs": manifest.get("emergency_vtype_attrs", {}) if manifest else {},
+            "emergency_behavior_profile": str(manifest.get("emergency_behavior_profile", "")) if manifest else "",
+            "disable_dynamic_emergency_insert": bool(manifest.get("disable_dynamic_emergency_insert", False)) if manifest else False,
+            "emergency_lane_guidance_mode": str(manifest.get("emergency_lane_guidance_mode", "")) if manifest else "",
         }
         tasks = []
         for task in build_tasks(args, route_ids, b2_params):

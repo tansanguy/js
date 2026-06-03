@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+import sys
+from expanded_v7_pipeline import main
+
+if __name__ == "__main__":
+    sys.argv.insert(1, "run_b0")
+    raise SystemExit(main())

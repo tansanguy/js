@@ -1,0 +1,205 @@
+edge_id,target_lanes_simple,actual_lanes,current_lanes_before_repair,source_segment_ids,source_directions,smoothing_applied,status
+-180368918#0,3,3,2,S2 S3,downbound,False,PASS
+-180368918#5,3,3,2,S3 S4,downbound,False,PASS
+-180368918#6,3,3,2,S3 S4,downbound,False,PASS
+-180368918#8,3,3,2,S4 S5 S6,downbound,False,PASS
+-218773868#0,3,3,2,S5 S6,downbound,False,PASS
+-315658884#1,3,3,1,S18,downbound,False,PASS
+1395426737#0,3,3,1,S4 S5 S6,downbound,False,PASS
+1395426737#1,3,3,1,S4 S5 S6,downbound,False,PASS
+1455512066,3,3,2,S6 S7,downbound,False,PASS
+174870621#0,3,3,2,S1 S2,downbound,False,PASS
+183272647,3,3,1,S2 S3,downbound,False,PASS
+218923178#7,3,3,3,S2 S3,downbound,False,PASS
+381802847#0,3,3,1,S1 S2,downbound,False,PASS
+585341903#0,2,2,2,S22,downbound,False,PASS
+585341903#1,2,2,2,S22,downbound,False,PASS
+585341908#0,2,2,2,S22,downbound,False,PASS
+585341908#1,2,2,2,S22,downbound,False,PASS
+619147739#3,3,3,2,S18 S19,downbound,False,PASS
+619147739#6,3,3,2,S17 S18,downbound,False,PASS
+619147740,3,3,2,S19 S20 S21,downbound,False,PASS
+773060736,3,3,1,S10 S11,downbound,True,PASS
+781983103#2,3,3,2,S16 S17,downbound,False,PASS
+781985783,2,2,2,S10 S11 S12,downbound,False,PASS
+781985786#6,3,3,3,S13 S14,downbound,False,PASS
+781985786#7,3,3,3,S12 S13 S14,downbound,False,PASS
+781985792#3,3,3,2,S10 S9,downbound,False,PASS
+782892492#1,2,2,1,S10 S11,downbound,False,PASS
+783692390#1,2,2,1,S11,downbound,False,PASS
+785130598#8,2,2,2,S8 S9,downbound,False,PASS
+785130603,3,3,1,S6 S7,downbound,False,PASS
+619147739#4,3,3,2,S18 S19,downbound,False,PASS
+1455497343#0,3,3,2,S7 S8,downbound,False,PASS
+785130598#0,2,2,2,S10 S9,downbound,False,PASS
+273638834#2,2,2,1,S10 S9,downbound,False,PASS
+781985786#3,3,3,3,S14 S15,downbound,False,PASS
+785130598#1,3,3,2,S10 S9,downbound,True,PASS
+174870621#2,3,3,2,S1 S2,downbound,False,PASS
+781985779#0,3,3,2,S10 S11,downbound,False,PASS
+-800229255,3,3,2,S2 S3,downbound,False,PASS
+578313749#0,3,3,3,S2,downbound,False,PASS
+1206223943,2,2,2,S22,downbound,False,PASS
+1109231377#1,2,2,1,S11 S12,downbound,False,PASS
+781985786#8,2,2,3,S12 S13,downbound,False,PASS
+1206223946#0,2,2,2,S21 S22,downbound,False,PASS
+781985786#1,3,3,3,S15,downbound,False,PASS
+381802847#1,3,3,1,S1,downbound,False,PASS
+1455512070,3,3,2,S6,downbound,False,PASS
+-578313748#2,3,3,2,S2 S3,downbound,False,PASS
+785130598#2,2,2,2,S9,downbound,False,PASS
+578313749#1,3,3,3,S2,downbound,False,PASS
+921117704#0,3,3,2,S16 S17,downbound,False,PASS
+1455497343#1,3,3,2,S7,downbound,False,PASS
+781985779#1,3,3,2,S10,downbound,False,PASS
+619147739#0,3,3,2,S19 S20,downbound,False,PASS
+-180368918#3,3,3,2,S3 S4,downbound,False,PASS
+-218773868#6,3,3,2,S6,downbound,False,PASS
+-180368918#7,3,3,2,S4 S5,downbound,False,PASS
+1109231376,2,2,1,S12,downbound,False,PASS
+219696191#1,2,2,1,S21,downbound,False,PASS
+781983103#1,3,3,2,S17 S18,downbound,False,PASS
+174870621#4,3,3,2,S1,downbound,False,PASS
+381802847#2,3,3,1,S1,downbound,False,PASS
+1206223946#1,2,2,2,S21,downbound,False,PASS
+782892492#0,2,2,1,S11 S12,downbound,False,PASS
+620607766#0,2,2,1,S12,downbound,False,PASS
+781985786#2,3,3,3,S15,downbound,False,PASS
+619147739#5,3,3,2,S18 S19,downbound,False,PASS
+-578313748#0,3,3,2,S2,downbound,False,PASS
+-218773868#5,3,3,2,S6,downbound,False,PASS
+174870621#5,3,3,2,S1,downbound,False,PASS
+781985792#0,3,3,2,S10,downbound,False,PASS
+620607766#1,3,3,1,S12,downbound,True,PASS
+955312947#1,3,3,1,S17,downbound,False,PASS
+1455497343#2,3,3,2,S7,downbound,False,PASS
+781985786#4,3,3,3,S14,downbound,False,PASS
+785130598#3,3,3,2,S9,downbound,True,PASS
+174870621#6,3,3,2,S1,downbound,False,PASS
+619147739#1,3,3,2,S19,downbound,False,PASS
+781985792#1,3,3,2,S10,downbound,False,PASS
+781985784,2,2,2,S12,downbound,False,PASS
+620607766#2,2,2,1,S12,downbound,False,PASS
+785130598#4,2,2,2,S9,downbound,False,PASS
+-218773868#4,3,3,2,S6,downbound,False,PASS
+174870621#7,3,3,2,S1,downbound,False,PASS
+-381453320#0,3,3,1,S7,downbound,False,PASS
+619147739#2,3,3,2,S19,downbound,False,PASS
+1455497343#3,3,3,2,S7,downbound,False,PASS
+783692390#0,2,2,1,S12,downbound,False,PASS
+785130598#5,2,2,2,S9,downbound,False,PASS
+781985792#2,3,3,2,S10,downbound,False,PASS
+781985786#5,3,3,3,S14,downbound,False,PASS
+477063271,3,3,2,S22,downbound,True,PASS
+-218773868#3,3,3,2,S6,downbound,False,PASS
+174870621#8,3,3,2,S1,downbound,False,PASS
+785130598#6,3,3,2,S9,downbound,True,PASS
+1455497343#4,3,3,2,S7,downbound,False,PASS
+-218773868#2,3,3,2,S6,downbound,False,PASS
+174870621#9,3,3,2,S1,downbound,False,PASS
+785130598#7,3,3,2,S9,downbound,True,PASS
+174870621#10,3,3,2,S1,downbound,False,PASS
+218684411#0,3,3,2,S1,downbound,False,PASS
+218684411#1,3,3,2,S1,downbound,False,PASS
+218684411#2,3,3,2,S1,downbound,False,PASS
+273638834#1,3,3,1,S10,downbound,False,PASS
+315658897#0,3,3,1,S19,downbound,False,PASS
+-174870621#2,3,3,2,S1 S2,upbound,False,PASS
+-218684411#1,3,3,3,S1,upbound,False,PASS
+-273638834#1,3,3,1,S10,upbound,True,PASS
+-273638834#2,3,3,1,S10 S9,upbound,False,PASS
+-315658897#0,3,3,1,S19,upbound,False,PASS
+180368915#0,2,2,2,S10 S11,upbound,False,PASS
+180368915#3,2,2,2,S11 S12,upbound,False,PASS
+180368918#3,3,3,2,S3 S4,upbound,False,PASS
+180368918#7,3,3,2,S4 S5,upbound,False,PASS
+180368918#8,3,3,2,S4 S5 S6,upbound,True,PASS
+218773869#9,3,3,2,S10 S9,upbound,False,PASS
+218915135#4,3,3,2,S16 S17,upbound,False,PASS
+333557072#1,3,3,2,S18 S19,upbound,False,PASS
+347237859#0,3,3,2,S12 S13,upbound,True,PASS
+347237859#1,3,3,2,S12 S13 S14,upbound,False,PASS
+347237859#4,3,3,2,S14 S15,upbound,False,PASS
+37402371,3,3,2,S22,upbound,False,PASS
+420361196,2,2,2,S10 S11 S12,upbound,False,PASS
+578313748#2,3,3,2,S2 S3,upbound,False,PASS
+585341906#0,3,3,2,S22,upbound,False,PASS
+585341907#0,3,3,2,S22,upbound,False,PASS
+781983104#1,3,3,2,S17 S18 S19,upbound,False,PASS
+781985793#1,2,2,2,S10 S11,upbound,False,PASS
+785130600#3,2,2,2,S7 S8,upbound,False,PASS
+800229255,3,3,2,S2 S3,upbound,False,PASS
+180368918#5,3,3,2,S3 S4,upbound,False,PASS
+347237859#2,3,3,2,S13 S14,upbound,False,PASS
+-218684411#0,3,3,3,S1,upbound,False,PASS
+218773868#0,2,2,2,S6,upbound,False,PASS
+428260110,2,2,2,S6 S7,upbound,False,PASS
+1455497345,3,3,2,S7 S8 S9,upbound,False,PASS
+180368915#1,3,3,2,S10 S11,upbound,True,PASS
+333557072#2,3,3,2,S18 S19,upbound,False,PASS
+781985789#0,3,3,1,S16,upbound,False,PASS
+-174870621#10,3,3,2,S1,upbound,False,PASS
+585341906#2,3,3,2,S22,upbound,False,PASS
+347237859#5,3,3,2,S14 S15,upbound,False,PASS
+218915133#0,2,2,2,S12,upbound,False,PASS
+219696193#1,2,2,2,S10 S9,upbound,False,PASS
+-174870621#9,3,3,2,S1,upbound,False,PASS
+218773868#2,3,3,2,S6,upbound,True,PASS
+218773869#1,3,3,2,S9,upbound,False,PASS
+785130600#0,3,3,2,S7,upbound,True,PASS
+781985789#1,3,3,1,S16,upbound,False,PASS
+585341907#2,3,3,2,S22,upbound,False,PASS
+180368918#0,3,3,2,S2 S3,upbound,False,PASS
+-381802847#0,3,3,1,S1 S2,upbound,False,PASS
+347237859#3,3,3,2,S13 S14,upbound,False,PASS
+180368918#6,3,3,2,S3 S4,upbound,False,PASS
+218915133#1,3,3,2,S12,upbound,True,PASS
+-174870621#8,3,3,2,S1,upbound,False,PASS
+913702834,2,2,1,S4 S5,upbound,False,PASS
+218773868#3,2,2,2,S6,upbound,False,PASS
+218773869#3,3,3,2,S9,upbound,False,PASS
+-174870621#0,3,3,2,S1 S2,upbound,False,PASS
+333557072#3,3,3,2,S19,upbound,False,PASS
+785130600#1,3,3,2,S7,upbound,True,PASS
+619147738#0,3,3,2,S19 S20 S21,upbound,False,PASS
+180368915#2,3,3,2,S11,upbound,True,PASS
+218773869#4,3,3,2,S9,upbound,False,PASS
+381453320#0,3,3,1,S7,upbound,True,PASS
+781983104#0,3,3,2,S16 S17,upbound,False,PASS
+-174870621#7,3,3,2,S1,upbound,False,PASS
+218773868#4,3,3,2,S6,upbound,True,PASS
+1206223947,3,3,2,S22,upbound,False,PASS
+180445419,2,2,2,S12,upbound,False,PASS
+619147738#1,3,3,2,S22,upbound,False,PASS
+-174870621#6,3,3,2,S1,upbound,False,PASS
+219696193#2,3,3,2,S10,upbound,True,PASS
+218773869#5,3,3,2,S9,upbound,False,PASS
+218915133#2,3,3,2,S12,upbound,True,PASS
+1206223945,3,3,2,S22,upbound,False,PASS
+781985787#0,3,3,2,S15,upbound,False,PASS
+-955312947#1,3,3,1,S17,upbound,False,PASS
+-174870621#5,3,3,2,S1,upbound,False,PASS
+218915135#3,3,3,2,S16,upbound,False,PASS
+183272387#0,3,3,2,S2,upbound,False,PASS
+218773868#5,2,2,2,S6,upbound,False,PASS
+785130600#2,2,2,2,S7,upbound,False,PASS
+578313748#0,3,3,2,S2,upbound,False,PASS
+-381802847#2,3,3,1,S1,upbound,False,PASS
+218773869#6,3,3,2,S9,upbound,False,PASS
+-174870621#4,3,3,2,S1,upbound,False,PASS
+781985793#0,2,2,2,S10,upbound,False,PASS
+218773868#6,2,2,2,S6,upbound,False,PASS
+1206223939,3,3,2,S22,upbound,False,PASS
+218915133#3,3,3,2,S12,upbound,True,PASS
+333557072#5,3,3,2,S19,upbound,False,PASS
+183272387#1,3,3,2,S2,upbound,False,PASS
+615671503,3,3,2,S22,upbound,False,PASS
+-1455512070,3,3,2,S6,upbound,True,PASS
+-381802847#1,3,3,1,S1,upbound,False,PASS
+218773869#7,3,3,2,S9,upbound,False,PASS
+218773869#8,3,3,2,S9,upbound,False,PASS
+615671502,3,3,2,S22,upbound,False,PASS
+183272387#2,3,3,2,S2,upbound,False,PASS
+183272654,3,3,4,S22,upbound,False,PASS
+315658884#1,3,3,1,S18,upbound,False,PASS
+913372757,3,3,1,S15,upbound,False,PASS

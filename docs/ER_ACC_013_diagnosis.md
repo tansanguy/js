@@ -10,4 +10,6 @@
 
 ## 최종 반영
 
-`configs/final_experiment_manifest.json`의 `excluded_routes`에 `ER_ACC_013`을 유지한다.
+최종 단일 경로 실험 manifest(`configs/final_experiment_manifest.json`)는 서울역 고정 경로(`FIRE_TO_SEOUL_STATION`)만 정의하므로 별도 `excluded_routes` 필드를 두지 않는다.
+
+다중 경로 theta 검증에서는 `05_theta_check_simulation/routes/b0_valid_18_routes.csv`가 `ER_ACC_013`을 제외한 route snapshot이다. 원본 19-route 자료는 `data_prepared/routes/emergency_routes_spine_v2.csv`에 보존한다.

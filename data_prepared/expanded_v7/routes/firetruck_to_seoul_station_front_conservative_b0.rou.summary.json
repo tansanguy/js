@@ -1,0 +1,28 @@
+{
+  "schema": "expanded_v7_conservative_firetruck_route_xml.v1",
+  "generated_at": "2026-06-03T17:28:15.766667+00:00",
+  "route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
+  "accepted_routes_csv": "data_prepared/expanded_v7/routes/firetruck_accepted_routes.csv",
+  "emergency_behavior_profile": "conservative_firetruck_b0",
+  "vtype_attrs": {
+    "id": "firetruck_emergency_conservative_b0",
+    "vClass": "emergency",
+    "guiShape": "emergency",
+    "color": "1,0,0",
+    "length": "8.0",
+    "width": "2.5",
+    "accel": "1.5",
+    "decel": "6.5",
+    "speedFactor": "1.05",
+    "speedDev": "0.00",
+    "maxSpeed": "16.666667",
+    "lcStrategic": "3.0",
+    "lcCooperative": "0.7",
+    "lcSpeedGain": "1.0",
+    "lcKeepRight": "0.0",
+    "lcAssertive": "1.0",
+    "impatience": "0.2"
+  },
+  "insertion_policy": "scheduled_departure_with_sumo_insertion_checks",
+  "note_ko": "B0 보수적 baseline: 앞차를 밀지 않고, 막히면 departDelay/waitingTime을 허용합니다."
+}

@@ -11,6 +11,8 @@ __pycache__/
 .DS_Store
 
 # Simulation run artifacts
+# Keep raw SUMO runs outside git. Curated final summaries can be force-added
+# only when they are intended as report snapshots.
 runs/
 results/raw/
 results/metrics/*/
@@ -20,7 +22,13 @@ results/metrics/*.csv
 results/metrics/*.json
 results/metrics/*.xml
 results/html/*.html
+
+# BO-generated parameter suggestions are artifacts. Promote a selected CSV to a
+# named config file before treating it as a reproducible input.
 configs/generated/*.csv
+
+# Generated demand variants are artifacts unless explicitly whitelisted as the
+# final manifest input.
 data_prepared/demand/*_scale_*.rou.xml
 data_prepared/demand/*_sustained_3600.rou.xml
 !data_prepared/demand/background_routes_am_imputed_a17_a19_warm0p15_sustain0p05_seed002_sustained_3600.rou.xml
