@@ -1,0 +1,141 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.484518+00:00",
+  "candidate": "B04_s_light_combined",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_s_light_combined.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.08,
+    "through_scale_downbound": 1.38,
+    "feeder_share_upbound": 0.018,
+    "feeder_share_downbound": 0.9,
+    "midcorridor_share": 0.14,
+    "sideflow_share": 0.2,
+    "pulse_share": 0.48,
+    "pulse_begin": 550.0,
+    "pulse_end": 950.0,
+    "net_profile": "speed50_sanity",
+    "avoid_terminal_sources": 1.0,
+    "segment_factor_mode": "free_under_volume_boost",
+    "free_under_volume_boost": 1.25,
+    "free_boost": 1.12,
+    "stop_cut": 0.7,
+    "template_cap": 650,
+    "source_cap": 750,
+    "speed_factor": 0.9,
+    "speed_dev": 0.08,
+    "tau": 1.06,
+    "min_gap": 2.3,
+    "accel": 1.85,
+    "decel": 4.2,
+    "sigma": 0.55,
+    "calibration_note": "Speed50 sanity, light behavior, midcorridor flow, and exit relief."
+  },
+  "vehicle_count": 1165,
+  "route_count": 72,
+  "unique_source_count": 56,
+  "top_sources": [
+    [
+      "619147739#0",
+      145
+    ],
+    [
+      "218915133#2",
+      124
+    ],
+    [
+      "-180368918#6",
+      58
+    ],
+    [
+      "-800229255",
+      58
+    ],
+    [
+      "1455497343#2",
+      58
+    ],
+    [
+      "-218773868#4",
+      53
+    ],
+    [
+      "785130598#6",
+      53
+    ],
+    [
+      "-218773868#0",
+      46
+    ],
+    [
+      "-218773868#3",
+      46
+    ],
+    [
+      "781985786#7",
+      44
+    ]
+  ],
+  "top_templates": [
+    [
+      "midcorridor_local_downbound",
+      123
+    ],
+    [
+      "midcorridor_local_upbound",
+      123
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      58
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      58
+    ],
+    [
+      "segment_feeder_downbound_S6",
+      58
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      53
+    ],
+    [
+      "segment_feeder_downbound_S7",
+      53
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      46
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      46
+    ],
+    [
+      "segment_feeder_downbound_S15",
+      35
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "1.850",
+    "decel": "4.200",
+    "sigma": "0.550",
+    "departLane": "best",
+    "speedFactor": "0.900",
+    "speedDev": "0.080",
+    "tau": "1.060",
+    "minGap": "2.300"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    550.0,
+    950.0
+  ]
+}

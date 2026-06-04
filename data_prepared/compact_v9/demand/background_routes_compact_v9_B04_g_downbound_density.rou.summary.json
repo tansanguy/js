@@ -1,0 +1,118 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.317158+00:00",
+  "candidate": "B04_g_downbound_density",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_g_downbound_density.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.1,
+    "through_scale_downbound": 1.8,
+    "feeder_share_upbound": 0.02,
+    "feeder_share_downbound": 0.55,
+    "sideflow_share": 0.15,
+    "pulse_share": 0.4
+  },
+  "vehicle_count": 2300,
+  "route_count": 72,
+  "unique_source_count": 62,
+  "top_sources": [
+    [
+      "477063271",
+      354
+    ],
+    [
+      "585341903#0",
+      354
+    ],
+    [
+      "585341903#1",
+      316
+    ],
+    [
+      "1206223946#0",
+      315
+    ],
+    [
+      "1206223946#1",
+      315
+    ],
+    [
+      "781985786#7",
+      38
+    ],
+    [
+      "-180368918#6",
+      28
+    ],
+    [
+      "-218773868#0",
+      28
+    ],
+    [
+      "-218773868#3",
+      28
+    ],
+    [
+      "-218773868#4",
+      28
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      316
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      316
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      316
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      315
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      315
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      28
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      28
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      28
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      28
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      28
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    450.0,
+    900.0
+  ]
+}

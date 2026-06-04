@@ -1,0 +1,130 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T09:16:34.295382+00:00",
+  "candidate": "B04_w_od_coverage_repair",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_w_od_coverage_repair.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.07,
+    "through_scale_downbound": 1.35,
+    "feeder_share_upbound": 0.012,
+    "feeder_share_downbound": 0.78,
+    "sideflow_share": 0.12,
+    "od_repair_share": 0.45,
+    "pulse_share": 0.46,
+    "pulse_begin": 540.0,
+    "pulse_end": 960.0,
+    "net_profile": "speed50_sanity",
+    "avoid_terminal_sources": 1.0,
+    "template_cap": 620,
+    "source_cap": 720,
+    "speed_factor": 0.88,
+    "speed_dev": 0.08,
+    "calibration_note": "B04_v with low-coverage free-flow vehicles reassigned to targeted O/D routes."
+  },
+  "vehicle_count": 821,
+  "route_count": 102,
+  "unique_source_count": 48,
+  "top_sources": [
+    [
+      "781985786#7",
+      54
+    ],
+    [
+      "-180368918#6",
+      40
+    ],
+    [
+      "-218773868#0",
+      40
+    ],
+    [
+      "-218773868#3",
+      40
+    ],
+    [
+      "-218773868#4",
+      40
+    ],
+    [
+      "-800229255",
+      40
+    ],
+    [
+      "1455497343#2",
+      40
+    ],
+    [
+      "785130598#6",
+      40
+    ],
+    [
+      "420361196",
+      32
+    ],
+    [
+      "1467498054",
+      27
+    ]
+  ],
+  "top_templates": [
+    [
+      "segment_feeder_downbound_S1",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S6",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S7",
+      40
+    ],
+    [
+      "segment_feeder_downbound_S10",
+      27
+    ],
+    [
+      "segment_feeder_downbound_S11",
+      27
+    ],
+    [
+      "segment_feeder_downbound_S12",
+      27
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best",
+    "speedFactor": "0.880",
+    "speedDev": "0.080"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    540.0,
+    960.0
+  ]
+}

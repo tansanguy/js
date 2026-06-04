@@ -1,0 +1,33 @@
+{
+  "schema": "compact_v9_ellipse_area.v1",
+  "generated_at": "2026-06-04T06:44:15.271142+00:00",
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "shape": "ellipse",
+  "focus_1": {
+    "name": "Jungbu Fire Station",
+    "lat": 37.564875,
+    "lon": 127.015376
+  },
+  "focus_2": {
+    "name": "Seoul Station Reference",
+    "lat": 37.558488,
+    "lon": 126.971443
+  },
+  "focus_distance_m": 3937.02,
+  "end_margin_m": 180.0,
+  "semi_major_axis_m": 2148.51,
+  "semi_minor_axis_m": 860.851,
+  "ellipse_area_km2": 5.811,
+  "center": {
+    "lat": 37.56168353484987,
+    "lon": 126.9934085584282
+  },
+  "bearing_deg": 259.620856,
+  "bbox_wgs84": {
+    "min_lon": 126.96936867664951,
+    "min_lat": 37.55331409799569,
+    "max_lon": 127.01744844020689,
+    "max_lat": 37.57005297170405
+  },
+  "note": "OSM input is bbox based, but final SUMO net is filtered with --keep-edges.in-geo-boundary using this ellipse polygon."
+}

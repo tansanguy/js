@@ -1,0 +1,219 @@
+{
+  "schema": "expanded_v7_v9_surrounding_cleanup.v1",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_release_artifact_v4_terminal_release.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v9_surrounding_speed_sanity.net.xml",
+  "input_demand": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_reference_main_sideflow.rou.xml",
+  "output_demand": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v9_surrounding_cleanup.rou.xml",
+  "vehicle_count": 2575,
+  "stop_edges": [
+    "1206220503#1",
+    "1467498054",
+    "1499619438#0",
+    "183272625#1",
+    "289213613#0",
+    "333972428#4",
+    "438360331#1",
+    "438360331#2",
+    "585341901#3",
+    "585341904#0",
+    "773066532#5"
+  ],
+  "free_edges": [
+    "-243542157",
+    "-955312947#0",
+    "218923178#4",
+    "219696191#0",
+    "329612996",
+    "383097714",
+    "420383150#4",
+    "651817398#0",
+    "921117704#1"
+  ],
+  "speed_sanity_changed_edge_count": 18,
+  "speed_sanity_changed_edges": [
+    {
+      "edge_id": "-243542157",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "-955312947#0",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "1206220503#1",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "1467498054",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "1499619438#0",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "218923178#4",
+      "old_speed_kmh_min": 60.012,
+      "old_speed_kmh_max": 60.012,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "219696191#0",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "329612996",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "333972428#4",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "383097714",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "420383150#4",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "438360331#1",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "438360331#2",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "585341901#3",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "585341904#0",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "651817398#0",
+      "old_speed_kmh_min": 50.004,
+      "old_speed_kmh_max": 50.004,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "773066532#5",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    },
+    {
+      "edge_id": "921117704#1",
+      "old_speed_kmh_min": 100.008,
+      "old_speed_kmh_max": 100.008,
+      "new_speed_kmh": 35.0
+    }
+  ],
+  "leading_or_trailing_stop_edge_trim_count": 428,
+  "unchanged_routes_with_internal_stop_edges": 205,
+  "invalid_route_count_after_cleanup": 0,
+  "examples": [
+    {
+      "vehicle": "expanded_v7_ref_down_full_src01_00000",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src02_00000",
+      "old_prefix": "438360331#1 438360331#2 585341903#0 585341903#1 477063271",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src03_00000",
+      "old_prefix": "773066532#5 438360331#1 438360331#2 585341903#0 585341903#1",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src04_00000",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 -910451393#0",
+      "new_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 -910451393#0"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src05_00000",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 218684411#3",
+      "new_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 218684411#3"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src01_00001",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src02_00001",
+      "old_prefix": "438360331#1 438360331#2 585341903#0 585341903#1 477063271",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src03_00001",
+      "old_prefix": "773066532#5 438360331#1 438360331#2 585341903#0 585341903#1",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2",
+      "new_suffix": "174870621#9 174870621#10 218684411#0 218684411#1 218684411#2"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src04_00001",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 -910451393#0",
+      "new_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 -910451393#0"
+    },
+    {
+      "vehicle": "expanded_v7_ref_down_full_src05_00001",
+      "old_prefix": "438360331#2 585341903#0 585341903#1 477063271 1206223946#0",
+      "new_prefix": "585341903#0 585341903#1 477063271 1206223946#0 1206223946#1",
+      "old_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 218684411#3",
+      "new_suffix": "174870621#10 218684411#0 218684411#1 218684411#2 218684411#3"
+    }
+  ],
+  "purpose_ko": "주변도로 고통행 stop/free edge 중 도시부 비상식 속도 제한은 낮추고, stop edge 직접 출발/종료만 완화한 V9 후보입니다. 내부 통과 route 금지는 하지 않습니다."
+}

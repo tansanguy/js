@@ -1,0 +1,8 @@
+{
+  "schema": "compact_v9_edge_lane_targets.v1",
+  "generated_at": "2026-06-04T06:44:30.758736+00:00",
+  "target_edge_count": 204,
+  "changed_edge_count": 145,
+  "mainroad_one_lane_target_count": 0,
+  "method": "1 edge = 1 lane-count target; Toegye mainroad minimum is 2 lanes."
+}

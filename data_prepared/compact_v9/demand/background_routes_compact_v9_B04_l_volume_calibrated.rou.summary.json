@@ -1,0 +1,127 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.401431+00:00",
+  "candidate": "B04_l_volume_calibrated",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_l_volume_calibrated.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.1,
+    "through_scale_downbound": 1.65,
+    "feeder_share_upbound": 0.025,
+    "feeder_share_downbound": 1.15,
+    "sideflow_share": 0.2,
+    "pulse_share": 0.5,
+    "pulse_begin": 520.0,
+    "pulse_end": 980.0,
+    "segment_factor_mode": "free_under_volume_boost",
+    "free_under_volume_boost": 1.7,
+    "free_boost": 1.3,
+    "stop_cut": 0.45,
+    "template_cap": 650,
+    "source_cap": 900,
+    "calibration_note": "Boost under-volume/free-flow segments and cut non-S22 stop artifacts."
+  },
+  "vehicle_count": 2712,
+  "route_count": 72,
+  "unique_source_count": 61,
+  "top_sources": [
+    [
+      "585341903#0",
+      382
+    ],
+    [
+      "477063271",
+      325
+    ],
+    [
+      "1206223946#0",
+      289
+    ],
+    [
+      "1206223946#1",
+      289
+    ],
+    [
+      "585341903#1",
+      289
+    ],
+    [
+      "-180368918#6",
+      100
+    ],
+    [
+      "-800229255",
+      100
+    ],
+    [
+      "1455497343#2",
+      100
+    ],
+    [
+      "-218773868#4",
+      68
+    ],
+    [
+      "785130598#6",
+      68
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      290
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      289
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      289
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      289
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      289
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      100
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      100
+    ],
+    [
+      "segment_feeder_downbound_S6",
+      100
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      68
+    ],
+    [
+      "segment_feeder_downbound_S7",
+      68
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    520.0,
+    980.0
+  ]
+}

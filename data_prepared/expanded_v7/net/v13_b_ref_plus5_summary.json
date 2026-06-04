@@ -1,0 +1,1216 @@
+{
+  "schema": "expanded_v7_v13_speed_field_net.v1",
+  "candidate": "v13_b_ref_plus5",
+  "base_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v12_d_final_plausibility_v2.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v13_b_ref_plus5.net.xml",
+  "reference_csv": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "cap_min_kmh": 18.0,
+  "cap_max_kmh": 30.0,
+  "up_margin_kmh": 5.0,
+  "down_margin_kmh": 5.0,
+  "target_edge_count": 204,
+  "changed_lane_count": 571,
+  "changed_edge_count": 204,
+  "changed_edges_sample": [
+    {
+      "edge_id": "-1455512070",
+      "lane_id": "-1455512070_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-1455512070",
+      "lane_id": "-1455512070_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-1455512070",
+      "lane_id": "-1455512070_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-174870621#0",
+      "lane_id": "-174870621#0_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 24.136
+    },
+    {
+      "edge_id": "-174870621#0",
+      "lane_id": "-174870621#0_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 24.136
+    },
+    {
+      "edge_id": "-174870621#0",
+      "lane_id": "-174870621#0_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 24.136
+    },
+    {
+      "edge_id": "-174870621#10",
+      "lane_id": "-174870621#10_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#10",
+      "lane_id": "-174870621#10_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#10",
+      "lane_id": "-174870621#10_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#2",
+      "lane_id": "-174870621#2_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.608
+    },
+    {
+      "edge_id": "-174870621#2",
+      "lane_id": "-174870621#2_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.608
+    },
+    {
+      "edge_id": "-174870621#2",
+      "lane_id": "-174870621#2_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.608
+    },
+    {
+      "edge_id": "-174870621#4",
+      "lane_id": "-174870621#4_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#4",
+      "lane_id": "-174870621#4_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#4",
+      "lane_id": "-174870621#4_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#5",
+      "lane_id": "-174870621#5_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#5",
+      "lane_id": "-174870621#5_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#5",
+      "lane_id": "-174870621#5_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#6",
+      "lane_id": "-174870621#6_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#6",
+      "lane_id": "-174870621#6_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#6",
+      "lane_id": "-174870621#6_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#7",
+      "lane_id": "-174870621#7_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#7",
+      "lane_id": "-174870621#7_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#7",
+      "lane_id": "-174870621#7_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#8",
+      "lane_id": "-174870621#8_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#8",
+      "lane_id": "-174870621#8_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#8",
+      "lane_id": "-174870621#8_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#9",
+      "lane_id": "-174870621#9_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#9",
+      "lane_id": "-174870621#9_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-174870621#9",
+      "lane_id": "-174870621#9_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-180368918#0",
+      "lane_id": "-180368918#0_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 21.257
+    },
+    {
+      "edge_id": "-180368918#0",
+      "lane_id": "-180368918#0_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 21.257
+    },
+    {
+      "edge_id": "-180368918#0",
+      "lane_id": "-180368918#0_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 21.257
+    },
+    {
+      "edge_id": "-180368918#3",
+      "lane_id": "-180368918#3_0",
+      "old_speed_kmh": 31.5,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#3",
+      "lane_id": "-180368918#3_1",
+      "old_speed_kmh": 31.5,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#3",
+      "lane_id": "-180368918#3_2",
+      "old_speed_kmh": 31.5,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#5",
+      "lane_id": "-180368918#5_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#5",
+      "lane_id": "-180368918#5_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#5",
+      "lane_id": "-180368918#5_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#6",
+      "lane_id": "-180368918#6_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#6",
+      "lane_id": "-180368918#6_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#6",
+      "lane_id": "-180368918#6_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-180368918#7",
+      "lane_id": "-180368918#7_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.354
+    },
+    {
+      "edge_id": "-180368918#7",
+      "lane_id": "-180368918#7_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.354
+    },
+    {
+      "edge_id": "-180368918#7",
+      "lane_id": "-180368918#7_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.354
+    },
+    {
+      "edge_id": "-180368918#8",
+      "lane_id": "-180368918#8_0",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.865
+    },
+    {
+      "edge_id": "-180368918#8",
+      "lane_id": "-180368918#8_1",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.865
+    },
+    {
+      "edge_id": "-180368918#8",
+      "lane_id": "-180368918#8_2",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.865
+    },
+    {
+      "edge_id": "-218684411#0",
+      "lane_id": "-218684411#0_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218684411#0",
+      "lane_id": "-218684411#0_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218684411#0",
+      "lane_id": "-218684411#0_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218684411#1",
+      "lane_id": "-218684411#1_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218684411#1",
+      "lane_id": "-218684411#1_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218684411#1",
+      "lane_id": "-218684411#1_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-218773868#0",
+      "lane_id": "-218773868#0_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#0",
+      "lane_id": "-218773868#0_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#0",
+      "lane_id": "-218773868#0_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#2",
+      "lane_id": "-218773868#2_0",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#2",
+      "lane_id": "-218773868#2_1",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#2",
+      "lane_id": "-218773868#2_2",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#3",
+      "lane_id": "-218773868#3_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#3",
+      "lane_id": "-218773868#3_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#3",
+      "lane_id": "-218773868#3_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#4",
+      "lane_id": "-218773868#4_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#4",
+      "lane_id": "-218773868#4_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#4",
+      "lane_id": "-218773868#4_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#5",
+      "lane_id": "-218773868#5_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#5",
+      "lane_id": "-218773868#5_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#5",
+      "lane_id": "-218773868#5_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#6",
+      "lane_id": "-218773868#6_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#6",
+      "lane_id": "-218773868#6_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-218773868#6",
+      "lane_id": "-218773868#6_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-273638834#1",
+      "lane_id": "-273638834#1_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-273638834#1",
+      "lane_id": "-273638834#1_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-273638834#1",
+      "lane_id": "-273638834#1_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.4
+    },
+    {
+      "edge_id": "-273638834#2",
+      "lane_id": "-273638834#2_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.702
+    },
+    {
+      "edge_id": "-273638834#2",
+      "lane_id": "-273638834#2_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.702
+    },
+    {
+      "edge_id": "-273638834#2",
+      "lane_id": "-273638834#2_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.702
+    },
+    {
+      "edge_id": "-315658884#1",
+      "lane_id": "-315658884#1_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-315658884#1",
+      "lane_id": "-315658884#1_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-315658884#1",
+      "lane_id": "-315658884#1_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 21.5
+    },
+    {
+      "edge_id": "-315658897#0",
+      "lane_id": "-315658897#0_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-315658897#0",
+      "lane_id": "-315658897#0_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-315658897#0",
+      "lane_id": "-315658897#0_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381453320#0",
+      "lane_id": "-381453320#0_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-381453320#0",
+      "lane_id": "-381453320#0_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-381453320#0",
+      "lane_id": "-381453320#0_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-381802847#0",
+      "lane_id": "-381802847#0_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.943
+    },
+    {
+      "edge_id": "-381802847#0",
+      "lane_id": "-381802847#0_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.943
+    },
+    {
+      "edge_id": "-381802847#0",
+      "lane_id": "-381802847#0_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.943
+    },
+    {
+      "edge_id": "-381802847#1",
+      "lane_id": "-381802847#1_0",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381802847#1",
+      "lane_id": "-381802847#1_1",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381802847#1",
+      "lane_id": "-381802847#1_2",
+      "old_speed_kmh": 33.3,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381802847#2",
+      "lane_id": "-381802847#2_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381802847#2",
+      "lane_id": "-381802847#2_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-381802847#2",
+      "lane_id": "-381802847#2_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 23.3
+    },
+    {
+      "edge_id": "-578313748#0",
+      "lane_id": "-578313748#0_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-578313748#0",
+      "lane_id": "-578313748#0_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-578313748#0",
+      "lane_id": "-578313748#0_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "-578313748#2",
+      "lane_id": "-578313748#2_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.863
+    },
+    {
+      "edge_id": "-578313748#2",
+      "lane_id": "-578313748#2_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.863
+    },
+    {
+      "edge_id": "-578313748#2",
+      "lane_id": "-578313748#2_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.863
+    },
+    {
+      "edge_id": "-800229255",
+      "lane_id": "-800229255_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.97
+    },
+    {
+      "edge_id": "-800229255",
+      "lane_id": "-800229255_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.97
+    },
+    {
+      "edge_id": "-800229255",
+      "lane_id": "-800229255_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.97
+    },
+    {
+      "edge_id": "-955312947#1",
+      "lane_id": "-955312947#1_0",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "-955312947#1",
+      "lane_id": "-955312947#1_1",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "-955312947#1",
+      "lane_id": "-955312947#1_2",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "1109231376",
+      "lane_id": "1109231376_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.9
+    },
+    {
+      "edge_id": "1109231376",
+      "lane_id": "1109231376_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.9
+    },
+    {
+      "edge_id": "1109231377#1",
+      "lane_id": "1109231377#1_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.432
+    },
+    {
+      "edge_id": "1109231377#1",
+      "lane_id": "1109231377#1_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.432
+    },
+    {
+      "edge_id": "1206223939",
+      "lane_id": "1206223939_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223939",
+      "lane_id": "1206223939_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223939",
+      "lane_id": "1206223939_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223943",
+      "lane_id": "1206223943_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223943",
+      "lane_id": "1206223943_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223945",
+      "lane_id": "1206223945_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223945",
+      "lane_id": "1206223945_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223945",
+      "lane_id": "1206223945_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223946#0",
+      "lane_id": "1206223946#0_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223946#0",
+      "lane_id": "1206223946#0_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223946#1",
+      "lane_id": "1206223946#1_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223946#1",
+      "lane_id": "1206223946#1_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.2
+    },
+    {
+      "edge_id": "1206223947",
+      "lane_id": "1206223947_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223947",
+      "lane_id": "1206223947_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1206223947",
+      "lane_id": "1206223947_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.8
+    },
+    {
+      "edge_id": "1395426737#0",
+      "lane_id": "1395426737#0_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.767
+    },
+    {
+      "edge_id": "1395426737#0",
+      "lane_id": "1395426737#0_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.767
+    },
+    {
+      "edge_id": "1395426737#0",
+      "lane_id": "1395426737#0_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.767
+    },
+    {
+      "edge_id": "1395426737#1",
+      "lane_id": "1395426737#1_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.981
+    },
+    {
+      "edge_id": "1395426737#1",
+      "lane_id": "1395426737#1_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.981
+    },
+    {
+      "edge_id": "1395426737#1",
+      "lane_id": "1395426737#1_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.981
+    },
+    {
+      "edge_id": "1455497343#0",
+      "lane_id": "1455497343#0_0",
+      "old_speed_kmh": 29.988,
+      "new_speed_kmh": 20.232
+    },
+    {
+      "edge_id": "1455497343#0",
+      "lane_id": "1455497343#0_1",
+      "old_speed_kmh": 29.988,
+      "new_speed_kmh": 20.232
+    },
+    {
+      "edge_id": "1455497343#0",
+      "lane_id": "1455497343#0_2",
+      "old_speed_kmh": 29.988,
+      "new_speed_kmh": 20.232
+    },
+    {
+      "edge_id": "1455497343#1",
+      "lane_id": "1455497343#1_0",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#1",
+      "lane_id": "1455497343#1_1",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#1",
+      "lane_id": "1455497343#1_2",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#2",
+      "lane_id": "1455497343#2_0",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#2",
+      "lane_id": "1455497343#2_1",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#2",
+      "lane_id": "1455497343#2_2",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#3",
+      "lane_id": "1455497343#3_0",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#3",
+      "lane_id": "1455497343#3_1",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#3",
+      "lane_id": "1455497343#3_2",
+      "old_speed_kmh": 30.708,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#4",
+      "lane_id": "1455497343#4_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#4",
+      "lane_id": "1455497343#4_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497343#4",
+      "lane_id": "1455497343#4_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455497345",
+      "lane_id": "1455497345_0",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 22.2
+    },
+    {
+      "edge_id": "1455497345",
+      "lane_id": "1455497345_1",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 22.2
+    },
+    {
+      "edge_id": "1455497345",
+      "lane_id": "1455497345_2",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 22.2
+    },
+    {
+      "edge_id": "1455512066",
+      "lane_id": "1455512066_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455512066",
+      "lane_id": "1455512066_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455512066",
+      "lane_id": "1455512066_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455512070",
+      "lane_id": "1455512070_0",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455512070",
+      "lane_id": "1455512070_1",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "1455512070",
+      "lane_id": "1455512070_2",
+      "old_speed_kmh": 35.712,
+      "new_speed_kmh": 20.7
+    },
+    {
+      "edge_id": "174870621#0",
+      "lane_id": "174870621#0_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.615
+    },
+    {
+      "edge_id": "174870621#0",
+      "lane_id": "174870621#0_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.615
+    },
+    {
+      "edge_id": "174870621#0",
+      "lane_id": "174870621#0_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 20.615
+    },
+    {
+      "edge_id": "174870621#10",
+      "lane_id": "174870621#10_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#10",
+      "lane_id": "174870621#10_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#10",
+      "lane_id": "174870621#10_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#2",
+      "lane_id": "174870621#2_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.883
+    },
+    {
+      "edge_id": "174870621#2",
+      "lane_id": "174870621#2_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.883
+    },
+    {
+      "edge_id": "174870621#2",
+      "lane_id": "174870621#2_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.883
+    },
+    {
+      "edge_id": "174870621#4",
+      "lane_id": "174870621#4_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#4",
+      "lane_id": "174870621#4_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#4",
+      "lane_id": "174870621#4_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#5",
+      "lane_id": "174870621#5_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#5",
+      "lane_id": "174870621#5_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#5",
+      "lane_id": "174870621#5_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#6",
+      "lane_id": "174870621#6_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#6",
+      "lane_id": "174870621#6_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#6",
+      "lane_id": "174870621#6_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#7",
+      "lane_id": "174870621#7_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#7",
+      "lane_id": "174870621#7_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#7",
+      "lane_id": "174870621#7_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#8",
+      "lane_id": "174870621#8_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#8",
+      "lane_id": "174870621#8_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#8",
+      "lane_id": "174870621#8_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#9",
+      "lane_id": "174870621#9_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#9",
+      "lane_id": "174870621#9_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "174870621#9",
+      "lane_id": "174870621#9_2",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 19.5
+    },
+    {
+      "edge_id": "180368915#0",
+      "lane_id": "180368915#0_0",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.847
+    },
+    {
+      "edge_id": "180368915#0",
+      "lane_id": "180368915#0_1",
+      "old_speed_kmh": 34.992,
+      "new_speed_kmh": 21.847
+    },
+    {
+      "edge_id": "180368915#1",
+      "lane_id": "180368915#1_0",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 21.96
+    },
+    {
+      "edge_id": "180368915#1",
+      "lane_id": "180368915#1_1",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 21.96
+    },
+    {
+      "edge_id": "180368915#1",
+      "lane_id": "180368915#1_2",
+      "old_speed_kmh": 31.392,
+      "new_speed_kmh": 21.96
+    },
+    {
+      "edge_id": "180368915#2",
+      "lane_id": "180368915#2_0",
+      "old_speed_kmh": 37.296,
+      "new_speed_kmh": 22.3
+    },
+    {
+      "edge_id": "180368915#2",
+      "lane_id": "180368915#2_1",
+      "old_speed_kmh": 37.296,
+      "new_speed_kmh": 22.3
+    },
+    {
+      "edge_id": "180368915#2",
+      "lane_id": "180368915#2_2",
+      "old_speed_kmh": 37.296,
+      "new_speed_kmh": 22.3
+    },
+    {
+      "edge_id": "180368915#3",
+      "lane_id": "180368915#3_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 22.101
+    },
+    {
+      "edge_id": "180368915#3",
+      "lane_id": "180368915#3_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 22.101
+    },
+    {
+      "edge_id": "180368918#0",
+      "lane_id": "180368918#0_0",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "180368918#0",
+      "lane_id": "180368918#0_1",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "180368918#0",
+      "lane_id": "180368918#0_2",
+      "old_speed_kmh": 34.2,
+      "new_speed_kmh": 24.2
+    },
+    {
+      "edge_id": "180368918#3",
+      "lane_id": "180368918#3_0",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 24.112
+    },
+    {
+      "edge_id": "180368918#3",
+      "lane_id": "180368918#3_1",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 24.112
+    },
+    {
+      "edge_id": "180368918#3",
+      "lane_id": "180368918#3_2",
+      "old_speed_kmh": 50.004,
+      "new_speed_kmh": 24.112
+    }
+  ]
+}

@@ -1,0 +1,263 @@
+{
+  "schema": "expanded_v7_v10_surrounding_freeflow_cap.v1",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v9_surrounding_speed_sanity.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v10_surrounding_freeflow_cap.net.xml",
+  "source_edgeData": "runs/final/expanded_v7_v9_surrounding_cleanup_b0/20260603T191312_202842Z0000/B0/no_control/repeat_001/FIRETRUCK_TO_SEOUL_STATION_FRONT/edgeData.xml",
+  "free_high_flow_non_main_edges_detected": 42,
+  "changed_edge_count": 42,
+  "changed_edges": [
+    {
+      "edge_id": "-1099004169",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#21",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-218923171#4",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-315658884#2",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-315658884#3",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-329612996",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-381452153",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-383097722#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-781985788#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-788296727#0",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "1206220503#0",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "1283636940#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "1283636940#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "1339655669",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "183272462#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198691069#6",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "218684411#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218923178#3",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "218926711#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "333554718",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "333554719",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "333972428#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "333972428#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "333972428#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "381452166#1",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "381802860#2",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "381807720#1",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "383097712#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "383097712#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "413953596#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "420319845",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "420331816#2",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "420361194#0",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "420361194#1",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "428260104",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "464461054#0",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "464461054#1",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "585341917",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "619342756",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "651817398#1",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "767654646",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "955312947#0",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    }
+  ],
+  "purpose_ko": "V9에서 아직 35km/h를 넘는 고통행 주변도로 edge만 35km/h 도시부 상한으로 정리한 후보입니다."
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "expanded_v7_v11_speed_fit_demand.v1",
+  "candidate": "v11_b_scale1p10",
+  "input_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v9_surrounding_cleanup.rou.xml",
+  "output_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v11_b_scale1p10.rou.xml",
+  "base_vehicle_count": 2575,
+  "added_vehicle_count": 258,
+  "total_vehicle_count": 2833,
+  "specs": [
+    [
+      "all",
+      258,
+      47.0
+    ]
+  ],
+  "avoid_sources": [
+    "381452166#1",
+    "438360331#1",
+    "438360331#2",
+    "464461054#1",
+    "585341903#0",
+    "585341906#0",
+    "619147738#0",
+    "773066532#5",
+    "785130598#6",
+    "785130598#7"
+  ],
+  "added_by_kind": {
+    "all": 258
+  },
+  "max_added_per_source": 5,
+  "max_added_per_template": 5,
+  "purpose_ko": "V10 도로망을 유지하고 source/template 집중을 피하면서 속도 보정을 위해 수요를 증량한 V11 후보입니다."
+}

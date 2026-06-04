@@ -1,0 +1,205 @@
+edge_id,current_lanes,target_lanes,source_segment_ids,source_directions,total_matched_length_m,max_match_ratio,repair_reason
+-1455512070,2,2,S6,upbound,125.648,0.282609,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#0,2,3,S1 S2,upbound,136.346,0.7,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#10,2,3,S1,upbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#2,2,3,S1 S2,upbound,132.064,0.25,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#4,2,3,S1,upbound,106.105,0.297297,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#5,2,3,S1,upbound,67.522,0.189189,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#6,2,3,S1,upbound,86.814,0.243243,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#7,2,3,S1,upbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#8,2,3,S1,upbound,115.751,0.324324,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-174870621#9,2,3,S1,upbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#0,2,3,S2 S3,downbound,119.257,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#3,2,3,S3 S4,downbound,101.043,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#5,2,3,S3 S4,downbound,91.107,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#6,2,3,S3 S4,downbound,90.164,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#7,2,3,S4 S5,downbound,109.979,0.714286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-180368918#8,2,3,S4 S5 S6,downbound,87.081,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218684411#0,3,3,S1,upbound,57.876,0.162162,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218684411#1,3,3,S1,upbound,38.584,0.108108,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#0,2,3,S5 S6,downbound,74.34,0.166667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#2,2,3,S6,downbound,96.652,0.217391,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#3,2,3,S6,downbound,77.322,0.173913,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#4,2,3,S6,downbound,115.983,0.26087,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#5,2,3,S6,downbound,106.317,0.23913,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-218773868#6,2,3,S6,downbound,77.322,0.173913,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-273638834#1,1,2,S10,upbound,18.652,0.086957,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-273638834#2,1,3,S10 S9,upbound,76.069,0.122449,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-315658884#1,1,3,S18,downbound,27.39,0.15,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-315658897#0,1,3,S19,upbound,9.579,0.034483,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-381453320#0,1,3,S7,downbound,66.539,0.194444,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-381802847#0,1,3,S1 S2,upbound,202.676,0.8,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-381802847#1,1,3,S1,upbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-381802847#2,1,3,S1,upbound,57.876,0.162162,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-578313748#0,2,3,S2,downbound,81.45,0.45,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-578313748#2,2,3,S2 S3,downbound,90.857,0.4,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-800229255,2,3,S2 S3,downbound,81.986,0.3,compact_v9_one_edge_one_lane_target_mainroad_min_2
+-955312947#1,1,3,S17,upbound,63.074,0.368421,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1109231376,1,2,S12,downbound,73.2,0.363636,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1109231377#1,1,2,S11 S12,downbound,82.693,0.428571,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223939,2,3,S22,upbound,51.514,0.428571,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223943,2,2,S22,downbound,42.929,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223945,2,3,S22,upbound,85.857,0.714286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223946#0,2,2,S21 S22,downbound,92.564,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223946#1,2,2,S21,downbound,65.68,0.8,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1206223947,2,3,S22,upbound,77.271,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1395426737#0,1,3,S4 S5 S6,downbound,107.084,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1395426737#1,1,3,S4 S5 S6,downbound,76.744,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497343#0,2,3,S7 S8,downbound,96.672,0.666667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497343#1,2,3,S7,downbound,142.583,0.416667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497343#2,2,3,S7,downbound,95.056,0.277778,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497343#3,2,3,S7,downbound,114.067,0.333333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497343#4,2,3,S7,downbound,133.078,0.388889,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455497345,2,3,S7 S8 S9,upbound,159.969,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455512066,2,3,S6 S7,downbound,95.535,0.194444,compact_v9_one_edge_one_lane_target_mainroad_min_2
+1455512070,2,3,S6,downbound,125.648,0.282609,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#0,2,3,S1 S2,downbound,136.346,0.7,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#10,2,3,S1,downbound,86.814,0.243243,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#2,2,3,S1 S2,downbound,141.709,0.27027,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#4,2,3,S1,downbound,115.751,0.324324,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#5,2,3,S1,downbound,67.522,0.189189,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#6,2,3,S1,downbound,86.814,0.243243,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#7,2,3,S1,downbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#8,2,3,S1,downbound,125.397,0.351351,compact_v9_one_edge_one_lane_target_mainroad_min_2
+174870621#9,2,3,S1,downbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368915#0,2,2,S10 S11,upbound,74.133,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368915#1,2,2,S10 S11,upbound,74.014,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368915#2,2,2,S11,upbound,82.864,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368915#3,2,2,S11 S12,upbound,82.75,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#0,2,3,S2 S3,upbound,119.257,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#3,2,3,S3 S4,upbound,92.05,0.642857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#5,2,3,S3 S4,upbound,91.107,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#6,2,3,S3 S4,upbound,81.171,0.571429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#7,2,3,S4 S5,upbound,103.295,0.714286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180368918#8,2,2,S4 S5 S6,upbound,77.416,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+180445419,2,2,S12,upbound,164.7,0.818182,compact_v9_one_edge_one_lane_target_mainroad_min_2
+183272387#0,2,3,S2,upbound,72.4,0.4,compact_v9_one_edge_one_lane_target_mainroad_min_2
+183272387#1,2,3,S2,upbound,63.35,0.35,compact_v9_one_edge_one_lane_target_mainroad_min_2
+183272387#2,2,3,S2,upbound,36.2,0.2,compact_v9_one_edge_one_lane_target_mainroad_min_2
+183272647,1,3,S2 S3,downbound,118.9,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+183272654,4,3,S22,upbound,25.757,0.214286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218684411#0,2,3,S1,downbound,57.876,0.162162,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218684411#1,2,3,S1,downbound,48.23,0.135135,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218684411#2,2,3,S1,downbound,9.646,0.027027,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#0,2,2,S6,upbound,57.991,0.130435,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#2,2,2,S6,upbound,86.987,0.195652,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#3,2,2,S6,upbound,67.657,0.152174,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#4,2,2,S6,upbound,106.317,0.23913,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#5,2,2,S6,upbound,86.987,0.195652,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773868#6,2,2,S6,upbound,57.991,0.130435,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#1,2,3,S9,upbound,105.263,0.22449,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#3,2,3,S9,upbound,86.124,0.183673,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#4,2,3,S9,upbound,105.263,0.22449,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#5,2,3,S9,upbound,105.263,0.22449,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#6,2,3,S9,upbound,143.541,0.306122,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#7,2,3,S9,upbound,114.833,0.244898,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#8,2,3,S9,upbound,66.986,0.142857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218773869#9,2,3,S10 S9,upbound,85.638,0.142857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915133#0,2,2,S12,upbound,54.9,0.272727,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915133#1,2,2,S12,upbound,91.5,0.454545,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915133#2,2,2,S12,upbound,100.65,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915133#3,2,2,S12,upbound,73.2,0.363636,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915135#3,2,3,S16,upbound,156.258,0.708333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218915135#4,2,3,S16 S17,upbound,109.213,0.315789,compact_v9_one_edge_one_lane_target_mainroad_min_2
+218923178#7,3,3,S2 S3,downbound,27.329,0.1,compact_v9_one_edge_one_lane_target_mainroad_min_2
+219696191#1,1,2,S21,downbound,65.68,0.8,compact_v9_one_edge_one_lane_target_mainroad_min_2
+219696193#1,2,2,S10 S9,upbound,121.726,0.478261,compact_v9_one_edge_one_lane_target_mainroad_min_2
+219696193#2,2,2,S10,upbound,93.261,0.434783,compact_v9_one_edge_one_lane_target_mainroad_min_2
+273638834#1,1,3,S10,downbound,18.652,0.086957,compact_v9_one_edge_one_lane_target_mainroad_min_2
+273638834#2,1,2,S10 S9,downbound,66.499,0.102041,compact_v9_one_edge_one_lane_target_mainroad_min_2
+315658884#1,1,3,S18,upbound,27.39,0.15,compact_v9_one_edge_one_lane_target_mainroad_min_2
+315658897#0,1,3,S19,downbound,9.579,0.034483,compact_v9_one_edge_one_lane_target_mainroad_min_2
+333557072#1,2,3,S18 S19,upbound,93.097,0.3,compact_v9_one_edge_one_lane_target_mainroad_min_2
+333557072#2,2,3,S18 S19,upbound,113.604,0.310345,compact_v9_one_edge_one_lane_target_mainroad_min_2
+333557072#3,2,3,S19,upbound,105.372,0.37931,compact_v9_one_edge_one_lane_target_mainroad_min_2
+333557072#5,2,3,S19,upbound,124.531,0.448276,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#0,2,2,S12 S13,upbound,130.35,0.75,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#1,2,3,S12 S13 S14,upbound,100.736,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#2,2,3,S13 S14,upbound,87.173,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#3,2,3,S13 S14,upbound,145.932,0.681818,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#4,2,3,S14 S15,upbound,146.724,0.590909,compact_v9_one_edge_one_lane_target_mainroad_min_2
+347237859#5,2,3,S14 S15,upbound,118.332,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+37402371,2,3,S22,upbound,8.586,0.071429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+381453320#0,1,2,S7,upbound,57.033,0.166667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+381802847#0,1,3,S1 S2,downbound,183.98,0.75,compact_v9_one_edge_one_lane_target_mainroad_min_2
+381802847#1,1,3,S1,downbound,77.168,0.216216,compact_v9_one_edge_one_lane_target_mainroad_min_2
+381802847#2,1,3,S1,downbound,48.23,0.135135,compact_v9_one_edge_one_lane_target_mainroad_min_2
+420361196,2,2,S10 S11 S12,upbound,248.554,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+428260110,2,2,S6 S7,upbound,105.04,0.222222,compact_v9_one_edge_one_lane_target_mainroad_min_2
+477063271,2,2,S22,downbound,68.686,0.571429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+578313748#0,2,3,S2,upbound,81.45,0.45,compact_v9_one_edge_one_lane_target_mainroad_min_2
+578313748#2,2,3,S2 S3,upbound,90.857,0.4,compact_v9_one_edge_one_lane_target_mainroad_min_2
+578313749#0,3,3,S2,downbound,54.3,0.3,compact_v9_one_edge_one_lane_target_mainroad_min_2
+578313749#1,3,3,S2,downbound,72.4,0.4,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341903#0,2,2,S22,downbound,8.586,0.071429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341903#1,2,2,S22,downbound,42.929,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341906#0,2,3,S22,upbound,34.343,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341906#2,2,3,S22,upbound,60.1,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341907#0,2,3,S22,upbound,34.343,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341907#2,2,3,S22,upbound,68.686,0.571429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341908#0,2,2,S22,downbound,34.343,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+585341908#1,2,2,S22,downbound,34.343,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+615671502,2,3,S22,upbound,42.929,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+615671503,2,3,S22,upbound,34.343,0.285714,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147738#0,2,3,S19 S20 S21,upbound,104.777,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147738#1,2,3,S22,upbound,42.929,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#0,2,3,S19 S20,downbound,155.156,0.666667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#1,2,3,S19,downbound,76.634,0.275862,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#2,2,3,S19,downbound,86.214,0.310345,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#3,2,3,S18 S19,downbound,133.661,0.448276,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#4,2,3,S18 S19,downbound,112.256,0.3,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#5,2,3,S18 S19,downbound,146.979,0.7,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147739#6,2,3,S17 S18,downbound,154.613,0.6,compact_v9_one_edge_one_lane_target_mainroad_min_2
+619147740,2,3,S19 S20 S21,downbound,132.146,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+620607766#0,1,2,S12,downbound,73.2,0.363636,compact_v9_one_edge_one_lane_target_mainroad_min_2
+620607766#1,1,2,S12,downbound,73.2,0.363636,compact_v9_one_edge_one_lane_target_mainroad_min_2
+620607766#2,1,2,S12,downbound,64.05,0.318182,compact_v9_one_edge_one_lane_target_mainroad_min_2
+773060736,1,2,S10 S11,downbound,83.34,0.357143,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781983103#1,2,3,S17 S18,downbound,126.267,0.684211,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781983103#2,2,3,S16 S17,downbound,117.318,0.631579,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781983104#0,2,3,S16 S17,upbound,153.36,0.842105,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781983104#1,2,3,S17 S18 S19,upbound,264.264,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985779#0,2,3,S10 S11,downbound,102.111,0.304348,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985779#1,2,3,S10,downbound,102.587,0.478261,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985783,2,2,S10 S11 S12,downbound,248.554,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985784,2,2,S12,downbound,155.55,0.772727,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#1,3,3,S15,downbound,18.122,0.111111,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#2,3,3,S15,downbound,126.856,0.777778,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#3,3,3,S14 S15,downbound,164.443,0.454545,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#4,3,3,S14,downbound,91.955,0.454545,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#5,3,3,S14,downbound,82.759,0.409091,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#6,3,3,S13 S14,downbound,105.564,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#7,3,3,S12 S13 S14,downbound,100.691,1.0,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985786#8,3,2,S12 S13,downbound,114.35,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985787#0,2,3,S15,upbound,117.794,0.722222,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985789#0,1,3,S16,upbound,73.533,0.333333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985789#1,1,3,S16,upbound,73.533,0.333333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985792#0,2,3,S10,downbound,83.935,0.391304,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985792#1,2,3,S10,downbound,74.609,0.347826,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985792#2,2,3,S10,downbound,111.913,0.521739,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985792#3,2,3,S10 S9,downbound,103.317,0.347826,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985793#0,2,2,S10,upbound,65.283,0.304348,compact_v9_one_edge_one_lane_target_mainroad_min_2
+781985793#1,2,2,S10 S11,upbound,120.882,0.434783,compact_v9_one_edge_one_lane_target_mainroad_min_2
+782892492#0,1,2,S11 S12,downbound,101.221,0.714286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+782892492#1,1,2,S10 S11,downbound,101.398,0.714286,compact_v9_one_edge_one_lane_target_mainroad_min_2
+783692390#0,1,2,S12,downbound,155.55,0.772727,compact_v9_one_edge_one_lane_target_mainroad_min_2
+783692390#1,1,2,S11,downbound,9.207,0.071429,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#0,2,2,S10 S9,downbound,85.638,0.142857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#1,2,2,S10 S9,downbound,85.881,0.163265,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#2,2,2,S9,downbound,210.527,0.44898,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#3,2,2,S9,downbound,95.694,0.204082,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#4,2,2,S9,downbound,86.124,0.183673,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#5,2,2,S9,downbound,114.833,0.244898,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#6,2,2,S9,downbound,95.694,0.204082,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#7,2,2,S9,downbound,66.986,0.142857,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130598#8,2,2,S8 S9,downbound,114.222,0.833333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130600#0,2,2,S7,upbound,104.561,0.305556,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130600#1,2,2,S7,upbound,76.044,0.222222,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130600#2,2,2,S7,upbound,199.617,0.583333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130600#3,2,2,S7 S8,upbound,123.217,0.833333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+785130603,1,3,S6 S7,downbound,95.535,0.194444,compact_v9_one_edge_one_lane_target_mainroad_min_2
+800229255,2,3,S2 S3,upbound,81.986,0.3,compact_v9_one_edge_one_lane_target_mainroad_min_2
+913372757,1,3,S15,upbound,27.183,0.166667,compact_v9_one_edge_one_lane_target_mainroad_min_2
+913702834,1,2,S4 S5,upbound,38.036,0.5,compact_v9_one_edge_one_lane_target_mainroad_min_2
+921117704#0,2,3,S16 S17,downbound,127.596,0.333333,compact_v9_one_edge_one_lane_target_mainroad_min_2
+955312947#1,1,3,S17,downbound,54.063,0.315789,compact_v9_one_edge_one_lane_target_mainroad_min_2

@@ -1,0 +1,12 @@
+{
+  "schema": "expanded_v7_release_artifact_v5_scaled_demand.v1",
+  "generated_at": "2026-06-03T18:51:52.662225Z",
+  "input_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_reference_main_sideflow_release_artifact_v2.rou.xml",
+  "output_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_release_artifact_v5_scale1p20.rou.xml",
+  "base_vehicle_count": 2575,
+  "added_vehicle_count": 515,
+  "total_vehicle_count": 3090,
+  "scale": 1.2,
+  "method": "clone_first_20_percent_with_depart_stagger",
+  "purpose_ko": "v4에서 정지류는 없어졌지만 평균속도가 빨라져 같은 분포의 수요를 20% 추가해 적정 정체 속도를 찾는 후보입니다."
+}

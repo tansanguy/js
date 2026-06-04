@@ -1,0 +1,585 @@
+{
+  "schema": "compact_v9_B4_route_movement_plan.v1",
+  "generated_at": "2026-06-04T16:29:20.131078+00:00",
+  "algorithm": "B4",
+  "route": {
+    "route_id": "COMPACT_V9_FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "vehicle_id": "emergency_0",
+    "depart_sec": 600.0,
+    "start_edge_id": "420331801#1",
+    "merge_edge_id": "-174870621#8",
+    "target_edge_id": "619147738#1",
+    "route_edge_count": 61,
+    "route_length_m": 2934.91,
+    "route_edges": [
+      "420331801#1",
+      "-174870621#8",
+      "-174870621#7",
+      "-174870621#6",
+      "-174870621#5",
+      "-174870621#4",
+      "-174870621#2",
+      "-174870621#0",
+      "578313748#0",
+      "578313748#2",
+      "800229255",
+      "180368918#0",
+      "180368918#3",
+      "180368918#5",
+      "180368918#6",
+      "180368918#7",
+      "180368918#8",
+      "218773868#0",
+      "218773868#2",
+      "218773868#3",
+      "218773868#4",
+      "218773868#5",
+      "218773868#6",
+      "-1455512070",
+      "428260110",
+      "785130600#0",
+      "785130600#1",
+      "785130600#2",
+      "785130600#3",
+      "1455497345",
+      "218773869#1",
+      "218773869#3",
+      "218773869#4",
+      "218773869#5",
+      "218773869#6",
+      "218773869#7",
+      "218773869#8",
+      "218773869#9",
+      "219696193#1",
+      "219696193#2",
+      "781985793#0",
+      "781985793#1",
+      "420361196",
+      "180445419",
+      "347237859#0",
+      "347237859#1",
+      "347237859#2",
+      "347237859#3",
+      "347237859#4",
+      "347237859#5",
+      "781985787#0",
+      "218915135#3",
+      "218915135#4",
+      "781983104#0",
+      "781983104#1",
+      "333557072#1",
+      "333557072#2",
+      "333557072#3",
+      "333557072#5",
+      "619147738#0",
+      "619147738#1"
+    ]
+  },
+  "ordered_movements": [
+    {
+      "movement_id": "B4_MOVEMENT_00",
+      "tls_id": "cluster_3846534041_436877431",
+      "from_edge": "180368918#3",
+      "to_edge": "180368918#5",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [
+        3
+      ],
+      "flush_link_indices": [
+        3
+      ],
+      "approach_lanes": [
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "local_storage_lanes": [
+        "578313748#0_0",
+        "578313748#0_1",
+        "578313748#0_2",
+        "578313748#2_0",
+        "578313748#2_1",
+        "578313748#2_2",
+        "800229255_0",
+        "800229255_1",
+        "800229255_2",
+        "180368918#0_0",
+        "180368918#0_1",
+        "180368918#0_2",
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "corridor_storage_lanes": [
+        "-174870621#4_0",
+        "-174870621#4_1",
+        "-174870621#4_2",
+        "-174870621#2_0",
+        "-174870621#2_1",
+        "-174870621#2_2",
+        "-174870621#0_0",
+        "-174870621#0_1",
+        "-174870621#0_2",
+        "578313748#0_0",
+        "578313748#0_1",
+        "578313748#0_2",
+        "578313748#2_0",
+        "578313748#2_1",
+        "578313748#2_2",
+        "800229255_0",
+        "800229255_1",
+        "800229255_2",
+        "180368918#0_0",
+        "180368918#0_1",
+        "180368918#0_2",
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "selected_flush_phase": 0,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 12,
+      "mapped_S_segment": "S3:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.063127,
+      "q_max_b0_proxy_veh": 2.507642,
+      "tQ_hist_b0_sec": 1.671762,
+      "lambda_b0_vph": 316.077961,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_01",
+      "tls_id": "joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+      "from_edge": "-1455512070",
+      "to_edge": "428260110",
+      "link_indices": [
+        7,
+        8
+      ],
+      "control_link_indices": [
+        7,
+        8
+      ],
+      "ev_route_link_indices": [
+        7,
+        8
+      ],
+      "parallel_through_link_indices": [
+        7,
+        8
+      ],
+      "same_lane_blocking_link_indices": [
+        6,
+        9
+      ],
+      "flush_link_indices": [
+        6,
+        9
+      ],
+      "approach_lanes": [
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "local_storage_lanes": [
+        "218773868#5_0",
+        "218773868#5_1",
+        "218773868#6_0",
+        "218773868#6_1",
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "corridor_storage_lanes": [
+        "218773868#0_0",
+        "218773868#0_1",
+        "218773868#2_0",
+        "218773868#2_1",
+        "218773868#3_0",
+        "218773868#3_1",
+        "218773868#4_0",
+        "218773868#4_1",
+        "218773868#5_0",
+        "218773868#5_1",
+        "218773868#6_0",
+        "218773868#6_1",
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "selected_flush_phase": 0,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 23,
+      "mapped_S_segment": "S6:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.1418,
+      "q_max_b0_proxy_veh": 4.419289,
+      "tQ_hist_b0_sec": 4.419289,
+      "lambda_b0_vph": 295.267581,
+      "C_local_proxy_veh": 30.769231,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_02",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "from_edge": "218773869#7",
+      "to_edge": "218773869#8",
+      "link_indices": [
+        6,
+        7,
+        8
+      ],
+      "control_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "ev_route_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "parallel_through_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "local_storage_lanes": [
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "corridor_storage_lanes": [
+        "1455497345_0",
+        "1455497345_1",
+        "1455497345_2",
+        "218773869#1_0",
+        "218773869#1_1",
+        "218773869#1_2",
+        "218773869#3_0",
+        "218773869#3_1",
+        "218773869#3_2",
+        "218773869#4_0",
+        "218773869#4_1",
+        "218773869#4_2",
+        "218773869#5_0",
+        "218773869#5_1",
+        "218773869#5_2",
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "selected_green_phase": 2,
+      "selected_red_phase": 0,
+      "selected_flush_phase": "",
+      "full_through_phase": 2,
+      "ev_route_phase": 2,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 35,
+      "mapped_S_segment": "S9:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 0.953113,
+      "q_max_b0_proxy_veh": 11.221827,
+      "tQ_hist_b0_sec": 7.481218,
+      "lambda_b0_vph": 169.007073,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_03",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "from_edge": "218773869#9",
+      "to_edge": "219696193#1",
+      "link_indices": [
+        24,
+        25
+      ],
+      "control_link_indices": [
+        24,
+        25
+      ],
+      "ev_route_link_indices": [
+        24,
+        25
+      ],
+      "parallel_through_link_indices": [
+        24,
+        25
+      ],
+      "same_lane_blocking_link_indices": [
+        23
+      ],
+      "flush_link_indices": [
+        23
+      ],
+      "approach_lanes": [
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "local_storage_lanes": [
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2",
+        "218773869#8_0",
+        "218773869#8_1",
+        "218773869#8_2",
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "corridor_storage_lanes": [
+        "218773869#1_0",
+        "218773869#1_1",
+        "218773869#1_2",
+        "218773869#3_0",
+        "218773869#3_1",
+        "218773869#3_2",
+        "218773869#4_0",
+        "218773869#4_1",
+        "218773869#4_2",
+        "218773869#5_0",
+        "218773869#5_1",
+        "218773869#5_2",
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2",
+        "218773869#8_0",
+        "218773869#8_1",
+        "218773869#8_2",
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "selected_green_phase": 8,
+      "selected_red_phase": 0,
+      "selected_flush_phase": 8,
+      "full_through_phase": 8,
+      "ev_route_phase": 8,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 37,
+      "mapped_S_segment": "S9:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 0.566731,
+      "q_max_b0_proxy_veh": 11.221827,
+      "tQ_hist_b0_sec": 7.481218,
+      "lambda_b0_vph": 150.844675,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_04",
+      "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+      "from_edge": "781985787#0",
+      "to_edge": "218915135#3",
+      "link_indices": [
+        18
+      ],
+      "control_link_indices": [
+        18
+      ],
+      "ev_route_link_indices": [
+        18
+      ],
+      "parallel_through_link_indices": [
+        14,
+        15,
+        16,
+        18
+      ],
+      "same_lane_blocking_link_indices": [
+        15,
+        16,
+        17
+      ],
+      "flush_link_indices": [
+        15,
+        16,
+        17
+      ],
+      "approach_lanes": [
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "local_storage_lanes": [
+        "347237859#5_0",
+        "347237859#5_1",
+        "347237859#5_2",
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "corridor_storage_lanes": [
+        "347237859#3_0",
+        "347237859#3_1",
+        "347237859#3_2",
+        "347237859#4_0",
+        "347237859#4_1",
+        "347237859#4_2",
+        "347237859#5_0",
+        "347237859#5_1",
+        "347237859#5_2",
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "selected_green_phase": 4,
+      "selected_red_phase": 0,
+      "selected_flush_phase": 2,
+      "full_through_phase": "",
+      "ev_route_phase": 4,
+      "full_through_phase_available": false,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "route_green_with_same_lane_blocker_flush",
+      "route_order_index": 50,
+      "mapped_S_segment": "S15:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50+speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 0.714044,
+      "q_max_b0_proxy_veh": 8.549017,
+      "tQ_hist_b0_sec": 5.699345,
+      "lambda_b0_vph": 170.557843,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_05",
+      "tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+      "from_edge": "619147738#0",
+      "to_edge": "619147738#1",
+      "link_indices": [
+        2,
+        3,
+        4
+      ],
+      "control_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "ev_route_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "parallel_through_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "local_storage_lanes": [
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "corridor_storage_lanes": [
+        "333557072#2_0",
+        "333557072#2_1",
+        "333557072#2_2",
+        "333557072#3_0",
+        "333557072#3_1",
+        "333557072#3_2",
+        "333557072#5_0",
+        "333557072#5_1",
+        "333557072#5_2",
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "selected_green_phase": 2,
+      "selected_red_phase": 0,
+      "selected_flush_phase": "",
+      "full_through_phase": 2,
+      "ev_route_phase": 2,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 59,
+      "mapped_S_segment": "S21:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50+speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 1.467015,
+      "q_max_b0_proxy_veh": 13.737692,
+      "tQ_hist_b0_sec": 9.158462,
+      "lambda_b0_vph": 118.271154,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_AA_B0_edge_lane_data"
+    }
+  ],
+  "stage_policy": {
+    "stage1": "dispatch capture and static route/movement/storage precompute",
+    "stage2": "departure/merge zone space control before EV joins mainline",
+    "stage3": "preemptive control of controllable movements ahead of the EV",
+    "bottleneck_order": "open downstream bottleneck movement first, upstream movement later"
+  }
+}

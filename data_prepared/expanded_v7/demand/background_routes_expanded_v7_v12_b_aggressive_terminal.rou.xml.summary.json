@@ -1,0 +1,36 @@
+{
+  "schema": "expanded_v7_v12_aggressive_demand.v1",
+  "candidate": "v12_b_aggressive_terminal",
+  "input_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v9_surrounding_cleanup.rou.xml",
+  "output_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v12_b_aggressive_terminal.rou.xml",
+  "base_vehicle_count": 2575,
+  "added_vehicle_count": 32,
+  "total_vehicle_count": 2607,
+  "specs": [
+    [
+      "terminal",
+      386,
+      79.0
+    ]
+  ],
+  "avoid_sources": [
+    "381452166#1",
+    "438360331#1",
+    "438360331#2",
+    "464461054#1",
+    "585341903#0",
+    "585341906#0",
+    "619147738#0",
+    "773066532#5",
+    "785130598#6",
+    "785130598#7"
+  ],
+  "added_by_kind": {
+    "terminal": 32
+  },
+  "max_added_per_source": 8,
+  "max_added_per_template": 8,
+  "source_cap": 12,
+  "template_cap": 8,
+  "purpose_ko": "V10 도로망을 유지하고 완화된 plausibility 기준에서 공격적인 수요를 실험하는 V12 후보입니다."
+}

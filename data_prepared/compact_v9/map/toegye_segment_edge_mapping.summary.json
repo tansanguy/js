@@ -1,0 +1,9 @@
+{
+  "schema": "toegye_segment_edge_mapping.v1",
+  "generated_at": "2026-06-04T06:44:29.639094+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+  "row_count": 295,
+  "repair_target_count": 115,
+  "segment_direction_count": 44
+}

@@ -1,0 +1,1323 @@
+{
+  "created": true,
+  "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+  "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+  "target_edge_count": 258,
+  "changed_edge_count": 258,
+  "changed_edges": [
+    {
+      "edge_id": "-1002205302",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1002205303#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1002205328",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1004836023#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1004836024",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1099004169",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-117914348#4",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1205679418#12",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1230789304#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1230789304#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1230789308#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1230789308#6",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1233842659",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1234639844",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1291318446",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1415923127#5",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1415923127#6",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1506939325#9",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-1512783184#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-162388836#7",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-170207585#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-170403805",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-183272613#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-183272625#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-198564930",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-198691066",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-198691076#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-198691086#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-228795481#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-228795483",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-228950040#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-233651280#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-243542155#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-243542156#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-244217578#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-270279684#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-329612996",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-329995231#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-348626444#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381226325",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381447817#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381447822",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381447823#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381447826",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381447831#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381452133",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381452153",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381452176#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381453798",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381456461",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381456462#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381456463#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381802881#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381802881#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381807698#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-381809849#4",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331801#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331812#4",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331816#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331818#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331827",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331835#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420331836",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-420348552#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-464461054#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-464461057#4",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-464461058",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-581906883#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-607077076#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-634096163",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-651694689",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-651818430#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-709876230",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-710255389#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-711239211#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-711239214#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-711249903",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-712288152#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-770860548#4",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-772379951#5",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-772527390#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-788296723#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-788296724#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-824132486",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-842507784",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-856393258#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-910451393#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-913833410",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-914660215#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-955312947#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-955312948",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-976770078#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "-976770087#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1002205332",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1004836023#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1004836030#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1011007058",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1012925806",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1014301433#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1126339784",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1128365134#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1128365150#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1128365151#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1149179293",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117770551#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117784417#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117784418#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117784420",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117784421#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "117784422",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1205679417#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1205679417#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1205679418#14",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1206223941",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1230789304#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1230789304#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1230789308#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1230789308#8",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1283636937#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1283637466#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1283637469#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1283637480",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1381133418",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1395426738#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1415923127#6",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1415923127#7",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1428502145",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1456115790#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1456115793",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1456115806#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1465558147",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1473526512",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1512783184#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "1512783184#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "176728950#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "176728955#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "183272584#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "183272604",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "183272621",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "183272625#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "183272625#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "184083172",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "184083174",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "184083175",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198564929#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198564931",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198691060",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198691061#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198691077#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198691078#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "198691079#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "218684408#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "219696192#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "228795468#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "228797635#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "228797638#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "228797640#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "233651284#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "233651326#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "243542153#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "243542154#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "244214818#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "244216901#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "244221646#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "272228144#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "272228567",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "272229587#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "273640078#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "289213613#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "301285277#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "315658884#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "315658886#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "315658896#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "315658897#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "315658899#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "320463177#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "320463283",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "320473386",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "327035698#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "329612996",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "331994920",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "331994927#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "332004234",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "333554715#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "348657481#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "37399924#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "37400087#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "37400957",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "37402180#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381226322#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381230507#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447822",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447823#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447828",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447832",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447833#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381447835#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381452153",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381452156#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381452158",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381452169",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381802847#3",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381802881#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "381807720#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "382947009",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "383097727#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "383097728",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420319845",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420331816#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420331816#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420331820",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420331825#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420348540#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420361206#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420383141#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "420391200",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "428260104",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "516948900#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "560504093#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "566357618",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "615838644#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "615838645",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "619147733",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "619147737",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "651694689",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "651817398#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "711239214#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "768092240#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "769668047#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "770860546#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "770890592#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "781985790#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "781985791#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "781985795#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "781995868#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "782616914#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "785130601#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "785130602#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "821107999#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "837208913#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "842507784",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "904622988#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913006751#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913270580#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913392928#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913405361",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913570919",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913694023#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913709099#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913716416#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913835755#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "913836077",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "921796625",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "955312947#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "955312948",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "976770077#1",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "976770131#0",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    },
+    {
+      "edge_id": "980060201#2",
+      "old_numLanes": 1,
+      "new_numLanes": 2
+    }
+  ],
+  "plain_export_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--sumo-net-file",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+    "--plain-output-prefix",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_plain"
+  ],
+  "rebuild_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--node-files",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_plain.nod.xml",
+    "--edge-files",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_fixed.edg.xml",
+    "--output-file",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+    "--no-turnarounds",
+    "true",
+    "--tls.rebuild",
+    "true"
+  ],
+  "rebuild_stderr_tail": "radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: Connection '710134546_0->-710134547_0' is only 0.01m short.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' has a high cycle time of 296.00.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 21 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 53 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 101 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 92 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+  "schema": "compact_v9_global_3to1_lane_drop_fix.v1",
+  "generated_at": "2026-06-04T06:44:44.775024+00:00",
+  "meaning": "전역 3→1 차로 급감 금지: any connected 3+ lane edge flowing into a 1-lane edge is raised to at least 2 lanes."
+}

@@ -1,0 +1,2435 @@
+{
+  "schema": "compact_v9_b0_manifest.v1",
+  "generated_at": "2026-06-04T06:45:03.866063+00:00",
+  "active_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+  "base_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+  "lane_repaired_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+  "global_3to1_fixed_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+  "connected_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+  "firetruck_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "map_acceptance_required": true,
+  "map_acceptance_json": "data_prepared/compact_v9/acceptance/compact_v9_map_acceptance.json",
+  "map_review_html": "results/html/compact_v9_map_review.html",
+  "area": {
+    "schema": "compact_v9_ellipse_area.v1",
+    "generated_at": "2026-06-04T06:44:15.271142+00:00",
+    "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+    "shape": "ellipse",
+    "focus_1": {
+      "name": "Jungbu Fire Station",
+      "lat": 37.564875,
+      "lon": 127.015376
+    },
+    "focus_2": {
+      "name": "Seoul Station Reference",
+      "lat": 37.558488,
+      "lon": 126.971443
+    },
+    "focus_distance_m": 3937.02,
+    "end_margin_m": 180.0,
+    "semi_major_axis_m": 2148.51,
+    "semi_minor_axis_m": 860.851,
+    "ellipse_area_km2": 5.811,
+    "center": {
+      "lat": 37.56168353484987,
+      "lon": 126.9934085584282
+    },
+    "bearing_deg": 259.620856,
+    "bbox_wgs84": {
+      "min_lon": 126.96936867664951,
+      "min_lat": 37.55331409799569,
+      "max_lon": 127.01744844020689,
+      "max_lat": 37.57005297170405
+    },
+    "note": "OSM input is bbox based, but final SUMO net is filtered with --keep-edges.in-geo-boundary using this ellipse polygon."
+  },
+  "net": {
+    "schema": "compact_v9_map_manifest.v1",
+    "generated_at": "2026-06-04T06:44:23.565262+00:00",
+    "area_meta": "data_prepared/compact_v9/geojson/compact_v9_ellipse_meta.json",
+    "ellipse_geojson": "data_prepared/compact_v9/geojson/compact_v9_ellipse.geojson",
+    "source_osm": "data_prepared/expanded_v7/osm/jungbu_bbox_expanded_v7.osm.xml",
+    "source_osm_sha256": "7665ea03f53e6eedfbf40b08774bf15f89b493f8c683be17ed090aa4184529a6",
+    "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+    "net_file_sha256": "262d6eaca635947c6b031917d84f90cde6e92608a3424b28da8c214aadbdcce4",
+    "net_counts": {
+      "edge_count": 7435,
+      "junction_count": 4712,
+      "traffic_light_count": 83,
+      "lane_count": 21002
+    },
+    "netconvert_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--osm-files",
+      "/Users/junlee/Desktop/js/data_prepared/expanded_v7/osm/jungbu_bbox_expanded_v7.osm.xml",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+      "--keep-edges.in-geo-boundary",
+      "126.96943242,37.55820246,126.96936868,37.55870797,126.96940788,37.55922622,126.96954985,37.55975499,126.96979399,37.56029202,126.97013925,37.56083501,126.97058415,37.56138163,126.97112680,37.56192954,126.97176485,37.56247640,126.97249559,37.56301987,126.97331588,37.56355761,126.97422221,37.56408733,126.97521070,37.56460675,126.97627711,37.56511366,126.97741688,37.56560588,126.97862514,37.56608130,126.97989670,37.56653789,126.98122611,37.56697370,126.98260770,37.56738685,126.98403553,37.56777557,126.98550351,37.56813821,126.98700533,37.56847321,126.98853457,37.56877914,126.99008469,37.56905468,126.99164903,37.56929866,126.99322091,37.56951003,126.99479360,37.56968788,126.99636035,37.56983146,126.99791447,37.56994015,126.99944929,37.57001348,127.00095824,37.57005114,127.00243486,37.57005297,127.00387283,37.57001896,127.00526599,37.56994926,127.00660838,37.56984416,127.00789424,37.56970412,127.00911808,37.56952973,127.01027464,37.56932174,127.01135898,37.56908105,127.01236645,37.56880868,127.01329274,37.56850579,127.01413388,37.56817370,127.01488628,37.56781381,127.01554670,37.56742767,127.01611233,37.56701693,127.01658074,37.56658335,127.01694991,37.56612880,127.01721828,37.56565521,127.01738470,37.56516461,127.01744844,37.56465910,127.01740924,37.56414085,127.01726727,37.56361208,127.01702313,37.56307505,127.01667787,37.56253206,127.01623296,37.56198544,127.01569032,37.56143753,127.01505227,37.56089067,127.01432153,37.56034720,127.01350124,37.55980946,127.01259491,37.55927974,127.01160642,37.55876032,127.01054001,37.55825341,127.00940023,37.55776119,127.00819198,37.55728577,127.00692042,37.55682918,127.00559100,37.55639337,127.00420942,37.55598022,127.00278158,37.55559150,127.00131361,37.55522886,126.99981179,37.55489385,126.99828255,37.55458793,126.99673243,37.55431239,126.99516808,37.55406841,126.99359620,37.55385704,126.99202352,37.55367919,126.99045676,37.55353561,126.98890265,37.55342692,126.98736783,37.55335359,126.98585888,37.55331593,126.98438225,37.55331410,126.98294428,37.55334811,126.98155112,37.55341781,126.98020874,37.55352291,126.97892287,37.55366295,126.97769904,37.55383734,126.97654248,37.55404533,126.97545814,37.55428602,126.97445067,37.55455839,126.97352438,37.55486128,126.97268323,37.55519337,126.97193084,37.55555326,126.97127041,37.55593940,126.97070479,37.55635014,126.97023638,37.55678371,126.96986720,37.55723827,126.96959883,37.55771186,126.96943242,37.55820246",
+      "--tls.guess",
+      "true",
+      "--tls.join",
+      "true",
+      "--junctions.join",
+      "true",
+      "--geometry.remove",
+      "true",
+      "--remove-edges.isolated",
+      "true",
+      "--no-turnarounds",
+      "true"
+    ],
+    "geo_boundary_point_count": 97,
+    "edge_feature_count": 7435,
+    "skipped_edge_count": 0,
+    "edges_geojson": "data_prepared/compact_v9/geojson/compact_v9_edges.geojson"
+  },
+  "mapping": {
+    "schema": "toegye_segment_edge_mapping.v1",
+    "generated_at": "2026-06-04T06:44:29.639094+00:00",
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+    "row_count": 295,
+    "repair_target_count": 115,
+    "segment_direction_count": 44
+  },
+  "lane_repair": {
+    "schema": "validated_lane_repair_report.v1",
+    "generated_at": "2026-06-04T06:44:37.708808+00:00",
+    "base_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+    "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+    "overrides_csv": "data_prepared/compact_v9/map/lane_overrides.csv",
+    "work_dir": "data_prepared/compact_v9/net/plain_work",
+    "plain_export_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--sumo-net-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse.net.xml",
+      "--plain-output-prefix",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain"
+    ],
+    "plain_export_stderr": "ction '9269970823'.\nWarning: Edge '-1004718837' is not connected to outgoing edges at junction '9269970832'.\nWarning: Edge '-1010216729' is not connected to outgoing edges at junction '9320971734'.\nWarning: Lane '-1012513458_0' is not connected from any incoming edge at junction '9341096109'.\nWarning: Lane '-1015398733#2_0' is not connected from any incoming edge at junction '9366717011'.\nWarning: Edge '-1016508137' is not connected to outgoing edges at junction '9375696071'.\nWarning: Edge '-1063461200' is not connected to outgoing edges at junction '3063260454'.\nWarning: Lane '-1063461200_0' is not connected from any incoming edge at junction '3063260452'.\nWarning: Lane '-1063461201_0' is not connected from any incoming edge at junction '3063260455'.\nWarning: Lane '-1063461202_0' is not connected from any incoming edge at junction '9761887319'.\nWarning: Minor green from edge '1455518728' to edge '-198564928#28' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-1455518727#0' to edge '1455518726' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-1455518726' to edge '-1455518728' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '198564928#28' to edge '1455518727#0' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '180368918#3' to edge '-381452176#1' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Speed of straight connection '1205679413_0->656122981#2_0' reduced by 9.95 due to turning radius of 41.17 (length=15.48, angle=36.98).\nWarning: Speed of turning connection '796927124_1->1206223943_1' reduced by 22.95 due to turning radius of 4.23 (length=3.98, angle=81.41).\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.81, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.90).\nWarning: Speed of straight connection '1379887973#0_0->1379887973#1_0' reduced by 12.64 due to turning radius of 16.70 (length=5.04, angle=33.16).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_1' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1327214736_3846577600' from lane '117914848#1_0' and lane '-117914848#3_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1908868460_3844647758' from lane '-464461063_0' and lane '-273028084#6_0' (increase junction radius to avoid this).\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.07m short.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 16 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 53 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 57 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 85 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+    "rewrite_summary": {
+      "edge_xml": "data_prepared/compact_v9/net/plain_work/plain/validated_plain.edg.xml",
+      "output_xml": "data_prepared/compact_v9/net/plain_work/plain/validated_plain_lanes_repaired.edg.xml",
+      "override_count": 204,
+      "changed_count": 145,
+      "changed_rows": [
+        {
+          "edge_id": "-174870621#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#10",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#7",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#8",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-174870621#9",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#7",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-180368918#8",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-218773868#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-273638834#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "-273638834#2",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-315658884#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-315658897#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-381453320#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-381802847#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-381802847#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-381802847#2",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-578313748#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-578313748#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-800229255",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "-955312947#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1109231376",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "1109231377#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "1206223939",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1206223945",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1206223947",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1395426737#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1395426737#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497343#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497343#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497343#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497343#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497343#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455497345",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455512066",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "1455512070",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#10",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#7",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#8",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "174870621#9",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "180368918#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "180368918#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "180368918#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "180368918#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "180368918#7",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "183272387#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "183272387#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "183272387#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "183272647",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "183272654",
+          "old_numLanes": 4,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218684411#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218684411#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218684411#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#7",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#8",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218773869#9",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218915135#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "218915135#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "219696191#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "273638834#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "273638834#2",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "315658884#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "315658897#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "333557072#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "333557072#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "333557072#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "333557072#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "347237859#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "347237859#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "347237859#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "347237859#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "347237859#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "37402371",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "381453320#0",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "381802847#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "381802847#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "381802847#2",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "578313748#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "578313748#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "585341906#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "585341906#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "585341907#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "585341907#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "615671502",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "615671503",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147738#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147738#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#4",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#5",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147739#6",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "619147740",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "620607766#0",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "620607766#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "620607766#2",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "773060736",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "781983103#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781983103#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781983104#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781983104#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985779#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985779#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985786#8",
+          "old_numLanes": 3,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "781985787#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985789#0",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985789#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985792#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985792#1",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985792#2",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "781985792#3",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "782892492#0",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "782892492#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "783692390#0",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "783692390#1",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "785130603",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "800229255",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "913372757",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "913702834",
+          "old_numLanes": 1,
+          "new_numLanes": 2
+        },
+        {
+          "edge_id": "921117704#0",
+          "old_numLanes": 2,
+          "new_numLanes": 3
+        },
+        {
+          "edge_id": "955312947#1",
+          "old_numLanes": 1,
+          "new_numLanes": 3
+        }
+      ]
+    },
+    "rebuild_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--node-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain.nod.xml",
+      "--edge-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain_lanes_repaired.edg.xml",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+      "--no-turnarounds",
+      "true",
+      "--tls.rebuild",
+      "true"
+    ],
+    "primary_rebuild_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--node-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain.nod.xml",
+      "--edge-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain_lanes_repaired.edg.xml",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+      "--no-turnarounds",
+      "true",
+      "--connection-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain.con.xml",
+      "--tllogic-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain.tll.xml"
+    ],
+    "primary_rebuild_stderr": "t junction '9269970832'.\nWarning: Edge '-1010216729' is not connected to outgoing edges at junction '9320971734'.\nWarning: Lane '-1012513458_0' is not connected from any incoming edge at junction '9341096109'.\nWarning: Lane '-1015398733#2_0' is not connected from any incoming edge at junction '9366717011'.\nWarning: Edge '-1016508137' is not connected to outgoing edges at junction '9375696071'.\nWarning: Edge '-1063461200' is not connected to outgoing edges at junction '3063260454'.\nWarning: Lane '-1063461200_0' is not connected from any incoming edge at junction '3063260452'.\nWarning: Lane '-1063461201_0' is not connected from any incoming edge at junction '3063260455'.\nWarning: Lane '-1063461202_0' is not connected from any incoming edge at junction '9761887319'.\nWarning: Minor green from edge '1455518728' to edge '-198564928#28' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-1455518727#0' to edge '1455518726' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '-1455518726' to edge '-1455518728' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '198564928#28' to edge '1455518727#0' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Minor green from edge '180368918#3' to edge '-381452176#1' exceeds 19.44m/s. Maybe a left-turn lane is missing.\nWarning: Speed of straight connection '1205679413_0->656122981#2_0' reduced by 9.95 due to turning radius of 41.17 (length=15.48, angle=36.98).\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.81, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.90).\nWarning: Speed of straight connection '1379887973#0_0->1379887973#1_0' reduced by 12.64 due to turning radius of 16.70 (length=5.04, angle=33.16).\nWarning: Speed of straight connection '1465558140_1->1465558145_0' reduced by 18.56 due to turning radius of 15.45 (length=5.93, angle=38.19).\nWarning: Intersecting left turns at junction '3849700349' from lane '381802847#2_0' and lane '-381802847#3_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_1' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Intersecting left turns at junction 'cluster_1326151624_3337522190' from lane '1456115806#2_0' and lane '-395564622#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_1327214736_3846577600' from lane '117914848#1_0' and lane '-117914848#3_0' (increase junction radius to avoid this).\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 6 total messages of type: Could not set connection from '%' to '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 18 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 200 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 57 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 80 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\nQuitting (on error).\n",
+    "fallback_rebuild_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--node-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain.nod.xml",
+      "--edge-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/plain_work/plain/validated_plain_lanes_repaired.edg.xml",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+      "--no-turnarounds",
+      "true",
+      "--tls.rebuild",
+      "true"
+    ],
+    "fallback_rebuild_stderr": "1203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: Speed of straight connection '1205679413_0->656122981#2_0' reduced by 9.95 due to turning radius of 41.17 (length=15.48, angle=36.98).\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.81, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.90).\nWarning: Speed of straight connection '1379887973#0_0->1379887973#1_0' reduced by 12.64 due to turning radius of 16.70 (length=5.04, angle=33.16).\nWarning: Speed of straight connection '1465558140_1->1465558145_0' reduced by 18.56 due to turning radius of 15.45 (length=5.93, angle=38.19).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11059614391_13132749792_1908148237_3285441980_#1more' from lane '180368915#3_1' and lane '1428502145_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11059614391_13132749792_1908148237_3285441980_#1more' from lane '413953597#2_0' and lane '180368915#3_1' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: Connection '710134546_0->-710134547_0' is only 0.01m short.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' has a high cycle time of 296.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 21 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 53 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 110 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 88 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+    "fallback_used": true,
+    "rebuild_stderr": "1203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: Speed of straight connection '1205679413_0->656122981#2_0' reduced by 9.95 due to turning radius of 41.17 (length=15.48, angle=36.98).\nWarning: Speed of straight connection '1380857657#0_0->1380857658_0' reduced by 5.07 due to turning radius of 14.15 (length=12.81, angle=69.96).\nWarning: Speed of straight connection '-1380857658_0->-1380857657#0_0' reduced by 7.59 due to turning radius of 7.22 (length=9.96, angle=103.90).\nWarning: Speed of straight connection '1379887973#0_0->1379887973#1_0' reduced by 12.64 due to turning radius of 16.70 (length=5.04, angle=33.16).\nWarning: Speed of straight connection '1465558140_1->1465558145_0' reduced by 18.56 due to turning radius of 15.45 (length=5.93, angle=38.19).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '913406478_0' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_10864285557_3217915254_7300992880_9357585533' from lane '218915135#4_2' and lane '-315658899#0_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11059614391_13132749792_1908148237_3285441980_#1more' from lane '180368915#3_1' and lane '1428502145_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11059614391_13132749792_1908148237_3285441980_#1more' from lane '413953597#2_0' and lane '180368915#3_1' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Connection '899373686#3_0->-1230789304#0_0' is only 0.03m short.\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: Connection '710134546_0->-710134547_0' is only 0.01m short.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' has a high cycle time of 296.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 21 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 53 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 110 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 88 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+    "lane_target_summary": {
+      "schema": "compact_v9_edge_lane_targets.v1",
+      "generated_at": "2026-06-04T06:44:30.758736+00:00",
+      "target_edge_count": 204,
+      "changed_edge_count": 145,
+      "mainroad_one_lane_target_count": 0,
+      "method": "1 edge = 1 lane-count target; Toegye mainroad minimum is 2 lanes."
+    }
+  },
+  "global_3to1_lane_drop_fix": {
+    "created": true,
+    "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+    "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+    "target_edge_count": 258,
+    "changed_edge_count": 258,
+    "changed_edges": [
+      {
+        "edge_id": "-1002205302",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1002205303#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1002205328",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1004836023#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1004836024",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1099004169",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-117914348#4",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1205679418#12",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1230789304#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1230789304#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1230789308#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1230789308#6",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1233842659",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1234639844",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1291318446",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1415923127#5",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1415923127#6",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1506939325#9",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-1512783184#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-162388836#7",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-170207585#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-170403805",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-183272613#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-183272625#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-198564930",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-198691066",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-198691076#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-198691086#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-228795481#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-228795483",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-228950040#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-233651280#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-243542155#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-243542156#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-244217578#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-270279684#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-329612996",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-329995231#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-348626444#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381226325",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381447817#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381447822",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381447823#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381447826",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381447831#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381452133",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381452153",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381452176#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381453798",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381456461",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381456462#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381456463#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381802881#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381802881#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381807698#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-381809849#4",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331801#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331812#4",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331816#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331818#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331827",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331835#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420331836",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-420348552#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-464461054#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-464461057#4",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-464461058",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-581906883#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-607077076#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-634096163",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-651694689",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-651818430#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-709876230",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-710255389#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-711239211#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-711239214#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-711249903",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-712288152#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-770860548#4",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-772379951#5",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-772527390#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-788296723#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-788296724#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-824132486",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-842507784",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-856393258#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-910451393#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-913833410",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-914660215#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-955312947#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-955312948",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-976770078#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "-976770087#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1002205332",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1004836023#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1004836030#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1011007058",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1012925806",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1014301433#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1126339784",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1128365134#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1128365150#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1128365151#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1149179293",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117770551#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117784417#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117784418#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117784420",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117784421#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "117784422",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1205679417#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1205679417#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1205679418#14",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1206223941",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1230789304#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1230789304#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1230789308#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1230789308#8",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1283636937#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1283637466#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1283637469#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1283637480",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1381133418",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1395426738#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1415923127#6",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1415923127#7",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1428502145",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1456115790#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1456115793",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1456115806#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1465558147",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1473526512",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1512783184#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "1512783184#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "176728950#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "176728955#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "183272584#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "183272604",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "183272621",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "183272625#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "183272625#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "184083172",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "184083174",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "184083175",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198564929#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198564931",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198691060",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198691061#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198691077#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198691078#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "198691079#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "218684408#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "219696192#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "228795468#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "228797635#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "228797638#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "228797640#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "233651284#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "233651326#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "243542153#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "243542154#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "244214818#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "244216901#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "244221646#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "272228144#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "272228567",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "272229587#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "273640078#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "289213613#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "301285277#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "315658884#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "315658886#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "315658896#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "315658897#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "315658899#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "320463177#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "320463283",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "320473386",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "327035698#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "329612996",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "331994920",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "331994927#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "332004234",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "333554715#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "348657481#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "37399924#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "37400087#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "37400957",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "37402180#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381226322#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381230507#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447822",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447823#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447828",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447832",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447833#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381447835#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381452153",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381452156#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381452158",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381452169",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381802847#3",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381802881#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "381807720#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "382947009",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "383097727#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "383097728",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420319845",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420331816#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420331816#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420331820",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420331825#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420348540#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420361206#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420383141#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "420391200",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "428260104",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "516948900#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "560504093#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "566357618",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "615838644#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "615838645",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "619147733",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "619147737",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "651694689",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "651817398#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "711239214#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "768092240#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "769668047#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "770860546#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "770890592#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "781985790#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "781985791#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "781985795#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "781995868#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "782616914#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "785130601#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "785130602#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "821107999#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "837208913#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "842507784",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "904622988#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913006751#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913270580#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913392928#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913405361",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913570919",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913694023#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913709099#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913716416#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913835755#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "913836077",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "921796625",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "955312947#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "955312948",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "976770077#1",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "976770131#0",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      },
+      {
+        "edge_id": "980060201#2",
+        "old_numLanes": 1,
+        "new_numLanes": 2
+      }
+    ],
+    "plain_export_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--sumo-net-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired.net.xml",
+      "--plain-output-prefix",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_plain"
+    ],
+    "rebuild_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--node-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_plain.nod.xml",
+      "--edge-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/global_3to1_plain_work/global_3to1_fixed.edg.xml",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+      "--no-turnarounds",
+      "true",
+      "--tls.rebuild",
+      "true"
+    ],
+    "rebuild_stderr_tail": "radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Connection '-379994146#1_0->273638834#3_0' is only 0.03m short.\nWarning: Connection '710134546_0->-710134547_0' is only 0.01m short.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more' has a high cycle time of 407.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' cannot be adapted to a cycle time of 90.00.\nWarning: The traffic light 'joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more' has a high cycle time of 296.00.\nWarning: 37 total messages of type: Ambiguity in turnarounds computation at junction '%'.\nWarning: 62 total messages of type: Edge '%' is not connected to outgoing edges at junction '%'.\nWarning: 20 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 21 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 53 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 101 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 92 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\n",
+    "schema": "compact_v9_global_3to1_lane_drop_fix.v1",
+    "generated_at": "2026-06-04T06:44:44.775024+00:00",
+    "meaning": "전역 3→1 차로 급감 금지: any connected 3+ lane edge flowing into a 1-lane edge is raised to at least 2 lanes."
+  },
+  "firetruck_route": {
+    "route_id": "COMPACT_V9_FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "scenario_id": "COMPACT_V9_SEOUL_STATION_FRONT",
+    "target_edge_id": "619147738#1",
+    "selected_policy": "v7_accepted_route_reused",
+    "route_edges": "420331801#1 -174870621#8 -174870621#7 -174870621#6 -174870621#5 -174870621#4 -174870621#2 -174870621#0 578313748#0 578313748#2 800229255 180368918#0 180368918#3 180368918#5 180368918#6 180368918#7 180368918#8 218773868#0 218773868#2 218773868#3 218773868#4 218773868#5 218773868#6 -1455512070 428260110 785130600#0 785130600#1 785130600#2 785130600#3 1455497345 218773869#1 218773869#3 218773869#4 218773869#5 218773869#6 218773869#7 218773869#8 218773869#9 219696193#1 219696193#2 781985793#0 781985793#1 420361196 180445419 347237859#0 347237859#1 347237859#2 347237859#3 347237859#4 347237859#5 781985787#0 218915135#3 218915135#4 781983104#0 781983104#1 333557072#1 333557072#2 333557072#3 333557072#5 619147738#0 619147738#1",
+    "route_edge_count": 61,
+    "route_length_m": 2934.91,
+    "start_edge_id": "420331801#1",
+    "merge_edge_id": "-174870621#8"
+  },
+  "entry_tls": {
+    "schema": "compact_v9_entry_tls.v1",
+    "generated_at": "2026-06-04T06:44:46.824461+00:00",
+    "created": true,
+    "tls_id": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+    "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+    "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+    "merge_edge": "-174870621#8",
+    "ev_depart_edge": "420331801#1",
+    "controlled_connection_count": 4,
+    "ev_uncontrolled_connection_count": 1,
+    "controlled_connections": [
+      {
+        "from": "-174870621#9",
+        "to": "-174870621#8",
+        "fromLane": "0",
+        "toLane": "0",
+        "via": ":cluster_3849737606_8401234720_8496719924_5_0",
+        "linkIndex": 4
+      },
+      {
+        "from": "-174870621#9",
+        "to": "-174870621#8",
+        "fromLane": "1",
+        "toLane": "1",
+        "via": ":cluster_3849737606_8401234720_8496719924_5_1",
+        "linkIndex": 5
+      },
+      {
+        "from": "-174870621#9",
+        "to": "-174870621#8",
+        "fromLane": "2",
+        "toLane": "2",
+        "via": ":cluster_3849737606_8401234720_8496719924_5_2",
+        "linkIndex": 6
+      },
+      {
+        "from": "381807698#2",
+        "to": "-174870621#8",
+        "fromLane": "0",
+        "toLane": "0",
+        "via": ":cluster_3849737606_8401234720_8496719924_0_0",
+        "linkIndex": 0
+      }
+    ],
+    "ev_uncontrolled_connections": [
+      {
+        "from": "420331801#1",
+        "to": "-174870621#8",
+        "fromLane": "0",
+        "toLane": "2",
+        "via": ":cluster_3849737606_8401234720_8496719924_12_0",
+        "linkIndex": 9
+      }
+    ],
+    "green_state": "GGGGGGGGGG",
+    "yellow_state": "yGGGyyyGGG",
+    "red_state": "rGGGrrrGGG"
+  },
+  "connected_component_prune": {
+    "schema": "compact_v9_connected_component_prune.v1",
+    "generated_at": "2026-06-04T06:44:53.093144+00:00",
+    "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+    "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "keep_edges_file": "data_prepared/compact_v9/net/connected_keep_edges.txt",
+    "before": {
+      "passenger_edge_count": 3770,
+      "weak_component_count": 4,
+      "largest_component_edge_count": 3762,
+      "largest_component_ratio": 0.997878,
+      "small_component_count": 3,
+      "top_component_sizes": [
+        3762,
+        6,
+        1,
+        1
+      ]
+    },
+    "after": {
+      "passenger_edge_count": 3762,
+      "weak_component_count": 1,
+      "largest_component_edge_count": 3762,
+      "largest_component_ratio": 1.0,
+      "small_component_count": 0,
+      "top_component_sizes": [
+        3762
+      ]
+    },
+    "removed_passenger_edge_count": 8,
+    "status": "PASS",
+    "netconvert_command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+      "--sumo-net-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+      "--keep-edges.input-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/connected_keep_edges.txt",
+      "--output-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+      "--remove-edges.isolated",
+      "true",
+      "--no-turnarounds",
+      "true"
+    ],
+    "stderr_tail": "increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203001806_11203001809_11203001810_11203001814_#12more' from lane '919984684_0' and lane '619147726#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_4' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985787#0_2' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Unused state in tlLogic '1945254547', program '0' at tl-index 3\nWarning: Unused state in tlLogic '8487751470', program '0' at tl-index 0\nWarning: Unused state in tlLogic 'COMPACT_V9_FIRE_STATION_ENTRY_TLS', program 'COMPACT_V9_ENTRY' at tl-index 1\nWarning: Unused state in tlLogic 'cluster_11277565406_11277565407_11277565408_11277565409_#6more', program '0' at tl-index 0\nWarning: Unused state in tlLogic 'cluster_11347624895_11414286294', program '0' at tl-index 0\nWarning: 18 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 21 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 26 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 90 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\nWarning: 9 total messages of type: Unused state in tlLogic '%', program '%' at tl-index %\n"
+  },
+  "road_integrity": {
+    "schema": "compact_v9_road_integrity.v1",
+    "generated_at": "2026-06-04T06:44:54.975729+00:00",
+    "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "mainroad_edge_count": 204,
+    "firetruck_route_edge_count": 61,
+    "mainroad_one_lane_hard_count": 0,
+    "global_3_to_1_hard_count": 0,
+    "warn_3_to_2_count": 306,
+    "warn_2_to_1_count": 433,
+    "passenger_connectivity": {
+      "passenger_edge_count": 3762,
+      "weak_component_count": 1,
+      "largest_component_edge_count": 3762,
+      "largest_component_ratio": 1.0,
+      "small_component_count": 0,
+      "top_component_sizes": [
+        3762
+      ]
+    },
+    "status": "PASS",
+    "edge_csv": "results/metrics/compact_v9/road_integrity/compact_v9_road_integrity_edges.csv",
+    "pair_csv": "results/metrics/compact_v9/road_integrity/compact_v9_road_integrity_pairs.csv"
+  },
+  "signal_integrity": {
+    "schema": "compact_v9_signal_integrity.v1",
+    "generated_at": "2026-06-04T06:44:55.517505+00:00",
+    "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "status": "PASS",
+    "tlLogic_count": 52,
+    "traffic_light_junction_count": 72,
+    "connection_with_tl_count": 608,
+    "connection_missing_linkIndex_count": 0,
+    "connection_missing_tlLogic_count": 0,
+    "tls_fail_count": 0,
+    "tls_warn_count": 2,
+    "short_green_warn_count": 0,
+    "long_cycle_warn_count": 2,
+    "zero_duration_fail_count": 0,
+    "phase_state_fail_count": 0,
+    "entry_tls_status": "PASS",
+    "entry_tls_issues": [],
+    "tls_csv": "results/metrics/compact_v9/road_integrity/compact_v9_signal_integrity_tls.csv",
+    "connection_csv": "results/metrics/compact_v9/road_integrity/compact_v9_signal_integrity_connections.csv"
+  },
+  "firetruck_route_connectivity": {
+    "schema": "compact_v9_firetruck_route_connectivity.v1",
+    "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "route_csv": "data_prepared/compact_v9/routes/firetruck_route.csv",
+    "route_edge_count": 61,
+    "bad_pair_count": 0,
+    "bad_pairs": [],
+    "status": "PASS"
+  },
+  "firetruck_smoke": {
+    "schema": "compact_v9_firetruck_smoke.v1",
+    "generated_at": "2026-06-04T06:45:00.166309+00:00",
+    "status": "PASS",
+    "active_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "target_edge": "619147738#1",
+    "sumo_exit_code": 0,
+    "route_error": 0,
+    "emergency_inserted": true,
+    "emergency_arrived": true,
+    "target_edge_seen_in_fcd": true,
+    "emergency_teleport": false,
+    "departDelay": 0.0,
+    "travel_time": 625.0,
+    "failure_reason": "",
+    "tripinfo": "results/metrics/compact_v9/firetruck_smoke/tripinfo.xml",
+    "fcd": "results/metrics/compact_v9/firetruck_smoke/fcd.xml",
+    "command": [
+      "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/sumo",
+      "--net-file",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+      "--route-files",
+      "/Users/junlee/Desktop/js/data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+      "--begin",
+      "0",
+      "--end",
+      "1800",
+      "--time-to-teleport",
+      "1200",
+      "--tripinfo-output",
+      "/Users/junlee/Desktop/js/results/metrics/compact_v9/firetruck_smoke/tripinfo.xml",
+      "--fcd-output",
+      "/Users/junlee/Desktop/js/results/metrics/compact_v9/firetruck_smoke/fcd.xml",
+      "--summary-output",
+      "/Users/junlee/Desktop/js/results/metrics/compact_v9/firetruck_smoke/summary.xml",
+      "--no-step-log",
+      "true",
+      "--no-warnings",
+      "true"
+    ],
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  }
+}

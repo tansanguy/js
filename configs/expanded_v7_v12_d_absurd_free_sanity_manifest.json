@@ -1,0 +1,256 @@
+{
+  "schema": "expanded_v7_v12_d_absurd_free_sanity_manifest.v1",
+  "active_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v12_d_absurd_free_sanity.net.xml",
+  "background_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v12_d_aggressive_mixed.rou.xml",
+  "background_demand_design": {
+    "method": "expanded_v7_reference_main_local_sideflow",
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "warmup_sec": 600.0,
+    "warmup_scale": 1.0,
+    "sustain_scale": 1.0,
+    "sideflow_ratio": 0.035,
+    "mapwide_background_ratio": 0.34,
+    "profile": "balanced_congestion_v8_stop_free_cleanup",
+    "timing_profile": "csv_reality_sequential",
+    "local_validation_share": 0.045,
+    "bottleneck_local_validation_share": 0.0,
+    "main_pass_ratio": 0.34,
+    "upbound_through_share": 0.1,
+    "downbound_through_share": 0.32,
+    "diversion_share": 0.6599999999999999,
+    "avoid_bottleneck_internal_local_source_sink": true,
+    "strict_bottleneck_route_guard": true,
+    "local_accounting_guard_enabled": true,
+    "downstream_sink_guard_enabled": true,
+    "distributed_boundary_enabled": true,
+    "boundary_extension_applied_count": 15,
+    "boundary_extension_incomplete_count": 1,
+    "terminal_sink_extension_v2_enabled": false,
+    "terminal_sink_extension_v2_applied_count": 0,
+    "terminal_sink_extension_v3_enabled": true,
+    "terminal_sink_extension_v3_limit": 30,
+    "terminal_sink_extension_v3_applied_count": 3,
+    "terminal_sink_extension_v3_unavailable_count": 0,
+    "terminal_sink_extension_v3_diverted_count": 0,
+    "release_depart_gap_enabled": true,
+    "release_depart_gap_sec": 8.0,
+    "free_segment_feeder_enabled": true,
+    "free_segment_feeder_share": 0.14,
+    "plausibility_first": true,
+    "generated_demand_recall_is_report_only": true,
+    "short_edge_artifact_length_m": 5.0,
+    "short_edge_warn_length_m": 10.0,
+    "pulse_active_multiplier": 1.35,
+    "through_distribution": {
+      "enabled": true,
+      "max_variants_per_through_flow": 36,
+      "through_flow_rows": 25
+    }
+  },
+  "tls_fix": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/tls_green_split_fix_summary.json",
+    "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+    "target_link_index": 18,
+    "target_connection": "781985787#0 -> 218915135#3",
+    "before_link_green_sec": {
+      "18": 6
+    },
+    "after_link_green_sec": {
+      "18": 30
+    }
+  },
+  "speedcap": {
+    "enabled": false,
+    "summary_json": "data_prepared/expanded_v7/net/mainroad_speedcap_summary.json",
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "changed_edge_count": 204,
+    "changed_lane_count": 571,
+    "min_cap_kmh": 35.0,
+    "max_cap_kmh": 50.0
+  },
+  "release_speedcap": {
+    "enabled": false,
+    "summary_json": "data_prepared/expanded_v7/net/release_speedcap_summary.json",
+    "cap_kmh": 35.0,
+    "changed_edge_count": 11,
+    "changed_lane_count": 30
+  },
+  "downbound_metering": {
+    "enabled": false,
+    "summary_json": "data_prepared/expanded_v7/net/downbound_metering_speedcap_summary.json",
+    "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "changed_edge_count": 105,
+    "changed_lane_count": 290,
+    "min_cap_kmh": 35.0,
+    "max_cap_kmh": 45.0,
+    "margin_kmh": 20.0
+  },
+  "overopen_metering": {
+    "enabled": false,
+    "summary_json": "data_prepared/expanded_v7/net/overopen_metering_speedcap_summary.json",
+    "source_edge_speed_csv": "results/metrics/expanded_v7_validation/20260603T115047_643543Z0000/b0_edge_speed_recall.csv",
+    "changed_edge_count": 42,
+    "changed_lane_count": 121,
+    "target_edge_count": 42
+  },
+  "route_edge_overopen_metering": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/route_edge_overopen_metering_speedcap_summary.json",
+    "source_edge_speed_csv": "results/metrics/expanded_v7_validation/20260603T120748_406340Z0000/b0_edge_speed_recall.csv",
+    "changed_edge_count": 29,
+    "changed_lane_count": 79,
+    "target_edge_count": 29,
+    "free_flow_threshold_kmh": 35.0
+  },
+  "release_junction_fixed": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/release_junction_fixed_summary.json",
+    "changed_connection_count": 55,
+    "changed_edge_priority_count": 1,
+    "target_edge_count": 20
+  },
+  "lane_drop_fixed": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/mainline_lane_drop_fixed_summary.json",
+    "changed_edge_count": 157,
+    "changed_lane_count": 1,
+    "changed_speed_count": 156,
+    "added_connection_count": 54,
+    "road_integrity_audit": {
+      "schema": "expanded_v7_road_integrity_audit.v1",
+      "generated_at": "2026-06-03T15:17:44.251230+00:00",
+      "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+      "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+      "net_file": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed.net.xml",
+      "protected_edge_count": 205,
+      "protected_one_lane_edge_count": 0,
+      "protected_short_lt_10m_count": 34,
+      "protected_speed_gt_50_count": 0,
+      "lane_drop_3_to_1_count": 0,
+      "lane_drop_3_to_2_count": 15,
+      "lane_drop_2_to_1_count": 0,
+      "connection_issue_count": 15,
+      "edge_csv": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_edges.csv",
+      "connection_csv": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_connections.csv",
+      "html": "results/html/expanded_v7_road_integrity_audit.html",
+      "status": "PASS",
+      "note": "Connectivity PASS only means routes are connected. This audit checks whether protected Toegye-ro/mainline edges have plausible lane continuity and speed limits.",
+      "summary_json": "results/metrics/expanded_v7_road_integrity_audit/expanded_v7_road_integrity_audit_summary.json"
+    }
+  },
+  "plausibility_overopen_speedcap": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/plausibility_overopen_speedcap_summary.json",
+    "source_edge_speed_csv": "results/metrics/expanded_v7_validation/20260603T160056_543450Z0000/b0_edge_speed_recall.csv",
+    "changed_edge_count": 36,
+    "changed_lane_count": 102,
+    "target_edge_count": 38,
+    "free_flow_threshold_kmh": 35.0
+  },
+  "route_set": "custom_accepted",
+  "custom_routes": "data_prepared/expanded_v7/routes/firetruck_accepted_routes.csv",
+  "firetruck_route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
+  "emergency_vtype_attrs": {
+    "id": "firetruck_emergency_conservative_b0",
+    "vClass": "emergency",
+    "guiShape": "emergency",
+    "color": "1,0,0",
+    "length": "8.0",
+    "width": "2.5",
+    "accel": "1.5",
+    "decel": "6.5",
+    "speedFactor": "1.05",
+    "speedDev": "0.00",
+    "maxSpeed": "16.666667",
+    "lcStrategic": "3.0",
+    "lcCooperative": "0.7",
+    "lcSpeedGain": "1.0",
+    "lcKeepRight": "0.0",
+    "lcAssertive": "1.0",
+    "impatience": "0.2"
+  },
+  "emergency_depart_sec": 600,
+  "final_background_required_substring": "background_routes_expanded_v7_reference_main_sideflow",
+  "optimization_route": {
+    "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_name_ko": "firetruck_to_seoul_station_front"
+  },
+  "notes": "Selected Expanded V7 conservative B0 baseline: terminal-release net + V9 surrounding source cleanup demand + V10 high-flow surrounding speed sanity. B0 only.",
+  "make_sense_fixed": {
+    "enabled": true,
+    "summary_json": "data_prepared/expanded_v7/net/make_sense_net_candidate_summary.json",
+    "candidate_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed_plausibility_overopen_make_sense_fixed.net.xml",
+    "reason": "post_audit_structural_defects_zero",
+    "summary_status": "PASS",
+    "post_audit_status": "PASS",
+    "structural_defect_count": 0,
+    "lane_drop_3_to_1_count": 0,
+    "lane_drop_2_to_1_count": 0,
+    "disconnected_pair_count": 0,
+    "sumo_net_load": {
+      "status": "PASS",
+      "returncode": 0,
+      "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+    },
+    "route_connectivity": {
+      "checked": true,
+      "status": "PASS",
+      "route_id": "FIRETRUCK_TO_SEOUL_STATION_FRONT",
+      "route_edge_count": 61,
+      "connected": true
+    }
+  },
+  "emergency_behavior_profile": "conservative_firetruck_b0",
+  "disable_dynamic_emergency_insert": true,
+  "emergency_lane_guidance_mode": "disabled",
+  "emergency_depart_policy": "scheduled_vehicle_depart_600_with_sumo_insertion_checks",
+  "baseline_interpretation_ko": "첨두시간 현실 B0 baseline: 소방차가 앞차를 밀고 지나가지 않고, 막히면 departDelay/waitingTime을 갖고 기다립니다.",
+  "release_artifact_v2": {
+    "enabled": true,
+    "net_summary_json": "data_prepared/expanded_v7/net/release_artifact_v2_summary.json",
+    "demand_summary_json": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_reference_main_sideflow_release_artifact_v2.rou.summary.json",
+    "base_manifest": "configs/expanded_v7_conservative_b0_manifest.json",
+    "generated_at": "2026-06-03T18:26:18.299052Z"
+  },
+  "release_artifact_v3": {
+    "enabled": true,
+    "net_summary_json": "data_prepared/expanded_v7/net/release_artifact_v3_balanced_tls_summary.json",
+    "base_manifest": "configs/expanded_v7_release_artifact_v2_candidate_manifest.json",
+    "generated_at": "2026-06-03T18:31:54.866365Z"
+  },
+  "release_artifact_v4": {
+    "enabled": true,
+    "net_summary_json": "data_prepared/expanded_v7/net/release_artifact_v4_terminal_release_summary.json",
+    "base_manifest": "configs/expanded_v7_release_artifact_v3_candidate_manifest.json",
+    "generated_at": "2026-06-03T18:48:44.720370Z"
+  },
+  "v8_terminal_release_candidate": {
+    "purpose_ko": "V8 분산/sideflow/mapwide 수요를 terminal_release net에 결합해 Toegye-ro와 주변도로의 비현실 stop/free를 동시에 줄이는 후보",
+    "demand_summary_json": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_reference_main_sideflow.rou.summary.json",
+    "base_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_release_artifact_v4_terminal_release.net.xml"
+  },
+  "v9_surrounding_cleanup": {
+    "summary_json": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v9_surrounding_cleanup.rou.summary.json",
+    "base_candidate": "v8_terminal_release"
+  },
+  "v10_surrounding_freeflow_cap": {
+    "summary_json": "data_prepared/expanded_v7/net/v10_surrounding_freeflow_cap_summary.json",
+    "base_candidate": "v9_surrounding_cleanup"
+  },
+  "selection": {
+    "candidate": "v12_d_aggressive_mixed",
+    "reference_csv": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+    "net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v10_surrounding_freeflow_cap.net.xml",
+    "demand": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v12_d_aggressive_mixed.rou.xml",
+    "criteria": "relaxed_absurd_stop_free"
+  },
+  "v12_aggressive_demand": {
+    "summary_json": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_v12_d_aggressive_mixed.rou.xml.summary.json",
+    "candidate": "v12_d_aggressive_mixed"
+  },
+  "v12_absurd_free_sanity": {
+    "summary_json": "data_prepared/expanded_v7/net/v12_d_absurd_free_sanity_summary.json",
+    "base_candidate": "v12_d_aggressive_mixed"
+  }
+}

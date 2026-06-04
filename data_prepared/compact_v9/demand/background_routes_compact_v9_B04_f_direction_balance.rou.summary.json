@@ -1,0 +1,118 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.304156+00:00",
+  "candidate": "B04_f_direction_balance",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_f_direction_balance.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.18,
+    "through_scale_downbound": 1.2,
+    "feeder_share_upbound": 0.04,
+    "feeder_share_downbound": 0.42,
+    "sideflow_share": 0.12,
+    "pulse_share": 0.3
+  },
+  "vehicle_count": 1708,
+  "route_count": 72,
+  "unique_source_count": 62,
+  "top_sources": [
+    [
+      "585341903#0",
+      239
+    ],
+    [
+      "477063271",
+      238
+    ],
+    [
+      "585341903#1",
+      211
+    ],
+    [
+      "1206223946#0",
+      210
+    ],
+    [
+      "1206223946#1",
+      210
+    ],
+    [
+      "-218684411#1",
+      34
+    ],
+    [
+      "-174870621#10",
+      32
+    ],
+    [
+      "-218684411#0",
+      32
+    ],
+    [
+      "-174870621#8",
+      31
+    ],
+    [
+      "-174870621#9",
+      31
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      211
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      211
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      210
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      210
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      210
+    ],
+    [
+      "mainline_through_upbound",
+      32
+    ],
+    [
+      "mainline_through_upbound_alt00",
+      32
+    ],
+    [
+      "mainline_through_upbound_alt01",
+      32
+    ],
+    [
+      "mainline_through_upbound_alt02",
+      31
+    ],
+    [
+      "mainline_through_upbound_alt03",
+      31
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    450.0,
+    900.0
+  ]
+}

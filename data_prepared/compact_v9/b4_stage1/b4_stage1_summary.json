@@ -1,0 +1,107 @@
+{
+  "schema": "compact_v9_B4_stage1_summary.v1",
+  "generated_at": "2026-06-04T16:29:20.131976+00:00",
+  "algorithm": "B4",
+  "status": "WARN",
+  "primary_candidate": "B04_aa_balanced_growth",
+  "manifest_selected_candidate": "B04_aa_balanced_growth",
+  "manifest_selected_candidate_role": "primary_selected",
+  "primary_candidate_lock": {
+    "primary_candidate": "B04_aa_balanced_growth",
+    "manifest_selected_candidate": "B04_aa_balanced_growth",
+    "manifest_selected_candidate_role": "primary_selected",
+    "reason": "AA is the current balanced B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+    "metrics": {
+      "candidate": "B04_aa_balanced_growth",
+      "vehicles": 1309,
+      "main_through_flow": 333,
+      "terminal_sink_flow": 0,
+      "top_sink_share": 0.074102,
+      "speed_mae_kmh": 12.653,
+      "free_count": 13,
+      "od_undercovered": 6,
+      "queue_not_forming": 7,
+      "teleport": 0,
+      "arrived_ratio": 1.0
+    }
+  },
+  "mode": "Stage1 static preparation only",
+  "runtime_implemented": false,
+  "control_candidate_expression": "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
+  "ta_proxy_policy": {
+    "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
+    "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+    "b0_measured_params_source": "SUMO B04_aa_balanced_growth no-control edgeData/laneData/tripinfo outputs",
+    "field_queue_claim": false
+  },
+  "movement_summary": {
+    "movement_count": 6,
+    "controllable_movement_count": 6,
+    "control_candidate_count": 4,
+    "bottleneck_risk_count": 2
+  },
+  "departure_summary": {
+    "fire_station_start_edge": "420331801#1",
+    "mainline_target_edge": "-174870621#8",
+    "merge_control_tls": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+    "ev_release_control_status": "uncontrolled_by_merge_tls",
+    "dispatch_lead_time_sec": 35.0,
+    "stage2_b0_formula": "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
+    "stage2_b0_measurement_source": "SUMO_B04_AA_B0_laneData_edgeData_proxy",
+    "stage2_runtime_control_uses_formula_directly": true
+  },
+  "validation": {
+    "overall": "WARN",
+    "b04_inputs_available": "PASS",
+    "sumo_not_run": "PASS",
+    "bo_not_run": "PASS",
+    "fcd_not_enabled": "PASS",
+    "merge_control_tls_available": "PASS",
+    "background_inflow_hold_available": "PASS",
+    "ev_release_control": "WARN",
+    "ev_release_control_status": "uncontrolled_by_merge_tls"
+  },
+  "input_artifacts": {
+    "b04_manifest": "configs/compact_v9_B04_b0_manifest.json",
+    "b04_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+    "firetruck_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "firetruck_route_csv": "data_prepared/compact_v9/routes/firetruck_route.csv",
+    "entry_tls_summary": "data_prepared/compact_v9/net/entry_tls_summary.json",
+    "b04_traffic_demand_review": "results/metrics/compact_v9_B04/queue_audit/b04_traffic_demand_review.json",
+    "b04_queue_definition_audit": "results/metrics/compact_v9_B04/queue_audit/b04_queue_definition_audit.json",
+    "b04_queue_proxy_by_segment": "results/metrics/compact_v9_B04/queue_audit/b04_queue_proxy_by_segment.csv",
+    "b4_queue_measurement_diagnostics": "results/metrics/compact_v9_B04/queue_audit/b4_queue_measurement_diagnostics.csv",
+    "primary_run_summary": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/b0_run_summary.json",
+    "edgeData": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/edgeData.xml",
+    "laneData": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/laneData.xml",
+    "tripinfo": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/tripinfo.xml",
+    "segment_speed_recall": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/B04_segment_speed_recall.csv"
+  },
+  "outputs": {
+    "b4_route_movement_plan_json": "data_prepared/compact_v9/b4_stage1/b4_route_movement_plan.json",
+    "b4_intersections_csv": "data_prepared/compact_v9/b4_stage1/b4_intersections.csv",
+    "b4_approach_storage_link_plan_csv": "data_prepared/compact_v9/b4_stage1/b4_approach_storage_link_plan.csv",
+    "b4_merge_zone_json": "data_prepared/compact_v9/b4_stage1/b4_merge_zone.json",
+    "b4_departure_flow_plan_json": "data_prepared/compact_v9/b4_stage1/b4_departure_flow_plan.json",
+    "b4_bottleneck_queue_readiness_csv": "data_prepared/compact_v9/b4_stage1/b4_bottleneck_queue_readiness.csv",
+    "b4_control_queue_threshold_proposal_json": "data_prepared/compact_v9/b4_stage1/b4_control_queue_threshold_proposal.json",
+    "b4_b0_measured_signal_params_csv": "data_prepared/compact_v9/b4_stage1/b4_b0_measured_signal_params.csv",
+    "b4_ta_proxy_policy_json": "data_prepared/compact_v9/b4_stage1/b4_ta_proxy_policy.json",
+    "b4_stage2_b0_merge_hold_params_json": "data_prepared/compact_v9/b4_stage1/b4_stage2_b0_merge_hold_params.json",
+    "b4_stage2_b0_merge_hold_params_csv": "data_prepared/compact_v9/b4_stage1/b4_stage2_b0_merge_hold_params.csv",
+    "b4_runtime_index_json": "data_prepared/compact_v9/b4_stage1/b4_runtime_index.json",
+    "b4_stage1_summary_json": "data_prepared/compact_v9/b4_stage1/b4_stage1_summary.json",
+    "b4_stage1_review_html": "results/html/b4_stage1_review.html"
+  },
+  "policy_notes": [
+    "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
+    "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
+    "B0 measured signal parameters are SUMO B04 AA no-control measurements, not field-observed queue lengths.",
+    "Stage 2 B0 merge hold parameters are SUMO B04 AA no-control laneData/edgeData proxy values, not field-observed occupancy.",
+    "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
+    "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
+    "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
+    "linkIndex is a SUMO TLS movement index, not physical storage length.",
+    "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted."
+  ]
+}

@@ -1,0 +1,479 @@
+{
+  "schema": "expanded_v7_v12_d_absurd_free_sanity_net.v1",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v10_surrounding_freeflow_cap.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v12_d_absurd_free_sanity.net.xml",
+  "source_edgeData": "runs/final/expanded_v7_v12_d_aggressive_mixed_b0/20260604T015438_837775Z0000/B0/no_control/repeat_001/FIRETRUCK_TO_SEOUL_STATION_FRONT/edgeData.xml",
+  "absurd_free_detected_count": 78,
+  "changed_edge_count": 78,
+  "changed_edges": [
+    {
+      "edge_id": "-1339655670#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-1339655670#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#12",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#13",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#14",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#15",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#16",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#17",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#18",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#19",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-198564928#20",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-218681380#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-218681380#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-218960891#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-273639055#2",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#4",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#5",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#6",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#7",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37399924#8",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37403486#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37928420#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37928420#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-37928420#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-420319848#3",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-420319848#4",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "-520307305#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-520307305#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-520307305#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-520307305#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "-520307305#4",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "1207199730#3",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "1212424784",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "1339655667#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "1339655668",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "1456115797#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "180192153#10",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "180192153#6",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "180192153#7",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "180192153#8",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "180192153#9",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "184083252",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#15",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#16",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#17",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#18",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#19",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#20",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198564928#24",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "198691077#10",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "198691077#11",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "198691077#12",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "198691077#13",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "198691077#9",
+      "old_min": 50.004,
+      "old_max": 50.004,
+      "new": 35
+    },
+    {
+      "edge_id": "218684411#4",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218684411#5",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218769254#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218769254#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218769254#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218769254#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "218769254#4",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "223418965#9",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "37400684#1",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "37400684#2",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "37400684#3",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "420383141#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "516163750#0",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "516163750#1",
+      "old_min": 79.992,
+      "old_max": 79.992,
+      "new": 35
+    },
+    {
+      "edge_id": "520307306",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "615671500#0",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "620634300",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "732213462",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "782892488#2",
+      "old_min": 60.012,
+      "old_max": 60.012,
+      "new": 35
+    },
+    {
+      "edge_id": "913009311",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "913009312#10",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    },
+    {
+      "edge_id": "913009312#9",
+      "old_min": 100.008,
+      "old_max": 100.008,
+      "new": 35
+    }
+  ],
+  "purpose_ko": "V12 D에서 새로 드러난 high-flow absurd free 주변도로 edge만 35km/h 도시부 상한으로 정리한 후처리 후보입니다."
+}

@@ -1,0 +1,174 @@
+{
+  "schema": "compact_v9_B04_demand_sweep.v1",
+  "generated_at": "2026-06-04T16:29:22.202965+00:00",
+  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "template_summary": {
+    "upbound_route_edge_count": 73,
+    "downbound_route_edge_count": 78,
+    "template_count": 118,
+    "sideflow_template_count": 16,
+    "balanced_main_through_template_count": 16,
+    "od_repair_template_count": 12,
+    "od_queue_template_count": 18
+  },
+  "speed50_sanity_net": {
+    "schema": "compact_v9_B04_speed50_sanity_net.v1",
+    "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml",
+    "already_exists": true
+  },
+  "candidate_count": 1,
+  "candidate_names": [
+    "B04_aa_balanced_growth"
+  ],
+  "candidates": [
+    {
+      "schema": "compact_v9_B04_demand_candidate.v1",
+      "generated_at": "2026-06-04T16:29:22.202375+00:00",
+      "candidate": "B04_aa_balanced_growth",
+      "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_aa_balanced_growth.rou.xml",
+      "settings": {
+        "through_scale_upbound": 0.16,
+        "through_scale_downbound": 0.22,
+        "feeder_share_upbound": 0.025,
+        "feeder_share_downbound": 0.66,
+        "midcorridor_share": 0.1,
+        "sideflow_share": 0.15,
+        "od_repair_share": 0.38,
+        "od_queue_tuned_share": 0.22,
+        "pulse_share": 0.55,
+        "pulse_begin": 540.0,
+        "pulse_end": 960.0,
+        "target_pulse_mode": "compressed",
+        "target_pulse_begin": 600.0,
+        "target_pulse_end": 900.0,
+        "net_profile": "speed50_sanity",
+        "avoid_terminal_sources": 1.0,
+        "avoid_terminal_sinks": 1.0,
+        "use_balanced_main_through": 1.0,
+        "balanced_main_through_only": 1.0,
+        "segment_factor_mode": "free_under_volume_boost",
+        "free_under_volume_boost": 1.18,
+        "free_boost": 1.08,
+        "stop_cut": 0.82,
+        "template_cap": 760,
+        "source_cap": 840,
+        "speed_factor": 0.88,
+        "speed_dev": 0.08,
+        "calibration_note": "Balanced natural growth: terminal-safe main-through, modest mapwide demand, and B4 approach overlap."
+      },
+      "vehicle_count": 1309,
+      "route_count": 118,
+      "unique_source_count": 68,
+      "top_sources": [
+        [
+          "619147739#0",
+          131
+        ],
+        [
+          "218915133#2",
+          89
+        ],
+        [
+          "619147740",
+          81
+        ],
+        [
+          "219696191#1",
+          77
+        ],
+        [
+          "-174870621#0",
+          70
+        ],
+        [
+          "-381802847#0",
+          54
+        ],
+        [
+          "781985786#7",
+          52
+        ],
+        [
+          "1455497343#2",
+          40
+        ],
+        [
+          "-180368918#6",
+          39
+        ],
+        [
+          "-218773868#0",
+          39
+        ]
+      ],
+      "top_templates": [
+        [
+          "midcorridor_local_downbound",
+          88
+        ],
+        [
+          "midcorridor_local_upbound",
+          88
+        ],
+        [
+          "segment_feeder_downbound_S6",
+          40
+        ],
+        [
+          "segment_feeder_downbound_S1",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S2",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S3",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S4",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S5",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S7",
+          39
+        ],
+        [
+          "segment_feeder_downbound_S8",
+          27
+        ]
+      ],
+      "vehicle_type_attrs": {
+        "id": "b04_passenger",
+        "vClass": "passenger",
+        "length": "5.0",
+        "accel": "2.000",
+        "decel": "4.500",
+        "sigma": "0.500",
+        "departLane": "best",
+        "speedFactor": "0.880",
+        "speedDev": "0.080"
+      },
+      "depart_window_sec": [
+        0,
+        3600
+      ],
+      "pulse_window_sec": [
+        540.0,
+        960.0
+      ],
+      "target_pulse": {
+        "mode": "compressed",
+        "begin": 600.0,
+        "mid": "",
+        "end": 900.0
+      }
+    }
+  ]
+}

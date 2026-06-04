@@ -1,0 +1,9 @@
+{
+  "schema": "compact_v9_B04_target_profile.v1",
+  "generated_at": "2026-06-04T07:29:24.609533+00:00",
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "output_csv": "data_prepared/compact_v9/map/B04_target_profile.csv",
+  "segment_direction_count": 44,
+  "mean_target_speed_kmh": 16.582,
+  "mean_reference_volume_vph": 876.409
+}

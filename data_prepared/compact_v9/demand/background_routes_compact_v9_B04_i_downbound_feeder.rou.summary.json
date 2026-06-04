@@ -1,0 +1,120 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.352475+00:00",
+  "candidate": "B04_i_downbound_feeder",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_i_downbound_feeder.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.08,
+    "through_scale_downbound": 1.6,
+    "feeder_share_upbound": 0.01,
+    "feeder_share_downbound": 1.2,
+    "sideflow_share": 0.14,
+    "pulse_share": 0.4,
+    "pulse_begin": 500.0,
+    "pulse_end": 950.0
+  },
+  "vehicle_count": 2651,
+  "route_count": 72,
+  "unique_source_count": 49,
+  "top_sources": [
+    [
+      "585341903#0",
+      363
+    ],
+    [
+      "477063271",
+      362
+    ],
+    [
+      "585341903#1",
+      281
+    ],
+    [
+      "1206223946#0",
+      280
+    ],
+    [
+      "1206223946#1",
+      280
+    ],
+    [
+      "781985786#7",
+      82
+    ],
+    [
+      "-180368918#6",
+      62
+    ],
+    [
+      "-218773868#0",
+      62
+    ],
+    [
+      "-218773868#3",
+      62
+    ],
+    [
+      "-218773868#4",
+      62
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      281
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      281
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      280
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      280
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      280
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      62
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      62
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      62
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      62
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      62
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    500.0,
+    950.0
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.444766+00:00",
+  "candidate": "B04_o_speedfactor_only",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_o_speedfactor_only.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.06,
+    "through_scale_downbound": 1.45,
+    "feeder_share_upbound": 0.01,
+    "feeder_share_downbound": 0.95,
+    "sideflow_share": 0.18,
+    "pulse_share": 0.45,
+    "pulse_begin": 550.0,
+    "pulse_end": 950.0,
+    "net_profile": "speed50_sanity",
+    "speed_factor": 0.88,
+    "speed_dev": 0.08,
+    "calibration_note": "Speed factor only, no tau/minGap change."
+  },
+  "vehicle_count": 2327,
+  "route_count": 72,
+  "unique_source_count": 49,
+  "top_sources": [
+    [
+      "585341903#0",
+      321
+    ],
+    [
+      "477063271",
+      320
+    ],
+    [
+      "1206223946#0",
+      254
+    ],
+    [
+      "1206223946#1",
+      254
+    ],
+    [
+      "585341903#1",
+      254
+    ],
+    [
+      "781985786#7",
+      66
+    ],
+    [
+      "-180368918#6",
+      49
+    ],
+    [
+      "-218773868#0",
+      49
+    ],
+    [
+      "-218773868#3",
+      49
+    ],
+    [
+      "-218773868#4",
+      49
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      255
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      254
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      254
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      254
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      254
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      49
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      49
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      49
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      49
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      49
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best",
+    "speedFactor": "0.880",
+    "speedDev": "0.080"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    550.0,
+    950.0
+  ]
+}

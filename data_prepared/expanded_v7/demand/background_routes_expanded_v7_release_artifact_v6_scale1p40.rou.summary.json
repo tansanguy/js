@@ -1,0 +1,11 @@
+{
+  "schema": "expanded_v7_release_artifact_v6_scaled_demand.v1",
+  "generated_at": "2026-06-03T18:54:56.373968Z",
+  "input_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_reference_main_sideflow_release_artifact_v2.rou.xml",
+  "output_route": "data_prepared/expanded_v7/demand/background_routes_expanded_v7_release_artifact_v6_scale1p40.rou.xml",
+  "base_vehicle_count": 2575,
+  "added_vehicle_count": 1030,
+  "total_vehicle_count": 3605,
+  "scale": 1.4,
+  "method": "clone_first_40_percent_with_depart_stagger"
+}

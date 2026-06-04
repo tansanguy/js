@@ -1,0 +1,46 @@
+{
+  "schema": "compact_v9_connected_component_prune.v1",
+  "generated_at": "2026-06-04T06:44:53.093144+00:00",
+  "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+  "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+  "keep_edges_file": "data_prepared/compact_v9/net/connected_keep_edges.txt",
+  "before": {
+    "passenger_edge_count": 3770,
+    "weak_component_count": 4,
+    "largest_component_edge_count": 3762,
+    "largest_component_ratio": 0.997878,
+    "small_component_count": 3,
+    "top_component_sizes": [
+      3762,
+      6,
+      1,
+      1
+    ]
+  },
+  "after": {
+    "passenger_edge_count": 3762,
+    "weak_component_count": 1,
+    "largest_component_edge_count": 3762,
+    "largest_component_ratio": 1.0,
+    "small_component_count": 0,
+    "top_component_sizes": [
+      3762
+    ]
+  },
+  "removed_passenger_edge_count": 8,
+  "status": "PASS",
+  "netconvert_command": [
+    "/Library/Frameworks/EclipseSUMO.framework/Versions/1.26.0/EclipseSUMO/bin/netconvert",
+    "--sumo-net-file",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+    "--keep-edges.input-file",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/connected_keep_edges.txt",
+    "--output-file",
+    "/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected.net.xml",
+    "--remove-edges.isolated",
+    "true",
+    "--no-turnarounds",
+    "true"
+  ],
+  "stderr_tail": "increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203001806_11203001809_11203001810_11203001814_#12more' from lane '919984684_0' and lane '619147726#1_0' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_3' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985789#1_1' and lane '1465558145_4' (increase junction radius to avoid this).\nWarning: Intersecting left turns at junction 'cluster_11203052955_11203052956_11203052960_11203052961_#11more' from lane '781985787#0_2' and lane '1467498054_2' (increase junction radius to avoid this).\nWarning: Unused state in tlLogic '1945254547', program '0' at tl-index 3\nWarning: Unused state in tlLogic '8487751470', program '0' at tl-index 0\nWarning: Unused state in tlLogic 'COMPACT_V9_FIRE_STATION_ENTRY_TLS', program 'COMPACT_V9_ENTRY' at tl-index 1\nWarning: Unused state in tlLogic 'cluster_11277565406_11277565407_11277565408_11277565409_#6more', program '0' at tl-index 0\nWarning: Unused state in tlLogic 'cluster_11347624895_11414286294', program '0' at tl-index 0\nWarning: 18 total messages of type: Found sharp turn with radius % at the % of edge '%'.\nWarning: 19 total messages of type: Intersecting left turns at junction '%' from lane '%' and lane '%' (increase junction radius to avoid this).\nWarning: 21 total messages of type: Lane '%' is not connected from any incoming edge at junction '%'.\nWarning: 26 total messages of type: Minor green from edge '%' to edge '%' exceeds %m/s. Maybe a left-turn lane is missing.\nWarning: 90 total messages of type: Speed of % connection '%' reduced by % due to turning radius of % (length=%, angle=%).\nWarning: 9 total messages of type: Unused state in tlLogic '%', program '%' at tl-index %\n"
+}

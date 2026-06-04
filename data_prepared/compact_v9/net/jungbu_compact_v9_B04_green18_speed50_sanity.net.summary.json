@@ -1,0 +1,11 @@
+{
+  "schema": "compact_v9_B04_speed50_sanity_net.v1",
+  "generated_at": "2026-06-04T08:46:56.207049+00:00",
+  "source_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml",
+  "relevant_edge_count": 203,
+  "changed_edge_count": 202,
+  "changed_lane_count": 541,
+  "max_speed_kmh": 50.0,
+  "policy": "Only B04 relevant mapped/firetruck/high-flow template edges are capped to CSV speed_limit_kmh=50."
+}

@@ -1,0 +1,116 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.290715+00:00",
+  "candidate": "B04_e_best_mix",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_e_best_mix.rou.xml",
+  "settings": {
+    "through_scale": 0.9,
+    "feeder_share": 0.28,
+    "sideflow_share": 0.16,
+    "pulse_share": 0.45
+  },
+  "vehicle_count": 2214,
+  "route_count": 72,
+  "unique_source_count": 62,
+  "top_sources": [
+    [
+      "477063271",
+      178
+    ],
+    [
+      "585341903#0",
+      178
+    ],
+    [
+      "-218684411#1",
+      172
+    ],
+    [
+      "-174870621#10",
+      158
+    ],
+    [
+      "-174870621#9",
+      158
+    ],
+    [
+      "-218684411#0",
+      158
+    ],
+    [
+      "1206223946#0",
+      158
+    ],
+    [
+      "585341903#1",
+      158
+    ],
+    [
+      "-174870621#8",
+      157
+    ],
+    [
+      "1206223946#1",
+      157
+    ]
+  ],
+  "top_templates": [
+    [
+      "mainline_through_downbound",
+      158
+    ],
+    [
+      "mainline_through_downbound_alt00",
+      158
+    ],
+    [
+      "mainline_through_downbound_alt01",
+      158
+    ],
+    [
+      "mainline_through_downbound_alt02",
+      158
+    ],
+    [
+      "mainline_through_upbound",
+      158
+    ],
+    [
+      "mainline_through_upbound_alt00",
+      158
+    ],
+    [
+      "mainline_through_upbound_alt01",
+      158
+    ],
+    [
+      "mainline_through_upbound_alt02",
+      158
+    ],
+    [
+      "mainline_through_downbound_alt03",
+      157
+    ],
+    [
+      "mainline_through_upbound_alt03",
+      157
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    450.0,
+    900.0
+  ]
+}

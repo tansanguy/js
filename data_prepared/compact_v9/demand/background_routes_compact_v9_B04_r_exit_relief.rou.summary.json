@@ -1,0 +1,129 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T08:46:56.477622+00:00",
+  "candidate": "B04_r_exit_relief",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_r_exit_relief.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.06,
+    "through_scale_downbound": 1.35,
+    "feeder_share_upbound": 0.01,
+    "feeder_share_downbound": 0.85,
+    "sideflow_share": 0.18,
+    "pulse_share": 0.42,
+    "pulse_begin": 550.0,
+    "pulse_end": 950.0,
+    "net_profile": "speed50_sanity",
+    "avoid_terminal_sources": 1.0,
+    "template_cap": 600,
+    "source_cap": 700,
+    "speed_factor": 0.9,
+    "speed_dev": 0.08,
+    "calibration_note": "Relieve S16-S21 stop by reducing terminal concentration."
+  },
+  "vehicle_count": 845,
+  "route_count": 72,
+  "unique_source_count": 44,
+  "top_sources": [
+    [
+      "781985786#7",
+      58
+    ],
+    [
+      "-180368918#6",
+      44
+    ],
+    [
+      "-218773868#0",
+      44
+    ],
+    [
+      "-218773868#3",
+      44
+    ],
+    [
+      "-218773868#4",
+      44
+    ],
+    [
+      "-800229255",
+      44
+    ],
+    [
+      "1455497343#2",
+      44
+    ],
+    [
+      "785130598#6",
+      44
+    ],
+    [
+      "1467498054",
+      29
+    ],
+    [
+      "619147739#0",
+      29
+    ]
+  ],
+  "top_templates": [
+    [
+      "segment_feeder_downbound_S1",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S6",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S7",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S10",
+      29
+    ],
+    [
+      "segment_feeder_downbound_S11",
+      29
+    ],
+    [
+      "segment_feeder_downbound_S12",
+      29
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best",
+    "speedFactor": "0.900",
+    "speedDev": "0.080"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    550.0,
+    950.0
+  ]
+}

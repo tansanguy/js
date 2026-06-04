@@ -1,0 +1,6 @@
+tls_id,route_order_min,route_order_max,movement_ids,mapped_S_segments,movement_count,controllable_count,phase_count,selected_green_phases,selected_red_phases,linkIndex,control_linkIndex,ev_route_linkIndex,same_lane_blocking_linkIndex,control_strategies,from_edges,to_edges
+cluster_3846534041_436877431,12,12,B4_MOVEMENT_00,S3:upbound,1,1,4,0,2,0 1 2,0 1 2,0 1 2,3,parallel_through_green,180368918#3,180368918#5
+joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more,23,23,B4_MOVEMENT_01,S6:upbound,1,1,4,0,2,7 8,7 8,7 8,6 9,parallel_through_green,-1455512070,428260110
+joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more,35,37,B4_MOVEMENT_02 B4_MOVEMENT_03,S9:upbound,2,2,10,2 8,0 0,6 7 8 24 25,6 7 8 24 25,6 7 8 24 25, 23,parallel_through_green parallel_through_green,218773869#7 218773869#9,218773869#8 219696193#1
+joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more,50,50,B4_MOVEMENT_04,S15:upbound,1,1,11,4,0,18,18,18,15 16 17,route_green_with_same_lane_blocker_flush,781985787#0,218915135#3
+joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more,59,59,B4_MOVEMENT_05,S21:upbound,1,1,16,2,0,2 3 4,2 3 4,2 3 4,,parallel_through_green,619147738#0,619147738#1

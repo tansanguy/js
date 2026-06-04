@@ -1,0 +1,12 @@
+{
+  "schema": "compact_v9_B04_segment_edge_mapping.v1",
+  "generated_at": "2026-06-04T07:29:24.607187+00:00",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "row_count": 290,
+  "repair_target_count": 115,
+  "segment_direction_count": 44,
+  "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
+  "output_csv": "data_prepared/compact_v9/map/B04_toegye_segment_edge_mapping.csv",
+  "mapping_policy": "S1-S22 edge 1:1 perfect recall is not required; grouped segment aggregation is used for short/fragmented edges."
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "compact_v9_entry_tls.v1",
+  "generated_at": "2026-06-04T06:44:46.824461+00:00",
+  "created": true,
+  "tls_id": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+  "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_global_3to1_fixed.net.xml",
+  "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls.net.xml",
+  "merge_edge": "-174870621#8",
+  "ev_depart_edge": "420331801#1",
+  "controlled_connection_count": 4,
+  "ev_uncontrolled_connection_count": 1,
+  "controlled_connections": [
+    {
+      "from": "-174870621#9",
+      "to": "-174870621#8",
+      "fromLane": "0",
+      "toLane": "0",
+      "via": ":cluster_3849737606_8401234720_8496719924_5_0",
+      "linkIndex": 4
+    },
+    {
+      "from": "-174870621#9",
+      "to": "-174870621#8",
+      "fromLane": "1",
+      "toLane": "1",
+      "via": ":cluster_3849737606_8401234720_8496719924_5_1",
+      "linkIndex": 5
+    },
+    {
+      "from": "-174870621#9",
+      "to": "-174870621#8",
+      "fromLane": "2",
+      "toLane": "2",
+      "via": ":cluster_3849737606_8401234720_8496719924_5_2",
+      "linkIndex": 6
+    },
+    {
+      "from": "381807698#2",
+      "to": "-174870621#8",
+      "fromLane": "0",
+      "toLane": "0",
+      "via": ":cluster_3849737606_8401234720_8496719924_0_0",
+      "linkIndex": 0
+    }
+  ],
+  "ev_uncontrolled_connections": [
+    {
+      "from": "420331801#1",
+      "to": "-174870621#8",
+      "fromLane": "0",
+      "toLane": "2",
+      "via": ":cluster_3849737606_8401234720_8496719924_12_0",
+      "linkIndex": 9
+    }
+  ],
+  "green_state": "GGGGGGGGGG",
+  "yellow_state": "yGGGyyyGGG",
+  "red_state": "rGGGrrrGGG"
+}

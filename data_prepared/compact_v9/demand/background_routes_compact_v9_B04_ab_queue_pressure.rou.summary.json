@@ -1,0 +1,149 @@
+{
+  "schema": "compact_v9_B04_demand_candidate.v1",
+  "generated_at": "2026-06-04T10:16:21.589178+00:00",
+  "candidate": "B04_ab_queue_pressure",
+  "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ab_queue_pressure.rou.xml",
+  "settings": {
+    "through_scale_upbound": 0.24,
+    "through_scale_downbound": 0.32,
+    "feeder_share_upbound": 0.035,
+    "feeder_share_downbound": 0.7,
+    "midcorridor_share": 0.12,
+    "sideflow_share": 0.16,
+    "od_repair_share": 0.45,
+    "od_queue_tuned_share": 0.3,
+    "pulse_share": 0.62,
+    "pulse_begin": 540.0,
+    "pulse_end": 960.0,
+    "target_pulse_mode": "two_burst",
+    "target_pulse_begin": 620.0,
+    "target_pulse_mid": 760.0,
+    "target_pulse_end": 880.0,
+    "net_profile": "speed50_sanity",
+    "avoid_terminal_sources": 1.0,
+    "avoid_terminal_sinks": 1.0,
+    "use_balanced_main_through": 1.0,
+    "balanced_main_through_only": 1.0,
+    "segment_factor_mode": "free_under_volume_boost",
+    "free_under_volume_boost": 1.22,
+    "free_boost": 1.1,
+    "stop_cut": 0.86,
+    "template_cap": 860,
+    "source_cap": 920,
+    "speed_factor": 0.88,
+    "speed_dev": 0.08,
+    "calibration_note": "Queue-pressure candidate: terminal-safe through growth and tighter B4 stopline pulse."
+  },
+  "vehicle_count": 1577,
+  "route_count": 118,
+  "unique_source_count": 68,
+  "top_sources": [
+    [
+      "619147739#0",
+      161
+    ],
+    [
+      "619147740",
+      116
+    ],
+    [
+      "219696191#1",
+      110
+    ],
+    [
+      "218915133#2",
+      106
+    ],
+    [
+      "-174870621#0",
+      105
+    ],
+    [
+      "-381802847#0",
+      75
+    ],
+    [
+      "781985786#7",
+      56
+    ],
+    [
+      "578313748#0",
+      53
+    ],
+    [
+      "1455497343#2",
+      44
+    ],
+    [
+      "-180368918#6",
+      41
+    ]
+  ],
+  "top_templates": [
+    [
+      "midcorridor_local_downbound",
+      105
+    ],
+    [
+      "midcorridor_local_upbound",
+      105
+    ],
+    [
+      "segment_feeder_downbound_S6",
+      44
+    ],
+    [
+      "segment_feeder_downbound_S1",
+      41
+    ],
+    [
+      "segment_feeder_downbound_S2",
+      41
+    ],
+    [
+      "segment_feeder_downbound_S3",
+      41
+    ],
+    [
+      "segment_feeder_downbound_S4",
+      41
+    ],
+    [
+      "segment_feeder_downbound_S5",
+      41
+    ],
+    [
+      "segment_feeder_downbound_S7",
+      41
+    ],
+    [
+      "mainline_through_downbound_balanced00",
+      35
+    ]
+  ],
+  "vehicle_type_attrs": {
+    "id": "b04_passenger",
+    "vClass": "passenger",
+    "length": "5.0",
+    "accel": "2.000",
+    "decel": "4.500",
+    "sigma": "0.500",
+    "departLane": "best",
+    "speedFactor": "0.880",
+    "speedDev": "0.080"
+  },
+  "depart_window_sec": [
+    0,
+    3600
+  ],
+  "pulse_window_sec": [
+    540.0,
+    960.0
+  ],
+  "target_pulse": {
+    "mode": "two_burst",
+    "begin": 620.0,
+    "mid": 760.0,
+    "end": 880.0
+  }
+}

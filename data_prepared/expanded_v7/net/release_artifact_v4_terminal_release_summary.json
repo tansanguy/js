@@ -1,0 +1,161 @@
+{
+  "schema": "expanded_v7_release_artifact_v4_terminal_release.v1",
+  "generated_at": "2026-06-03T18:48:44.619489Z",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_passenger_lanes_repaired_tls_fixed_release_route_overopen_metered_release_fixed_lane_drop_fixed_plausibility_overopen_make_sense_fixed_release_artifact_v3_balanced_tls.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_release_artifact_v4_terminal_release.net.xml",
+  "terminal_tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+  "always_green_links": [
+    2,
+    3,
+    4
+  ],
+  "changed_phase_count": 15,
+  "phase_rows": [
+    {
+      "phase_index": 0,
+      "duration": "31",
+      "before": "GGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "GGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 1,
+      "duration": "6",
+      "before": "yyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "yyGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 3,
+      "duration": "6",
+      "before": "rryyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 4,
+      "duration": "31",
+      "before": "rrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 5,
+      "duration": "6",
+      "before": "rrrrryyyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGyyyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 6,
+      "duration": "31",
+      "before": "rrrrrrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 7,
+      "duration": "6",
+      "before": "rrrrrrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 8,
+      "duration": "31",
+      "before": "rrrrrrrrrrrrrrrrrGGGGGgGrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrrrrrrrrGGGGGgGrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 9,
+      "duration": "6",
+      "before": "rrrrrrrrrrrrrrrrryyyyyyyrrrrrrrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrrrrrrrryyyyyyyrrrrrrrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 10,
+      "duration": "31",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 11,
+      "duration": "6",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrryyyyyyrrrrrrrrrrrrr",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrryyyyyyrrrrrrrrrrrrr"
+    },
+    {
+      "phase_index": 12,
+      "duration": "31",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGGrrr",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGGrrr"
+    },
+    {
+      "phase_index": 13,
+      "duration": "6",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyyyrrr",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyyyrrr"
+    },
+    {
+      "phase_index": 14,
+      "duration": "31",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGG",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGG"
+    },
+    {
+      "phase_index": 15,
+      "duration": "6",
+      "before": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyy",
+      "after": "rrGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyy"
+    }
+  ],
+  "connection_rows": [
+    {
+      "old": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "2"
+      },
+      "new": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "2"
+      }
+    },
+    {
+      "old": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "3"
+      },
+      "new": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "3"
+      }
+    },
+    {
+      "old": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "4"
+      },
+      "new": {
+        "state": "M",
+        "pass": "true",
+        "keepClear": "false",
+        "tl": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+        "linkIndex": "4"
+      }
+    }
+  ],
+  "sumo_net_load": {
+    "status": "PASS",
+    "returncode": 0,
+    "stderr_tail": "Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.\n"
+  },
+  "note": "Boundary-only terminal release: let vehicles leave the validation corridor through 619147738#0 -> #1 without artificial signal storage delay."
+}

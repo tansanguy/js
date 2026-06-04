@@ -1,0 +1,13 @@
+{
+  "schema": "expanded_v7_v12_d_final_plausibility_v2_net.v1",
+  "input_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v12_d_final_plausibility.net.xml",
+  "output_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v12_d_final_plausibility_v2.net.xml",
+  "changed_edges": [
+    {
+      "edge_id": "315658884#2",
+      "old_speed_kmh": 50.004000000000005,
+      "new_speed_kmh": 30
+    }
+  ],
+  "reason": "remaining surrounding high-flow edge was 45.22km/h, just above relaxed absurd-free threshold; cap one edge to 30km/h."
+}

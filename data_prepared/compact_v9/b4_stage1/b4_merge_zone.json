@@ -1,0 +1,42 @@
+{
+  "schema": "compact_v9_B4_merge_zone.v1",
+  "generated_at": "2026-06-04T16:29:19.713197+00:00",
+  "merge_zone_id": "B4_MERGE_ZONE_00",
+  "start_edge": "420331801#1",
+  "merge_edge": "-174870621#8",
+  "merge_zone_edges": [
+    "420331801#1",
+    "-174870621#8"
+  ],
+  "merge_zone_lanes": [
+    "420331801#1_0",
+    "-174870621#8_0",
+    "-174870621#8_1",
+    "-174870621#8_2"
+  ],
+  "merge_zone_length_m": 138.9,
+  "merge_control_tls_id": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+  "merge_control_background_link_indices": [
+    0,
+    4,
+    5,
+    6
+  ],
+  "ev_uncontrolled_link_indices": [
+    9
+  ],
+  "merge_control_incoming_edges": [
+    "-174870621#9",
+    "381807698#2"
+  ],
+  "merge_control_incoming_lanes": [
+    "-174870621#9_0",
+    "-174870621#9_1",
+    "-174870621#9_2",
+    "381807698#2_0"
+  ],
+  "control_available": true,
+  "control_strategy": "entry_merge_background_hold",
+  "validation_status": "WARN",
+  "measurement_policy": "Stage 2 must inspect only these precomputed lanes/movements, not scan all vehicles."
+}
