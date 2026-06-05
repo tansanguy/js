@@ -39,6 +39,7 @@ B04_TRAFFIC_DEMAND_REVIEW = QUEUE_AUDIT_DIR / "b04_traffic_demand_review.json"
 B04_QUEUE_DEFINITION_AUDIT = QUEUE_AUDIT_DIR / "b04_queue_definition_audit.json"
 B04_QUEUE_PROXY_BY_SEGMENT = QUEUE_AUDIT_DIR / "b04_queue_proxy_by_segment.csv"
 B04_MEASUREMENT_DIAGNOSTICS = QUEUE_AUDIT_DIR / "b4_queue_measurement_diagnostics.csv"
+B04_SEGMENT_EDGE_MAPPING = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B4_PRIMARY_CANDIDATE = "B04_aa_balanced_growth"
 B4_PRIMARY_RUN_SUMMARY = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "b0_run_summary.json"
 B4_PRIMARY_SPEED_RECALL = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "B04_segment_speed_recall.csv"
@@ -49,6 +50,8 @@ B4_APPROACH_STORAGE_LINK_PLAN_CSV = STAGE1_DIR / "b4_approach_storage_link_plan.
 B4_MERGE_ZONE = STAGE1_DIR / "b4_merge_zone.json"
 B4_DEPARTURE_FLOW_PLAN = STAGE1_DIR / "b4_departure_flow_plan.json"
 B4_BOTTLENECK_QUEUE_READINESS_CSV = STAGE1_DIR / "b4_bottleneck_queue_readiness.csv"
+B4_CASE_B_CANDIDATES_CSV = STAGE1_DIR / "b4_case_b_candidates.csv"
+B4_CASE_B_CANDIDATES_JSON = STAGE1_DIR / "b4_case_b_candidates.json"
 B4_CONTROL_QUEUE_THRESHOLD_PROPOSAL = STAGE1_DIR / "b4_control_queue_threshold_proposal.json"
 B4_B0_MEASURED_SIGNAL_PARAMS_CSV = STAGE1_DIR / "b4_b0_measured_signal_params.csv"
 B4_TA_PROXY_POLICY = STAGE1_DIR / "b4_ta_proxy_policy.json"
@@ -57,6 +60,7 @@ B4_STAGE2_B0_MERGE_HOLD_PARAMS_CSV = STAGE1_DIR / "b4_stage2_b0_merge_hold_param
 B4_RUNTIME_INDEX = STAGE1_DIR / "b4_runtime_index.json"
 B4_STAGE1_SUMMARY = STAGE1_DIR / "b4_stage1_summary.json"
 B4_STAGE1_REVIEW_HTML = HTML_ROOT / "b4_stage1_review.html"
+MAINSTREAM_SEGMENT_SKELETON = PROJECT_ROOT / "mainstream_segment_skeleton.csv"
 
 ENTRY_TLS_ID = "COMPACT_V9_FIRE_STATION_ENTRY_TLS"
 EV_ID = "emergency_0"
@@ -78,6 +82,10 @@ TA_DIRECT_SWITCH_BUFFER_SEC = 5.0
 STAGE2_MERGE_DESIGN_LENGTH_M = 50.0
 STAGE2_N_NEED_PROXY_VEH = 2.0
 STAGE2_MEASUREMENT_SOURCE = "SUMO_B04_AA_B0_laneData_edgeData_proxy"
+CASE_B_SEGMENT_IDS = ("S7", "S10", "S11")
+CASE_B_DEFAULT_TAU = 0.75
+QUEUE_CALIBRATION_MIN = 0.5
+QUEUE_CALIBRATION_MAX = 2.0
 
 EVENT_SCHEMA = [
     "time",
@@ -112,6 +120,17 @@ EVENT_SCHEMA = [
     "ta_triggered",
     "ta_formula",
     "ta_input_source",
+    "queue_source",
+    "case_b_source",
+    "tS_source",
+    "TA_case",
+    "TA_upstream_sec",
+    "TA_bottleneck_sec",
+    "case_b_mapping_status",
+    "case_b_segment_id",
+    "case_b_segment_queue_m_proxy",
+    "case_b_segment_fill",
+    "case_b_same_tls_policy",
     "D_merge_m",
     "tE_merge_sec",
     "L_merge_m",
@@ -126,6 +145,7 @@ EVENT_SCHEMA = [
     "b0_background_inflow_lambda_vph",
     "stage2_formula",
     "stage2_measurement_source",
+    "runtime_or_b0_fallback",
 ]
 
 
@@ -661,6 +681,34 @@ def b0_measured_signal_params(
     return rows
 
 
+def queue_calibration_factor(raw_factor: float) -> float:
+    if raw_factor <= 0.0:
+        return 1.0
+    return max(QUEUE_CALIBRATION_MIN, min(QUEUE_CALIBRATION_MAX, raw_factor))
+
+
+def add_queue_calibration_factors(
+    b0_measured_rows: list[dict[str, Any]],
+    readiness_rows: list[dict[str, Any]],
+) -> None:
+    readiness_by_id = {str(row.get("movement_id", "")): row for row in readiness_rows}
+    for row in b0_measured_rows:
+        readiness = readiness_by_id.get(str(row.get("movement_id", "")), {})
+        readiness_queue_m = safe_float(
+            readiness.get("stopline_local_queue_m_proxy"),
+            safe_float(readiness.get("local_queue_m_proxy_100m"), safe_float(readiness.get("queue_m_proxy"), 0.0)),
+        )
+        measured_queue_m = safe_float(row.get("q_avg_b0_proxy_veh")) * TA_HEADWAY_M
+        if measured_queue_m <= 0.0:
+            measured_queue_m = safe_float(row.get("q_max_b0_proxy_veh")) * TA_HEADWAY_M
+        raw_factor = readiness_queue_m / measured_queue_m if readiness_queue_m > 0.0 and measured_queue_m > 0.0 else 1.0
+        row["queue_calibration_reference_m"] = round(readiness_queue_m, 6)
+        row["queue_calibration_measured_m"] = round(measured_queue_m, 6)
+        row["queue_calibration_factor"] = round(raw_factor, 6)
+        row["queue_calibration_factor_applied"] = round(queue_calibration_factor(raw_factor), 6)
+        row["queue_calibration_source"] = "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv"
+
+
 def speed_rows_by_segment(rows: list[dict[str, str]]) -> dict[str, dict[str, str]]:
     return {f"{row.get('segment_id', '')}:{row.get('direction', '')}": row for row in rows}
 
@@ -1055,6 +1103,7 @@ def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[s
             "queue_length_note": "No field queue length exists in the reference CSV; all queue length values are SUMO edgeData/laneData proxies.",
             "linkIndex_note": "linkIndex is a SUMO TLS movement index, not a physical length or storage value.",
         },
+        "b0_source_policy": b0_source_policy_rows(),
         "evidence_recorded_with_summary": [
             "density",
             "occupancy",
@@ -1091,7 +1140,9 @@ def build_ta_proxy_policy() -> dict[str, Any]:
             "B0 measured values are simulation-internal proxies, not field-observed queue lengths.",
             "TA is used with the existing B4 local fill / low speed safety filter, not as a standalone trigger.",
             "B4 only switches to phases that already exist in the SUMO net.",
+            "When runtime queue is stale or empty, B0 tQ_hist may be used as a fallback and is logged with queue_source=b0_fallback.",
         ],
+        "b0_source_policy": b0_source_policy_rows(),
         "constants": {
             "v_E_mps": TA_EV_SPEED_MPS,
             "headway_m_per_vehicle": TA_HEADWAY_M,
@@ -1147,6 +1198,316 @@ def runtime_movement_rows(
             "b0_measurement_source": b0.get("measurement_source", ""),
         })
     return rows
+
+
+def segment_id(value: Any) -> str:
+    return str(value or "").split(":", 1)[0]
+
+
+def unique_preserve(values: list[str] | tuple[str, ...]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        text = str(value or "")
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
+
+
+def route_edge_index(route_edges: list[str]) -> dict[str, int]:
+    return {edge_id: index for index, edge_id in enumerate(route_edges)}
+
+
+def case_b_segment_mapping_rows(route_edges: list[str]) -> dict[str, list[dict[str, Any]]]:
+    edge_index = route_edge_index(route_edges)
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in read_csv(B04_SEGMENT_EDGE_MAPPING):
+        if row.get("segment_id") not in CASE_B_SEGMENT_IDS or row.get("direction") != "upbound":
+            continue
+        edge_id = row.get("edge_id", "")
+        if edge_id not in edge_index:
+            continue
+        item = dict(row)
+        item["route_index"] = edge_index[edge_id]
+        grouped[str(row["segment_id"])].append(item)
+    for rows in grouped.values():
+        rows.sort(key=lambda item: safe_int(item.get("route_index")))
+    return grouped
+
+
+def segment_storage_segments(b04: Any, sumo_net: Any, mapping_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    segments: list[dict[str, Any]] = []
+    for row in mapping_rows:
+        edge_id = str(row.get("edge_id", ""))
+        edge_length_m, lane_count = b04.edge_length_and_lane_count(sumo_net, edge_id)
+        matched_length_m = safe_float(row.get("matched_length_m"), edge_length_m)
+        used_length_m = min(edge_length_m if edge_length_m > 0 else matched_length_m, matched_length_m if matched_length_m > 0 else edge_length_m)
+        if used_length_m <= 0:
+            continue
+        segments.append({
+            "edge_id": edge_id,
+            "length_m": round(used_length_m, 3),
+            "raw_edge_length_m": round(edge_length_m, 3),
+            "lane_count": max(lane_count, 1),
+            "lanes": b04.edge_lanes(sumo_net, edge_id),
+        })
+    return segments
+
+
+def segment_b0_prior(
+    b04: Any,
+    edge_data: dict[str, list[dict[str, float]]],
+    lane_data: dict[str, list[dict[str, float]]],
+    lane_flow_samples: dict[str, list[float]],
+    segments: list[dict[str, Any]],
+    segment_length_m: float,
+) -> dict[str, Any]:
+    estimates_m = queue_estimates_for_storage(b04, edge_data, lane_data, segments)
+    q_values = [estimate / TA_HEADWAY_M for estimate in estimates_m if estimate >= 0.0]
+    q_avg = sum(q_values) / len(q_values) if q_values else 0.0
+    q_max = max(q_values) if q_values else 0.0
+    lanes = unique_preserve([lane for segment in segments for lane in segment.get("lanes", [])])
+    flow_samples = [flow for lane in lanes for flow in lane_flow_samples.get(lane, []) if flow > 0.0]
+    lambda_vph = sum(flow_samples) / len(flow_samples) if flow_samples else 0.0
+    speed_samples: list[float] = []
+    for segment in segments:
+        edge_id = str(segment.get("edge_id", ""))
+        for sample in lane_data.get(edge_id, []):
+            speed_mps = safe_float(sample.get("speed"))
+            if speed_mps > 0.0:
+                speed_samples.append(speed_mps * 3.6)
+    speed_kmh = sum(speed_samples) / len(speed_samples) if speed_samples else 0.0
+    lane_count = max((safe_int(segment.get("lane_count"), 1) for segment in segments), default=1)
+    t_q_hist = q_max * 3600.0 / max(TA_SATURATION_FLOW_VPH_PER_LANE * lane_count, 1.0)
+    max_queue_m = max(estimates_m) if estimates_m else 0.0
+    return {
+        "segment_q_avg_B0": round(q_avg, 6),
+        "segment_q_max_B0": round(q_max, 6),
+        "segment_tQ_hist_B0": round(t_q_hist, 6),
+        "segment_lambda_B0": round(lambda_vph, 6),
+        "segment_fill_B0": round(max_queue_m / max(segment_length_m, 1.0), 6),
+        "segment_speed_B0": round(speed_kmh, 6),
+    }
+
+
+def route_span_proxy_pair(
+    segment_rows: list[dict[str, Any]],
+    ordered_controllable: list[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any], int, int]:
+    if not segment_rows:
+        return {}, {}, 0, 0
+    route_start = min(safe_int(row.get("route_index")) for row in segment_rows)
+    route_end = max(safe_int(row.get("route_index")) for row in segment_rows)
+    in_span = [
+        row for row in ordered_controllable
+        if route_start <= safe_int(row.get("route_order_index")) <= route_end
+    ]
+    bottleneck = next((row for row in reversed(in_span) if safe_int(row.get("lane_drop_delta")) > 0), {})
+    if not bottleneck and in_span:
+        bottleneck = in_span[-1]
+    if not bottleneck:
+        bottleneck = next(
+            (row for row in ordered_controllable if safe_int(row.get("route_order_index")) > route_end),
+            {},
+        )
+    upstream = {}
+    if bottleneck:
+        bottleneck_order = safe_int(bottleneck.get("route_order_index"))
+        upstream = next(
+            (row for row in reversed(ordered_controllable) if safe_int(row.get("route_order_index")) < bottleneck_order),
+            {},
+        )
+    return bottleneck, upstream, route_start, route_end
+
+
+def b0_source_policy_rows() -> list[dict[str, str]]:
+    return [
+        {
+            "field_group": "stage1_signal_params",
+            "primary_source": "b4_b0_measured_signal_params.csv",
+            "fallback_source": "none",
+            "policy": "SUMO B04 no-control B0 measured proxy fills q_avg/q_max/tQ_hist/lambda.",
+        },
+        {
+            "field_group": "stage2_merge",
+            "primary_source": "runtime TraCI lane snapshot",
+            "fallback_source": "b4_stage2_b0_merge_hold_params.json",
+            "policy": "Runtime n_occ wins; B0 mean/max is fallback only when merge lanes are unavailable.",
+        },
+        {
+            "field_group": "stage3_tQ",
+            "primary_source": "runtime TraCI queue proxy",
+            "fallback_source": "b4_b0_measured_signal_params.csv",
+            "policy": "Runtime queue wins; stale or empty runtime queue may use B0 tQ_hist.",
+        },
+        {
+            "field_group": "case_b",
+            "primary_source": "runtime queue/L tau check",
+            "fallback_source": "b4_case_b_candidates.csv B0 prior",
+            "policy": "Runtime tau wins; mapped B0 prior can mark Case B when runtime queue is not decisive.",
+        },
+    ]
+
+
+def build_case_b_candidates(
+    b04: Any,
+    route: dict[str, Any],
+    plan_rows: list[dict[str, Any]],
+    readiness_rows: list[dict[str, Any]],
+    b0_measured_rows: list[dict[str, Any]],
+    edge_data: dict[str, list[dict[str, float]]],
+    lane_data: dict[str, list[dict[str, float]]],
+    lane_flow_samples: dict[str, list[float]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    sumo_net = b04.read_sumo_net(B04_NET)
+    route_edges = list(route.get("route_edges", []))
+    segment_mapping = case_b_segment_mapping_rows(route_edges)
+    segment_rows = {
+        row["segment_id"]: row
+        for row in read_csv(MAINSTREAM_SEGMENT_SKELETON)
+        if row.get("segment_id") in CASE_B_SEGMENT_IDS
+    }
+    plan_by_segment: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in plan_rows:
+        plan_by_segment[segment_id(row.get("mapped_S_segment"))].append(row)
+    readiness_by_id = {row["movement_id"]: row for row in readiness_rows}
+    b0_by_id = {row["movement_id"]: row for row in b0_measured_rows}
+    ordered_controllable = [
+        row for row in sorted(plan_rows, key=lambda item: safe_int(item.get("route_order_index")))
+        if truthy(row.get("controllable"))
+    ]
+    rows: list[dict[str, Any]] = []
+    for segment in CASE_B_SEGMENT_IDS:
+        skeleton = segment_rows.get(segment, {})
+        segment_map_rows = segment_mapping.get(segment, [])
+        route_start = min((safe_int(row.get("route_index")) for row in segment_map_rows), default=-1)
+        route_end = max((safe_int(row.get("route_index")) for row in segment_map_rows), default=-1)
+        segment_edges = unique_preserve([str(row.get("edge_id", "")) for row in segment_map_rows])
+        segment_storage = segment_storage_segments(b04, sumo_net, segment_map_rows)
+        segment_lanes = unique_preserve([lane for item in segment_storage for lane in item.get("lanes", [])])
+        segment_length_m = safe_float(skeleton.get("segment_length_m"))
+        segment_prior = segment_b0_prior(
+            b04,
+            edge_data,
+            lane_data,
+            lane_flow_samples,
+            segment_storage,
+            segment_length_m,
+        )
+        exact = [
+            row for row in plan_by_segment.get(segment, [])
+            if truthy(row.get("controllable"))
+        ]
+        bottleneck = exact[-1] if exact else {}
+        upstream = {}
+        mapping_status = "unmapped"
+        if bottleneck:
+            mapping_status = "mapped_exact"
+            bottleneck_order = safe_int(bottleneck.get("route_order_index"))
+            upstream = next(
+                (
+                    row for row in reversed(ordered_controllable)
+                    if safe_int(row.get("route_order_index")) < bottleneck_order
+                    and row.get("tls_id") != bottleneck.get("tls_id")
+                ),
+                {},
+            )
+        else:
+            bottleneck, upstream, proxy_start, proxy_end = route_span_proxy_pair(segment_map_rows, ordered_controllable)
+            route_start = proxy_start if proxy_start or route_start < 0 else route_start
+            route_end = proxy_end if proxy_end or route_end < 0 else route_end
+            if bottleneck and upstream:
+                mapping_status = "mapped_route_span_proxy"
+        readiness = readiness_by_id.get(str(bottleneck.get("movement_id", "")), {})
+        b0 = b0_by_id.get(str(bottleneck.get("movement_id", "")), {})
+        skeleton_lane_drop = max(
+            0,
+            safe_int(skeleton.get("down_lanes_toward_seongdong_high_school"))
+            - safe_int(skeleton.get("up_lanes_toward_seoul_station")),
+        )
+        segment_lane_drop = max(
+            [skeleton_lane_drop]
+            + [
+                max(0, safe_int(row.get("target_lanes")) - safe_int(row.get("current_lanes")))
+                for row in segment_map_rows
+            ]
+        )
+        lane_drop_delta = safe_int(
+            bottleneck.get("lane_drop_delta"),
+            segment_lane_drop,
+        )
+        q_avg = safe_float(b0.get("q_avg_b0_proxy_veh"))
+        q_max = safe_float(b0.get("q_max_b0_proxy_veh"))
+        t_q_hist = safe_float(b0.get("tQ_hist_b0_sec"))
+        lambda_vph = safe_float(b0.get("lambda_b0_vph"))
+        fill_b0 = max(
+            safe_float(readiness.get("stopline_local_fill_100m")),
+            safe_float(readiness.get("corridor_fill_250m")),
+        )
+        speed_b0 = safe_float(readiness.get("approach_speed_kmh"))
+        mapped = bool(bottleneck and upstream)
+        case_b_runtime_enabled = mapped and bool(segment_lanes)
+        segment_fill_b0 = safe_float(segment_prior.get("segment_fill_B0"))
+        segment_speed_b0 = safe_float(segment_prior.get("segment_speed_B0"))
+        prior_risk = mapped and (
+            lane_drop_delta > 0
+            or max(fill_b0, segment_fill_b0) >= CASE_B_DEFAULT_TAU
+            or (0.0 < speed_b0 <= SPEED_TRIGGER_KMH)
+            or (0.0 < segment_speed_b0 <= SPEED_TRIGGER_KMH)
+        )
+        upstream_order = safe_int(upstream.get("route_order_index"), -1)
+        bottleneck_order = safe_int(bottleneck.get("route_order_index"), -1)
+        proxy_edge_gap_upstream = 0 if upstream_order < 0 or route_start < 0 else max(route_start - upstream_order, 0)
+        proxy_edge_gap_bottleneck = 0 if bottleneck_order < 0 or route_end < 0 else max(bottleneck_order - route_end, 0)
+        same_tls_chain = bool(mapped and upstream.get("tls_id") == bottleneck.get("tls_id"))
+        row = {
+            "segment_id": segment,
+            "bottleneck_movement_id": bottleneck.get("movement_id", ""),
+            "upstream_movement_id": upstream.get("movement_id", ""),
+            "L_b0_m": round(segment_length_m, 6),
+            "lane_drop_delta": lane_drop_delta,
+            "q_avg_B0": round(q_avg, 6),
+            "q_max_B0": round(q_max, 6),
+            "tQ_hist_B0": round(t_q_hist, 6),
+            "lambda_B0": round(lambda_vph, 6),
+            "fill_B0": round(max(fill_b0, segment_fill_b0), 6),
+            "speed_B0": round(segment_speed_b0 if segment_speed_b0 > 0.0 else speed_b0, 6),
+            "segment_q_avg_B0": segment_prior["segment_q_avg_B0"],
+            "segment_q_max_B0": segment_prior["segment_q_max_B0"],
+            "segment_tQ_hist_B0": segment_prior["segment_tQ_hist_B0"],
+            "segment_lambda_B0": segment_prior["segment_lambda_B0"],
+            "segment_fill_B0": segment_prior["segment_fill_B0"],
+            "segment_speed_B0": segment_prior["segment_speed_B0"],
+            "mapping_status": mapping_status if mapped else "unmapped",
+            "segment_edges": " ".join(segment_edges),
+            "segment_lanes": " ".join(segment_lanes),
+            "segment_route_start_index": route_start if route_start >= 0 else "",
+            "segment_route_end_index": route_end if route_end >= 0 else "",
+            "proxy_edge_gap_upstream": proxy_edge_gap_upstream,
+            "proxy_edge_gap_bottleneck": proxy_edge_gap_bottleneck,
+            "same_tls_chain": same_tls_chain,
+            "case_b_runtime_enabled": case_b_runtime_enabled,
+            "tau_default": CASE_B_DEFAULT_TAU,
+            "case_b_prior_risk": prior_risk,
+            "b0_source": "SUMO_B04_AA_B0_measured_proxy",
+            "mapping_note": mapping_status if mapped else "no route-span controllable movement pair for this CSV segment",
+        }
+        rows.append(row)
+    payload = {
+        "schema": "compact_v9_B4_case_b_candidates.v1",
+        "generated_at": utc_now(),
+        "candidate_segments": list(CASE_B_SEGMENT_IDS),
+        "tau_default": CASE_B_DEFAULT_TAU,
+        "measurement_source": "SUMO B04 no-control B0 measured proxy",
+        "mapping_policy": "Exact mapped controllable SUMO movements are preferred; otherwise S7/S10/S11 use conservative route-span proxy mapping to existing controllable movements.",
+        "source_policy": b0_source_policy_rows(),
+        "mapped_count": sum(1 for row in rows if str(row["mapping_status"]).startswith("mapped")),
+        "runtime_enabled_count": sum(1 for row in rows if truthy(row["case_b_runtime_enabled"])),
+        "rows": rows,
+    }
+    return payload, rows
 
 
 def primary_candidate_metrics(traffic_review: dict[str, Any]) -> dict[str, Any]:
@@ -1292,6 +1653,17 @@ def build_b4_stage1() -> dict[str, Any]:
     for row in readiness_rows:
         row["candidate"] = primary_candidate
     b0_measured_rows = b0_measured_signal_params(b04, plan_rows, edge_data, lane_data, lane_flow_samples)
+    add_queue_calibration_factors(b0_measured_rows, readiness_rows)
+    case_b_payload, case_b_rows = build_case_b_candidates(
+        b04,
+        route,
+        plan_rows,
+        readiness_rows,
+        b0_measured_rows,
+        edge_data,
+        lane_data,
+        lane_flow_samples,
+    )
     departure_plan, merge_zone = build_departure_flow_plan(b04, route)
     stage2_b0_payload, stage2_b0_rows = build_stage2_b0_merge_hold_params(b04, departure_plan, lane_samples)
     intersection_rows = build_intersection_rows(plan_rows)
@@ -1317,8 +1689,9 @@ def build_b4_stage1() -> dict[str, Any]:
             "stage1": "dispatch capture and static route/movement/storage precompute",
             "stage2": "departure/merge zone space control before EV joins mainline",
             "stage3": "preemptive control of controllable movements ahead of the EV",
-            "bottleneck_order": "open downstream bottleneck movement first, upstream movement later",
+            "bottleneck_order": "open mapped downstream bottleneck movement first, upstream movement later",
         },
+        "case_b_candidates": case_b_payload,
     }
     runtime_index = {
         "schema": "compact_v9_B4_runtime_index.v1",
@@ -1339,6 +1712,7 @@ def build_b4_stage1() -> dict[str, Any]:
             "dispatch_lead_time_sec": DISPATCH_LEAD_TIME_SEC,
             "stage2_b0_merge_hold_params": stage2_b0_payload,
         },
+        "case_b_candidates": case_b_payload,
         "ordered_movements": runtime_movement_rows(plan_rows, readiness_rows, b0_measured_rows),
         "scan_policy": "Use only precomputed Stage 1 lanes/movements; do not scan all vehicles.",
     }
@@ -1360,6 +1734,8 @@ def build_b4_stage1() -> dict[str, Any]:
         "b4_merge_zone_json": rel(B4_MERGE_ZONE),
         "b4_departure_flow_plan_json": rel(B4_DEPARTURE_FLOW_PLAN),
         "b4_bottleneck_queue_readiness_csv": rel(B4_BOTTLENECK_QUEUE_READINESS_CSV),
+        "b4_case_b_candidates_csv": rel(B4_CASE_B_CANDIDATES_CSV),
+        "b4_case_b_candidates_json": rel(B4_CASE_B_CANDIDATES_JSON),
         "b4_control_queue_threshold_proposal_json": rel(B4_CONTROL_QUEUE_THRESHOLD_PROPOSAL),
         "b4_b0_measured_signal_params_csv": rel(B4_B0_MEASURED_SIGNAL_PARAMS_CSV),
         "b4_ta_proxy_policy_json": rel(B4_TA_PROXY_POLICY),
@@ -1398,6 +1774,8 @@ def build_b4_stage1() -> dict[str, Any]:
             "controllable_movement_count": sum(1 for row in plan_rows if truthy(row.get("controllable"))),
             "control_candidate_count": threshold_proposal["readiness_counts"]["control_candidate_count"],
             "bottleneck_risk_count": threshold_proposal["readiness_counts"]["bottleneck_risk_count"],
+            "case_b_candidate_count": len(case_b_rows),
+            "case_b_mapped_count": case_b_payload["mapped_count"],
         },
         "departure_summary": {
             "fire_station_start_edge": departure_plan["fire_station_start_edge"],
@@ -1435,6 +1813,7 @@ def build_b4_stage1() -> dict[str, Any]:
             "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
             "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
             "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
+            "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
             "linkIndex is a SUMO TLS movement index, not physical storage length.",
             "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.",
         ],
@@ -1476,11 +1855,25 @@ def build_b4_stage1() -> dict[str, Any]:
         "control_candidate", "trigger_reason", "traffic_pressure", "operational_queue",
         "downstream_blockage_evidence", "bottleneck_risk", "control_mode", "queue_evidence_source",
     ])
+    write_json(B4_CASE_B_CANDIDATES_JSON, case_b_payload)
+    write_csv(B4_CASE_B_CANDIDATES_CSV, case_b_rows, [
+        "segment_id", "bottleneck_movement_id", "upstream_movement_id", "L_b0_m",
+        "lane_drop_delta", "q_avg_B0", "q_max_B0", "tQ_hist_B0", "lambda_B0",
+        "fill_B0", "speed_B0", "segment_q_avg_B0", "segment_q_max_B0",
+        "segment_tQ_hist_B0", "segment_lambda_B0", "segment_fill_B0",
+        "segment_speed_B0", "mapping_status", "segment_edges", "segment_lanes",
+        "segment_route_start_index", "segment_route_end_index", "proxy_edge_gap_upstream",
+        "proxy_edge_gap_bottleneck", "same_tls_chain", "case_b_runtime_enabled",
+        "tau_default", "case_b_prior_risk",
+        "b0_source", "mapping_note",
+    ])
     write_json(B4_CONTROL_QUEUE_THRESHOLD_PROPOSAL, threshold_proposal)
     write_csv(B4_B0_MEASURED_SIGNAL_PARAMS_CSV, b0_measured_rows, [
         "movement_id", "tls_id", "from_edge", "to_edge", "route_order_index",
         "q_avg_b0_proxy_veh", "q_max_b0_proxy_veh", "tQ_hist_b0_sec", "lambda_b0_vph",
         "L_local_m", "L_corridor_m", "C_local_proxy_veh", "lane_count",
+        "queue_calibration_reference_m", "queue_calibration_measured_m",
+        "queue_calibration_factor", "queue_calibration_factor_applied", "queue_calibration_source",
         "measurement_source", "field_queue_claim", "measurement_note",
     ])
     write_json(B4_TA_PROXY_POLICY, ta_proxy_policy)

@@ -21,6 +21,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = PROJECT_ROOT / "data_prepared/compact_v9"
 STAGE1_DIR = DATA_ROOT / "b4_stage1"
+B4_CASE_B_CANDIDATES_CSV = "b4_case_b_candidates.csv"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
 B04_AA_BACKGROUND_ROUTE = DATA_ROOT / "demand/background_routes_compact_v9_B04_aa_balanced_growth.rou.xml"
@@ -51,6 +52,15 @@ DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC = 2.0
 DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC = 10.0
 EMPTY_APPROACH_SPEED_KMH = 999.0
 FREE_FLOW_SPEED_KMH = 50.0
+QUEUE_PROXY_CONFIDENCE = 0.65
+QUEUE_CALIBRATED_CONFIDENCE = 0.70
+QUEUE_EXACT_CONFIDENCE = 0.85
+QUEUE_STALE_CONFIDENCE = 0.25
+QUEUE_CALIBRATION_MIN = 0.5
+QUEUE_CALIBRATION_MAX = 2.0
+QUEUE_LOCAL_EXACT_FILL_TRIGGER = 0.35
+QUEUE_RUNTIME_CALL_MODE = "unique_lane_snapshot"
+QUEUE_CALIBRATION_SOURCE = "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv"
 W_EMV = 20.0
 W_VEH = 1.0
 B4_DEFAULT_PHASE = "bo-smoke"
@@ -107,6 +117,17 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "ta_triggered",
     "ta_formula",
     "ta_input_source",
+    "queue_source",
+    "case_b_source",
+    "tS_source",
+    "TA_case",
+    "TA_upstream_sec",
+    "TA_bottleneck_sec",
+    "case_b_mapping_status",
+    "case_b_segment_id",
+    "case_b_segment_queue_m_proxy",
+    "case_b_segment_fill",
+    "case_b_same_tls_policy",
     "D_merge_m",
     "tE_merge_sec",
     "L_merge_m",
@@ -121,6 +142,7 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "b0_background_inflow_lambda_vph",
     "stage2_formula",
     "stage2_measurement_source",
+    "runtime_or_b0_fallback",
     "low_speed_count",
     "halting_count",
     "fast_dense_flow",
@@ -139,6 +161,16 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "flush_linkIndex",
     "selected_flush_phase",
     "control_strategy",
+    "queue_method",
+    "queue_m_est",
+    "queue_veh_est",
+    "queue_proxy_m",
+    "queue_confidence",
+    "queue_data_age_sec",
+    "queue_source_id",
+    "tls_queue_m_est",
+    "tls_queue_veh_est",
+    "tls_queue_max_back_m",
 ]
 
 EXPERIMENT_RESULT_FIELDS = [
@@ -159,6 +191,10 @@ EXPERIMENT_RESULT_FIELDS = [
     "t_lead",
     "alpha",
     "G_ext",
+    "tau",
+    "ext_max",
+    "hold_max",
+    "d_up",
     "phase",
     "ev_departure_policy",
     "ev_depart_sec",
@@ -235,6 +271,19 @@ EXPERIMENT_RESULT_FIELDS = [
     "wall_time_sec",
     "signal_events_csv",
     "route_visualization_html",
+    "queue_method_primary",
+    "queue_max_m",
+    "queue_p95_m",
+    "tls_queue_max_m",
+    "queue_local_fill_80m_max",
+    "queue_local_fill_100m_max",
+    "queue_local_fill_120m_max",
+    "queue_corridor_fill_250m_max",
+    "queue_trigger_count",
+    "queue_sampling_period_sec",
+    "queue_runtime_lane_count",
+    "queue_runtime_call_mode",
+    "queue_calibration_source",
 ]
 
 
@@ -252,6 +301,10 @@ class B4MvpParams:
     t_lead: float = 35.0
     alpha: float = 5.0
     G_ext: float = 30.0
+    tau: float = 0.50
+    ext_max: float = 30.0
+    hold_max: float = DEFAULT_MAX_HOLD_SEC
+    d_up: int = 3
 
     def as_result_fields(self) -> dict[str, Any]:
         return {
@@ -261,7 +314,47 @@ class B4MvpParams:
             "t_lead": self.t_lead,
             "alpha": self.alpha,
             "G_ext": self.G_ext,
+            "tau": self.tau,
+            "ext_max": self.ext_max,
+            "hold_max": self.hold_max,
+            "d_up": self.d_up,
         }
+
+
+@dataclass(frozen=True)
+class B4ThetaParams(B4MvpParams):
+    """Five-variable B4 theta used by the independent BO runner."""
+
+    parameter_id: str = "theta_default"
+    t_lead: float = 0.0
+    tau: float = 0.75
+    ext_max: float = 30.0
+    hold_max: float = DEFAULT_MAX_HOLD_SEC
+    d_up: int = 1
+    delta_T_thr: float = 0.0
+    Q_trig: float = 0.75
+    alpha: float = DEFAULT_PHASE_BUFFER_SEC
+    G_ext: float = 30.0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "t_lead", round_float(max(float(self.t_lead), 0.0), 0))
+        object.__setattr__(self, "tau", round_float(clamp_float(float(self.tau), 0.0, 10.0), 2))
+        object.__setattr__(self, "ext_max", round_float(max(float(self.ext_max), DEFAULT_PHASE_BUFFER_SEC), 0))
+        object.__setattr__(self, "hold_max", round_float(max(float(self.hold_max), 0.0), 0))
+        object.__setattr__(self, "d_up", max(1, min(int(self.d_up), 3)))
+        object.__setattr__(self, "Q_trig", self.tau)
+        object.__setattr__(self, "G_ext", self.ext_max)
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> "B4ThetaParams":
+        return cls(
+            parameter_id=str(row.get("parameter_id", "theta")),
+            t_lead=safe_float(row.get("t_lead"), 0.0),
+            tau=safe_float(row.get("tau"), 0.75),
+            ext_max=safe_float(row.get("ext_max"), 30.0),
+            hold_max=safe_float(row.get("hold_max"), DEFAULT_MAX_HOLD_SEC),
+            d_up=safe_int(row.get("d_up"), 1),
+        )
 
 
 @dataclass(frozen=True)
@@ -390,6 +483,25 @@ def round_float(value: float, digits: int = 6) -> float:
     return round(value, digits)
 
 
+def clamp_float(value: float, lower: float, upper: float) -> float:
+    if not math.isfinite(value):
+        return lower
+    return max(lower, min(upper, value))
+
+
+def percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = (len(ordered) - 1) * clamp_float(pct, 0.0, 1.0)
+    lower = int(math.floor(index))
+    upper = int(math.ceil(index))
+    if lower == upper:
+        return round_float(ordered[lower])
+    weight = index - lower
+    return round_float(ordered[lower] * (1.0 - weight) + ordered[upper] * weight)
+
+
 def load_firetruck_route(route_xml: Path = B04_FIRETRUCK_ROUTE_XML) -> dict[str, Any]:
     root = ET.parse(route_xml).getroot()
     route = root.find("route")
@@ -512,6 +624,57 @@ class B4Movement:
 
 
 @dataclass(frozen=True)
+class QueueCalibrationPrior:
+    movement_id: str
+    tls_id: str
+    source: str
+    reference_queue_m: float
+    runtime_baseline_queue_m: float
+    calibration_factor: float
+
+
+@dataclass(frozen=True)
+class B4CaseBCandidate:
+    segment_id: str
+    bottleneck_movement_id: str
+    upstream_movement_id: str
+    L_b0_m: float
+    lane_drop_delta: int
+    q_avg_B0: float
+    q_max_B0: float
+    tQ_hist_B0: float
+    lambda_B0: float
+    fill_B0: float
+    speed_B0: float
+    mapping_status: str
+    tau_default: float = 0.75
+    case_b_prior_risk: bool = False
+    b0_source: str = "SUMO_B04_AA_B0_measured_proxy"
+    segment_edges: tuple[str, ...] = tuple()
+    segment_lanes: tuple[str, ...] = tuple()
+    segment_route_start_index: int = -1
+    segment_route_end_index: int = -1
+    proxy_edge_gap_upstream: int = 0
+    proxy_edge_gap_bottleneck: int = 0
+    same_tls_chain: bool = False
+    case_b_runtime_enabled: bool = True
+    segment_q_avg_B0: float = 0.0
+    segment_q_max_B0: float = 0.0
+    segment_tQ_hist_B0: float = 0.0
+    segment_lambda_B0: float = 0.0
+    segment_fill_B0: float = 0.0
+    segment_speed_B0: float = 0.0
+
+    @property
+    def mapped(self) -> bool:
+        return (
+            self.mapping_status in {"mapped", "mapped_exact", "mapped_route_span_proxy"}
+            and self.case_b_runtime_enabled
+            and bool(self.bottleneck_movement_id and self.upstream_movement_id)
+        )
+
+
+@dataclass(frozen=True)
 class B4DepartureFlow:
     merge_control_tls: str
     background_inflow_lanes: tuple[str, ...]
@@ -595,6 +758,8 @@ class B4Stage1Inputs:
     departure: B4DepartureFlow
     stage2_merge_hold: B4Stage2MergeHoldParams
     movements: tuple[B4Movement, ...]
+    queue_calibration_priors: dict[str, QueueCalibrationPrior]
+    case_b_candidates: tuple[B4CaseBCandidate, ...]
     event_schema: tuple[str, ...]
     route_edges: tuple[str, ...]
     ev_id: str
@@ -622,6 +787,12 @@ class B4Stage1Inputs:
             for row in read_csv(stage1_dir / "b4_b0_measured_signal_params.csv")
             if row.get("movement_id")
         } if (stage1_dir / "b4_b0_measured_signal_params.csv").is_file() else {}
+        queue_readiness_rows = {
+            row["movement_id"]: row
+            for row in read_csv(stage1_dir / "b4_bottleneck_queue_readiness.csv")
+            if row.get("movement_id")
+        } if (stage1_dir / "b4_bottleneck_queue_readiness.csv").is_file() else {}
+        case_b_rows = read_csv(stage1_dir / B4_CASE_B_CANDIDATES_CSV) if (stage1_dir / B4_CASE_B_CANDIDATES_CSV).is_file() else []
         route_meta = load_firetruck_route()
         thresholds = B4Thresholds.from_payload(runtime_index.get("thresholds", {}))
         movements = tuple(
@@ -643,6 +814,8 @@ class B4Stage1Inputs:
             departure=B4DepartureFlow.from_payload(departure_payload),
             stage2_merge_hold=B4Stage2MergeHoldParams.from_payload(stage2_merge_hold_payload),
             movements=movements,
+            queue_calibration_priors=queue_calibration_priors_from_stage1(queue_readiness_rows, b0_measured_rows, approach_rows),
+            case_b_candidates=case_b_candidates_from_rows(case_b_rows),
             event_schema=event_schema,
             route_edges=tuple(route_meta["route_edges"]),
             ev_id=str(route_meta["vehicle_id"] or EV_ID),
@@ -677,6 +850,76 @@ class B4Stage1Inputs:
             raise B4RuntimeError("missing_b4_movements")
         if self.max_active_movements != 3:
             raise B4RuntimeError(f"unexpected_max_active_movements:{self.max_active_movements}")
+
+
+def queue_calibration_priors_from_stage1(
+    queue_readiness_rows: dict[str, dict[str, str]],
+    b0_measured_rows: dict[str, dict[str, str]],
+    approach_rows: dict[str, dict[str, str]],
+) -> dict[str, QueueCalibrationPrior]:
+    priors: dict[str, QueueCalibrationPrior] = {}
+    for movement_id, approach_row in approach_rows.items():
+        readiness = queue_readiness_rows.get(movement_id, {})
+        measured = b0_measured_rows.get(movement_id, {})
+        reference_queue_m = safe_float(
+            readiness.get("stopline_local_queue_m_proxy"),
+            safe_float(readiness.get("local_queue_m_proxy_100m"), safe_float(readiness.get("queue_m_proxy"), 0.0)),
+        )
+        baseline_queue_m = safe_float(measured.get("q_avg_b0_proxy_veh"), 0.0) * TA_HEADWAY_M
+        if baseline_queue_m <= 0.0:
+            baseline_queue_m = safe_float(measured.get("q_max_b0_proxy_veh"), 0.0) * TA_HEADWAY_M
+        factor = 1.0
+        stored_factor = safe_float(measured.get("queue_calibration_factor_applied"), 0.0)
+        if stored_factor > 0.0:
+            factor = clamp_float(stored_factor, QUEUE_CALIBRATION_MIN, QUEUE_CALIBRATION_MAX)
+        elif reference_queue_m > 0.0 and baseline_queue_m > 0.0:
+            factor = clamp_float(reference_queue_m / baseline_queue_m, QUEUE_CALIBRATION_MIN, QUEUE_CALIBRATION_MAX)
+        priors[movement_id] = QueueCalibrationPrior(
+            movement_id=movement_id,
+            tls_id=str(approach_row.get("tls_id", "")),
+            source=str(measured.get("queue_calibration_source", QUEUE_CALIBRATION_SOURCE)) if reference_queue_m > 0.0 else "none",
+            reference_queue_m=round_float(reference_queue_m),
+            runtime_baseline_queue_m=round_float(baseline_queue_m),
+            calibration_factor=round_float(factor),
+        )
+    return priors
+
+
+def case_b_candidates_from_rows(rows: list[dict[str, str]]) -> tuple[B4CaseBCandidate, ...]:
+    candidates: list[B4CaseBCandidate] = []
+    for row in rows:
+        candidates.append(B4CaseBCandidate(
+            segment_id=str(row.get("segment_id", "")),
+            bottleneck_movement_id=str(row.get("bottleneck_movement_id", "")),
+            upstream_movement_id=str(row.get("upstream_movement_id", "")),
+            L_b0_m=safe_float(row.get("L_b0_m"), 0.0),
+            lane_drop_delta=safe_int(row.get("lane_drop_delta"), 0),
+            q_avg_B0=safe_float(row.get("q_avg_B0"), 0.0),
+            q_max_B0=safe_float(row.get("q_max_B0"), 0.0),
+            tQ_hist_B0=safe_float(row.get("tQ_hist_B0"), 0.0),
+            lambda_B0=safe_float(row.get("lambda_B0"), 0.0),
+            fill_B0=safe_float(row.get("fill_B0"), 0.0),
+            speed_B0=safe_float(row.get("speed_B0"), 0.0),
+            mapping_status=str(row.get("mapping_status", "")),
+            tau_default=safe_float(row.get("tau_default"), 0.75),
+            case_b_prior_risk=truthy(row.get("case_b_prior_risk")),
+            b0_source=str(row.get("b0_source", "SUMO_B04_AA_B0_measured_proxy")),
+            segment_edges=tuple(split_tokens(row.get("segment_edges", ""))),
+            segment_lanes=tuple(split_tokens(row.get("segment_lanes", ""))),
+            segment_route_start_index=safe_int(row.get("segment_route_start_index"), -1),
+            segment_route_end_index=safe_int(row.get("segment_route_end_index"), -1),
+            proxy_edge_gap_upstream=safe_int(row.get("proxy_edge_gap_upstream"), 0),
+            proxy_edge_gap_bottleneck=safe_int(row.get("proxy_edge_gap_bottleneck"), 0),
+            same_tls_chain=truthy(row.get("same_tls_chain")),
+            case_b_runtime_enabled=truthy(row.get("case_b_runtime_enabled", True)),
+            segment_q_avg_B0=safe_float(row.get("segment_q_avg_B0"), 0.0),
+            segment_q_max_B0=safe_float(row.get("segment_q_max_B0"), 0.0),
+            segment_tQ_hist_B0=safe_float(row.get("segment_tQ_hist_B0"), 0.0),
+            segment_lambda_B0=safe_float(row.get("segment_lambda_B0"), 0.0),
+            segment_fill_B0=safe_float(row.get("segment_fill_B0"), 0.0),
+            segment_speed_B0=safe_float(row.get("segment_speed_B0"), 0.0),
+        ))
+    return tuple(candidates)
 
 
 def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) -> B4Movement:
@@ -723,6 +966,69 @@ def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) ->
 
 
 @dataclass(frozen=True)
+class LaneSnapshot:
+    lane_id: str
+    sample_t: float
+    vehicle_ids: tuple[str, ...] = tuple()
+    vehicle_count: int = 0
+    halting_count: int = 0
+    mean_speed_mps: float = 0.0
+    speed_observed: bool = False
+    occupancy: float = 0.0
+    length_m: float = 0.0
+    waiting_max: float = 0.0
+    time_loss_max: float = 0.0
+
+
+@dataclass(frozen=True)
+class LaneSetQueueMetrics:
+    queue_m_proxy: float = 0.0
+    queue_veh_proxy: int = 0
+    vehicle_count: int = 0
+    halting_count: int = 0
+    low_speed_count: int = 0
+    mean_speed_kmh: float = EMPTY_APPROACH_SPEED_KMH
+    speed_observed: bool = False
+    density: float = 0.0
+    occupancy: float = 0.0
+    waiting: float = 0.0
+    time_loss: float = 0.0
+    observed_lane_count: int = 0
+    missing_lane_count: int = 0
+    max_lane_queue_m: float = 0.0
+
+
+@dataclass(frozen=True)
+class QueueEstimate:
+    movement_id: str
+    tls_id: str
+    method: str
+    queue_m_est: float
+    queue_veh_est: int
+    queue_proxy_m: float
+    fill_80: float
+    fill_100: float
+    fill_120: float
+    fill_250: float
+    mean_speed_kmh: float
+    occupancy: float
+    halting: int
+    confidence: float
+    data_age_sec: float
+    source_id: str
+
+
+@dataclass(frozen=True)
+class TlsQueueEstimate:
+    tls_id: str
+    queue_m_est: float = 0.0
+    queue_veh_est: int = 0
+    queue_max_back_m: float = 0.0
+    unique_lane_count: int = 0
+    source_id: str = ""
+
+
+@dataclass(frozen=True)
 class LaneStorageMetrics:
     queue_m_proxy: float = 0.0
     vehicle_count: int = 0
@@ -762,6 +1068,16 @@ class MovementRuntimeMetrics:
     operational_queue: bool
     bottleneck_risk: bool
     control_mode: str
+    queue_method: str = "lane_proxy"
+    queue_m_est: float = 0.0
+    queue_veh_est: int = 0
+    queue_proxy_m: float = 0.0
+    queue_confidence: float = 0.0
+    queue_data_age_sec: float = 0.0
+    queue_source_id: str = ""
+    tls_queue_m_est: float = 0.0
+    tls_queue_veh_est: int = 0
+    tls_queue_max_back_m: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -771,6 +1087,33 @@ class TAProxyMetrics:
     tQ_sec: float
     TA_proxy_sec: float
     ta_triggered: bool
+    queue_source: str = "runtime_proxy"
+    tS_source: str = "default_buffer"
+    queue_m_used: float = 0.0
+
+
+@dataclass(frozen=True)
+class CaseBEvaluation:
+    case_b_source: str = "not_case_b"
+    TA_case: str = "caseA"
+    TA_upstream_sec: float | str = ""
+    TA_bottleneck_sec: float | str = ""
+    effective_TA_proxy_sec: float | None = None
+    case_b_mapping_status: str = ""
+    case_b_segment_id: str = ""
+    case_b_segment_queue_m_proxy: float | str = ""
+    case_b_segment_fill: float | str = ""
+    case_b_same_tls_policy: str = ""
+
+
+@dataclass(frozen=True)
+class CaseBSegmentRuntimeMetrics:
+    segment_id: str
+    queue_m_proxy: float = 0.0
+    fill: float = 0.0
+    queue_confidence: float = QUEUE_STALE_CONFIDENCE
+    observed_lane_count: int = 0
+    missing_lane_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -813,6 +1156,38 @@ class B4ControllerStats:
     bottleneck_mode_count: int = 0
     max_active_movement_count: int = 0
     signal_burden_sec: float = 0.0
+    queue_samples_m: list[float] = field(default_factory=list)
+    tls_queue_samples_m: list[float] = field(default_factory=list)
+    local_fill_80_samples: list[float] = field(default_factory=list)
+    local_fill_100_samples: list[float] = field(default_factory=list)
+    local_fill_120_samples: list[float] = field(default_factory=list)
+    corridor_fill_250_samples: list[float] = field(default_factory=list)
+    queue_method_counts: dict[str, int] = field(default_factory=dict)
+    queue_trigger_count: int = 0
+    queue_runtime_lane_count: int = 0
+    queue_runtime_call_mode: str = ""
+    queue_calibration_source: str = ""
+
+    def observe_queue_metrics(self, metrics: list[MovementRuntimeMetrics], tls_estimates: dict[str, TlsQueueEstimate]) -> None:
+        for metric in metrics:
+            self.queue_samples_m.append(float(metric.queue_m_est))
+            self.local_fill_80_samples.append(float(metric.local_fill_80m))
+            self.local_fill_100_samples.append(float(metric.local_fill_100m))
+            self.local_fill_120_samples.append(float(metric.local_fill_120m))
+            self.corridor_fill_250_samples.append(float(metric.corridor_fill_250m))
+            method = metric.queue_method or "lane_proxy"
+            self.queue_method_counts[method] = self.queue_method_counts.get(method, 0) + 1
+            if metric.control_candidate:
+                self.queue_trigger_count += 1
+            if "calibrated" in method:
+                self.queue_calibration_source = QUEUE_CALIBRATION_SOURCE
+        for estimate in tls_estimates.values():
+            self.tls_queue_samples_m.append(float(estimate.queue_m_est))
+
+    def primary_queue_method(self) -> str:
+        if not self.queue_method_counts:
+            return ""
+        return max(self.queue_method_counts.items(), key=lambda item: (item[1], item[0]))[0]
 
     def as_result_fields(self) -> dict[str, Any]:
         return {
@@ -827,6 +1202,19 @@ class B4ControllerStats:
             "bottleneck_mode_count": self.bottleneck_mode_count,
             "max_active_movement_count": self.max_active_movement_count,
             "signal_burden_sec": round_float(self.signal_burden_sec),
+            "queue_method_primary": self.primary_queue_method(),
+            "queue_max_m": round_float(max(self.queue_samples_m) if self.queue_samples_m else 0.0),
+            "queue_p95_m": percentile(self.queue_samples_m, 0.95),
+            "tls_queue_max_m": round_float(max(self.tls_queue_samples_m) if self.tls_queue_samples_m else 0.0),
+            "queue_local_fill_80m_max": round_float(max(self.local_fill_80_samples) if self.local_fill_80_samples else 0.0),
+            "queue_local_fill_100m_max": round_float(max(self.local_fill_100_samples) if self.local_fill_100_samples else 0.0),
+            "queue_local_fill_120m_max": round_float(max(self.local_fill_120_samples) if self.local_fill_120_samples else 0.0),
+            "queue_corridor_fill_250m_max": round_float(max(self.corridor_fill_250_samples) if self.corridor_fill_250_samples else 0.0),
+            "queue_trigger_count": self.queue_trigger_count,
+            "queue_sampling_period_sec": DEFAULT_STEP_SEC,
+            "queue_runtime_lane_count": self.queue_runtime_lane_count,
+            "queue_runtime_call_mode": self.queue_runtime_call_mode,
+            "queue_calibration_source": self.queue_calibration_source,
         }
 
 
@@ -881,10 +1269,54 @@ def evaluate_queue_levels(
     }
 
 
+def theta_runtime_thresholds(base: B4Thresholds, params: B4MvpParams) -> B4Thresholds:
+    tau = safe_float(getattr(params, "tau", base.local_fill_trigger), base.local_fill_trigger)
+    return B4Thresholds(
+        local_fill_trigger=tau,
+        speed_trigger_kmh=base.speed_trigger_kmh,
+        traffic_pressure_local_fill_100m=base.traffic_pressure_local_fill_100m,
+        bottleneck_local_fill_100m=max(tau, base.bottleneck_local_fill_100m),
+        bottleneck_corridor_fill_250m=base.bottleneck_corridor_fill_250m,
+    )
+
+
+def theta_ta_lead_sec(params: B4MvpParams) -> float:
+    if isinstance(params, B4ThetaParams):
+        return safe_float(params.t_lead, 0.0)
+    return 0.0
+
+
+def theta_bounds_from_stage1(stage1: B4Stage1Inputs) -> dict[str, Any]:
+    max_tq = max((safe_float(movement.tQ_hist_b0_sec) for movement in stage1.movements), default=0.0)
+    t_lead_ub = max(DEFAULT_PHASE_BUFFER_SEC, math.ceil(max_tq + DEFAULT_PHASE_BUFFER_SEC))
+    ext_ub = max(DEFAULT_STAGE2_HOLD_REFRESH_SEC, math.ceil(stage1.departure.dispatch_lead_time_range_sec[1] + DEFAULT_PHASE_BUFFER_SEC))
+    hold_proxy = stage1.stage2_merge_hold.tE_merge_sec - stage1.stage2_merge_hold.tS_merge_sec
+    hold_ub = max(DEFAULT_STAGE2_HOLD_REFRESH_SEC, math.ceil(max(hold_proxy, stage1.departure.dispatch_lead_time_sec)))
+    return {
+        "schema": "compact_v9_B4_theta_bounds.v1",
+        "source": "B4Stage1Inputs+B04_signal_proxy",
+        "t_lead": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(t_lead_ub)},
+        "ext_max": {"type": "continuous_quantized_1s", "lower": int(DEFAULT_STAGE2_HOLD_REFRESH_SEC), "upper": int(ext_ub)},
+        "hold_max": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(hold_ub)},
+        "tau": {"type": "categorical", "values": [0.65, 0.70, 0.75, 0.80, 0.85]},
+        "d_up": {"type": "categorical", "values": [1, 2, 3]},
+    }
+
+
 def compute_tQ_sec(queue_m_proxy: float, lane_count: int) -> float:
     queue_vehicles = queue_m_proxy / TA_HEADWAY_M
     discharge_vps = (TA_SATURATION_FLOW_VPH_PER_LANE * max(lane_count, 1)) / 3600.0
     return round_float(queue_vehicles / max(discharge_vps, 0.001))
+
+
+def queue_source_from_method(method: str, confidence: float, used_b0_fallback: bool = False) -> str:
+    if used_b0_fallback:
+        return "b0_fallback"
+    if "exact" in method:
+        return "runtime_exact"
+    if "calibrated" in method:
+        return "b0_calibrated"
+    return "runtime_proxy"
 
 
 def compute_ta_proxy(
@@ -894,10 +1326,30 @@ def compute_ta_proxy(
     lane_count: int,
     previous_phase: int,
     target_phase: int,
+    queue_confidence: float = QUEUE_PROXY_CONFIDENCE,
+    queue_method: str = "lane_proxy",
+    b0_tQ_hist_sec: float = 0.0,
+    b0_queue_veh: float = 0.0,
 ) -> TAProxyMetrics:
     t_e = max(ev_distance_m, 0.0) / TA_EV_SPEED_MPS
-    t_s = 0.0 if previous_phase == target_phase else DEFAULT_PHASE_BUFFER_SEC
-    t_q = compute_tQ_sec(queue_m_proxy, lane_count)
+    if previous_phase == target_phase:
+        t_s = 0.0
+        t_s_source = "current_phase_direct"
+    elif previous_phase >= 0 and target_phase >= 0:
+        t_s = DEFAULT_PHASE_BUFFER_SEC
+        t_s_source = "b0_phase_proxy"
+    else:
+        t_s = DEFAULT_PHASE_BUFFER_SEC
+        t_s_source = "default_buffer"
+    runtime_queue_available = queue_m_proxy > 0.0 and queue_confidence > QUEUE_STALE_CONFIDENCE
+    used_b0_fallback = False
+    queue_m_used = queue_m_proxy
+    if not runtime_queue_available and b0_tQ_hist_sec > 0.0:
+        t_q = b0_tQ_hist_sec
+        used_b0_fallback = True
+        queue_m_used = b0_queue_veh * TA_HEADWAY_M if b0_queue_veh > 0.0 else queue_m_proxy
+    else:
+        t_q = compute_tQ_sec(queue_m_proxy, lane_count)
     ta_proxy = t_e - t_s - t_q
     return TAProxyMetrics(
         tE_sec=round_float(t_e),
@@ -905,6 +1357,9 @@ def compute_ta_proxy(
         tQ_sec=round_float(t_q),
         TA_proxy_sec=round_float(ta_proxy),
         ta_triggered=ta_proxy <= 0.0,
+        queue_source=queue_source_from_method(queue_method, queue_confidence, used_b0_fallback),
+        tS_source=t_s_source,
+        queue_m_used=round_float(queue_m_used),
     )
 
 
@@ -993,31 +1448,341 @@ def lane_storage_metrics(traci: Any, lanes: tuple[str, ...] | list[str], storage
     )
 
 
-def movement_runtime_metrics(traci: Any, movement: B4Movement, thresholds: B4Thresholds) -> MovementRuntimeMetrics:
-    local = lane_storage_metrics(traci, movement.local_storage_lanes, movement.stopline_local_storage_m)
-    corridor = lane_storage_metrics(traci, movement.corridor_storage_lanes, movement.corridor_storage_length_m)
-    approach = lane_storage_metrics(traci, movement.approach_lanes, movement.stopline_local_storage_m)
-    fill = compute_fill_metrics(local.queue_m_proxy, corridor.queue_m_proxy, movement.corridor_storage_length_m)
+
+
+def unique_queue_lanes_for_movements(movements: tuple[B4Movement, ...] | list[B4Movement]) -> tuple[str, ...]:
+    lanes: set[str] = set()
+    for movement in movements:
+        if not movement.controllable:
+            continue
+        lanes.update(movement.approach_lanes)
+        lanes.update(movement.local_storage_lanes)
+        lanes.update(movement.corridor_storage_lanes)
+    return tuple(sorted(lane_id for lane_id in lanes if lane_id))
+
+
+def sample_lane_snapshots(traci: Any, lanes: tuple[str, ...] | list[str], sample_t: float) -> dict[str, LaneSnapshot]:
+    snapshots: dict[str, LaneSnapshot] = {}
+    for lane_id in lanes:
+        try:
+            vehicle_ids = tuple(str(vehicle_id) for vehicle_id in traci.lane.getLastStepVehicleIDs(lane_id))
+        except Exception:
+            vehicle_ids = tuple()
+        try:
+            vehicle_count = int(traci.lane.getLastStepVehicleNumber(lane_id))
+        except Exception:
+            vehicle_count = len(vehicle_ids)
+        try:
+            mean_speed_mps = float(traci.lane.getLastStepMeanSpeed(lane_id))
+        except Exception:
+            mean_speed_mps = 0.0
+        try:
+            halting_count = int(traci.lane.getLastStepHaltingNumber(lane_id))
+        except Exception:
+            halting_count = 0
+        try:
+            occupancy = float(traci.lane.getLastStepOccupancy(lane_id))
+        except Exception:
+            occupancy = 0.0
+        try:
+            length_m = float(traci.lane.getLength(lane_id))
+        except Exception:
+            length_m = 100.0
+        try:
+            waiting_max = float(traci.lane.getWaitingTime(lane_id))
+        except Exception:
+            waiting_max = 0.0
+        try:
+            time_loss_max = float(traci.lane.getLastStepTimeLoss(lane_id))
+        except Exception:
+            time_loss_max = 0.0
+        snapshots[lane_id] = LaneSnapshot(
+            lane_id=lane_id,
+            sample_t=sample_t,
+            vehicle_ids=vehicle_ids,
+            vehicle_count=vehicle_count,
+            halting_count=halting_count,
+            mean_speed_mps=mean_speed_mps,
+            speed_observed=vehicle_count > 0,
+            occupancy=occupancy,
+            length_m=length_m,
+            waiting_max=waiting_max,
+            time_loss_max=time_loss_max,
+        )
+    return snapshots
+
+
+def lane_queue_proxy_from_snapshot(snapshot: LaneSnapshot, window_m: float) -> tuple[float, int, int]:
+    lane_window = max(min(window_m, snapshot.length_m), 0.0)
+    occupancy_len_m = lane_window * clamp_float(snapshot.occupancy, 0.0, 100.0) / 100.0
+    low_speed_count = snapshot.vehicle_count if snapshot.speed_observed and snapshot.mean_speed_mps <= LOW_SPEED_MPS else snapshot.halting_count
+    halting_len_m = snapshot.halting_count * HEADWAY_M
+    slow_len_m = low_speed_count * HEADWAY_M
+    queue_m = min(lane_window, max(occupancy_len_m, halting_len_m, slow_len_m))
+    queue_veh = max(snapshot.halting_count, low_speed_count, int(math.ceil(queue_m / HEADWAY_M)) if queue_m > 0 else 0)
+    return round_float(queue_m), int(queue_veh), int(low_speed_count)
+
+
+def exact_lane_queue_tail(traci: Any, snapshot: LaneSnapshot, exact_cache: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    if snapshot.lane_id in exact_cache:
+        return exact_cache[snapshot.lane_id]
+    tail_m = 0.0
+    queue_veh = 0
+    waiting = snapshot.waiting_max
+    time_loss = snapshot.time_loss_max
+    for vehicle_id in snapshot.vehicle_ids:
+        try:
+            speed = float(traci.vehicle.getSpeed(vehicle_id))
+        except Exception:
+            speed = snapshot.mean_speed_mps
+        if speed <= LOW_SPEED_MPS:
+            queue_veh += 1
+            try:
+                pos = float(traci.vehicle.getLanePosition(vehicle_id))
+                tail_m = max(tail_m, max(snapshot.length_m - pos, 0.0))
+            except Exception:
+                tail_m = max(tail_m, queue_veh * HEADWAY_M)
+        try:
+            waiting = max(waiting, float(traci.vehicle.getWaitingTime(vehicle_id)))
+        except Exception:
+            pass
+        try:
+            time_loss = max(time_loss, float(traci.vehicle.getTimeLoss(vehicle_id)))
+        except Exception:
+            pass
+    result = {"tail_m": round_float(tail_m), "queue_veh": queue_veh, "waiting": round_float(waiting), "time_loss": round_float(time_loss)}
+    exact_cache[snapshot.lane_id] = result
+    return result
+
+
+def estimate_lane_set_queue_from_snapshots(
+    snapshots: dict[str, LaneSnapshot],
+    lanes: tuple[str, ...] | list[str],
+    storage_length_m: float,
+    sample_t: float,
+) -> LaneSetQueueMetrics:
+    lane_count = max(len(lanes), 1)
+    queue_m_values: list[float] = []
+    vehicle_count = 0
+    queue_veh_proxy = 0
+    halting_count = 0
+    low_speed_count = 0
+    speed_weight = 0
+    speed_sum = 0.0
+    occupancies: list[float] = []
+    waiting = 0.0
+    time_loss = 0.0
+    missing = 0
+    for lane_id in lanes:
+        snapshot = snapshots.get(lane_id)
+        if snapshot is None:
+            missing += 1
+            continue
+        lane_queue_m, lane_queue_veh, lane_low_speed = lane_queue_proxy_from_snapshot(snapshot, storage_length_m)
+        queue_m_values.append(lane_queue_m)
+        queue_veh_proxy += lane_queue_veh
+        vehicle_count += snapshot.vehicle_count
+        halting_count += snapshot.halting_count
+        low_speed_count += lane_low_speed
+        if snapshot.speed_observed:
+            speed_weight += max(snapshot.vehicle_count, 1)
+            speed_sum += snapshot.mean_speed_mps * max(snapshot.vehicle_count, 1)
+        occupancies.append(snapshot.occupancy)
+        waiting = max(waiting, snapshot.waiting_max)
+        time_loss = max(time_loss, snapshot.time_loss_max)
+    if speed_weight > 0:
+        mean_speed_kmh = (speed_sum / speed_weight) * 3.6
+        speed_observed = True
+    else:
+        mean_speed_kmh = EMPTY_APPROACH_SPEED_KMH
+        speed_observed = False
+    density = vehicle_count / max(lane_count * (storage_length_m / 1000.0), 0.001)
+    occupancy = sum(occupancies) / len(occupancies) if occupancies else 0.0
+    queue_m_proxy = max(queue_m_values) if queue_m_values else 0.0
+    return LaneSetQueueMetrics(
+        queue_m_proxy=round_float(queue_m_proxy),
+        queue_veh_proxy=queue_veh_proxy,
+        vehicle_count=vehicle_count,
+        halting_count=halting_count,
+        low_speed_count=low_speed_count,
+        mean_speed_kmh=round_float(mean_speed_kmh),
+        speed_observed=speed_observed,
+        density=round_float(density),
+        occupancy=round_float(occupancy),
+        waiting=round_float(waiting),
+        time_loss=round_float(time_loss),
+        observed_lane_count=len(lanes) - missing,
+        missing_lane_count=missing,
+        max_lane_queue_m=round_float(queue_m_proxy),
+    )
+
+
+def estimate_movement_queue_from_snapshots(
+    traci: Any,
+    movement: B4Movement,
+    snapshots: dict[str, LaneSnapshot],
+    sample_t: float,
+    *,
+    ev_distance_m: float | str = "",
+    calibration_prior: QueueCalibrationPrior | None = None,
+    exact_cache: dict[str, dict[str, Any]] | None = None,
+) -> tuple[QueueEstimate, LaneSetQueueMetrics, LaneSetQueueMetrics, LaneSetQueueMetrics]:
+    exact_cache = exact_cache if exact_cache is not None else {}
+    local = estimate_lane_set_queue_from_snapshots(snapshots, movement.local_storage_lanes, movement.stopline_local_storage_m, sample_t)
+    corridor = estimate_lane_set_queue_from_snapshots(snapshots, movement.corridor_storage_lanes, movement.corridor_storage_length_m, sample_t)
+    approach = estimate_lane_set_queue_from_snapshots(snapshots, movement.approach_lanes, movement.stopline_local_storage_m, sample_t)
+    factor = calibration_prior.calibration_factor if calibration_prior is not None else 1.0
+    raw_proxy_m = local.queue_m_proxy
+    calibrated_proxy_m = min(movement.stopline_local_storage_m, raw_proxy_m * factor)
+    method = "calibrated_proxy" if abs(factor - 1.0) > 1e-6 and raw_proxy_m > 0.0 else "lane_proxy"
+    confidence = QUEUE_CALIBRATED_CONFIDENCE if method == "calibrated_proxy" else QUEUE_PROXY_CONFIDENCE
+    queue_m_est = calibrated_proxy_m
+    queue_veh_est = local.queue_veh_proxy
+    try_exact = False
+    if isinstance(ev_distance_m, (int, float)) and float(ev_distance_m) <= DEFAULT_STAGE3_CONTROL_DISTANCE_M:
+        try_exact = True
+    if movement.stopline_local_storage_m > 0 and calibrated_proxy_m / movement.stopline_local_storage_m >= QUEUE_LOCAL_EXACT_FILL_TRIGGER:
+        try_exact = True
+    if try_exact:
+        exact_tail = 0.0
+        exact_veh = 0
+        exact_waiting = local.waiting
+        exact_time_loss = local.time_loss
+        for lane_id in movement.local_storage_lanes:
+            snapshot = snapshots.get(lane_id)
+            if snapshot is None:
+                continue
+            lane_exact = exact_lane_queue_tail(traci, snapshot, exact_cache)
+            exact_tail = max(exact_tail, safe_float(lane_exact.get("tail_m")))
+            exact_veh += safe_int(lane_exact.get("queue_veh"))
+            exact_waiting = max(exact_waiting, safe_float(lane_exact.get("waiting")))
+            exact_time_loss = max(exact_time_loss, safe_float(lane_exact.get("time_loss")))
+        if exact_tail > 0.0 or exact_veh > 0:
+            queue_m_est = min(movement.stopline_local_storage_m, max(calibrated_proxy_m, exact_tail))
+            queue_veh_est = max(queue_veh_est, exact_veh)
+            local = LaneSetQueueMetrics(
+                queue_m_proxy=local.queue_m_proxy,
+                queue_veh_proxy=max(local.queue_veh_proxy, exact_veh),
+                vehicle_count=local.vehicle_count,
+                halting_count=local.halting_count,
+                low_speed_count=max(local.low_speed_count, exact_veh),
+                mean_speed_kmh=local.mean_speed_kmh,
+                speed_observed=local.speed_observed,
+                density=local.density,
+                occupancy=local.occupancy,
+                waiting=round_float(exact_waiting),
+                time_loss=round_float(exact_time_loss),
+                observed_lane_count=local.observed_lane_count,
+                missing_lane_count=local.missing_lane_count,
+                max_lane_queue_m=max(local.max_lane_queue_m, round_float(exact_tail)),
+            )
+            method = "local_exact_calibrated" if method == "calibrated_proxy" else "local_exact"
+            confidence = QUEUE_EXACT_CONFIDENCE
+    if local.observed_lane_count == 0:
+        confidence = QUEUE_STALE_CONFIDENCE
+    fill = compute_fill_metrics(queue_m_est, corridor.queue_m_proxy, movement.corridor_storage_length_m)
+    estimate = QueueEstimate(
+        movement_id=movement.movement_id,
+        tls_id=movement.tls_id,
+        method=method,
+        queue_m_est=round_float(queue_m_est),
+        queue_veh_est=int(queue_veh_est),
+        queue_proxy_m=round_float(raw_proxy_m),
+        fill_80=fill["local_fill_80m"],
+        fill_100=fill["local_fill_100m"],
+        fill_120=fill["local_fill_120m"],
+        fill_250=fill["corridor_fill_250m"],
+        mean_speed_kmh=approach.mean_speed_kmh,
+        occupancy=max(local.occupancy, corridor.occupancy),
+        halting=local.halting_count,
+        confidence=round_float(confidence),
+        data_age_sec=0.0,
+        source_id=(calibration_prior.source if calibration_prior is not None and calibration_prior.source != "none" else QUEUE_RUNTIME_CALL_MODE),
+    )
+    return estimate, local, corridor, approach
+
+
+def tls_queue_estimates_from_snapshots(
+    movements: tuple[B4Movement, ...] | list[B4Movement],
+    snapshots: dict[str, LaneSnapshot],
+    sample_t: float,
+) -> dict[str, TlsQueueEstimate]:
+    tls_lanes: dict[str, set[str]] = {}
+    for movement in movements:
+        if not movement.controllable:
+            continue
+        tls_lanes.setdefault(movement.tls_id, set()).update(movement.approach_lanes)
+        tls_lanes.setdefault(movement.tls_id, set()).update(movement.local_storage_lanes)
+    estimates: dict[str, TlsQueueEstimate] = {}
+    for tls_id, lanes in tls_lanes.items():
+        queue_sum = 0.0
+        queue_veh = 0
+        max_back = 0.0
+        for lane_id in lanes:
+            snapshot = snapshots.get(lane_id)
+            if snapshot is None:
+                continue
+            lane_queue_m, lane_queue_veh, _slow = lane_queue_proxy_from_snapshot(snapshot, min(snapshot.length_m, 100.0))
+            queue_sum += lane_queue_m
+            queue_veh += lane_queue_veh
+            max_back = max(max_back, lane_queue_m)
+        estimates[tls_id] = TlsQueueEstimate(
+            tls_id=tls_id,
+            queue_m_est=round_float(queue_sum),
+            queue_veh_est=queue_veh,
+            queue_max_back_m=round_float(max_back),
+            unique_lane_count=len(lanes),
+            source_id=f"tls:{tls_id}:unique_lanes={len(lanes)}",
+        )
+    return estimates
+
+
+def movement_runtime_metrics_from_snapshots(
+    traci: Any,
+    movement: B4Movement,
+    thresholds: B4Thresholds,
+    snapshots: dict[str, LaneSnapshot],
+    sample_t: float,
+    *,
+    ev_distance_m: float | str = "",
+    calibration_prior: QueueCalibrationPrior | None = None,
+    exact_cache: dict[str, dict[str, Any]] | None = None,
+    tls_estimate: TlsQueueEstimate | None = None,
+) -> MovementRuntimeMetrics:
+    queue, local, corridor, approach = estimate_movement_queue_from_snapshots(
+        traci,
+        movement,
+        snapshots,
+        sample_t,
+        ev_distance_m=ev_distance_m,
+        calibration_prior=calibration_prior,
+        exact_cache=exact_cache,
+    )
     approach_speed = approach.mean_speed_kmh
     fast_dense_flow = approach_speed > 30.0 and max(local.density, corridor.density) >= 25.0
     signal_only_delay = approach.speed_observed and approach_speed <= thresholds.speed_trigger_kmh and local.density < 10.0 and local.waiting >= 30.0
     levels = evaluate_queue_levels(
-        fill["local_fill_100m"],
-        fill["corridor_fill_250m"],
+        queue.fill_100,
+        queue.fill_250,
         approach_speed,
         thresholds,
         speed_observed=approach.speed_observed,
         fast_dense_flow=fast_dense_flow,
     )
+    if bool(levels["bottleneck_risk"]) and queue.fill_250 >= thresholds.bottleneck_corridor_fill_250m and queue.method == "lane_proxy":
+        queue_method = "shockwave_pending"
+    else:
+        queue_method = queue.method
+    tls_estimate = tls_estimate or TlsQueueEstimate(tls_id=movement.tls_id)
     return MovementRuntimeMetrics(
         movement=movement,
-        queue_m_proxy=local.queue_m_proxy,
+        queue_m_proxy=queue.queue_m_est,
         corridor_queue_m_proxy=corridor.queue_m_proxy,
-        local_fill_80m=fill["local_fill_80m"],
-        local_fill_100m=fill["local_fill_100m"],
-        local_fill_120m=fill["local_fill_120m"],
-        stopline_local_fill_100m=fill["stopline_local_fill_100m"],
-        corridor_fill_250m=fill["corridor_fill_250m"],
+        local_fill_80m=queue.fill_80,
+        local_fill_100m=queue.fill_100,
+        local_fill_120m=queue.fill_120,
+        stopline_local_fill_100m=queue.fill_100,
+        corridor_fill_250m=queue.fill_250,
         approach_speed_kmh=approach_speed,
         speed_observed=approach.speed_observed,
         density=max(local.density, corridor.density),
@@ -1034,7 +1799,39 @@ def movement_runtime_metrics(traci: Any, movement: B4Movement, thresholds: B4Thr
         operational_queue=bool(levels["operational_queue"]),
         bottleneck_risk=bool(levels["bottleneck_risk"]),
         control_mode=str(levels["control_mode"]),
+        queue_method=queue_method,
+        queue_m_est=queue.queue_m_est,
+        queue_veh_est=queue.queue_veh_est,
+        queue_proxy_m=queue.queue_proxy_m,
+        queue_confidence=queue.confidence,
+        queue_data_age_sec=queue.data_age_sec,
+        queue_source_id=queue.source_id,
+        tls_queue_m_est=tls_estimate.queue_m_est,
+        tls_queue_veh_est=tls_estimate.queue_veh_est,
+        tls_queue_max_back_m=tls_estimate.queue_max_back_m,
     )
+
+
+def movement_runtime_metrics(traci: Any, movement: B4Movement, thresholds: B4Thresholds) -> MovementRuntimeMetrics:
+    sample_t = 0.0
+    try:
+        sample_t = float(traci.simulation.getTime())
+    except Exception:
+        pass
+    lanes = unique_queue_lanes_for_movements((movement,))
+    snapshots = sample_lane_snapshots(traci, lanes, sample_t)
+    tls_estimates = tls_queue_estimates_from_snapshots((movement,), snapshots, sample_t)
+    return movement_runtime_metrics_from_snapshots(
+        traci,
+        movement,
+        thresholds,
+        snapshots,
+        sample_t,
+        tls_estimate=tls_estimates.get(movement.tls_id),
+    )
+
+
+DEFAULT_MOVEMENT_RUNTIME_METRICS = movement_runtime_metrics
 
 
 def ev_state_from_traci(traci: Any, stage1: B4Stage1Inputs) -> EVState:
@@ -1110,7 +1907,18 @@ def stage2_merge_hold_proxy_snapshot(traci: Any, stage1: B4Stage1Inputs) -> dict
     merge_lanes = stage1.departure.merge_zone_lanes
     metrics = lane_storage_metrics(traci, merge_lanes, params.L_merge_m)
     merge_lane_count = max(len(merge_lanes), 1)
+    fallback_label = "runtime"
     n_occ = float(metrics.vehicle_count)
+    valid_merge_lane_count = 0
+    for lane_id in merge_lanes:
+        try:
+            traci.lane.getLength(lane_id)
+            valid_merge_lane_count += 1
+        except Exception:
+            pass
+    if not merge_lanes or valid_merge_lane_count == 0:
+        n_occ = max(params.b0_merge_n_occ_max_proxy_veh, params.b0_merge_n_occ_mean_proxy_veh)
+        fallback_label = "b0_fallback_no_merge_lanes" if not merge_lanes else "b0_fallback_unreadable_merge_lanes"
     n_excess = max(0.0, n_occ - (params.C_merge_proxy_veh - params.n_need_proxy_veh))
     t_clear = n_excess * 3600.0 / max(TA_SATURATION_FLOW_VPH_PER_LANE * merge_lane_count, 1.0)
     t_hold = params.tE_merge_sec - t_clear - params.tS_merge_sec
@@ -1129,6 +1937,7 @@ def stage2_merge_hold_proxy_snapshot(traci: Any, stage1: B4Stage1Inputs) -> dict
         "b0_background_inflow_lambda_vph": round_float(params.b0_background_inflow_lambda_vph),
         "stage2_formula": params.stage2_formula,
         "stage2_measurement_source": params.measurement_source,
+        "runtime_or_b0_fallback": fallback_label,
     }
 
 
@@ -1346,7 +2155,12 @@ class B4RuntimeMonitor:
         }
 
 
-def order_stage3_candidates(metrics: list[MovementRuntimeMetrics], current_route_index: int, max_active: int) -> list[MovementRuntimeMetrics]:
+def order_stage3_candidates(
+    metrics: list[MovementRuntimeMetrics],
+    current_route_index: int,
+    max_active: int,
+    d_up: int = 3,
+) -> list[MovementRuntimeMetrics]:
     ahead = [
         metric
         for metric in metrics
@@ -1357,7 +2171,10 @@ def order_stage3_candidates(metrics: list[MovementRuntimeMetrics], current_route
     current = [metric for metric in ahead if metric.movement.route_order_index == current_route_index]
     remaining = [metric for metric in ahead if metric.movement.route_order_index != current_route_index]
     remaining.sort(key=lambda metric: metric.movement.route_order_index)
-    return (current + remaining)[:max_active]
+    limit = max_active
+    if any(metric.bottleneck_risk for metric in ahead):
+        limit = min(max_active, max(1, int(d_up)))
+    return (current + remaining)[:limit]
 
 
 def event_row(
@@ -1387,6 +2204,17 @@ def event_row(
     tQ_sec: float | str = "",
     TA_proxy_sec: float | str = "",
     ta_triggered: bool | str = "",
+    queue_source: str = "",
+    case_b_source: str = "not_case_b",
+    tS_source: str = "",
+    TA_case: str = "caseA",
+    TA_upstream_sec: float | str = "",
+    TA_bottleneck_sec: float | str = "",
+    case_b_mapping_status: str = "",
+    case_b_segment_id: str = "",
+    case_b_segment_queue_m_proxy: float | str = "",
+    case_b_segment_fill: float | str = "",
+    case_b_same_tls_policy: str = "",
     stage2_proxy: dict[str, Any] | None = None,
     monitor_local_fill_mean: float | str = "",
     monitor_speed_mean_kmh: float | str = "",
@@ -1443,6 +2271,17 @@ def event_row(
         "ta_triggered": ta_triggered,
         "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
         "ta_input_source": movement.b0_measurement_source or "SUMO_B04_AA_B0_edge_lane_data",
+        "queue_source": queue_source,
+        "case_b_source": case_b_source,
+        "tS_source": tS_source,
+        "TA_case": TA_case,
+        "TA_upstream_sec": TA_upstream_sec,
+        "TA_bottleneck_sec": TA_bottleneck_sec,
+        "case_b_mapping_status": case_b_mapping_status,
+        "case_b_segment_id": case_b_segment_id,
+        "case_b_segment_queue_m_proxy": case_b_segment_queue_m_proxy,
+        "case_b_segment_fill": case_b_segment_fill,
+        "case_b_same_tls_policy": case_b_same_tls_policy,
         "D_merge_m": stage2_proxy.get("D_merge_m", ""),
         "tE_merge_sec": stage2_proxy.get("tE_merge_sec", ""),
         "L_merge_m": stage2_proxy.get("L_merge_m", ""),
@@ -1457,6 +2296,7 @@ def event_row(
         "b0_background_inflow_lambda_vph": stage2_proxy.get("b0_background_inflow_lambda_vph", ""),
         "stage2_formula": stage2_proxy.get("stage2_formula", ""),
         "stage2_measurement_source": stage2_proxy.get("stage2_measurement_source", ""),
+        "runtime_or_b0_fallback": stage2_proxy.get("runtime_or_b0_fallback", ""),
         "low_speed_count": metrics.low_speed_count if metrics else "",
         "halting_count": metrics.halting_count if metrics else "",
         "fast_dense_flow": metrics.fast_dense_flow if metrics else "",
@@ -1476,6 +2316,19 @@ def event_row(
         "selected_flush_phase": "" if movement.selected_flush_phase is None else movement.selected_flush_phase,
         "control_strategy": movement.control_strategy,
     }
+    if metrics is not None:
+        row.update({
+            "queue_method": metrics.queue_method,
+            "queue_m_est": round_float(metrics.queue_m_est),
+            "queue_veh_est": metrics.queue_veh_est,
+            "queue_proxy_m": round_float(metrics.queue_proxy_m),
+            "queue_confidence": round_float(metrics.queue_confidence),
+            "queue_data_age_sec": round_float(metrics.queue_data_age_sec),
+            "queue_source_id": metrics.queue_source_id,
+            "tls_queue_m_est": round_float(metrics.tls_queue_m_est),
+            "tls_queue_veh_est": metrics.tls_queue_veh_est,
+            "tls_queue_max_back_m": round_float(metrics.tls_queue_max_back_m),
+        })
     return {field: row.get(field, "") for field in RUNTIME_EVENT_FIELDS}
 
 
@@ -1495,6 +2348,233 @@ class B4RuntimeController:
     stage2_previous_phase: int | None = None
     active_controls: dict[str, ActiveControl] = field(default_factory=dict)
     last_tls_action_at: dict[str, float] = field(default_factory=dict)
+    queue_unique_lanes: tuple[str, ...] = field(default_factory=tuple)
+
+    def stage3_queue_lanes(self) -> tuple[str, ...]:
+        if not self.queue_unique_lanes:
+            lanes = list(unique_queue_lanes_for_movements(self.stage1.movements))
+            for candidate in self.stage1.case_b_candidates:
+                if candidate.mapped:
+                    lanes.extend(candidate.segment_lanes)
+            self.queue_unique_lanes = tuple(sorted({lane_id for lane_id in lanes if lane_id}))
+        return self.queue_unique_lanes
+
+    def case_b_tau(self, candidate: B4CaseBCandidate) -> float:
+        param_tau = safe_float(getattr(self.params, "tau", candidate.tau_default), candidate.tau_default)
+        if isinstance(self.params, B4ThetaParams):
+            return param_tau
+        return max(candidate.tau_default, param_tau)
+
+    def case_b_segment_metrics_from_snapshots(
+        self,
+        lane_snapshots: dict[str, LaneSnapshot],
+        now: float,
+    ) -> dict[str, CaseBSegmentRuntimeMetrics]:
+        result: dict[str, CaseBSegmentRuntimeMetrics] = {}
+        for candidate in self.stage1.case_b_candidates:
+            if not candidate.mapped:
+                continue
+            segment_queue = estimate_lane_set_queue_from_snapshots(
+                lane_snapshots,
+                candidate.segment_lanes,
+                candidate.L_b0_m,
+                now,
+            )
+            confidence = QUEUE_PROXY_CONFIDENCE if segment_queue.observed_lane_count > 0 else QUEUE_STALE_CONFIDENCE
+            result[candidate.segment_id] = CaseBSegmentRuntimeMetrics(
+                segment_id=candidate.segment_id,
+                queue_m_proxy=segment_queue.queue_m_proxy,
+                fill=round_float(segment_queue.queue_m_proxy / max(candidate.L_b0_m, 0.001)),
+                queue_confidence=confidence,
+                observed_lane_count=segment_queue.observed_lane_count,
+                missing_lane_count=segment_queue.missing_lane_count,
+            )
+        return result
+
+    def case_b_source_for_metric(
+        self,
+        metric: MovementRuntimeMetrics,
+        candidate: B4CaseBCandidate,
+        segment_metric: CaseBSegmentRuntimeMetrics | None = None,
+    ) -> str:
+        if not candidate.mapped or candidate.L_b0_m <= 0.0:
+            return "not_case_b"
+        if segment_metric is not None and segment_metric.queue_confidence > QUEUE_STALE_CONFIDENCE and segment_metric.queue_m_proxy > 0.0:
+            return "runtime_tau_segment" if segment_metric.fill >= self.case_b_tau(candidate) else "not_case_b"
+        runtime_queue_available = metric.queue_confidence > QUEUE_STALE_CONFIDENCE and metric.queue_m_proxy > 0.0
+        if runtime_queue_available:
+            fill_ratio = metric.queue_m_proxy / max(candidate.L_b0_m, 0.001)
+            return "runtime_tau_movement" if fill_ratio >= self.case_b_tau(candidate) else "not_case_b"
+        return "b0_prior" if candidate.case_b_prior_risk or candidate.segment_fill_B0 >= self.case_b_tau(candidate) else "not_case_b"
+
+    def active_case_b_candidate(
+        self,
+        metric: MovementRuntimeMetrics,
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+        segment_metrics_by_id: dict[str, CaseBSegmentRuntimeMetrics] | None = None,
+    ) -> tuple[B4CaseBCandidate | None, str]:
+        segment_metrics_by_id = segment_metrics_by_id or {}
+        for candidate in self.stage1.case_b_candidates:
+            if not candidate.mapped:
+                continue
+            if metric.movement.movement_id not in {candidate.bottleneck_movement_id, candidate.upstream_movement_id}:
+                continue
+            bottleneck_metric = metrics_by_id.get(candidate.bottleneck_movement_id)
+            if bottleneck_metric is None:
+                continue
+            source = self.case_b_source_for_metric(
+                bottleneck_metric,
+                candidate,
+                segment_metrics_by_id.get(candidate.segment_id),
+            )
+            if source != "not_case_b":
+                return candidate, source
+        return None, "not_case_b"
+
+    def order_case_b_candidates(
+        self,
+        selected: list[MovementRuntimeMetrics],
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+        current_route_index: int,
+        max_active: int,
+        segment_metrics_by_id: dict[str, CaseBSegmentRuntimeMetrics] | None = None,
+    ) -> list[MovementRuntimeMetrics]:
+        segment_metrics_by_id = segment_metrics_by_id or {}
+        ordered: list[MovementRuntimeMetrics] = []
+        seen: set[str] = set()
+        for candidate in self.stage1.case_b_candidates:
+            if not candidate.mapped:
+                continue
+            bottleneck_metric = metrics_by_id.get(candidate.bottleneck_movement_id)
+            upstream_metric = metrics_by_id.get(candidate.upstream_movement_id)
+            if bottleneck_metric is None or upstream_metric is None:
+                continue
+            if self.case_b_source_for_metric(
+                bottleneck_metric,
+                candidate,
+                segment_metrics_by_id.get(candidate.segment_id),
+            ) == "not_case_b":
+                continue
+            for metric in (bottleneck_metric, upstream_metric):
+                movement = metric.movement
+                if not movement.controllable or movement.route_order_index < current_route_index:
+                    continue
+                if movement.movement_id in seen:
+                    continue
+                ordered.append(metric)
+                seen.add(movement.movement_id)
+        for metric in selected:
+            movement_id = metric.movement.movement_id
+            if movement_id in seen:
+                continue
+            ordered.append(metric)
+            seen.add(movement_id)
+        return ordered[:max_active]
+
+    def metric_ta(
+        self,
+        metric: MovementRuntimeMetrics,
+        ev_distances: dict[str, float | str],
+        previous_phase: int | None = None,
+    ) -> TAProxyMetrics:
+        movement = metric.movement
+        if previous_phase is None:
+            previous_phase = self.get_tls_phase(movement.tls_id)
+        ev_distance = ev_distances.get(movement.movement_id, "")
+        queue_confidence = metric.queue_confidence if metric.queue_confidence > 0.0 else QUEUE_PROXY_CONFIDENCE
+        return compute_ta_proxy(
+            ev_distance_m=float(ev_distance) if ev_distance != "" else 0.0,
+            queue_m_proxy=metric.queue_m_proxy,
+            lane_count=movement.lane_count,
+            previous_phase=previous_phase,
+            target_phase=movement.selected_green_phase,
+            queue_confidence=queue_confidence,
+            queue_method=metric.queue_method or "lane_proxy",
+            b0_tQ_hist_sec=movement.tQ_hist_b0_sec,
+            b0_queue_veh=movement.q_max_b0_proxy_veh,
+        )
+
+    def case_b_evaluation(
+        self,
+        metric: MovementRuntimeMetrics,
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+        ev_distances: dict[str, float | str],
+        base_ta: TAProxyMetrics,
+        segment_metrics_by_id: dict[str, CaseBSegmentRuntimeMetrics] | None = None,
+    ) -> CaseBEvaluation:
+        segment_metrics_by_id = segment_metrics_by_id or {}
+        candidate, source = self.active_case_b_candidate(metric, metrics_by_id, segment_metrics_by_id)
+        if candidate is None:
+            return CaseBEvaluation()
+        upstream_metric = metrics_by_id.get(candidate.upstream_movement_id)
+        bottleneck_metric = metrics_by_id.get(candidate.bottleneck_movement_id)
+        if upstream_metric is None or bottleneck_metric is None:
+            return CaseBEvaluation()
+        if metric.movement.movement_id == candidate.upstream_movement_id:
+            upstream_ta = base_ta
+            bottleneck_ta = self.metric_ta(bottleneck_metric, ev_distances)
+            ta_case = "caseB_upstream"
+            effective_ta = upstream_ta.TA_proxy_sec
+        elif metric.movement.movement_id == candidate.bottleneck_movement_id:
+            upstream_ta = self.metric_ta(upstream_metric, ev_distances)
+            bottleneck_ta = base_ta
+            ta_case = "caseB_bottleneck"
+            effective_ta = upstream_ta.TA_proxy_sec - (
+                bottleneck_ta.tS_sec + bottleneck_ta.tQ_sec - candidate.L_b0_m / TA_EV_SPEED_MPS
+            )
+        else:
+            return CaseBEvaluation()
+        ta_bottleneck = upstream_ta.TA_proxy_sec - (
+            bottleneck_ta.tS_sec + bottleneck_ta.tQ_sec - candidate.L_b0_m / TA_EV_SPEED_MPS
+        )
+        segment_metric = segment_metrics_by_id.get(candidate.segment_id)
+        same_tls_policy = ""
+        if candidate.same_tls_chain and upstream_metric.movement.selected_green_phase != bottleneck_metric.movement.selected_green_phase:
+            same_tls_policy = "bottleneck_first_defer_upstream_same_tls"
+        elif candidate.same_tls_chain:
+            same_tls_policy = "same_tls_same_phase"
+        else:
+            same_tls_policy = "different_tls_or_same_phase"
+        return CaseBEvaluation(
+            case_b_source=source,
+            TA_case=ta_case,
+            TA_upstream_sec=round_float(upstream_ta.TA_proxy_sec),
+            TA_bottleneck_sec=round_float(ta_bottleneck),
+            effective_TA_proxy_sec=round_float(effective_ta),
+            case_b_mapping_status=candidate.mapping_status,
+            case_b_segment_id=candidate.segment_id,
+            case_b_segment_queue_m_proxy=round_float(segment_metric.queue_m_proxy) if segment_metric is not None else "",
+            case_b_segment_fill=round_float(segment_metric.fill) if segment_metric is not None else "",
+            case_b_same_tls_policy=same_tls_policy,
+        )
+
+    def same_tls_case_b_deferred(
+        self,
+        metric: MovementRuntimeMetrics,
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+        segment_metrics_by_id: dict[str, CaseBSegmentRuntimeMetrics],
+    ) -> bool:
+        for candidate in self.stage1.case_b_candidates:
+            if (
+                not candidate.mapped
+                or not candidate.same_tls_chain
+                or metric.movement.movement_id != candidate.upstream_movement_id
+                or candidate.bottleneck_movement_id not in self.active_controls
+            ):
+                continue
+            bottleneck_metric = metrics_by_id.get(candidate.bottleneck_movement_id)
+            if bottleneck_metric is None:
+                continue
+            if metric.movement.selected_green_phase == bottleneck_metric.movement.selected_green_phase:
+                continue
+            source = self.case_b_source_for_metric(
+                bottleneck_metric,
+                candidate,
+                segment_metrics_by_id.get(candidate.segment_id),
+            )
+            if source != "not_case_b":
+                return True
+        return False
 
     def step(self) -> list[dict[str, Any]]:
         now = float(self.traci.simulation.getTime())
@@ -1543,6 +2623,12 @@ class B4RuntimeController:
         formula_control_lead = min(t_hold, departure.dispatch_lead_time_sec)
         return now >= self.stage1.ev_depart_sec - formula_control_lead
 
+    def should_release_stage2_hold_by_max(self, now: float) -> bool:
+        if not self.stage2_hold_active or self.stage2_hold_start is None:
+            return False
+        hold_max = safe_float(getattr(self.params, "hold_max", DEFAULT_MAX_HOLD_SEC), DEFAULT_MAX_HOLD_SEC)
+        return hold_max > 0.0 and now - self.stage2_hold_start >= hold_max
+
     def handle_stage2(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:
         departure = self.stage1.departure
         if self.stage2_completed:
@@ -1588,20 +2674,25 @@ class B4RuntimeController:
                 stage2_hold_status="hold_active",
                 stage2_proxy=stage2_proxy,
                 run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
             ))
-        elif self.stage2_hold_active and not merged:
-            self.set_tls_duration(departure.merge_control_tls, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
-        elif self.stage2_hold_active and merged:
+        elif self.stage2_hold_active and not merged and not self.should_release_stage2_hold_by_max(now):
+            hold_max = safe_float(getattr(self.params, "hold_max", DEFAULT_MAX_HOLD_SEC), DEFAULT_MAX_HOLD_SEC)
+            elapsed = max(now - (self.stage2_hold_start or now), 0.0)
+            remaining = max(hold_max - elapsed, DEFAULT_STEP_SEC) if hold_max > 0.0 else DEFAULT_STAGE2_HOLD_REFRESH_SEC
+            self.set_tls_duration(departure.merge_control_tls, min(DEFAULT_STAGE2_HOLD_REFRESH_SEC, remaining))
+        elif self.stage2_hold_active and (merged or self.should_release_stage2_hold_by_max(now)):
             previous_phase = self.get_tls_phase(departure.merge_control_tls)
             self.set_tls_phase(departure.merge_control_tls, departure.background_inflow_open_phase, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
             hold_total = max(now - (self.stage2_hold_start or now), 0.0)
             self.stage2_hold_active = False
-            self.stage2_completed = True
+            self.stage2_completed = merged
             self.stage2_hold_start = None
             self.stage2_previous_phase = None
             self.stats.stage2_release_count += 1
             self.stats.stage2_hold_total_sec += hold_total
+            trigger_reason = "ev_passed_merge" if merged else "hold_max_elapsed"
             events.append(event_row(
                 time=now,
                 stage="stage2",
@@ -1612,11 +2703,12 @@ class B4RuntimeController:
                 ev_state=ev_state,
                 control_mode="departure_merge_hold",
                 safety_status="ev_release_uncontrolled_warn",
-                trigger_reason="ev_passed_merge",
+                trigger_reason=trigger_reason,
                 phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
                 stage2_hold_status="released",
                 stage2_proxy=stage2_proxy,
                 run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
             ))
         return events
@@ -1626,8 +2718,55 @@ class B4RuntimeController:
             return []
         events: list[dict[str, Any]] = []
         events.extend(self.restore_passed_or_expired_controls(now, ev_state))
-        movement_metrics = [movement_runtime_metrics(self.traci, movement, self.stage1.thresholds) for movement in self.stage1.movements]
-        selected = order_stage3_candidates(movement_metrics, ev_state.route_index, self.stage1.max_active_movements)
+        runtime_thresholds = theta_runtime_thresholds(self.stage1.thresholds, self.params)
+        if movement_runtime_metrics is not DEFAULT_MOVEMENT_RUNTIME_METRICS:
+            movement_metrics = [
+                movement_runtime_metrics(self.traci, movement, runtime_thresholds)
+                for movement in self.stage1.movements
+            ]
+            tls_estimates: dict[str, TlsQueueEstimate] = {}
+            case_b_segment_metrics: dict[str, CaseBSegmentRuntimeMetrics] = {}
+            ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
+        else:
+            queue_lanes = self.stage3_queue_lanes()
+            lane_snapshots = sample_lane_snapshots(self.traci, queue_lanes, now)
+            tls_estimates = tls_queue_estimates_from_snapshots(self.stage1.movements, lane_snapshots, now)
+            case_b_segment_metrics = self.case_b_segment_metrics_from_snapshots(lane_snapshots, now)
+            exact_cache: dict[str, dict[str, Any]] = {}
+            ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
+            movement_metrics = [
+                movement_runtime_metrics_from_snapshots(
+                    self.traci,
+                    movement,
+                    runtime_thresholds,
+                    lane_snapshots,
+                    now,
+                    ev_distance_m=ev_distances.get(movement.movement_id, ""),
+                    calibration_prior=self.stage1.queue_calibration_priors.get(movement.movement_id),
+                    exact_cache=exact_cache,
+                    tls_estimate=tls_estimates.get(movement.tls_id),
+                )
+                for movement in self.stage1.movements
+            ]
+            self.stats.queue_runtime_lane_count = len(queue_lanes)
+            self.stats.queue_runtime_call_mode = QUEUE_RUNTIME_CALL_MODE
+            if self.stage1.queue_calibration_priors:
+                self.stats.queue_calibration_source = QUEUE_CALIBRATION_SOURCE
+        self.stats.observe_queue_metrics(movement_metrics, tls_estimates)
+        metrics_by_id = {metric.movement.movement_id: metric for metric in movement_metrics}
+        selected = order_stage3_candidates(
+            movement_metrics,
+            ev_state.route_index,
+            self.stage1.max_active_movements,
+            safe_int(getattr(self.params, "d_up", self.stage1.max_active_movements), self.stage1.max_active_movements),
+        )
+        selected = self.order_case_b_candidates(
+            selected,
+            metrics_by_id,
+            ev_state.route_index,
+            self.stage1.max_active_movements,
+            case_b_segment_metrics,
+        )
         for metric in selected:
             movement = metric.movement
             if len(self.active_controls) >= self.stage1.max_active_movements:
@@ -1636,18 +2775,55 @@ class B4RuntimeController:
                 continue
             if movement.movement_id in self.active_controls:
                 continue
-            if not self.can_act_on_tls(movement.tls_id, now):
-                continue
             previous_phase = self.get_tls_phase(movement.tls_id)
-            ev_distance = self.ev_distance_to_movement(ev_state, movement)
-            ta = compute_ta_proxy(
-                ev_distance_m=float(ev_distance) if ev_distance != "" else 0.0,
-                queue_m_proxy=metric.queue_m_proxy,
-                lane_count=movement.lane_count,
-                previous_phase=previous_phase,
-                target_phase=movement.selected_green_phase,
+            ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(ev_state, movement))
+            ta = self.metric_ta(metric, ev_distances, previous_phase)
+            case_b = self.case_b_evaluation(metric, metrics_by_id, ev_distances, ta, case_b_segment_metrics)
+            ta_proxy_sec = (
+                ta.TA_proxy_sec
+                if case_b.effective_TA_proxy_sec is None
+                else case_b.effective_TA_proxy_sec
             )
             active_count = len(self.active_controls)
+            theta_ta_triggered = ta_proxy_sec <= theta_ta_lead_sec(self.params)
+            if self.same_tls_case_b_deferred(metric, metrics_by_id, case_b_segment_metrics):
+                events.append(event_row(
+                    time=now,
+                    stage="stage3",
+                    action_type="case_b_same_tls_deferred",
+                    movement=movement,
+                    metrics=metric,
+                    target_phase=movement.selected_green_phase,
+                    previous_phase=previous_phase,
+                    ev_state=ev_state,
+                    ev_distance_m=round_float(ev_distance),
+                    control_mode="case_b_same_tls_deferred",
+                    safety_status="case_b_same_tls_deferred",
+                    trigger_reason="case_b_same_tls_deferred",
+                    active_movement_count=active_count,
+                    run_id=self.run_id,
+                    parameter_id=self.params.parameter_id,
+                    repeat_id=self.repeat_id,
+                    tE_sec=ta.tE_sec,
+                    tS_sec=ta.tS_sec,
+                    tQ_sec=ta.tQ_sec,
+                    TA_proxy_sec=ta_proxy_sec,
+                    ta_triggered=theta_ta_triggered,
+                    queue_source=ta.queue_source,
+                    case_b_source=case_b.case_b_source,
+                    tS_source=ta.tS_source,
+                    TA_case=case_b.TA_case,
+                    TA_upstream_sec=case_b.TA_upstream_sec,
+                    TA_bottleneck_sec=case_b.TA_bottleneck_sec,
+                    case_b_mapping_status=case_b.case_b_mapping_status,
+                    case_b_segment_id=case_b.case_b_segment_id,
+                    case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
+                    case_b_segment_fill=case_b.case_b_segment_fill,
+                    case_b_same_tls_policy=case_b.case_b_same_tls_policy,
+                ))
+                continue
+            if not self.can_act_on_tls(movement.tls_id, now):
+                continue
             events.append(event_row(
                 time=now,
                 stage="stage3",
@@ -1659,20 +2835,32 @@ class B4RuntimeController:
                 ev_state=ev_state,
                 ev_distance_m=round_float(ev_distance),
                 control_mode=metric.control_mode,
-                safety_status="ta_ready" if ta.ta_triggered else "ta_not_due",
-                trigger_reason=metric.trigger_reason if ta.ta_triggered else f"{metric.trigger_reason}+TA_proxy_gt_0",
+                safety_status="ta_ready" if theta_ta_triggered else "ta_not_due",
+                trigger_reason=metric.trigger_reason if theta_ta_triggered else f"{metric.trigger_reason}+TA_proxy_gt_t_lead",
                 active_movement_count=active_count,
                 run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
                 tE_sec=ta.tE_sec,
                 tS_sec=ta.tS_sec,
                 tQ_sec=ta.tQ_sec,
-                TA_proxy_sec=ta.TA_proxy_sec,
-                ta_triggered=ta.ta_triggered,
+                TA_proxy_sec=ta_proxy_sec,
+                ta_triggered=theta_ta_triggered,
+                queue_source=ta.queue_source,
+                case_b_source=case_b.case_b_source,
+                tS_source=ta.tS_source,
+                TA_case=case_b.TA_case,
+                TA_upstream_sec=case_b.TA_upstream_sec,
+                TA_bottleneck_sec=case_b.TA_bottleneck_sec,
+                case_b_mapping_status=case_b.case_b_mapping_status,
+                case_b_segment_id=case_b.case_b_segment_id,
+                case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
+                case_b_segment_fill=case_b.case_b_segment_fill,
+                case_b_same_tls_policy=case_b.case_b_same_tls_policy,
             ))
             if isinstance(ev_distance, (int, float)) and ev_distance > DEFAULT_STAGE3_CONTROL_DISTANCE_M:
                 continue
-            if not ta.ta_triggered:
+            if not theta_ta_triggered:
                 continue
             duration = self.target_phase_duration(ta.tE_sec)
             self.set_tls_phase(movement.tls_id, movement.selected_green_phase, duration)
@@ -1710,12 +2898,24 @@ class B4RuntimeController:
                 phase_duration_sec=round_float(duration),
                 active_movement_count=len(self.active_controls),
                 run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
                 tE_sec=ta.tE_sec,
                 tS_sec=ta.tS_sec,
                 tQ_sec=ta.tQ_sec,
-                TA_proxy_sec=ta.TA_proxy_sec,
-                ta_triggered=ta.ta_triggered,
+                TA_proxy_sec=ta_proxy_sec,
+                ta_triggered=theta_ta_triggered,
+                queue_source=ta.queue_source,
+                case_b_source=case_b.case_b_source,
+                tS_source=ta.tS_source,
+                TA_case=case_b.TA_case,
+                TA_upstream_sec=case_b.TA_upstream_sec,
+                TA_bottleneck_sec=case_b.TA_bottleneck_sec,
+                case_b_mapping_status=case_b.case_b_mapping_status,
+                case_b_segment_id=case_b.case_b_segment_id,
+                case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
+                case_b_segment_fill=case_b.case_b_segment_fill,
+                case_b_same_tls_policy=case_b.case_b_same_tls_policy,
             ))
         return events
 
@@ -1752,6 +2952,7 @@ class B4RuntimeController:
                         phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
                         active_movement_count=max(len(self.active_controls) - 1, 0),
                         run_id=self.run_id,
+                        parameter_id=self.params.parameter_id,
                         repeat_id=self.repeat_id,
                     ))
                     del self.active_controls[movement_id]
@@ -1793,6 +2994,7 @@ class B4RuntimeController:
                         phase_duration_sec=duration,
                         active_movement_count=len(self.active_controls),
                         run_id=self.run_id,
+                        parameter_id=self.params.parameter_id,
                         repeat_id=self.repeat_id,
                     ))
                     continue
@@ -1826,6 +3028,7 @@ class B4RuntimeController:
                     phase_duration_sec=self.params.G_ext,
                     active_movement_count=len(self.active_controls),
                     run_id=self.run_id,
+                    parameter_id=self.params.parameter_id,
                     repeat_id=self.repeat_id,
                 ))
                 continue
@@ -1848,6 +3051,7 @@ class B4RuntimeController:
                 phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
                 active_movement_count=max(len(self.active_controls) - 1, 0),
                 run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
             ))
             del self.active_controls[movement_id]
