@@ -5,9 +5,13 @@ Layout (option A):
   tracks its own emergency vehicle at street zoom.
 - A shared overview mini-map (full corridor) with both emergency positions.
 - Real-elapsed-time sync: one clock drives both panels from ``t_rel`` 0..max.
-- Speed shown as marker colour + live badge + a time-speed chart with a cursor.
+- Emergency marker uses a fixed mode colour; speed is shown as a live badge plus
+  the time-speed chart. The *signal state* is carried by traffic-light icons
+  placed at the real TLS positions (``DATA.traffic_lights`` + per-mode
+  ``tls_states``), which recolour red/green as the vehicle passes and highlight
+  the next light ahead — replacing the old emergency-colour signal cue.
 - Background (side-street) vehicles drawn as dots, already radius-filtered by the
-  extractor. B2 panel overlays signal-control events.
+  extractor.
 """
 
 import json
@@ -42,7 +46,18 @@ _TEMPLATE = r"""<!doctype html>
   .tag .mode{font-weight:700;font-size:14px;}
   .tag .spd{font-variant-numeric:tabular-nums;font-weight:700;}
   .tag .done{color:#10b981;font-weight:700;}
-  .sig{position:absolute;bottom:10px;left:10px;right:10px;z-index:500;background:rgba(17,24,39,.85);color:#e5e7eb;border-radius:8px;padding:6px 10px;font-size:12px;display:none;}
+  .tag .nextsig{font-variant-numeric:tabular-nums;font-weight:700;}
+  /* signal-light icons (placed at real TLS positions, recoloured per state) */
+  .tlwrap{background:transparent;border:0;}
+  .tl{display:flex;flex-direction:column;gap:1px;padding:2px;background:#0b1220;border:1px solid #475569;border-radius:3px;line-height:0;}
+  .tl i{width:7px;height:7px;border-radius:50%;background:#1f2937;display:block;}
+  .tlwrap[data-state="red"] .tl i.r{background:#ef4444;box-shadow:0 0 7px #ef4444;}
+  .tlwrap[data-state="yellow"] .tl i.y{background:#f59e0b;box-shadow:0 0 7px #f59e0b;}
+  .tlwrap[data-state="green"] .tl i.g{background:#22c55e;box-shadow:0 0 7px #22c55e;}
+  .tlwrap[data-state="off"]{opacity:.4;}
+  .tlwrap.next .tl{border-color:#fde047;box-shadow:0 0 0 2px rgba(253,224,71,.7);}
+  .siglegend{display:flex;gap:12px;font-size:12px;color:#cbd5e1;align-items:center;}
+  .siglegend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
   .bottom{display:grid;grid-template-columns:340px 1fr;gap:0;height:200px;background:#0b1220;}
   .overview{position:relative;border-right:1px solid #0b1220;}
   .overview .map{position:absolute;inset:0;background:#1e293b;}
@@ -69,18 +84,22 @@ _TEMPLATE = r"""<!doctype html>
         <select id="rate"><option>1</option><option selected>4</option><option>8</option><option>16</option></select>×
       </span>
     </div>
+    <div class="siglegend">
+      <span><i style="background:#ef4444"></i>정지신호</span>
+      <span><i style="background:#22c55e"></i>통과신호</span>
+      <span><i style="background:#6b7280"></i>비활성</span>
+    </div>
   </header>
   <div class="maps">
     <div class="panel">
       <div class="map" id="mapB0"></div>
       <div class="tag"><span class="mode" style="color:var(--b0)">B0 · 신호제어 없음</span><br>
-        속도 <span class="spd" id="spdB0">0</span> km/h · 진행 <span id="progB0">0</span>%</div>
+        속도 <span class="spd" id="spdB0">0</span> km/h · 진행 <span id="progB0">0</span>% · 다음신호 <span class="nextsig" id="nsB0">–</span></div>
     </div>
     <div class="panel">
       <div class="map" id="mapB2"></div>
       <div class="tag"><span class="mode" style="color:var(--b2)">B2 · Corridor Priority</span><br>
-        속도 <span class="spd" id="spdB2">0</span> km/h · 진행 <span id="progB2">0</span>%</div>
-      <div class="sig" id="sigB2"></div>
+        속도 <span class="spd" id="spdB2">0</span> km/h · 진행 <span id="progB2">0</span>% · 다음신호 <span class="nextsig" id="nsB2">–</span></div>
     </div>
   </div>
   <div class="bottom">
@@ -106,10 +125,9 @@ const TILES = "__TILES__", ATTR = "__ATTR__";
 const COLORS = {B0:"__B0COLOR__", B2:"__B2COLOR__"};
 const FOLLOW_ZOOM = 17;
 
-function speedColor(kmh){
-  if(kmh<10) return "#7c2d12"; if(kmh<20) return "#dc2626";
-  if(kmh<30) return "#f59e0b"; if(kmh<40) return "#10b981"; return "#2563eb";
-}
+// last state at/before t in a compressed [[t,state],...] signal timeline
+function stateAt(tl,tt){const a=tl.states;let r=a.length?a[0][1]:"off";for(let i=0;i<a.length;i++){if(a[i][0]<=tt)r=a[i][1];else break;}return r;}
+const SIG_LABEL={red:"🔴 정지",green:"🟢 통과",yellow:"🟡",off:"–"};
 // binary search last index with arr[i].t_rel <= t
 function idxAt(arr,t){let lo=0,hi=arr.length-1,r=0;while(lo<=hi){const m=(lo+hi)>>1;if(arr[m].t_rel<=t){r=m;lo=m+1;}else hi=m-1;}return r;}
 function lerp(a,b,f){return a+(b-a)*f;}
@@ -139,49 +157,46 @@ function Panel(mode){
   const marker=L.circleMarker(p.route_polyline[0],
     {radius:9,color:"#fff",weight:2,fillColor:COLORS[mode],fillOpacity:1}).addTo(map);
   const bgLayer=L.layerGroup().addTo(map);
-  const sigLayer=L.layerGroup().addTo(map);
+  // signal-light icons at real TLS positions, recoloured each frame
+  const tlsStates=p.tls_states||{};
+  const tlMarkers=(DATA.traffic_lights||[]).map(t=>({
+    el:L.marker([t.lat,t.lon],{interactive:false,keyboard:false,
+      icon:L.divIcon({className:"tlwrap",iconSize:[15,29],iconAnchor:[7,14],
+        html:'<div class="tl"><i class="r"></i><i class="y"></i><i class="g"></i></div>'})}).addTo(map),
+    states:tlsStates[t.tls_id]||[[0,"off"]],
+    s:(t.s_m&&t.s_m[mode]!=null)?t.s_m[mode]:null}));
   // index background snapshots by integer t_rel for quick lookup
   const bgByT={}; p.background.forEach(s=>bgByT[Math.round(s.t_rel)]=s.vehicles);
-  return {p,map,marker,bgLayer,sigLayer,bgByT,
-    routeLen:DATA.meta.route_length_m,
-    shownSig:new Set()};
+  return {p,map,marker,bgLayer,tlMarkers,bgByT,routeLen:DATA.meta.route_length_m};
 }
 
 function updatePanel(panel,t,mode){
   const st=emAt(panel.p.emergency,t); if(!st) return;
   const ll=[st.lat,st.lon];
-  panel.marker.setLatLng(ll).setStyle({fillColor:speedColor(st.speed_kmh)});
+  const arrived=t>=panel.p.travel_time_sec;
+  // emergency marker keeps a fixed mode colour now; signal state lives on the lights
+  panel.marker.setLatLng(ll).setStyle({fillColor:arrived?"#16a34a":COLORS[mode]});
   panel.map.setView(ll,FOLLOW_ZOOM,{animate:false});
   // background dots near current snapshot
   panel.bgLayer.clearLayers();
   const veh=panel.bgByT[Math.round(t)]||[];
   veh.forEach(v=>L.circleMarker([v.lat,v.lon],
     {radius:4,color:"#cbd5e1",weight:1,fillColor:"#94a3b8",fillOpacity:.85}).addTo(panel.bgLayer));
+  // signal lights: recolour by approximated state; highlight the next light ahead
+  let nextS=Infinity,nextEl=null;
+  panel.tlMarkers.forEach(tl=>{
+    const el=tl.el.getElement(); if(!el) return;
+    el.dataset.state=stateAt(tl,t);
+    el.classList.remove("next");
+    if(tl.s!=null&&tl.s>st.dist_m&&tl.s<nextS){nextS=tl.s;nextEl=el;}
+  });
+  if(nextEl) nextEl.classList.add("next");
   // readouts
-  const arrived=t>=panel.p.travel_time_sec;
   document.getElementById(mode==="B0"?"spdB0":"spdB2").textContent=arrived?"도착":st.speed_kmh.toFixed(0);
   document.getElementById(mode==="B0"?"progB0":"progB2").textContent=
     Math.min(100,Math.round(st.dist_m/panel.routeLen*100));
-  // signal events (B2): show events whose t_rel <= t, label the latest within 6s window
-  if(mode==="B2"&&panel.p.signal_events){
-    panel.sigLayer.clearLayers();
-    let recent=null;
-    panel.p.signal_events.forEach(e=>{
-      if(e.t_rel<=t){
-        const fresh=t-e.t_rel<=6;
-        L.circleMarker([e.lat,e.lon],{radius:fresh?10:5,
-          color:e.action==="request_green"?"#10b981":"#f59e0b",weight:2,
-          fillColor:e.action==="request_green"?"#10b981":"#f59e0b",
-          fillOpacity:fresh?.6:.25}).addTo(panel.sigLayer);
-        if(fresh) recent=e;
-      }
-    });
-    const box=document.getElementById("sigB2");
-    if(recent){box.style.display="block";
-      const jid=(recent.junction_id||recent.tls_id||"").slice(0,16);
-      box.innerHTML=`🚦 <b>${recent.action}</b> @ ${jid} · 잔여 ${recent.remaining_distance_m??"-"} m · t=${recent.t_rel.toFixed(0)}s`;}
-    else box.style.display="none";
-  }
+  document.getElementById(mode==="B0"?"nsB0":"nsB2").textContent=
+    nextEl?(SIG_LABEL[nextEl.dataset.state]||"–"):"–";
 }
 
 // overview minimap
@@ -190,6 +205,9 @@ function buildOverview(){
   const all=[];
   ["B0","B2"].forEach(k=>{const pl=DATA.modes[k].route_polyline;
     L.polyline(pl,{color:COLORS[k],weight:2,opacity:.6}).addTo(m);all.push(...pl);});
+  // traffic-light positions for corridor context (static neutral dots)
+  (DATA.traffic_lights||[]).forEach(t=>L.circleMarker([t.lat,t.lon],
+    {radius:2.5,weight:0,fillColor:"#64748b",fillOpacity:.6}).addTo(m));
   m.fitBounds(L.latLngBounds(all),{padding:[12,12]});
   const dots={B0:L.circleMarker(all[0],{radius:6,color:"#fff",weight:1,fillColor:COLORS.B0,fillOpacity:1}).addTo(m),
               B2:L.circleMarker(all[0],{radius:6,color:"#fff",weight:1,fillColor:COLORS.B2,fillOpacity:1}).addTo(m)};

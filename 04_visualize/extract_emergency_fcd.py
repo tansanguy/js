@@ -25,6 +25,7 @@ from config import (
 )
 from utils import parse_fcd
 from utils.fcd_parser import FcdResult
+from utils.traffic_lights import augment_doc_with_tls, DEFAULT_TLS_GEOJSON
 
 MOCK_DIR = Path(__file__).resolve().parent / "mock" / "data"
 B2_PARAMS = {"D_det": 450, "alpha": 6, "G_ext": 51, "T_change_sec": 10}
@@ -194,6 +195,12 @@ def main() -> None:
     parser.add_argument("--b2-signals", type=Path, default=MOCK_DIR / "signal_events_B2.csv")
     parser.add_argument("--bg-radius-m", type=float, default=250.0,
                         help="Keep background vehicles within this radius of the emergency vehicle")
+    parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_TLS_GEOJSON,
+                        help="Network TLS positions used for the signal-light icons")
+    parser.add_argument("--route-buffer-m", type=float, default=60.0,
+                        help="Keep traffic lights within this distance of the route")
+    parser.add_argument("--stop-speed-kmh", type=float, default=5.0,
+                        help="Below this, an approached light is shown red (blocked)")
     parser.add_argument("--output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_animation.json")
     args = parser.parse_args()
 
@@ -214,6 +221,10 @@ def main() -> None:
         },
         "modes": {"B0": b0_payload, "B2": b2_payload},
     }
+    tls_summary = augment_doc_with_tls(
+        doc, args.tls_geojson,
+        route_buffer_m=args.route_buffer_m, stop_speed_kmh=args.stop_speed_kmh,
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
@@ -223,6 +234,8 @@ def main() -> None:
         print(f"  {name}: {len(p['emergency'])} steps, travel={p['travel_time_sec']}s, "
               f"avg={p['avg_speed_kmh']} km/h, bg_snaps={len(p['background'])}"
               + (f", signal_events={len(p.get('signal_events', []))}" if name == "B2" else ""))
+    print(f"  TLS: {tls_summary['tls_kept']}/{tls_summary['tls_total']} on route, "
+          f"states {tls_summary['per_mode']}")
 
 
 if __name__ == "__main__":

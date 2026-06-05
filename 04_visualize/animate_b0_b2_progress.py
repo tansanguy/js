@@ -24,6 +24,7 @@ from extract_emergency_fcd import (
 from config import SEOUL_STATION_ROUTE_ID, SEOUL_STATION_ROUTE_LENGTH_M
 from utils import parse_fcd
 from utils.animation_builder import build_animated_dual_map_html
+from utils.traffic_lights import augment_doc_with_tls, DEFAULT_TLS_GEOJSON
 
 
 def main() -> None:
@@ -32,6 +33,10 @@ def main() -> None:
     parser.add_argument("--b2-fcd", type=Path, default=MOCK_DIR / "fcd_B2.xml")
     parser.add_argument("--b2-signals", type=Path, default=MOCK_DIR / "signal_events_B2.csv")
     parser.add_argument("--bg-radius-m", type=float, default=250.0)
+    parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_TLS_GEOJSON,
+                        help="Network TLS positions used for the signal-light icons")
+    parser.add_argument("--route-buffer-m", type=float, default=60.0)
+    parser.add_argument("--stop-speed-kmh", type=float, default=5.0)
     parser.add_argument("--json-output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_animation.json")
     parser.add_argument("--output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_progress_animation.html")
     parser.add_argument("--title", default="B0 vs B2 응급차 진행 비교 — 서울역 경로")
@@ -53,6 +58,10 @@ def main() -> None:
         },
         "modes": {"B0": b0_payload, "B2": b2_payload},
     }
+    tls_summary = augment_doc_with_tls(
+        doc, args.tls_geojson,
+        route_buffer_m=args.route_buffer_m, stop_speed_kmh=args.stop_speed_kmh,
+    )
 
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
@@ -64,6 +73,8 @@ def main() -> None:
         extra = f", signals={len(p.get('signal_events', []))}" if name == "B2" else ""
         print(f"  {name}: {len(p['emergency'])} steps, travel={p['travel_time_sec']}s, "
               f"avg={p['avg_speed_kmh']} km/h, bg_snaps={len(p['background'])}{extra}")
+    print(f"  TLS: {tls_summary['tls_kept']}/{tls_summary['tls_total']} on route, "
+          f"states {tls_summary['per_mode']}")
 
 
 if __name__ == "__main__":

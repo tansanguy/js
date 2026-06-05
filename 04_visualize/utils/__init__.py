@@ -25,6 +25,11 @@ from .color_schemes import (
     get_status_color,
 )
 from .leaflet_builder import build_leaflet_html
+from .traffic_lights import (
+    augment_doc_with_tls,
+    load_tls_points,
+    DEFAULT_TLS_GEOJSON,
+)
 
 __all__ = [
     "load_experiment_results_csv",
