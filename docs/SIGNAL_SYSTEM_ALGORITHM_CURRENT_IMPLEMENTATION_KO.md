@@ -1,12 +1,12 @@
 # 1.3 신호체계 알고리즘 현재 구현 상황 보고서
 
-작성 기준: 2026-06-04, Compact V9 / B4 런타임 MVP 재실행 결과(`b4_thold_seed1`)
+작성 기준: 2026-06-05, Compact V9 / B4 런타임 MVP 재실행 결과(`codex_caseb_spillback`)
 
 ## 한 줄 요약
 
-현재 시뮬레이션은 사용자가 제시한 Stage 1, Stage 2, Stage 3 구조를 유지하되, 현장 historical DB가 없는 값은 B0, 즉 `B04 no-control` SUMO 실행에서 측정한 프록시 값으로 대체했습니다.
+현재 시뮬레이션은 사용자가 제시한 Stage 1, Stage 2, Stage 3 구조를 유지하되, 현장 historical DB가 없는 값은 B0, 즉 `B04 no-control` SUMO 실행에서 측정한 프록시 값으로 대체했습니다. 이 값은 현장 실측값이 아니라 `SUMO B0 measured proxy`입니다.
 
-이번 수정으로 Stage 2는 더 이상 고정 35초 hold를 바로 쓰지 않고, 연구 초안의 `T_hold` 계산값을 dispatch window 안에서 직접 사용합니다. 또한 EV 도착 후 Stage 2가 다시 걸리던 로그 edge case도 수정했습니다.
+이번 수정으로 Stage 1 산출물에 B0 기반 Case B 후보와 queue calibration factor가 추가됐고, Stage 3 이벤트에는 `queue_source`, `case_b_source`, `tS_source`, `TA_case`, `case_b_mapping_status`, `case_b_segment_id`, `case_b_segment_queue_m_proxy`, `case_b_segment_fill`, `case_b_same_tls_policy`가 기록됩니다. 런타임 TraCI 값이 있으면 항상 TraCI가 우선이고, B0 값은 보정계수 또는 fallback으로만 사용됩니다.
 
 ## 현재 구현 위치
 
@@ -28,7 +28,8 @@ Stage 1은 현재 실험용 경로와 네트워크에서 미리 계산된 정적
 | 제어 후보 | EV 경로 위 6개 movement |
 | `q_avg`, `q_max`, `tQ_hist`, `lambda` | B0(B04 no-control) SUMO lane/edge data에서 측정 |
 | `L`, `C` | SUMO 네트워크와 100m local storage 기준 프록시 |
-| 병목 후보 | `local_fill_100m`, `corridor_fill_250m`, 저속 여부로 판정 |
+| `queue_calibration_factor` | readiness queue / B0 measured queue를 CSV에 저장, runtime에는 clamp된 적용값 사용 |
+| Case B 후보 | S7, S10, S11 CSV 후보를 route-span proxy로 기존 controllable movement에 연결해 `b4_case_b_candidates.csv/json`에 저장 |
 
 ### B0에서 측정한 주요 신호 파라미터
 
@@ -42,6 +43,18 @@ Stage 1은 현재 실험용 경로와 네트워크에서 미리 계산된 정적
 | B4_MOVEMENT_05 | S21 상행 | 1.467 | 13.738 | 9.158 | 118.271 | 예, 병목 모드 |
 
 이 값들은 현장값이 아닙니다. 다만 같은 네트워크와 같은 수요를 무제어로 돌린 B0 결과에서 측정했기 때문에, 현재 시뮬레이션 내부에서는 일관성 있는 기준값입니다.
+
+### Case B 후보 매핑
+
+S7/S10/S11 자체를 새 신호로 만들지는 않았습니다. `B04_toegye_segment_edge_mapping.csv`의 상행 route edge span과 기존 `route_order_index`를 기준으로 가장 가까운 controllable movement에 보수적으로 연결했습니다.
+
+| segment | bottleneck movement | upstream movement | mapping_status | same TLS | runtime |
+| --- | --- | --- | --- | --- | --- |
+| S7 | B4_MOVEMENT_02 | B4_MOVEMENT_01 | mapped_route_span_proxy | 아니오 | enabled |
+| S10 | B4_MOVEMENT_03 | B4_MOVEMENT_02 | mapped_route_span_proxy | 예 | enabled |
+| S11 | B4_MOVEMENT_04 | B4_MOVEMENT_03 | mapped_route_span_proxy | 아니오 | enabled |
+
+Case B 후보 파일에는 `segment_edges`, `segment_lanes`, route span index, proxy edge gap, movement B0 prior, segment B0 prior가 같이 저장됩니다. Case B 전용 tau 기본값은 0.75이고, 기존 B4 smoke 파라미터의 `tau=0.50`이 들어와도 런타임 Case B 판정에는 `max(candidate.tau_default, params.tau)`가 적용됩니다.
 
 ## `local_fill_100m` 설명
 
@@ -116,18 +129,19 @@ Stage 3는 EV가 본선에 합류한 뒤, EV 앞쪽의 신호를 미리 열어�
 4. `TA_proxy <= 0`이면 “지금 열어야 EV가 도착할 때 비워진다”고 보고 선점합니다.
 5. EV가 통과하면 원래 phase로 복구합니다.
 
-이번 실행에서 실제 target green 전환은 6회 있었습니다.
+이번 실행에서 실제 target green 전환은 5회 있었습니다.
 
 | movement | 시각 | queue_m_proxy | local_fill_100m | TA_proxy(s) | 제어 모드 |
 | --- | ---: | ---: | ---: | ---: | --- |
-| B4_MOVEMENT_00 | 628s | 135.0m | 1.35 | -1.327 | 병목 |
-| B4_MOVEMENT_01 | 681s | 60.0m | 0.60 | -0.259 | 일반 |
-| B4_MOVEMENT_03 | 753s | 150.0m | 1.50 | -3.435 | 병목 |
-| B4_MOVEMENT_02 | 755s | 67.5m | 0.675 | -0.875 | 일반 |
-| B4_MOVEMENT_04 | 958s | 150.0m | 1.50 | -4.209 | 병목 |
-| B4_MOVEMENT_05 | 1103s | 540.0m | 5.40 | -42.499 | 병목 |
+| B4_MOVEMENT_01 | 682s | 45.0m | 0.45 | -5.416 | 일반 |
+| B4_MOVEMENT_02 | 756s | 90.0m | 0.90 | -0.123 | 병목 |
+| B4_MOVEMENT_03 | 762s | 100.0m | 1.00 | -0.403 | 병목 |
+| B4_MOVEMENT_04 | 1047s | 100.0m | 1.00 | -21.239 | 병목, Case B |
+| B4_MOVEMENT_05 | 1185s | 100.0m | 1.00 | -0.194 | 병목 |
 
-결과적으로 Stage 3 선점은 6회, 병목 모드는 4회 작동했습니다. 추가로 EV가 아직 통과하지 못했을 때 target green을 연장하거나, 같은 TLS 안에서 downstream movement를 잠깐 flush하는 보조 동작도 있었습니다.
+결과적으로 Stage 3 선점은 5회, 병목 모드는 4회 작동했습니다. 추가로 EV가 아직 통과하지 못했을 때 target green을 연장하거나, 같은 TLS 안에서 downstream movement를 잠깐 flush하는 보조 동작도 있었습니다.
+
+이벤트 로그 기준 queue source는 `runtime_exact` 708건, `b0_calibrated` 24건, `b0_fallback` 81건입니다. 이번 smoke에서는 Case B 후보 segment lane까지 queue sampling 대상에 포함되어 런타임 queue lane 수가 89개에서 109개로 늘었습니다. 테스트에서는 stale/empty queue일 때 `tQ_hist_B0` fallback으로 TA를 계산하는 계약을 확인했습니다.
 
 ## TLS, linkIndex, phase 설명
 
@@ -148,9 +162,13 @@ SUMO에서 신호등 하나는 사람이 보는 “교차로 신호 하나”보
 | 구분 | 의미 | 현재 상태 |
 | --- | --- | --- |
 | Stage 2 합류 제어 | EV가 본선에 들어갈 공간을 만들기 위해 일반차 유입을 hold | 작동함. 단, EV release 자체는 직접 제어하지 않음 |
-| Case B / 병목 제어 | EV 앞쪽 도로가 막힌 경우, 병목 또는 하류 movement를 먼저 여는 제어 | 작동함. 이번 B4 실행에서 병목 모드 4회 |
+| Case B / 병목 제어 | EV 앞쪽 도로가 막힌 경우, 병목 또는 하류 movement를 먼저 여는 제어 | S7/S10/S11 모두 route-span proxy로 매핑됨. runtime Case B source는 `runtime_tau_movement`와 `b0_prior`가 실제 기록됨 |
 
-B3 쪽의 엄격한 Case B 로직도 별도로 남아 있고, 테스트에서 “병목 먼저, 상류 나중” 순서가 확인되어 있습니다. B4에서는 `tau={0.75,0.80,0.85}` sweep을 그대로 쓰기보다 `local_fill_100m`, `corridor_fill_250m`, 저속 조건을 조합해 병목 위험을 판단합니다.
+B4 런타임에는 Case B 후보가 매핑될 경우 `segment_queue_m_proxy / L >= tau`를 먼저 보고, segment queue가 없으면 movement queue를 보조 판정으로 사용합니다. runtime queue가 stale/empty이면 B0 prior를 fallback으로 씁니다. 테스트에서는 `runtime_tau_segment`, `runtime_tau_movement`, `b0_prior`, tau 미충족 시 Case A 전환을 각각 확인했습니다.
+
+실제 smoke 이벤트 로그에서는 `case_b_source`가 `not_case_b` 557건, `runtime_tau_movement` 225건, `b0_prior` 101건으로 기록됐습니다. segment runtime queue는 실제 교통상 tau를 넘지 않아 `runtime_tau_segment`가 smoke에서 발동하지 않았고, 이 경우는 synthetic runtime test를 acceptance 근거로 둡니다.
+
+같은 TLS에 묶인 S10은 병목과 upstream phase가 다를 수 있습니다. 이때 같은 step에서 둘 다 바꾸지 않고 병목 phase를 우선합니다. 실제 smoke에는 `case_b_same_tls_policy=bottleneck_first_defer_upstream_same_tls`가 61건 기록됐고, unit test에서는 upstream 즉시 phase change 대신 `case_b_same_tls_deferred` 이벤트가 남는 것을 확인했습니다.
 
 사용자 의견처럼 막힌 구간의 queue proxy가 70m 이상으로 나오는 상황에서는 100m 분모를 쓰는 방식이 충분히 합리적입니다. 현재 실행에서도 60m, 67.5m, 135m, 150m, 540m queue proxy에서 제어가 발생했습니다. 다만 100m 분모는 민감하므로, `TA_proxy`, EV 거리, 저속 조건을 함께 두는 현재 방식이 더 안전합니다.
 
@@ -160,21 +178,21 @@ B3 쪽의 엄격한 Case B 로직도 별도로 남아 있고, 테스트에서 �
 
 | 구분 | B0(B04 no-control) | B4_MVP_DEFAULT |
 | --- | ---: | ---: |
-| EV 통행시간 | 926.0s | 540.0s |
+| EV 통행시간 | 926.0s | 624.0s |
 | 자유류 기준 시간 | 217.98s | 217.98s |
-| EV 지체 | 708.02s | 322.02s |
-| B4 - B0 | - | -386.0s |
-| 배경차량 평균 통행시간 | 172.51s | 167.48s |
-| 배경차량 평균 지체 | 124.40s | 118.69s |
+| EV 지체 | 708.02s | 406.02s |
+| B4 - B0 | - | -302.0s |
+| 배경차량 평균 통행시간 | 172.51s | 181.70s |
+| 배경차량 평균 지체 | 124.40s | 132.14s |
 | Stage 2 유효 hold | 없음 | 21.0s |
-| Stage 3 선점 | 없음 | 6회 |
+| Stage 3 선점 | 없음 | 5회 |
 | 병목 모드 작동 | 없음 | 4회 |
 | EV 도착 | 예 | 예 |
 | teleport | 아니오 | 아니오 |
 
 ## 현재 남아 있는 한계
 
-1. historical DB는 아직 없고, B0 SUMO 측정 프록시를 사용했습니다.
+1. historical DB는 아직 없고, `SUMO B0 measured proxy`를 사용했습니다.
 2. B4는 현재 `B4_MVP_DEFAULT` 1개만 실행했습니다. 다중 seed, 반복 실행, 출발시각 변화 검증은 아직 필요합니다.
 3. Stage 2는 일반차 유입을 hold해 합류 공간을 만드는 방식입니다. EV release movement 자체를 직접 제어하지는 못합니다.
 4. `local_fill_100m`는 반응성이 좋은 대신 민감합니다. 그래서 지금처럼 `TA_proxy`, 거리 제한, 저속 조건과 함께 쓰는 것이 안전합니다.
@@ -184,4 +202,4 @@ B3 쪽의 엄격한 Case B 로직도 별도로 남아 있고, 테스트에서 �
 
 현재 B4 런타임 MVP는 B0 측정 프록시 기반으로 합류부 hold와 전방 신호 선점을 수행합니다. 이번 수정 후 Stage 2는 연구 초안의 `T_hold=4.992806s`를 직접 사용했고, 실제 hold는 596s부터 617s까지 21초간 유지됐습니다.
 
-단일 실행에서는 EV 통행시간이 B0 926초에서 B4 540초로 줄었습니다. 다만 이 결과는 seed=1, repeat=1의 구현 확인 결과이므로, 최종 성능 주장에는 반복 실험과 파라미터 검증이 추가로 필요합니다.
+단일 실행에서는 EV 통행시간이 B0 926초에서 B4 624초로 줄었습니다. 다만 이 결과는 seed=1, repeat=1의 구현 확인 결과이므로, 최종 성능 주장에는 반복 실험과 파라미터 검증이 추가로 필요합니다.

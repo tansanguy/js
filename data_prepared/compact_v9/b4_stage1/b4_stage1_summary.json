@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_stage1_summary.v1",
-  "generated_at": "2026-06-04T16:29:20.131976+00:00",
+  "generated_at": "2026-06-05T02:13:47.893989+00:00",
   "algorithm": "B4",
   "status": "WARN",
   "primary_candidate": "B04_aa_balanced_growth",
@@ -38,7 +38,9 @@
     "movement_count": 6,
     "controllable_movement_count": 6,
     "control_candidate_count": 4,
-    "bottleneck_risk_count": 2
+    "bottleneck_risk_count": 2,
+    "case_b_candidate_count": 3,
+    "case_b_mapped_count": 3
   },
   "departure_summary": {
     "fire_station_start_edge": "420331801#1",
@@ -84,6 +86,8 @@
     "b4_merge_zone_json": "data_prepared/compact_v9/b4_stage1/b4_merge_zone.json",
     "b4_departure_flow_plan_json": "data_prepared/compact_v9/b4_stage1/b4_departure_flow_plan.json",
     "b4_bottleneck_queue_readiness_csv": "data_prepared/compact_v9/b4_stage1/b4_bottleneck_queue_readiness.csv",
+    "b4_case_b_candidates_csv": "data_prepared/compact_v9/b4_stage1/b4_case_b_candidates.csv",
+    "b4_case_b_candidates_json": "data_prepared/compact_v9/b4_stage1/b4_case_b_candidates.json",
     "b4_control_queue_threshold_proposal_json": "data_prepared/compact_v9/b4_stage1/b4_control_queue_threshold_proposal.json",
     "b4_b0_measured_signal_params_csv": "data_prepared/compact_v9/b4_stage1/b4_b0_measured_signal_params.csv",
     "b4_ta_proxy_policy_json": "data_prepared/compact_v9/b4_stage1/b4_ta_proxy_policy.json",
@@ -101,6 +105,7 @@
     "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
     "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
     "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
+    "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
     "linkIndex is a SUMO TLS movement index, not physical storage length.",
     "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted."
   ]

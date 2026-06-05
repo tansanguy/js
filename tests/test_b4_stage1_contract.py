@@ -66,6 +66,8 @@ class B4Stage1ContractTest(unittest.TestCase):
             "b4_merge_zone_json",
             "b4_departure_flow_plan_json",
             "b4_bottleneck_queue_readiness_csv",
+            "b4_case_b_candidates_csv",
+            "b4_case_b_candidates_json",
             "b4_control_queue_threshold_proposal_json",
             "b4_b0_measured_signal_params_csv",
             "b4_ta_proxy_policy_json",
@@ -176,6 +178,10 @@ class B4Stage1ContractTest(unittest.TestCase):
             self.assertIn(field, proposal["event_schema"])
         for field in ["TA_proxy_sec", "tQ_sec", "b0_q_avg_proxy_veh", "ta_triggered", "ta_formula"]:
             self.assertIn(field, proposal["event_schema"])
+        for field in ["queue_source", "case_b_source", "tS_source", "TA_case", "TA_upstream_sec", "TA_bottleneck_sec"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["case_b_mapping_status", "case_b_segment_id", "case_b_segment_queue_m_proxy", "case_b_segment_fill", "case_b_same_tls_policy"]:
+            self.assertIn(field, proposal["event_schema"])
         for field in ["n_occ_runtime_veh", "T_hold_proxy_sec", "stage2_formula", "stage2_measurement_source"]:
             self.assertIn(field, proposal["event_schema"])
         self.assertEqual(
@@ -197,6 +203,11 @@ class B4Stage1ContractTest(unittest.TestCase):
             "L_local_m",
             "L_corridor_m",
             "C_local_proxy_veh",
+            "queue_calibration_reference_m",
+            "queue_calibration_measured_m",
+            "queue_calibration_factor",
+            "queue_calibration_factor_applied",
+            "queue_calibration_source",
             "measurement_source",
             "field_queue_claim",
         }
@@ -207,10 +218,68 @@ class B4Stage1ContractTest(unittest.TestCase):
             self.assertEqual(float(row["L_local_m"]), 100.0)
             self.assertLessEqual(float(row["L_corridor_m"]), 250.0)
             self.assertGreaterEqual(float(row["C_local_proxy_veh"]), 0.0)
+            self.assertGreater(float(row["queue_calibration_factor_applied"]), 0.0)
+            self.assertEqual(row["queue_calibration_source"], "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv")
         policy = json.loads((STAGE1_DIR / "b4_ta_proxy_policy.json").read_text(encoding="utf-8"))
         self.assertEqual(policy["ta_formula"], "TA_proxy_sec = tE_sec - tS_sec - tQ_sec")
         self.assertIn("TA_proxy_sec <= 0", policy["ta_control_policy"])
         self.assertFalse(policy["field_queue_claim"])
+        self.assertIn("b0_source_policy", policy)
+
+    def test_case_b_candidates_are_generated_with_mapping_status(self):
+        csv_path = STAGE1_DIR / "b4_case_b_candidates.csv"
+        with csv_path.open(encoding="utf-8-sig", newline="") as file:
+            rows = list(csv.DictReader(file))
+        self.assertEqual({row["segment_id"] for row in rows}, {"S7", "S10", "S11"})
+        required = {
+            "segment_id",
+            "bottleneck_movement_id",
+            "upstream_movement_id",
+            "L_b0_m",
+            "lane_drop_delta",
+            "q_avg_B0",
+            "q_max_B0",
+            "tQ_hist_B0",
+            "lambda_B0",
+            "fill_B0",
+            "speed_B0",
+            "segment_q_avg_B0",
+            "segment_q_max_B0",
+            "segment_tQ_hist_B0",
+            "segment_lambda_B0",
+            "segment_fill_B0",
+            "segment_speed_B0",
+            "mapping_status",
+            "segment_edges",
+            "segment_lanes",
+            "segment_route_start_index",
+            "segment_route_end_index",
+            "proxy_edge_gap_upstream",
+            "proxy_edge_gap_bottleneck",
+            "same_tls_chain",
+            "case_b_runtime_enabled",
+            "case_b_prior_risk",
+        }
+        self.assertTrue(required.issubset(rows[0].keys()))
+        expected = {
+            "S7": ("B4_MOVEMENT_02", "B4_MOVEMENT_01"),
+            "S10": ("B4_MOVEMENT_03", "B4_MOVEMENT_02"),
+            "S11": ("B4_MOVEMENT_04", "B4_MOVEMENT_03"),
+        }
+        for row in rows:
+            self.assertEqual(row["mapping_status"], "mapped_route_span_proxy")
+            self.assertEqual((row["bottleneck_movement_id"], row["upstream_movement_id"]), expected[row["segment_id"]])
+            self.assertEqual(row["case_b_runtime_enabled"], "True")
+            self.assertNotEqual(row["segment_edges"], "")
+            self.assertNotEqual(row["segment_lanes"], "")
+            self.assertGreater(float(row["L_b0_m"]), 0.0)
+            self.assertGreaterEqual(int(row["lane_drop_delta"]), 0)
+
+        payload = json.loads((STAGE1_DIR / "b4_case_b_candidates.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload["measurement_source"], "SUMO B04 no-control B0 measured proxy")
+        self.assertIn("source_policy", payload)
+        self.assertEqual(payload["mapped_count"], 3)
+        self.assertEqual(payload["runtime_enabled_count"], 3)
 
     def test_stage2_b0_merge_hold_params_are_generated(self):
         payload = json.loads((STAGE1_DIR / "b4_stage2_b0_merge_hold_params.json").read_text(encoding="utf-8"))

@@ -40,6 +40,7 @@ from b4_runtime import (  # noqa: E402
     B04_MODE,
     B4_MODE,
     B4MvpParams,
+    B4ThetaParams,
     B4_PARAMETER_ID,
     B4_PRIMARY_CANDIDATE,
     B4RuntimePhaseConfig,
@@ -57,6 +58,7 @@ from b4_runtime import (  # noqa: E402
     run_b04_traci_loop,
     run_b4_traci_loop,
     safe_float,
+    unique_queue_lanes_for_movements,
     write_csv,
 )
 
@@ -184,6 +186,8 @@ def write_sumo_config(
     phase_config: B4RuntimePhaseConfig | None = None,
     *,
     emit_fcd: bool = False,
+    emit_e2: bool = False,
+    stage1: B4Stage1Inputs | None = None,
 ) -> dict[str, Path]:
     if task.is_analytic:
         raise B4RunnerError("B004 is analytic_50kmh and must not create a SUMO config")
@@ -196,6 +200,7 @@ def write_sumo_config(
     tripinfo = task.run_dir / "tripinfo.xml"
     summary = task.run_dir / "summary.xml"
     fcd = task.run_dir / "fcd.xml"
+    e2_output = task.run_dir / "e2_queue.xml"
     sumocfg = task.run_dir / "scenario.sumocfg"
     output_lines = [
         "  <output>",
@@ -212,17 +217,17 @@ def write_sumo_config(
         ])
     output_lines.append("  </output>")
 
-    additional.write_text(
-        "\n".join([
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            "<additional>",
-            f'  <edgeData id="b4_edge_data" freq="{EDGE_DATA_FREQ_SEC}" file="{edge_data.as_posix()}"/>',
-            f'  <laneData id="b4_lane_data" freq="{EDGE_DATA_FREQ_SEC}" file="{lane_data.as_posix()}"/>',
-            "</additional>",
-            "",
-        ]),
-        encoding="utf-8",
-    )
+    additional_lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<additional>",
+        f'  <edgeData id="b4_edge_data" freq="{EDGE_DATA_FREQ_SEC}" file="{edge_data.as_posix()}"/>',
+        f'  <laneData id="b4_lane_data" freq="{EDGE_DATA_FREQ_SEC}" file="{lane_data.as_posix()}"/>',
+    ]
+    if emit_e2:
+        stage1_for_e2 = stage1 or B4Stage1Inputs.load()
+        additional_lines.extend(e2_detector_lines(stage1_for_e2, e2_output))
+    additional_lines.extend(["</additional>", ""])
+    additional.write_text("\n".join(additional_lines), encoding="utf-8")
     sumocfg.write_text(
         "\n".join([
             '<?xml version="1.0" encoding="UTF-8"?>',
@@ -257,7 +262,27 @@ def write_sumo_config(
         "tripinfo": tripinfo,
         "summary": summary,
         "fcd": fcd,
+        "e2": e2_output,
     }
+
+
+def e2_detector_lines(stage1: B4Stage1Inputs, output_file: Path, max_movements: int = 3) -> list[str]:
+    lines: list[str] = []
+    ranked = sorted(
+        (movement for movement in stage1.movements if movement.controllable),
+        key=lambda movement: safe_float(getattr(stage1.queue_calibration_priors.get(movement.movement_id), "reference_queue_m", 0.0)),
+        reverse=True,
+    )
+    for movement in ranked[:max_movements]:
+        lanes = " ".join(movement.local_storage_lanes or movement.approach_lanes)
+        if not lanes:
+            continue
+        detector_id = f"b4_e2_{movement.movement_id}"
+        length_m = max(min(movement.stopline_local_storage_m, 120.0), 1.0)
+        lines.append(
+            f'  <laneAreaDetector id="{detector_id}" lanes="{lanes}" pos="0" length="{length_m}" freq="1" file="{output_file.as_posix()}"/>'
+        )
+    return lines
 
 
 def build_sumo_command(
@@ -266,8 +291,10 @@ def build_sumo_command(
     phase_config: B4RuntimePhaseConfig | None = None,
     *,
     emit_fcd: bool = False,
+    emit_e2: bool = False,
+    stage1: B4Stage1Inputs | None = None,
 ) -> list[str]:
-    paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd)
+    paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd, emit_e2=emit_e2, stage1=stage1)
     return [
         sumo_binary or find_executable("sumo"),
         "-c",
@@ -686,6 +713,7 @@ def summarize_task(
     monitor_fields: dict[str, Any] | None = None,
     failure_reason: str = "",
     emit_fcd: bool = False,
+    params: B4MvpParams | None = None,
 ) -> dict[str, Any]:
     paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd)
     tripinfo = parse_tripinfo(paths["tripinfo"])
@@ -697,7 +725,7 @@ def summarize_task(
     delays = [safe_float(row.get("timeLoss")) for row in background if row.get("timeLoss") not in {"", None}]
     stats = stats or {}
     monitor_fields = monitor_fields or {}
-    params = B4MvpParams()
+    params = params or B4MvpParams()
     row = base_result_row(task, stage1, params, phase_config)
     emergency_tripinfo_found = bool(emergency)
     monitor_fields["emergency_tripinfo_found"] = emergency_tripinfo_found
@@ -748,6 +776,19 @@ def summarize_task(
         "bottleneck_mode_count",
         "max_active_movement_count",
         "signal_burden_sec",
+        "queue_method_primary",
+        "queue_max_m",
+        "queue_p95_m",
+        "tls_queue_max_m",
+        "queue_local_fill_80m_max",
+        "queue_local_fill_100m_max",
+        "queue_local_fill_120m_max",
+        "queue_corridor_fill_250m_max",
+        "queue_trigger_count",
+        "queue_sampling_period_sec",
+        "queue_runtime_lane_count",
+        "queue_runtime_call_mode",
+        "queue_calibration_source",
     ]:
         row[field] = stats.get(field, 0)
     row["b0_emergency_travel_time_sec"] = ""
@@ -834,6 +875,7 @@ def run_b4_task(
     free_rows_by_id: dict[str, dict[str, Any]],
     sumo_binary: str | None = None,
     emit_fcd: bool = False,
+    params: B4MvpParams | B4ThetaParams | None = None,
 ) -> dict[str, Any]:
     start = time.time()
     command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd)
@@ -843,6 +885,7 @@ def run_b4_task(
     monitor_fields: dict[str, Any] = {}
     exit_code = 0
     failure_reason = ""
+    params = params or B4MvpParams()
     try:
         traci.start(command)
         controller_events, controller_stats, monitor = run_b4_traci_loop(
@@ -850,7 +893,7 @@ def run_b4_task(
             stage1,
             task.run_id,
             task.repeat_id,
-            B4MvpParams(),
+            params,
             phase_config,
         )
         events = controller_events
@@ -877,6 +920,7 @@ def run_b4_task(
         monitor_fields=monitor_fields,
         failure_reason=failure_reason,
         emit_fcd=emit_fcd,
+        params=params,
     )
 
 
@@ -903,6 +947,52 @@ def attach_b0_b4_comparison(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row["b4_minus_b0_EMV_sec"] = delta
         row["b4_performance_status"] = "faster_than_b0" if delta < 0 else "not_faster_than_b0"
     return rows
+
+
+def queue_runtime_summary(stage1: B4Stage1Inputs, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    tls_queue_map: dict[str, dict[str, Any]] = {}
+    for movement in stage1.movements:
+        payload = tls_queue_map.setdefault(movement.tls_id, {"movement_ids": [], "lanes": set()})
+        payload["movement_ids"].append(movement.movement_id)
+        payload["lanes"].update(movement.approach_lanes)
+        payload["lanes"].update(movement.local_storage_lanes)
+    serial_tls_map = {
+        tls_id: {
+            "movement_ids": payload["movement_ids"],
+            "unique_lane_count": len(payload["lanes"]),
+            "lanes": sorted(payload["lanes"]),
+        }
+        for tls_id, payload in tls_queue_map.items()
+    }
+    calibration_map = {
+        movement_id: {
+            "tls_id": prior.tls_id,
+            "source": prior.source,
+            "reference_queue_m": prior.reference_queue_m,
+            "runtime_baseline_queue_m": prior.runtime_baseline_queue_m,
+            "calibration_factor": prior.calibration_factor,
+        }
+        for movement_id, prior in stage1.queue_calibration_priors.items()
+    }
+    b4_rows = [row for row in rows if row.get("mode") == B4_MODE]
+    return {
+        "schema": "compact_v9_B4_runtime_queue_summary.v1",
+        "queue_runtime_call_mode": "unique_lane_snapshot",
+        "unique_lane_count": len(unique_queue_lanes_for_movements(stage1.movements)),
+        "tls_queue_map": serial_tls_map,
+        "calibration_map": calibration_map,
+        "queue_results": {
+            "queue_method_primary": next((row.get("queue_method_primary", "") for row in b4_rows if row.get("queue_method_primary") != ""), ""),
+            "queue_max_m": max((safe_float(row.get("queue_max_m")) for row in b4_rows), default=0.0),
+            "queue_p95_m": max((safe_float(row.get("queue_p95_m")) for row in b4_rows), default=0.0),
+            "tls_queue_max_m": max((safe_float(row.get("tls_queue_max_m")) for row in b4_rows), default=0.0),
+            "queue_trigger_count": sum(int(safe_float(row.get("queue_trigger_count"))) for row in b4_rows),
+        },
+        "e2_enabled": False,
+        "shockwave_enabled": False,
+        "shockwave_policy": "method=shockwave_pending only when corridor fill indicates spillback; no state-space correction in MVP",
+        "stale_data_fallback_policy": "missing lane snapshots keep queue fields present with low confidence; tripinfo is never runtime truth",
+    }
 
 
 def comparison_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1142,6 +1232,7 @@ def write_metric_outputs(
             "vehicle_free_time_method": VEHICLE_FREE_TIME_METHOD,
             "B004_meaning": "EMV-only free-flow reference from Jungbu fire station to Seoul Station front.",
             "V_definition": "Stage 1 controllable movement edge route-overlap background vehicles; no FCD edge-pass claim.",
+            "queue_runtime": queue_runtime_summary(stage1, rows),
             "outputs": {
                 "experiment_results_csv": rel(experiment_results),
                 "signal_events_csv": rel(signal_events),

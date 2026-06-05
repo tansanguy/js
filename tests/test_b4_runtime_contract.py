@@ -179,6 +179,7 @@ class B4RuntimeContractTest(unittest.TestCase):
             operational_queue=candidate,
             bottleneck_risk=bottleneck,
             control_mode="bottleneck_downstream_first" if bottleneck else "normal_preemptive",
+            queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE,
         )
 
     def test_stage1_load_contract_keeps_aa_primary_and_manifest_selected(self):
@@ -196,6 +197,12 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(stage1.stage2_merge_hold.L_merge_m, 50.0)
         self.assertAlmostEqual(stage1.stage2_merge_hold.C_merge_proxy_veh, 50.0 / 6.5, places=5)
         self.assertAlmostEqual(stage1.stage2_merge_hold.n_need_proxy_veh, 2.0)
+        self.assertEqual({candidate.segment_id for candidate in stage1.case_b_candidates}, {"S7", "S10", "S11"})
+        self.assertTrue(all(candidate.mapping_status == "mapped_route_span_proxy" for candidate in stage1.case_b_candidates))
+        self.assertTrue(all(candidate.mapped for candidate in stage1.case_b_candidates))
+        self.assertTrue(all(candidate.segment_lanes for candidate in stage1.case_b_candidates))
+        self.assertTrue(stage1.queue_calibration_priors)
+        self.assertTrue(all(prior.calibration_factor > 0.0 for prior in stage1.queue_calibration_priors.values()))
 
     def test_trigger_contract_uses_local_100m_or_speed(self):
         thresholds = self.runtime.B4Thresholds()
@@ -232,6 +239,27 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertAlmostEqual(ta.tQ_sec, 10.0)
         self.assertAlmostEqual(ta.TA_proxy_sec, -5.0)
         self.assertTrue(ta.ta_triggered)
+        self.assertEqual(ta.queue_source, "runtime_proxy")
+        self.assertEqual(ta.tS_source, "b0_phase_proxy")
+
+    def test_ta_proxy_uses_b0_tq_when_runtime_queue_is_stale_or_empty(self):
+        ta = self.runtime.compute_ta_proxy(
+            ev_distance_m=139.0,
+            queue_m_proxy=0.0,
+            lane_count=2,
+            previous_phase=1,
+            target_phase=1,
+            queue_confidence=self.runtime.QUEUE_STALE_CONFIDENCE,
+            queue_method="lane_proxy",
+            b0_tQ_hist_sec=7.0,
+            b0_queue_veh=2.0,
+        )
+        self.assertAlmostEqual(ta.tE_sec, 10.0)
+        self.assertAlmostEqual(ta.tS_sec, 0.0)
+        self.assertAlmostEqual(ta.tQ_sec, 7.0)
+        self.assertAlmostEqual(ta.TA_proxy_sec, 3.0)
+        self.assertEqual(ta.queue_source, "b0_fallback")
+        self.assertEqual(ta.tS_source, "current_phase_direct")
 
     def test_stage2_entry_hold_and_release_preserves_ev_uncontrolled_warn(self):
         traci = FakeTraci()
@@ -252,6 +280,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(float(hold_events[0]["L_merge_m"]), 50.0)
         self.assertIn("T_hold_proxy_sec", hold_events[0])
         self.assertIn("n_occ_runtime_veh", hold_events[0])
+        self.assertEqual(hold_events[0]["runtime_or_b0_fallback"], "runtime")
         self.assertAlmostEqual(float(hold_events[0]["T_hold_proxy_sec"]), 4.992806, places=5)
         self.assertEqual(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], 2)
 
@@ -287,6 +316,216 @@ class B4RuntimeContractTest(unittest.TestCase):
         selected_bottleneck = self.runtime.order_stage3_candidates(bottleneck_metrics, current_route_index=0, max_active=3)
         self.assertEqual(len(selected_bottleneck), 3)
         self.assertEqual([item.movement.route_order_index for item in selected_bottleneck], sorted(item.movement.route_order_index for item in selected_bottleneck))
+
+    def test_case_b_candidate_order_puts_bottleneck_before_upstream_when_runtime_tau_trips(self):
+        upstream = self.stage1.movements[0]
+        bottleneck = self.stage1.movements[1]
+        stage1 = replace(
+            self.stage1,
+            case_b_candidates=(
+                self.runtime.B4CaseBCandidate(
+                    segment_id="S_TEST",
+                    bottleneck_movement_id=bottleneck.movement_id,
+                    upstream_movement_id=upstream.movement_id,
+                    L_b0_m=100.0,
+                    lane_drop_delta=1,
+                    q_avg_B0=1.0,
+                    q_max_B0=2.0,
+                    tQ_hist_B0=4.0,
+                    lambda_B0=100.0,
+                    fill_B0=0.80,
+                    speed_B0=10.0,
+                    mapping_status="mapped",
+                    tau_default=0.75,
+                    case_b_prior_risk=True,
+                ),
+            ),
+        )
+        controller = self.runtime.B4RuntimeController(traci=FakeTraci(), stage1=stage1, run_id="contract")
+        upstream_metric = replace(self.metric(upstream, queue_m_proxy=10.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+        bottleneck_metric = replace(self.metric(bottleneck, queue_m_proxy=80.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+        metrics_by_id = {
+            upstream.movement_id: upstream_metric,
+            bottleneck.movement_id: bottleneck_metric,
+        }
+        ordered = controller.order_case_b_candidates(
+            [upstream_metric, bottleneck_metric],
+            metrics_by_id,
+            current_route_index=0,
+            max_active=3,
+        )
+        self.assertEqual([metric.movement.movement_id for metric in ordered[:2]], [bottleneck.movement_id, upstream.movement_id])
+        case_b = controller.case_b_evaluation(
+            bottleneck_metric,
+            metrics_by_id,
+            {upstream.movement_id: 50.0, bottleneck.movement_id: 60.0},
+            controller.metric_ta(bottleneck_metric, {bottleneck.movement_id: 60.0}, previous_phase=bottleneck.selected_red_phase),
+        )
+        self.assertEqual(case_b.case_b_source, "runtime_tau_movement")
+        self.assertEqual(case_b.TA_case, "caseB_bottleneck")
+        self.assertNotEqual(case_b.TA_upstream_sec, "")
+        self.assertNotEqual(case_b.TA_bottleneck_sec, "")
+
+    def test_case_b_segment_fill_triggers_before_movement_queue(self):
+        upstream = self.stage1.movements[0]
+        bottleneck = self.stage1.movements[1]
+        candidate = self.runtime.B4CaseBCandidate(
+            segment_id="S_TEST",
+            bottleneck_movement_id=bottleneck.movement_id,
+            upstream_movement_id=upstream.movement_id,
+            L_b0_m=100.0,
+            lane_drop_delta=1,
+            q_avg_B0=1.0,
+            q_max_B0=2.0,
+            tQ_hist_B0=4.0,
+            lambda_B0=100.0,
+            fill_B0=0.10,
+            speed_B0=30.0,
+            mapping_status="mapped_route_span_proxy",
+            tau_default=0.75,
+            case_b_prior_risk=False,
+            segment_lanes=("lane_a",),
+            case_b_runtime_enabled=True,
+        )
+        stage1 = replace(self.stage1, case_b_candidates=(candidate,))
+        controller = self.runtime.B4RuntimeController(traci=FakeTraci(), stage1=stage1, run_id="contract")
+        upstream_metric = replace(self.metric(upstream, queue_m_proxy=0.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+        bottleneck_metric = replace(self.metric(bottleneck, queue_m_proxy=10.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+        metrics_by_id = {upstream.movement_id: upstream_metric, bottleneck.movement_id: bottleneck_metric}
+        segment_metrics = {
+            "S_TEST": self.runtime.CaseBSegmentRuntimeMetrics(
+                segment_id="S_TEST",
+                queue_m_proxy=80.0,
+                fill=0.80,
+                queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE,
+                observed_lane_count=1,
+            )
+        }
+        ordered = controller.order_case_b_candidates(
+            [upstream_metric, bottleneck_metric],
+            metrics_by_id,
+            current_route_index=0,
+            max_active=3,
+            segment_metrics_by_id=segment_metrics,
+        )
+        self.assertEqual([metric.movement.movement_id for metric in ordered[:2]], [bottleneck.movement_id, upstream.movement_id])
+        case_b = controller.case_b_evaluation(
+            bottleneck_metric,
+            metrics_by_id,
+            {upstream.movement_id: 50.0, bottleneck.movement_id: 60.0},
+            controller.metric_ta(bottleneck_metric, {bottleneck.movement_id: 60.0}, previous_phase=bottleneck.selected_red_phase),
+            segment_metrics,
+        )
+        self.assertEqual(case_b.case_b_source, "runtime_tau_segment")
+        self.assertEqual(case_b.case_b_segment_id, "S_TEST")
+        self.assertAlmostEqual(float(case_b.case_b_segment_fill), 0.80)
+
+    def test_case_b_runtime_tau_miss_stays_case_a(self):
+        upstream = self.stage1.movements[0]
+        bottleneck = self.stage1.movements[1]
+        stage1 = replace(
+            self.stage1,
+            case_b_candidates=(
+                self.runtime.B4CaseBCandidate(
+                    segment_id="S_TEST",
+                    bottleneck_movement_id=bottleneck.movement_id,
+                    upstream_movement_id=upstream.movement_id,
+                    L_b0_m=100.0,
+                    lane_drop_delta=1,
+                    q_avg_B0=1.0,
+                    q_max_B0=2.0,
+                    tQ_hist_B0=4.0,
+                    lambda_B0=100.0,
+                    fill_B0=0.80,
+                    speed_B0=10.0,
+                    mapping_status="mapped",
+                    tau_default=0.75,
+                    case_b_prior_risk=True,
+                ),
+            ),
+        )
+        controller = self.runtime.B4RuntimeController(traci=FakeTraci(), stage1=stage1, run_id="contract")
+        bottleneck_metric = replace(self.metric(bottleneck, queue_m_proxy=20.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+        case_b = controller.case_b_evaluation(
+            bottleneck_metric,
+            {
+                upstream.movement_id: replace(self.metric(upstream, queue_m_proxy=10.0), queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE),
+                bottleneck.movement_id: bottleneck_metric,
+            },
+            {upstream.movement_id: 50.0, bottleneck.movement_id: 60.0},
+            controller.metric_ta(bottleneck_metric, {bottleneck.movement_id: 60.0}, previous_phase=bottleneck.selected_red_phase),
+        )
+        self.assertEqual(case_b.case_b_source, "not_case_b")
+        self.assertEqual(case_b.TA_case, "caseA")
+
+    def test_case_b_stale_runtime_uses_b0_prior(self):
+        upstream = self.stage1.movements[0]
+        bottleneck = self.stage1.movements[1]
+        candidate = self.runtime.B4CaseBCandidate(
+            segment_id="S_TEST",
+            bottleneck_movement_id=bottleneck.movement_id,
+            upstream_movement_id=upstream.movement_id,
+            L_b0_m=100.0,
+            lane_drop_delta=1,
+            q_avg_B0=1.0,
+            q_max_B0=2.0,
+            tQ_hist_B0=4.0,
+            lambda_B0=100.0,
+            fill_B0=0.80,
+            speed_B0=10.0,
+            mapping_status="mapped_route_span_proxy",
+            tau_default=0.75,
+            case_b_prior_risk=True,
+            segment_lanes=("lane_a",),
+            case_b_runtime_enabled=True,
+        )
+        stage1 = replace(self.stage1, case_b_candidates=(candidate,))
+        controller = self.runtime.B4RuntimeController(traci=FakeTraci(), stage1=stage1, run_id="contract")
+        bottleneck_metric = replace(self.metric(bottleneck, queue_m_proxy=0.0), queue_confidence=self.runtime.QUEUE_STALE_CONFIDENCE)
+        case_b = controller.case_b_evaluation(
+            bottleneck_metric,
+            {
+                upstream.movement_id: replace(self.metric(upstream, queue_m_proxy=0.0), queue_confidence=self.runtime.QUEUE_STALE_CONFIDENCE),
+                bottleneck.movement_id: bottleneck_metric,
+            },
+            {upstream.movement_id: 50.0, bottleneck.movement_id: 60.0},
+            controller.metric_ta(bottleneck_metric, {bottleneck.movement_id: 60.0}, previous_phase=bottleneck.selected_red_phase),
+        )
+        self.assertEqual(case_b.case_b_source, "b0_prior")
+
+    def test_case_b_same_tls_upstream_is_deferred_after_bottleneck_phase_change(self):
+        candidate = next(item for item in self.stage1.case_b_candidates if item.segment_id == "S10")
+        self.assertTrue(candidate.same_tls_chain)
+        bottleneck = next(item for item in self.stage1.movements if item.movement_id == candidate.bottleneck_movement_id)
+        upstream = next(item for item in self.stage1.movements if item.movement_id == candidate.upstream_movement_id)
+        self.assertNotEqual(bottleneck.selected_green_phase, upstream.selected_green_phase)
+        traci = FakeTraci()
+        traci.vehicle.vehicles[self.stage1.ev_id] = {
+            "edge": upstream.from_edge,
+            "lane": f"{upstream.from_edge}_0",
+            "route_index": upstream.route_order_index,
+            "lane_position": 0.0,
+            "speed": 0.0,
+        }
+        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        original = self.runtime.movement_runtime_metrics
+
+        def fake_metrics(_traci, candidate_movement, _thresholds):
+            is_chain = candidate_movement.movement_id in {candidate.bottleneck_movement_id, candidate.upstream_movement_id}
+            metric = self.metric(candidate_movement, candidate=is_chain, queue_m_proxy=220.0 if is_chain else 0.0)
+            return replace(metric, queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
+
+        self.runtime.movement_runtime_metrics = fake_metrics
+        try:
+            events = controller.handle_stage3(700.0, controller.ev_state())
+        finally:
+            self.runtime.movement_runtime_metrics = original
+        phase_changes = [event for event in events if event["action_type"] == "phase_change_target_green"]
+        deferred = [event for event in events if event["action_type"] == "case_b_same_tls_deferred"]
+        self.assertTrue(any(event["movement_id"] == bottleneck.movement_id for event in phase_changes))
+        self.assertTrue(any(event["movement_id"] == upstream.movement_id for event in deferred))
+        self.assertEqual(deferred[0]["case_b_same_tls_policy"], "bottleneck_first_defer_upstream_same_tls")
+        self.assertEqual(deferred[0]["case_b_source"], "runtime_tau_movement")
 
     def test_stage3_same_tls_downstream_flush_cycles_when_ev_is_stopped(self):
         same_tls_pair = [
@@ -584,6 +823,10 @@ class B4RuntimeContractTest(unittest.TestCase):
         for field in ["local_fill_80m", "local_fill_120m", "queue_m_proxy", "tE_sec", "stage2_hold_status"]:
             self.assertIn(field, row)
         for field in ["TA_proxy_sec", "tQ_sec", "b0_q_avg_proxy_veh", "ta_triggered", "ta_formula", "ta_input_source"]:
+            self.assertIn(field, row)
+        for field in ["queue_source", "case_b_source", "tS_source", "TA_case", "TA_upstream_sec", "TA_bottleneck_sec"]:
+            self.assertIn(field, row)
+        for field in ["case_b_mapping_status", "case_b_segment_id", "case_b_segment_queue_m_proxy", "case_b_segment_fill", "case_b_same_tls_policy"]:
             self.assertIn(field, row)
         for field in ["D_merge_m", "n_occ_runtime_veh", "T_hold_proxy_sec", "stage2_formula", "stage2_measurement_source"]:
             self.assertIn(field, row)
