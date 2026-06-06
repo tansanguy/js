@@ -1,0 +1,6 @@
+parameter_id,changed_variable,changed_value,final_status,failure_reason,emergency_arrived,emergency_teleport,emergency_stuck_duration_sec,T_actual_EMV_sec,general_mean_travel_time_sec,bo_score_sec,signal_burden_sec,general_mean_delay_sec,background_arrived_ratio,delta_EV_sec,delta_general_sec,delta_score_sec,t_lead,tau,ext_max,hold_max,d_up
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,,True,False,0.0,571.0,227.8921,5937.89,511.083838,163.846686,0.115129,0.0,0.0,0.0,21,0.7,32,14,1
+ofat_tau_0p65,tau,0.65,PASS,,True,False,0.0,571.0,227.8921,5937.89,511.083838,163.846686,0.115129,0.0,0.0,0.0,21,0.65,32,14,1
+ofat_tau_0p75,tau,0.75,PASS,,True,False,0.0,754.0,250.618538,7790.62,531.417683,187.424991,0.124445,183.0,22.726,1852.73,21,0.75,32,14,1
+ofat_tau_0p8,tau,0.8,PASS,,True,False,0.0,754.0,250.618538,7790.62,531.417683,187.424991,0.124445,183.0,22.726,1852.73,21,0.8,32,14,1
+ofat_tau_0p85,tau,0.85,PASS,,True,False,0.0,869.0,279.060185,8969.06,514.72674,213.147377,0.143744,298.0,51.168,3031.17,21,0.85,32,14,1

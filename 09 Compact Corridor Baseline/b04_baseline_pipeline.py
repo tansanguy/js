@@ -41,6 +41,7 @@ B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
 B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_MAPPING_CSV = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
+B04_MAPPING_FALLBACK_CSV = DATA_ROOT / "map/toegye_segment_edge_mapping.csv"
 B04_TARGET_PROFILE_CSV = DATA_ROOT / "map/B04_target_profile.csv"
 B04_FIRETRUCK_ROUTE_XML = DATA_ROOT / "routes/firetruck_to_seoul_station_front.rou.xml"
 B04_FIRETRUCK_ROUTE_CSV = DATA_ROOT / "routes/firetruck_route.csv"
@@ -48,6 +49,8 @@ B04_DEMAND_DIR = DATA_ROOT / "demand"
 B04_SELECTED_DIR = METRICS_ROOT / "selected"
 B04_REVIEW_HTML = HTML_ROOT / "compact_v9_B04_demand_validation_review.html"
 B04_QUEUE_AUDIT_DIR = METRICS_ROOT / "queue_audit"
+B04_CSV_SIGNAL_CANDIDATES_CSV = DATA_ROOT / "net/B04_csv_signal_candidates.csv"
+B04_CSV_SIGNAL_SUMMARY_JSON = DATA_ROOT / "net/B04_csv_signal_summary.json"
 
 VEHICLE_LENGTH_M = 5.0
 HEADWAY_M = 7.5
@@ -68,6 +71,27 @@ OD_QUEUE_TUNED_TARGETS = (
     ("S13", "downbound"), ("S14", "downbound"), ("S15", "downbound"),
 )
 B4_CONTROL_TARGET_SEGMENTS = ("S3", "S6", "S9", "S15", "S21")
+CSV_SIGNAL_MATCH_RADIUS_M = 90.0
+CSV_SIGNAL_CYCLE_SEC = 72.0
+CSV_SIGNAL_YELLOW_SEC = 3.0
+CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC = 57.0
+CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC = 10.0
+TERMINAL_EGRESS_GREEN_SEC = 96.0
+TERMINAL_EGRESS_OTHER_GREEN_SEC = 8.0
+TERMINAL_EGRESS_YELLOW_SEC = 3.0
+B04_MAIN_THROUGH_REBALANCED_CANDIDATE = "B04_ac_main_through_rebalanced"
+B04_VARIANCE_SMOOTHED_CANDIDATE = "B04_ad_variance_smoothed"
+B04_MAIN_THROUGH_REBALANCE_CANDIDATES = {
+    B04_MAIN_THROUGH_REBALANCED_CANDIDATE,
+    B04_VARIANCE_SMOOTHED_CANDIDATE,
+}
+B04_MAIN_THROUGH_TARGET_TOTAL_MIN = 1300
+B04_MAIN_THROUGH_TARGET_TOTAL_MAX = 1500
+B04_MAIN_THROUGH_TARGET_MIN = 650
+B04_MAIN_THROUGH_TARGET_MAX = 800
+B04_MAIN_THROUGH_TARGET_SHARE_MIN = 0.50
+B04_MAIN_THROUGH_FEEDER_STEP = 0.02
+B04_MAIN_THROUGH_FEEDER_MAX = 0.44
 
 CANDIDATES = {
     "B04_a_csv_through_only": {
@@ -503,6 +527,66 @@ CANDIDATES = {
         "speed_dev": 0.08,
         "calibration_note": "Queue-pressure candidate: terminal-safe through growth and tighter B4 stopline pulse.",
     },
+    B04_MAIN_THROUGH_REBALANCED_CANDIDATE: {
+        "through_scale_upbound": 0.33,
+        "through_scale_downbound": 0.42,
+        "feeder_share_upbound": 0.015,
+        "feeder_share_downbound": 0.40,
+        "midcorridor_share": 0.07,
+        "sideflow_share": 0.11,
+        "od_repair_share": 0.22,
+        "od_queue_tuned_share": 0.12,
+        "pulse_share": 0.55,
+        "pulse_begin": 540.0,
+        "pulse_end": 960.0,
+        "target_pulse_mode": "compressed",
+        "target_pulse_begin": 600.0,
+        "target_pulse_end": 900.0,
+        "net_profile": "speed50_sanity",
+        "avoid_terminal_sources": 1.0,
+        "avoid_terminal_sinks": 1.0,
+        "use_balanced_main_through": 1.0,
+        "balanced_main_through_only": 1.0,
+        "segment_factor_mode": "free_under_volume_boost",
+        "free_under_volume_boost": 1.18,
+        "free_boost": 1.08,
+        "stop_cut": 0.82,
+        "template_cap": 760,
+        "source_cap": 840,
+        "speed_factor": 0.88,
+        "speed_dev": 0.08,
+        "calibration_note": "Main-through rebalance: keep total B04 demand stable while moving off-main/feeder load into terminal-safe Toegye-ro through flow.",
+    },
+    B04_VARIANCE_SMOOTHED_CANDIDATE: {
+        "through_scale_upbound": 0.33,
+        "through_scale_downbound": 0.42,
+        "feeder_share_upbound": 0.015,
+        "feeder_share_downbound": 0.40,
+        "midcorridor_share": 0.07,
+        "sideflow_share": 0.11,
+        "od_repair_share": 0.22,
+        "od_queue_tuned_share": 0.12,
+        "pulse_share": 0.40,
+        "pulse_begin": 360.0,
+        "pulse_end": 1320.0,
+        "target_pulse_mode": "compressed",
+        "target_pulse_begin": 480.0,
+        "target_pulse_end": 1120.0,
+        "net_profile": "speed50_sanity",
+        "avoid_terminal_sources": 1.0,
+        "avoid_terminal_sinks": 1.0,
+        "use_balanced_main_through": 1.0,
+        "balanced_main_through_only": 1.0,
+        "segment_factor_mode": "free_under_volume_boost",
+        "free_under_volume_boost": 1.18,
+        "free_boost": 1.08,
+        "stop_cut": 0.82,
+        "template_cap": 760,
+        "source_cap": 840,
+        "speed_factor": 0.80,
+        "speed_dev": 0.03,
+        "calibration_note": "Variance-smoothed main-through rebalance: wider target pulse and lower speed deviation while preserving AC total/main-through targets.",
+    },
 }
 
 
@@ -567,8 +651,13 @@ def safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def segment_number(segment_id: str) -> int:
-    return int(str(segment_id).strip().lstrip("S") or 0)
+def safe_int(value: Any, default: int = 0) -> int:
+    try:
+        if value in {"", None}:
+            return default
+        return int(round(float(value)))
+    except (TypeError, ValueError):
+        return default
 
 
 def load_module(name: str, path: Path) -> Any:
@@ -585,11 +674,551 @@ def validated_pipeline() -> Any:
     return load_module("b04_validated_pipeline", PROJECT_ROOT / "01-2 Validated/validated_pipeline.py")
 
 
+def segment_number(segment_id: str) -> int:
+    text = str(segment_id).strip().upper()
+    if not text.startswith("S"):
+        return 0
+    try:
+        return int(text[1:])
+    except ValueError:
+        return 0
+
+
+def signal_id_token(value: str) -> str:
+    cleaned = "".join(char.upper() if char.isalnum() else "_" for char in str(value))
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    return cleaned.strip("_")
+
+
+def candidate_phase_count(value: set[str]) -> int:
+    counts = [safe_int(item, 0) for item in value if safe_int(item, 0) > 0]
+    return max(counts) if counts else 0
+
+
+def csv_signal_candidate_points() -> list[dict[str, Any]]:
+    points: dict[tuple[float, float, str], dict[str, Any]] = {}
+    for row in read_csv(REFERENCE_CSV):
+        for side in ("start", "end"):
+            name = row.get(f"{side}_intersection", "").strip()
+            if not name:
+                continue
+            lat = safe_float(row.get(f"{side}_latitude"))
+            lon = safe_float(row.get(f"{side}_longitude"))
+            if lat == 0.0 or lon == 0.0:
+                continue
+            key = (round(lat, 6), round(lon, 6), name)
+            slot = points.setdefault(
+                key,
+                {
+                    "name": name,
+                    "lat": lat,
+                    "lon": lon,
+                    "segments": [],
+                    "segment_numbers": set(),
+                    "phase_values": set(),
+                    "critical": False,
+                    "named_intersection": not name.lower().startswith("lane change point"),
+                },
+            )
+            segment_id = row.get("segment_id", "")
+            slot["segments"].append(f"{segment_id}:{side}")
+            segment_no = segment_number(segment_id)
+            if segment_no:
+                slot["segment_numbers"].add(segment_no)
+            phase = str(row.get(f"{side}_signal_phase", "")).strip()
+            if phase:
+                slot["phase_values"].add(phase)
+            if str(row.get(f"is_{side}_critical_intersection", "")).strip().upper() == "TRUE":
+                slot["critical"] = True
+
+    candidates = []
+    for slot in points.values():
+        shared_named_boundary = bool(slot["named_intersection"] and len(slot["segments"]) >= 2)
+        if not slot["named_intersection"] or not (slot["phase_values"] or slot["critical"] or shared_named_boundary):
+            continue
+        phase_count = candidate_phase_count(slot["phase_values"])
+        reasons = []
+        if slot["phase_values"]:
+            reasons.append("csv_signal_phase")
+        if slot["critical"]:
+            reasons.append("csv_critical_intersection")
+        if shared_named_boundary and not slot["phase_values"]:
+            reasons.append("named_segment_boundary_no_phase")
+        segment_numbers = sorted(slot["segment_numbers"])
+        if len(segment_numbers) >= 2:
+            boundary_id = f"S{segment_numbers[0]:02d}_S{segment_numbers[-1]:02d}"
+        elif segment_numbers:
+            boundary_id = f"S{segment_numbers[0]:02d}"
+        else:
+            boundary_id = "SXX"
+        candidates.append({
+            "boundary_id": boundary_id,
+            "intersection_name": slot["name"],
+            "lat": slot["lat"],
+            "lon": slot["lon"],
+            "segments": " ".join(slot["segments"]),
+            "segment_numbers": segment_numbers,
+            "phase_count": phase_count,
+            "critical": bool(slot["critical"]),
+            "candidate_reason": "+".join(reasons),
+            "tls_id": f"CSV_TLS_{boundary_id}_{signal_id_token(slot['name'])[:48]}",
+        })
+    return sorted(candidates, key=lambda item: (item["segment_numbers"] or [999], item["intersection_name"]))
+
+
+def load_signal_edge_segments() -> dict[str, dict[str, Any]]:
+    mapping_path = B04_MAPPING_CSV if B04_MAPPING_CSV.is_file() else B04_MAPPING_FALLBACK_CSV
+    if not mapping_path.is_file():
+        return {}
+    best: dict[str, dict[str, Any]] = {}
+    for row in read_csv(mapping_path):
+        edge_id = row.get("edge_id", "")
+        if not edge_id:
+            continue
+        score = safe_float(row.get("matched_length_m"), safe_float(row.get("match_ratio")))
+        if edge_id not in best or score > safe_float(best[edge_id].get("_score")):
+            best[edge_id] = {
+                "_score": score,
+                "segment_id": row.get("segment_id", ""),
+                "segment_no": segment_number(row.get("segment_id", "")),
+                "direction": row.get("direction", ""),
+            }
+    return best
+
+
+def route_edges_for_signal_mapping() -> list[str]:
+    if not B04_FIRETRUCK_ROUTE_XML.is_file():
+        return []
+    root = ET.parse(B04_FIRETRUCK_ROUTE_XML).getroot()
+    route = root.find("route")
+    return str(route.get("edges") if route is not None else "").split()
+
+
+def direct_connection_junction_id(connection: ET.Element) -> str:
+    via = connection.get("via", "")
+    if not via.startswith(":"):
+        return ""
+    return via[1:].rsplit("_", 2)[0]
+
+
+def lonlat_distance_m(lon_a: float, lat_a: float, lon_b: float, lat_b: float) -> float:
+    mean_lat = math.radians((lat_a + lat_b) / 2.0)
+    dx = (lon_a - lon_b) * 111_320.0 * math.cos(mean_lat)
+    dy = (lat_a - lat_b) * 110_540.0
+    return math.hypot(dx, dy)
+
+
+def candidate_matches_transition(candidate: dict[str, Any], from_segment_no: int, to_segment_no: int) -> bool:
+    numbers = candidate.get("segment_numbers") or []
+    if not numbers or from_segment_no <= 0 or to_segment_no <= 0:
+        return False
+    low = min(from_segment_no, to_segment_no)
+    high = max(from_segment_no, to_segment_no)
+    return min(numbers) >= low and max(numbers) <= high
+
+
+def junction_lonlat_by_id(net_file: Path, root: ET.Element) -> dict[str, tuple[float, float]]:
+    sumo_net = read_sumo_net(net_file)
+    coordinates = {}
+    for junction in root.findall("junction"):
+        junction_id = junction.get("id", "")
+        if not junction_id:
+            continue
+        try:
+            x = safe_float(junction.get("x"))
+            y = safe_float(junction.get("y"))
+            lon, lat = sumo_net.convertXY2LonLat(x, y)
+        except Exception:
+            continue
+        coordinates[junction_id] = (float(lon), float(lat))
+    return coordinates
+
+
+def side_green_seconds(phase_count: int) -> float:
+    if phase_count >= 4:
+        return 9.0
+    if phase_count == 3:
+        return 8.0
+    if phase_count == 2:
+        return 7.0
+    return 6.0
+
+
+def route_pair_arrival_estimates(
+    net_file: Path,
+    route_edges: list[str],
+    *,
+    speed_mps: float = SPEED50_MPS,
+) -> dict[int, float]:
+    if not route_edges:
+        return {}
+    try:
+        sumo_net = read_sumo_net(net_file)
+    except Exception:
+        return {}
+    estimates: dict[int, float] = {}
+    distance_m = 0.0
+    for route_pair_index, from_edge in enumerate(route_edges[:-1]):
+        try:
+            edge = sumo_net.getEdge(from_edge)
+            distance_m += float(edge.getLength())
+        except Exception:
+            pass
+        estimates[route_pair_index] = EV_DEPART_SEC + distance_m / max(speed_mps, 0.1)
+    return estimates
+
+
+def green_wave_offset_sec(expected_arrival_sec: float, cycle_sec: float) -> float:
+    if expected_arrival_sec <= 0.0 or cycle_sec <= 0.0:
+        return 0.0
+    return round((expected_arrival_sec - CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC) % cycle_sec, 3)
+
+
+def connection_sort_key(connection: ET.Element) -> tuple[str, int, int, str, str]:
+    via = connection.get("via", "")
+    base = -1
+    lane = -1
+    if via.startswith(":"):
+        parts = via.rsplit("_", 2)
+        if len(parts) == 3:
+            base = safe_int(parts[1], -1)
+            lane = safe_int(parts[2], -1)
+    return (direct_connection_junction_id(connection), base, lane, connection.get("from", ""), connection.get("to", ""))
+
+
+def build_csv_signal_states(length: int, main_indices: set[int], phase_count: int) -> list[dict[str, Any]]:
+    if length <= 0:
+        return []
+    minor_indices = set(range(length)) - main_indices
+    if not minor_indices:
+        return [{"duration": CSV_SIGNAL_CYCLE_SEC, "state": "G" * length, "name": "csv_mainline_open"}]
+    side_green = side_green_seconds(phase_count)
+    main_green = CSV_SIGNAL_CYCLE_SEC - side_green - 2 * CSV_SIGNAL_YELLOW_SEC
+    if main_green < CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC:
+        main_green = CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC
+    def state_for(green: set[int], yellow: set[int], green_char: str = "G") -> str:
+        chars = []
+        for index in range(length):
+            if index in green:
+                chars.append(green_char)
+            elif index in yellow:
+                chars.append("y")
+            else:
+                chars.append("r")
+        return "".join(chars)
+    return [
+        {"duration": main_green, "state": state_for(main_indices, set()), "name": "csv_mainline_green"},
+        {"duration": CSV_SIGNAL_YELLOW_SEC, "state": state_for(set(), main_indices), "name": "csv_mainline_yellow"},
+        {"duration": side_green, "state": state_for(minor_indices, set(), "g"), "name": "csv_side_green"},
+        {"duration": CSV_SIGNAL_YELLOW_SEC, "state": state_for(set(), minor_indices), "name": "csv_side_yellow"},
+    ]
+
+
+def apply_csv_signal_to_junction(
+    root: ET.Element,
+    *,
+    junction_id: str,
+    tls_id: str,
+    route_from_edge: str,
+    route_to_edge: str,
+    phase_count: int,
+    offset_sec: float,
+    edge_segments: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    direct_connections = [
+        connection
+        for connection in root.findall("connection")
+        if connection.get("from") and not str(connection.get("from", "")).startswith(":")
+        and direct_connection_junction_id(connection) == junction_id
+    ]
+    direct_connections.sort(key=connection_sort_key)
+    if not direct_connections:
+        return {"created": False, "skip_reason": "no_direct_connections_at_junction"}
+    existing_tls = sorted({connection.get("tl", "") for connection in direct_connections if connection.get("tl")})
+    if existing_tls:
+        return {"created": False, "skip_reason": "junction_already_has_tls", "existing_tls_id": " ".join(existing_tls)}
+
+    route_indices = {
+        index
+        for index, connection in enumerate(direct_connections)
+        if connection.get("from") == route_from_edge and connection.get("to") == route_to_edge
+    }
+    main_indices = set(route_indices)
+    for index, connection in enumerate(direct_connections):
+        from_meta = edge_segments.get(connection.get("from", ""), {})
+        to_meta = edge_segments.get(connection.get("to", ""), {})
+        same_direction = from_meta.get("direction") and from_meta.get("direction") == to_meta.get("direction")
+        if same_direction and connection.get("dir") in {"s", "r"}:
+            main_indices.add(index)
+    if not main_indices:
+        main_indices = set(range(len(direct_connections)))
+
+    for junction in root.findall("junction"):
+        if junction.get("id") == junction_id:
+            junction.set("type", "traffic_light")
+            break
+
+    for index, connection in enumerate(direct_connections):
+        connection.set("tl", tls_id)
+        connection.set("linkIndex", str(index))
+        connection.set("state", "O" if index in main_indices else "o")
+
+    for old_logic in list(root.findall("tlLogic")):
+        if old_logic.get("id") == tls_id:
+            root.remove(old_logic)
+    tl_logic = ET.Element("tlLogic", {
+        "id": tls_id,
+        "type": "static",
+        "programID": "CSV_BOUNDARY",
+        "offset": f"{max(offset_sec, 0.0):g}",
+    })
+    for phase in build_csv_signal_states(len(direct_connections), main_indices, phase_count):
+        ET.SubElement(tl_logic, "phase", {
+            "duration": f"{safe_float(phase['duration']):g}",
+            "state": str(phase["state"]),
+            "name": str(phase["name"]),
+        })
+    root.insert(0, tl_logic)
+    return {
+        "created": True,
+        "controlled_connection_count": len(direct_connections),
+        "mainline_linkIndex": " ".join(str(index) for index in sorted(main_indices)),
+        "route_linkIndex": " ".join(str(index) for index in sorted(route_indices)),
+        "phase_count": len(tl_logic.findall("phase")),
+        "cycle_sec": sum(safe_float(phase.get("duration")) for phase in tl_logic.findall("phase")),
+        "offset_sec": safe_float(tl_logic.get("offset")),
+    }
+
+
+def tune_terminal_egress_tls(root: ET.Element, route_edges: list[str]) -> dict[str, Any]:
+    if len(route_edges) < 2:
+        return {"applied": False, "reason": "missing_route_edges"}
+    terminal_from = route_edges[-2]
+    terminal_to = route_edges[-1]
+    terminal_connections = [
+        connection
+        for connection in root.findall("connection")
+        if connection.get("from") == terminal_from
+        and connection.get("to") == terminal_to
+        and connection.get("tl")
+    ]
+    if not terminal_connections:
+        return {
+            "applied": False,
+            "reason": "terminal_route_connection_has_no_tls",
+            "terminal_from_edge": terminal_from,
+            "terminal_to_edge": terminal_to,
+        }
+    tls_id = sorted({str(connection.get("tl")) for connection in terminal_connections})[0]
+    link_indices = {
+        safe_int(connection.get("linkIndex"), -1)
+        for connection in terminal_connections
+        if safe_int(connection.get("linkIndex"), -1) >= 0
+    }
+    if not link_indices:
+        return {
+            "applied": False,
+            "reason": "terminal_route_connection_missing_link_index",
+            "terminal_tls_id": tls_id,
+            "terminal_from_edge": terminal_from,
+            "terminal_to_edge": terminal_to,
+        }
+    tl_logic = next((logic for logic in root.findall("tlLogic") if logic.get("id") == tls_id), None)
+    if tl_logic is None:
+        return {
+            "applied": False,
+            "reason": "terminal_tls_logic_missing",
+            "terminal_tls_id": tls_id,
+            "terminal_from_edge": terminal_from,
+            "terminal_to_edge": terminal_to,
+        }
+
+    phases = tl_logic.findall("phase")
+    original_cycle = sum(safe_float(phase.get("duration")) for phase in phases)
+    route_green_sec = 0.0
+    route_yellow_sec = 0.0
+    for phase in phases:
+        state = str(phase.get("state") or "")
+        route_chars = [state[index] for index in sorted(link_indices) if index < len(state)]
+        if any(char in {"G", "g"} for char in route_chars):
+            phase.set("duration", f"{TERMINAL_EGRESS_GREEN_SEC:g}")
+            phase.set("name", "terminal_egress_green")
+            route_green_sec += TERMINAL_EGRESS_GREEN_SEC
+        elif any(char in {"y", "Y"} for char in route_chars):
+            phase.set("duration", f"{TERMINAL_EGRESS_YELLOW_SEC:g}")
+            phase.set("name", "terminal_egress_yellow")
+            route_yellow_sec += TERMINAL_EGRESS_YELLOW_SEC
+        elif "G" in state or "g" in state:
+            phase.set("duration", f"{min(safe_float(phase.get('duration')), TERMINAL_EGRESS_OTHER_GREEN_SEC):g}")
+        elif "y" in state or "Y" in state:
+            phase.set("duration", f"{min(safe_float(phase.get('duration')), TERMINAL_EGRESS_YELLOW_SEC):g}")
+        else:
+            phase.set("duration", f"{min(safe_float(phase.get('duration')), TERMINAL_EGRESS_YELLOW_SEC):g}")
+    tl_logic.set("offset", "0")
+    tuned_cycle = sum(safe_float(phase.get("duration")) for phase in phases)
+    return {
+        "applied": True,
+        "reason": "terminal_egress_green_priority",
+        "terminal_tls_id": tls_id,
+        "terminal_from_edge": terminal_from,
+        "terminal_to_edge": terminal_to,
+        "terminal_route_linkIndex": " ".join(str(index) for index in sorted(link_indices)),
+        "original_cycle_sec": round(original_cycle, 3),
+        "tuned_cycle_sec": round(tuned_cycle, 3),
+        "terminal_green_sec": round(route_green_sec, 3),
+        "terminal_yellow_sec": round(route_yellow_sec, 3),
+        "terminal_green_ratio": round(route_green_sec / tuned_cycle, 6) if tuned_cycle else 0.0,
+        "policy": "Map-boundary egress: Seoul Station target sits immediately after a large terminal junction, so the final through movement receives dominant green to avoid artificial end-of-map delay.",
+    }
+
+
+def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, Any]:
+    tree = ET.parse(source_net)
+    root = tree.getroot()
+    candidates = csv_signal_candidate_points()
+    edge_segments = load_signal_edge_segments()
+    route_edges = route_edges_for_signal_mapping()
+    arrival_estimates = route_pair_arrival_estimates(source_net, route_edges)
+    connections_by_pair: dict[tuple[str, str], ET.Element] = {}
+    for connection in root.findall("connection"):
+        from_edge = connection.get("from", "")
+        to_edge = connection.get("to", "")
+        if from_edge and to_edge and not from_edge.startswith(":"):
+            connections_by_pair.setdefault((from_edge, to_edge), connection)
+    junction_coords = junction_lonlat_by_id(source_net, root)
+
+    rows: list[dict[str, Any]] = []
+    applied_junctions: set[str] = set()
+    route_candidate_count = 0
+    created_count = 0
+    existing_count = 0
+    skipped_count = 0
+    for route_pair_index, (from_edge, to_edge) in enumerate(zip(route_edges, route_edges[1:])):
+        from_meta = edge_segments.get(from_edge, {})
+        to_meta = edge_segments.get(to_edge, {})
+        from_segment_no = safe_int(from_meta.get("segment_no"))
+        to_segment_no = safe_int(to_meta.get("segment_no"))
+        if not from_segment_no or not to_segment_no or from_segment_no == to_segment_no:
+            continue
+        connection = connections_by_pair.get((from_edge, to_edge))
+        if connection is None:
+            continue
+        junction_id = direct_connection_junction_id(connection)
+        if not junction_id or junction_id in applied_junctions:
+            continue
+        if junction_id not in junction_coords:
+            continue
+        junction_lon, junction_lat = junction_coords[junction_id]
+        nearby = []
+        for candidate in candidates:
+            if not candidate_matches_transition(candidate, from_segment_no, to_segment_no):
+                continue
+            distance_m = lonlat_distance_m(junction_lon, junction_lat, candidate["lon"], candidate["lat"])
+            if distance_m <= CSV_SIGNAL_MATCH_RADIUS_M:
+                nearby.append((distance_m, candidate))
+        if not nearby:
+            continue
+        distance_m, candidate = sorted(nearby, key=lambda item: item[0])[0]
+        route_candidate_count += 1
+        existing_tls_id = connection.get("tl", "")
+        action = "existing_tls" if existing_tls_id else "created_tls"
+        result: dict[str, Any]
+        if existing_tls_id:
+            existing_count += 1
+            result = {"created": False, "existing_tls_id": existing_tls_id}
+        else:
+            result = apply_csv_signal_to_junction(
+                root,
+                junction_id=junction_id,
+                tls_id=candidate["tls_id"],
+                route_from_edge=from_edge,
+                route_to_edge=to_edge,
+                phase_count=safe_int(candidate.get("phase_count")),
+                offset_sec=green_wave_offset_sec(
+                    arrival_estimates.get(route_pair_index, 0.0),
+                    CSV_SIGNAL_CYCLE_SEC,
+                ),
+                edge_segments=edge_segments,
+            )
+            if result.get("created"):
+                created_count += 1
+            else:
+                skipped_count += 1
+                action = "skipped"
+        applied_junctions.add(junction_id)
+        rows.append({
+            "boundary_id": candidate["boundary_id"],
+            "intersection_name": candidate["intersection_name"],
+            "candidate_reason": candidate["candidate_reason"],
+            "csv_segments": candidate["segments"],
+            "csv_phase_count": candidate["phase_count"],
+            "route_pair_index": route_pair_index,
+            "route_from_edge": from_edge,
+            "route_to_edge": to_edge,
+            "from_segment": from_meta.get("segment_id", ""),
+            "to_segment": to_meta.get("segment_id", ""),
+            "junction_id": junction_id,
+            "distance_m": round(distance_m, 3),
+            "action": action,
+            "tls_id": existing_tls_id or candidate["tls_id"],
+            "controlled_connection_count": result.get("controlled_connection_count", ""),
+            "mainline_linkIndex": result.get("mainline_linkIndex", ""),
+            "route_linkIndex": result.get("route_linkIndex", connection.get("linkIndex", "")),
+            "phase_count": result.get("phase_count", ""),
+            "cycle_sec": result.get("cycle_sec", ""),
+            "offset_sec": result.get("offset_sec", ""),
+            "expected_arrival_sec": round(arrival_estimates.get(route_pair_index, 0.0), 3) if arrival_estimates.get(route_pair_index) else "",
+            "skip_reason": result.get("skip_reason", ""),
+        })
+
+    terminal_egress_summary = tune_terminal_egress_tls(root, route_edges)
+    output_net.parent.mkdir(parents=True, exist_ok=True)
+    ET.indent(tree, space="    ")
+    tree.write(output_net, encoding="utf-8", xml_declaration=True)
+    write_csv(B04_CSV_SIGNAL_CANDIDATES_CSV, rows, [
+        "boundary_id", "intersection_name", "candidate_reason", "csv_segments",
+        "csv_phase_count", "route_pair_index", "route_from_edge", "route_to_edge",
+        "from_segment", "to_segment", "junction_id", "distance_m", "action", "tls_id",
+        "controlled_connection_count", "mainline_linkIndex", "route_linkIndex",
+        "phase_count", "cycle_sec", "offset_sec", "expected_arrival_sec", "skip_reason",
+    ])
+    summary = {
+        "schema": "compact_v9_B04_csv_boundary_signals.v1",
+        "generated_at": utc_now(),
+        "source_net": rel(source_net),
+        "output_net": rel(output_net),
+        "reference_csv": rel(REFERENCE_CSV),
+        "mapping_csv": rel(B04_MAPPING_CSV if B04_MAPPING_CSV.is_file() else B04_MAPPING_FALLBACK_CSV),
+        "firetruck_route": rel(B04_FIRETRUCK_ROUTE_XML),
+        "candidate_point_count": len(candidates),
+        "route_candidate_count": route_candidate_count,
+        "created_tls_count": created_count,
+        "existing_tls_count": existing_count,
+        "skipped_candidate_count": skipped_count,
+        "terminal_egress_tuning": terminal_egress_summary,
+        "candidate_csv": rel(B04_CSV_SIGNAL_CANDIDATES_CSV),
+        "policy": {
+            "selection": "Named CSV segment-boundary intersections on the B4 firetruck route are mapped to the actual SUMO route transition junction.",
+            "s1_s2_no_phase_policy": "A shared named boundary without CSV phase is still treated as a conservative signal candidate.",
+            "cycle_sec": CSV_SIGNAL_CYCLE_SEC,
+            "yellow_sec": CSV_SIGNAL_YELLOW_SEC,
+            "mainline_min_green_sec": CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC,
+            "green_wave_target_phase_sec": CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC,
+            "mainline_priority": "Mainline straight/right movements receive the dominant green and a route-progression offset; side/turn movements receive a short service phase.",
+            "terminal_egress": "The final Seoul Station-front route movement is a map-boundary egress and is tuned separately from CSV-created TLS.",
+        },
+    }
+    write_json(B04_CSV_SIGNAL_SUMMARY_JSON, summary)
+    return summary
+
+
 def adopt_green18() -> dict[str, Any]:
     if not GREEN18_NET.is_file():
         raise B04Error(f"missing_green18_net:{rel(GREEN18_NET)}")
     B04_NET.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(GREEN18_NET, B04_NET)
+    previous_manifest = read_json(B04_MANIFEST) if B04_MANIFEST.is_file() else {}
+    csv_signal_summary = apply_csv_boundary_signals(GREEN18_NET, B04_NET)
     manifest = {
         "schema": "compact_v9_B04_b0_manifest.v1",
         "generated_at": utc_now(),
@@ -602,9 +1231,16 @@ def adopt_green18() -> dict[str, Any]:
         "firetruck_route_xml": rel(B04_FIRETRUCK_ROUTE_XML),
         "reference_csv_abs": str(REFERENCE_CSV.resolve()),
         "emergency_depart_sec": EV_DEPART_SEC,
-        "background_route": "",
-        "policy_ko": "Compact V9 green18 맵을 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
+        "background_route": previous_manifest.get("background_route", ""),
+        "csv_signal_candidate_summary": rel(B04_CSV_SIGNAL_SUMMARY_JSON),
+        "csv_signal_created_tls_count": csv_signal_summary.get("created_tls_count", 0),
+        "csv_signal_existing_tls_count": csv_signal_summary.get("existing_tls_count", 0),
+        "terminal_egress_tuning": csv_signal_summary.get("terminal_egress_tuning", {}),
+        "policy_ko": "Compact V9 green18 맵에 CSV/B4 route 경계 신호 후보를 메인라인 green-wave 중심으로 보강하고, 서울역 맵 경계 terminal egress 병목을 완화해 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
     }
+    for key in ("selected_candidate", "selection_summary"):
+        if key in previous_manifest:
+            manifest[key] = previous_manifest[key]
     write_json(B04_MANIFEST, manifest)
     return manifest
 
@@ -1370,6 +2006,67 @@ def build_demand_for_candidate(candidate_name: str, settings: dict[str, float], 
     return summary
 
 
+def main_through_rebalance_acceptance(row: dict[str, Any]) -> dict[str, Any]:
+    vehicle_count = int(safe_float(row.get("vehicle_count")))
+    main_through = int(safe_float(row.get("main_through_flow")))
+    main_share = main_through / max(vehicle_count, 1)
+    checks = {
+        "vehicle_count_ok": B04_MAIN_THROUGH_TARGET_TOTAL_MIN <= vehicle_count <= B04_MAIN_THROUGH_TARGET_TOTAL_MAX,
+        "main_through_ok": B04_MAIN_THROUGH_TARGET_MIN <= main_through <= B04_MAIN_THROUGH_TARGET_MAX,
+        "main_through_share_ok": main_share >= B04_MAIN_THROUGH_TARGET_SHARE_MIN,
+        "off_main_share_ok": safe_float(row.get("off_main_background_share")) <= 0.08,
+        "terminal_sink_ok": int(safe_float(row.get("terminal_sink_flow"))) == 0,
+        "top_source_ok": safe_float(row.get("top_source_share")) < 0.25,
+        "top_sink_ok": safe_float(row.get("top_sink_share")) < 0.25,
+    }
+    return {
+        "status": "PASS" if all(checks.values()) else "FAIL",
+        "vehicle_count": vehicle_count,
+        "main_through_flow": main_through,
+        "main_through_share": round(main_share, 6),
+        **checks,
+    }
+
+
+def build_rebalanced_main_through_demand(
+    candidate_name: str,
+    settings: dict[str, float],
+    templates: dict[str, list[str]],
+) -> dict[str, Any]:
+    tuned_settings = dict(settings)
+    summary: dict[str, Any] = {}
+    adjustment_history = []
+    for _attempt in range(4):
+        summary = build_demand_for_candidate(candidate_name, tuned_settings, templates)
+        row = build_main_vs_offmain_demand_rows([candidate_name])[0]
+        acceptance = main_through_rebalance_acceptance(row)
+        feeder_share = safe_float(tuned_settings.get("feeder_share_downbound"))
+        adjustment_history.append({
+            "feeder_share_downbound": round(feeder_share, 3),
+            **acceptance,
+        })
+        if B04_MAIN_THROUGH_TARGET_TOTAL_MIN <= acceptance["vehicle_count"] <= B04_MAIN_THROUGH_TARGET_TOTAL_MAX:
+            break
+        if acceptance["vehicle_count"] < B04_MAIN_THROUGH_TARGET_TOTAL_MIN and feeder_share < B04_MAIN_THROUGH_FEEDER_MAX:
+            tuned_settings["feeder_share_downbound"] = round(min(B04_MAIN_THROUGH_FEEDER_MAX, feeder_share + B04_MAIN_THROUGH_FEEDER_STEP), 3)
+            continue
+        if acceptance["vehicle_count"] > B04_MAIN_THROUGH_TARGET_TOTAL_MAX and feeder_share > 0.0:
+            tuned_settings["feeder_share_downbound"] = round(max(0.0, feeder_share - B04_MAIN_THROUGH_FEEDER_STEP), 3)
+            continue
+        break
+    summary["settings"] = tuned_settings
+    summary["main_through_rebalance"] = {
+        "target_vehicle_count": f"{B04_MAIN_THROUGH_TARGET_TOTAL_MIN}-{B04_MAIN_THROUGH_TARGET_TOTAL_MAX}",
+        "target_main_through_flow": f"{B04_MAIN_THROUGH_TARGET_MIN}-{B04_MAIN_THROUGH_TARGET_MAX}",
+        "target_main_through_share_min": B04_MAIN_THROUGH_TARGET_SHARE_MIN,
+        "adjustment_policy": "Only feeder_share_downbound is adjusted in 0.02 steps, capped at 0.44, to keep total demand in range.",
+        "adjustment_history": adjustment_history,
+        "final_acceptance": adjustment_history[-1] if adjustment_history else {},
+    }
+    write_json((B04_DEMAND_DIR / f"background_routes_compact_v9_{candidate_name}.rou.xml").with_suffix(".summary.json"), summary)
+    return summary
+
+
 def build_demand(candidate_names: list[str] | None = None) -> dict[str, Any]:
     if not B04_NET.is_file():
         adopt_green18()
@@ -1384,7 +2081,10 @@ def build_demand(candidate_names: list[str] | None = None) -> dict[str, Any]:
     summaries = []
     for candidate_name in selected_names:
         settings = CANDIDATES[candidate_name]
-        summaries.append(build_demand_for_candidate(candidate_name, settings, templates))
+        if candidate_name in B04_MAIN_THROUGH_REBALANCE_CANDIDATES:
+            summaries.append(build_rebalanced_main_through_demand(candidate_name, settings, templates))
+        else:
+            summaries.append(build_demand_for_candidate(candidate_name, settings, templates))
     summary = {
         "schema": "compact_v9_B04_demand_sweep.v1",
         "generated_at": utc_now(),
@@ -3264,7 +3964,12 @@ def build_b04_queue_audit(candidate_name: str | None = None) -> dict[str, Any]:
 def review_candidate_names(candidate_name: str | None = None) -> tuple[str, str, list[str]]:
     manifest, _selection, primary, diagnostic_best = resolve_queue_audit_candidate(candidate_name)
     manifest_selected = str(manifest.get("selected_candidate") or parse_candidate_from_route(str(manifest.get("background_route") or "")))
-    growth_candidates = ["B04_aa_balanced_growth", "B04_ab_queue_pressure"]
+    growth_candidates = [
+        "B04_aa_balanced_growth",
+        "B04_ab_queue_pressure",
+        B04_MAIN_THROUGH_REBALANCED_CANDIDATE,
+        B04_VARIANCE_SMOOTHED_CANDIDATE,
+    ]
     names = [
         primary,
         manifest_selected,
@@ -3383,6 +4088,18 @@ def demand_growth_candidate_summary_rows(demand_rows: list[dict[str, Any]], comp
     for name, target_total, target_main_min, target_main_max in [
         ("B04_aa_balanced_growth", "1300-1500", 250, 350),
         ("B04_ab_queue_pressure", "1500-1700", 350, 500),
+        (
+            B04_MAIN_THROUGH_REBALANCED_CANDIDATE,
+            f"{B04_MAIN_THROUGH_TARGET_TOTAL_MIN}-{B04_MAIN_THROUGH_TARGET_TOTAL_MAX}",
+            B04_MAIN_THROUGH_TARGET_MIN,
+            B04_MAIN_THROUGH_TARGET_MAX,
+        ),
+        (
+            B04_VARIANCE_SMOOTHED_CANDIDATE,
+            f"{B04_MAIN_THROUGH_TARGET_TOTAL_MIN}-{B04_MAIN_THROUGH_TARGET_TOTAL_MAX}",
+            B04_MAIN_THROUGH_TARGET_MIN,
+            B04_MAIN_THROUGH_TARGET_MAX,
+        ),
     ]:
         demand_row = demand_by_candidate.get(name)
         settings = CANDIDATES[name]

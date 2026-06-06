@@ -1,0 +1,18 @@
+{
+  "schema": "b4_mainroad_tau_control_audit.v1",
+  "generated_at": "2026-06-05T13:57:57.370513+00:00",
+  "stage1_csv": "data_prepared/compact_v9/b4_stage1/b4_approach_storage_link_plan.csv",
+  "output_csv": "09 Compact Corridor Baseline/tdata_signal/b4_mainroad_tau_control_audit.csv",
+  "mainroad_movement_count": 17,
+  "controllable_count": 17,
+  "mapped_s_segment_count": 17,
+  "tau_measured_count": 17,
+  "stage3_extension_candidate_count": 17,
+  "green_only_no_red_phase_count": 3,
+  "green_only_no_red_phase_movements": [
+    "B4_MOVEMENT_08",
+    "B4_MOVEMENT_10",
+    "B4_MOVEMENT_14"
+  ],
+  "scope_note": "This audits B4 Stage3 main-road movements on the EV route, not every tlLogic in the whole SUMO net."
+}

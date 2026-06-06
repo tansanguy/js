@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Compact V9 B4 Stage 1 Review</title>
+  <style>
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0; color:#172033; }
+    header { padding:22px; border-bottom:1px solid #d8dee9; }
+    section { padding:18px 22px; }
+    table { border-collapse:collapse; width:100%; font-size:12px; margin-bottom:22px; }
+    th,td { border:1px solid #d8dee9; padding:6px; text-align:left; vertical-align:top; }
+    th { background:#f8fafc; }
+    code { background:#f2f4f7; padding:1px 4px; border-radius:4px; }
+    pre { padding:14px; border:1px solid #d8dee9; background:#f8fafc; overflow:auto; max-height:360px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Compact V9 B4 Stage 1</h1>
+  <p>B4 Stage 1은 B04 baseline 산출물을 입력으로 읽는 정적 신호제어 준비 단계입니다.</p>
+  <p>기본 후보 filter: <code>stopline_local_fill_100m &gt;= 0.50 OR approach_speed_kmh &lt;= 15</code></p>
+  <p>실제 B4 선점 조건: <code>(local fill OR low speed) AND TA_proxy_sec &lt;= 0</code></p>
+  <p>현실 CSV에는 queue length가 없으므로 모든 queue length와 B0 측정값은 SUMO edgeData/laneData proxy입니다.</p>
+</header>
+<section>
+  <h2>Validation</h2>
+  <pre>{
+  &quot;overall&quot;: &quot;WARN&quot;,
+  &quot;b04_inputs_available&quot;: &quot;PASS&quot;,
+  &quot;sumo_not_run&quot;: &quot;PASS&quot;,
+  &quot;bo_not_run&quot;: &quot;PASS&quot;,
+  &quot;fcd_not_enabled&quot;: &quot;PASS&quot;,
+  &quot;merge_control_tls_available&quot;: &quot;PASS&quot;,
+  &quot;background_inflow_hold_available&quot;: &quot;PASS&quot;,
+  &quot;ev_release_control&quot;: &quot;WARN&quot;,
+  &quot;ev_release_control_status&quot;: &quot;uncontrolled_by_merge_tls&quot;
+}</pre>
+  <h2>B0 Measured Proxy Parameters</h2>
+  <table><thead><tr><th>movement_id</th><th>q_avg_b0_proxy_veh</th><th>q_max_b0_proxy_veh</th><th>tQ_hist_b0_sec</th><th>lambda_b0_vph</th><th>L_local_m</th><th>L_corridor_m</th><th>C_local_proxy_veh</th><th>measurement_source</th></tr></thead><tbody><tr><td>B4_MOVEMENT_00</td><td>0.139558</td><td>5.178149</td><td>3.4521</td><td>65.23</td><td>100.0</td><td>250.0</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_01</td><td>0.907469</td><td>23.166443</td><td>15.444295</td><td>330.828766</td><td>100.0</td><td>101.96</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_02</td><td>0.770418</td><td>13.90914</td><td>9.27276</td><td>404.102177</td><td>100.0</td><td>71.52</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_03</td><td>1.112624</td><td>13.846324</td><td>13.846324</td><td>464.106154</td><td>100.0</td><td>99.24</td><td>30.769231</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_04</td><td>3.682226</td><td>22.437204</td><td>22.437204</td><td>490.464386</td><td>100.0</td><td>250.0</td><td>30.769231</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_05</td><td>7.05813</td><td>30.769615</td><td>30.769615</td><td>413.033421</td><td>100.0</td><td>250.0</td><td>30.769231</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_06</td><td>8.807066</td><td>35.690277</td><td>23.793518</td><td>127.673852</td><td>100.0</td><td>250.0</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_07</td><td>4.935364</td><td>35.690277</td><td>23.793518</td><td>119.337414</td><td>100.0</td><td>250.0</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_08</td><td>0.0</td><td>0.0</td><td>0.0</td><td>30.0</td><td>100.0</td><td>250.0</td><td>30.769231</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_09</td><td>0.030351</td><td>0.649871</td><td>0.433247</td><td>277.663333</td><td>100.0</td><td>185.97</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_10</td><td>0.799057</td><td>13.279248</td><td>8.852832</td><td>272.059351</td><td>100.0</td><td>167.98</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_11</td><td>2.413607</td><td>14.937216</td><td>9.958144</td><td>245.830595</td><td>100.0</td><td>106.77</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_12</td><td>0.071364</td><td>2.01256</td><td>1.341707</td><td>230.400886</td><td>100.0</td><td>139.73</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_13</td><td>0.073128</td><td>2.01256</td><td>1.341707</td><td>198.157609</td><td>100.0</td><td>88.08</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_14</td><td>0.001023</td><td>0.237344</td><td>0.158229</td><td>202.33593</td><td>100.0</td><td>232.65</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_15</td><td>0.002034</td><td>0.471785</td><td>0.314523</td><td>170.123762</td><td>100.0</td><td>181.19</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr><tr><td>B4_MOVEMENT_16</td><td>0.008484</td><td>0.649385</td><td>0.432923</td><td>124.369608</td><td>100.0</td><td>103.48</td><td>46.153846</td><td>SUMO_B04_u130_toegye15_edge_lane_data</td></tr></tbody></table>
+  <h2>Stage 2 B0 Merge Hold Proxy</h2>
+  <p>Stage 2 실제 제어는 35초 dispatch window 안에서 <code>T_hold_proxy_sec</code>를 직접 사용합니다. <code>T_hold_proxy_sec &lt;= 0</code>이면 시간이 부족하다는 뜻이므로 dispatch window가 열리자마자 hold합니다.</p>
+  <table><thead><tr><th>stage2_param_id</th><th>merge_control_tls</th><th>D_merge_m</th><th>L_merge_m</th><th>tE_merge_sec</th><th>C_merge_proxy_veh</th><th>n_need_proxy_veh</th><th>tS_merge_sec</th><th>q_A_proxy_veh</th><th>b0_merge_n_occ_mean_proxy_veh</th><th>b0_merge_n_occ_max_proxy_veh</th><th>b0_background_inflow_lambda_vph</th><th>b0_merge_waiting_max_sec</th><th>b0_merge_halting_proxy_max</th><th>measurement_source</th></tr></thead><tbody><tr><td>B4_STAGE2_MERGE_HOLD_B0_PROXY</td><td>COMPACT_V9_FIRE_STATION_ENTRY_TLS</td><td>138.9</td><td>50.0</td><td>9.992806</td><td>7.692308</td><td>2.0</td><td>5.0</td><td>0.0</td><td>0.007726</td><td>0.1025</td><td>65.714</td><td>2.2</td><td>0.0</td><td>SUMO_B04_u130_toegye15_laneData_edgeData_proxy</td></tr></tbody></table>
+  <h2>Queue Readiness</h2>
+  <table><thead><tr><th>movement_id</th><th>mapped_S_segment</th><th>tls_id</th><th>local_fill_80m</th><th>local_fill_100m</th><th>local_fill_120m</th><th>stopline_local_fill_100m</th><th>corridor_fill_250m</th><th>approach_speed_kmh</th><th>trigger_reason</th><th>traffic_pressure</th><th>operational_queue</th><th>bottleneck_risk</th><th>control_mode</th></tr></thead><tbody><tr><td>B4_MOVEMENT_00</td><td>S1:upbound</td><td>CSV_TLS_S01_S02_SEONGDONG_GLOBAL_BUSINESS_HIGH_SCHOOL</td><td>0.420725</td><td>0.33658</td><td>0.280483</td><td>0.33658</td><td>0.134632</td><td>6.142</td><td>speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_01</td><td>S2:upbound</td><td>CSV_TLS_S02_S03_HANYANG_TECHNICAL_HIGH_SCHOOL_FRONT</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>8.214</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_02</td><td>S3:upbound</td><td>cluster_3846534041_436877431</td><td>1.0</td><td>0.90409</td><td>0.753408</td><td>0.90409</td><td>1.0</td><td>14.383</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_03</td><td>S5:upbound</td><td>CSV_TLS_S05_S06_GWANGHUI_INTERSECTION</td><td>1.0</td><td>0.90001</td><td>0.750008</td><td>0.90001</td><td>0.906902</td><td>16.507</td><td>local_fill_ge_0p50</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_04</td><td>S6:upbound</td><td>joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.583368</td><td>13.363</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_05</td><td>S7:upbound</td><td>CSV_TLS_S08_S09_TOEGYE_RO_4_GA</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>6.155</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_06</td><td>S9:upbound</td><td>joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.927948</td><td>2.414</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_07</td><td>S9:upbound</td><td>joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td>0.927948</td><td>2.414</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_08</td><td>S11:upbound</td><td>CSV_TLS_S11_S12_TOEGYE_RO_2_GA</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>58.143</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr><tr><td>B4_MOVEMENT_09</td><td>S13:upbound</td><td>CSV_TLS_S13_S14_MYEONGDONG_STATION_FRONT</td><td>0.0528</td><td>0.04224</td><td>0.0352</td><td>0.04224</td><td>0.022713</td><td>36.879</td><td>below_default_trigger</td><td>False</td><td>False</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_10</td><td>S14:upbound</td><td>CSV_TLS_S14_S15_DAYS_HOTEL_FRONT</td><td>1.0</td><td>0.86315</td><td>0.719292</td><td>0.86315</td><td>0.513841</td><td>15.795</td><td>local_fill_ge_0p50</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_11</td><td>S15:upbound</td><td>joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more</td><td>1.0</td><td>0.97092</td><td>0.8091</td><td>0.97092</td><td>0.909357</td><td>6.644</td><td>local_fill_ge_0p50+speed_le_15kmh</td><td>True</td><td>True</td><td>True</td><td>bottleneck_first</td></tr><tr><td>B4_MOVEMENT_12</td><td>S16:upbound</td><td>CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE</td><td>0.163525</td><td>0.13082</td><td>0.109017</td><td>0.13082</td><td>0.093623</td><td>49.006</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr><tr><td>B4_MOVEMENT_13</td><td>S17:upbound</td><td>CSV_TLS_S17_S18_NAMDAEMUN_MARKET</td><td>0.0302</td><td>0.05094</td><td>0.109017</td><td>0.05094</td><td>0.0302</td><td>56.291</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr><tr><td>B4_MOVEMENT_14</td><td>S18:upbound</td><td>CSV_TLS_S18_S19_SAMSEON_BUILDING</td><td>0.019287</td><td>0.01543</td><td>0.012858</td><td>0.01543</td><td>0.006632</td><td>76.507</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr><tr><td>B4_MOVEMENT_15</td><td>S19:upbound</td><td>CSV_TLS_S19_S20_SEVERANCE_BUILDING</td><td>0.038338</td><td>0.03067</td><td>0.025558</td><td>0.03067</td><td>0.016927</td><td>67.943</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr><tr><td>B4_MOVEMENT_16</td><td>S21:upbound</td><td>joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more</td><td>0.042213</td><td>0.04221</td><td>0.0364</td><td>0.04221</td><td>0.042211</td><td>48.392</td><td>below_default_trigger</td><td>False</td><td>False</td><td>False</td><td>normal_preemptive</td></tr></tbody></table>
+  <h2>Approach Storage Link Plan</h2>
+  <table><thead><tr><th>movement_id</th><th>route_order_index</th><th>from_edge</th><th>to_edge</th><th>linkIndex</th><th>ev_route_linkIndex</th><th>parallel_through_linkIndex</th><th>same_lane_blocking_linkIndex</th><th>selected_flush_phase</th><th>control_strategy</th><th>stopline_local_storage_m</th><th>corridor_storage_length_m</th><th>selected_green_phase</th><th>selected_red_phase</th><th>controllable</th></tr></thead><tbody><tr><td>B4_MOVEMENT_00</td><td>6</td><td>-174870621#2</td><td>-174870621#0</td><td>1 2 3</td><td>1 2 3</td><td>1 2 3</td><td>0</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_01</td><td>10</td><td>800229255</td><td>180368918#0</td><td>3 4 5</td><td>3 4 5</td><td>3 4 5</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>101.96</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_02</td><td>12</td><td>180368918#3</td><td>180368918#5</td><td>0 1 2</td><td>0 1 2</td><td>0 1 2</td><td>3</td><td>0</td><td>parallel_through_green</td><td>100.0</td><td>71.52</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_03</td><td>16</td><td>180368918#8</td><td>218773868#0</td><td>5 6</td><td>5 6</td><td>5 6</td><td>4 7</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>99.24</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_04</td><td>23</td><td>-1455512070</td><td>428260110</td><td>7 8</td><td>7 8</td><td>7 8</td><td>6 9</td><td>0</td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_05</td><td>28</td><td>785130600#3</td><td>1455497345</td><td>0 1</td><td>0 1</td><td>0 1</td><td>2</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_06</td><td>35</td><td>218773869#7</td><td>218773869#8</td><td>6 7 8</td><td>6 7 8</td><td>6 7 8</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>2</td><td>0</td><td>True</td></tr><tr><td>B4_MOVEMENT_07</td><td>37</td><td>218773869#9</td><td>219696193#1</td><td>24 25</td><td>24 25</td><td>24 25</td><td>23</td><td>8</td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>8</td><td>0</td><td>True</td></tr><tr><td>B4_MOVEMENT_08</td><td>42</td><td>420361196</td><td>180445419</td><td>0 1</td><td>0 1</td><td>0 1</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>250.0</td><td>0</td><td></td><td>True</td></tr><tr><td>B4_MOVEMENT_09</td><td>45</td><td>347237859#1</td><td>347237859#2</td><td>0 1 2</td><td>0 1 2</td><td>0 1 2</td><td>3</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>185.97</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_10</td><td>48</td><td>347237859#4</td><td>347237859#5</td><td>0 1 2</td><td>0 1 2</td><td>0 1 2</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>167.98</td><td>0</td><td></td><td>True</td></tr><tr><td>B4_MOVEMENT_11</td><td>50</td><td>781985787#0</td><td>218915135#3</td><td>18</td><td>18</td><td>14 15 16 18</td><td>15 16 17</td><td>2</td><td>route_green_with_same_lane_blocker_flush</td><td>100.0</td><td>106.77</td><td>4</td><td>0</td><td>True</td></tr><tr><td>B4_MOVEMENT_12</td><td>52</td><td>218915135#4</td><td>781983104#0</td><td>5 6 7</td><td>5 6 7</td><td>5 6 7</td><td>8 9</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>139.73</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_13</td><td>53</td><td>781983104#0</td><td>781983104#1</td><td>2 3 4</td><td>2 3 4</td><td>2 3 4</td><td>0 1</td><td>2</td><td>parallel_through_green</td><td>100.0</td><td>88.08</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_14</td><td>55</td><td>333557072#1</td><td>333557072#2</td><td>0 1 2</td><td>0 1 2</td><td>0 1 2</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>232.65</td><td>0</td><td></td><td>True</td></tr><tr><td>B4_MOVEMENT_15</td><td>58</td><td>333557072#5</td><td>619147738#0</td><td>0 1 2</td><td>0 1 2</td><td>0 1 2</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>181.19</td><td>0</td><td>2</td><td>True</td></tr><tr><td>B4_MOVEMENT_16</td><td>59</td><td>619147738#0</td><td>619147738#1</td><td>2 3 4</td><td>2 3 4</td><td>2 3 4</td><td></td><td></td><td>parallel_through_green</td><td>100.0</td><td>103.48</td><td>2</td><td>0</td><td>True</td></tr></tbody></table>
+  <h2>Stage 1 Summary</h2>
+  <pre>{
+  &quot;schema&quot;: &quot;compact_v9_B4_stage1_summary.v1&quot;,
+  &quot;generated_at&quot;: &quot;2026-06-06T07:14:22.201008+00:00&quot;,
+  &quot;algorithm&quot;: &quot;B4&quot;,
+  &quot;status&quot;: &quot;WARN&quot;,
+  &quot;primary_candidate&quot;: &quot;B04_u130_toegye15&quot;,
+  &quot;manifest_selected_candidate&quot;: &quot;B04_ad_variance_smoothed&quot;,
+  &quot;manifest_selected_candidate_role&quot;: &quot;primary_selected&quot;,
+  &quot;decision_variable_screening&quot;: {
+    &quot;schema&quot;: &quot;compact_v9_B4_decision_variable_screening.v1&quot;,
+    &quot;model_form&quot;: &quot;Y = f(X, Z)&quot;,
+    &quot;decision_variables_X&quot;: [
+      &quot;alpha&quot;,
+      &quot;t_lead&quot;,
+      &quot;delta_T_thr&quot;,
+      &quot;G_ext&quot;,
+      &quot;Q_trig&quot;
+    ],
+    &quot;screening_filters&quot;: [
+      &quot;controllability&quot;,
+      &quot;state_variable_exclusion&quot;,
+      &quot;safety_constraint_exclusion&quot;,
+      &quot;objective_sensitivity&quot;,
+      &quot;structure_and_scenario_factor_exclusion&quot;,
+      &quot;algorithm_registration&quot;
+    ],
+    &quot;state_variables_S&quot;: [
+      &quot;Lq&quot;,
+      &quot;n_occ&quot;,
+      &quot;elapsed_green&quot;,
+      &quot;TA_proxy_sec&quot;,
+      &quot;T_hold_proxy_sec&quot;
+    ],
+    &quot;environment_variables_Z&quot;: [
+      &quot;network_geometry&quot;,
+      &quot;vehicle_physics&quot;,
+      &quot;simulation_begin_end_step_seed&quot;,
+      &quot;demand_scale_scenario&quot;
+    ],
+    &quot;safety_constraints&quot;: [
+      &quot;phase_order&quot;,
+      &quot;yellow_clearance&quot;,
+      &quot;all_red_clearance&quot;,
+      &quot;minimum_pedestrian_crossing_time&quot;
+    ],
+    &quot;fixed_structure_params&quot;: [
+      &quot;tau&quot;,
+      &quot;beta&quot;,
+      &quot;hold_max&quot;,
+      &quot;d_up&quot;,
+      &quot;tau_scale&quot;,
+      &quot;tau_numerator_gamma&quot;
+    ],
+    &quot;concept_only_or_unimplemented&quot;: [
+      &quot;green_split&quot;,
+      &quot;offset&quot;,
+      &quot;cycle_length&quot;,
+      &quot;green_wave_intersection_set&quot;
+    ],
+    &quot;notes&quot;: [
+      &quot;tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.&quot;,
+      &quot;seed and demand scale remain experiment design or robustness factors, not theta variables.&quot;
+    ]
+  },
+  &quot;primary_candidate_lock&quot;: {
+    &quot;primary_candidate&quot;: &quot;B04_u130_toegye15&quot;,
+    &quot;manifest_selected_candidate&quot;: &quot;B04_ad_variance_smoothed&quot;,
+    &quot;manifest_selected_candidate_role&quot;: &quot;primary_selected&quot;,
+    &quot;reason&quot;: &quot;AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.&quot;,
+    &quot;metrics&quot;: {
+      &quot;candidate&quot;: &quot;B04_u130_toegye15&quot;,
+      &quot;vehicles&quot;: 0,
+      &quot;main_through_flow&quot;: 0,
+      &quot;terminal_sink_flow&quot;: 0,
+      &quot;top_sink_share&quot;: 0.0,
+      &quot;speed_mae_kmh&quot;: 0.0,
+      &quot;free_count&quot;: 0,
+      &quot;od_undercovered&quot;: 0,
+      &quot;queue_not_forming&quot;: 0,
+      &quot;teleport&quot;: 0,
+      &quot;arrived_ratio&quot;: 0.0
+    }
+  },
+  &quot;mode&quot;: &quot;Stage1 static preparation only&quot;,
+  &quot;runtime_implemented&quot;: false,
+  &quot;control_candidate_expression&quot;: &quot;stopline_local_fill_100m &gt;= 0.50 OR approach_speed_kmh &lt;= 15&quot;,
+  &quot;ta_proxy_policy&quot;: {
+    &quot;ta_formula&quot;: &quot;TA_proxy_sec = tE_sec - tS_sec - tQ_sec&quot;,
+    &quot;ta_control_policy&quot;: &quot;(local_fill_100m &gt;= 0.50 OR approach_speed_kmh &lt;= 15) AND TA_proxy_sec &lt;= 0&quot;,
+    &quot;b0_measured_params_source&quot;: &quot;SUMO B04_u130_toegye15 no-control edgeData/laneData/tripinfo outputs&quot;,
+    &quot;field_queue_claim&quot;: false
+  },
+  &quot;movement_summary&quot;: {
+    &quot;movement_count&quot;: 17,
+    &quot;controllable_movement_count&quot;: 17,
+    &quot;control_candidate_count&quot;: 10,
+    &quot;bottleneck_risk_count&quot;: 11,
+    &quot;case_b_candidate_count&quot;: 3,
+    &quot;case_b_mapped_count&quot;: 3
+  },
+  &quot;departure_summary&quot;: {
+    &quot;fire_station_start_edge&quot;: &quot;420331801#1&quot;,
+    &quot;mainline_target_edge&quot;: &quot;-174870621#8&quot;,
+    &quot;merge_control_tls&quot;: &quot;COMPACT_V9_FIRE_STATION_ENTRY_TLS&quot;,
+    &quot;ev_release_control_status&quot;: &quot;uncontrolled_by_merge_tls&quot;,
+    &quot;dispatch_lead_time_sec&quot;: 35.0,
+    &quot;stage2_b0_formula&quot;: &quot;T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)&quot;,
+    &quot;stage2_b0_measurement_source&quot;: &quot;SUMO_B04_u130_toegye15_laneData_edgeData_proxy&quot;,
+    &quot;stage2_runtime_control_uses_formula_directly&quot;: true,
+    &quot;stage2_b0_merge_support_status&quot;: &quot;weak_runtime_required&quot;,
+    &quot;stage2_runtime_dependency&quot;: &quot;runtime_n_occ_and_Lq_merge_primary&quot;
+  },
+  &quot;validation&quot;: {
+    &quot;overall&quot;: &quot;WARN&quot;,
+    &quot;b04_inputs_available&quot;: &quot;PASS&quot;,
+    &quot;sumo_not_run&quot;: &quot;PASS&quot;,
+    &quot;bo_not_run&quot;: &quot;PASS&quot;,
+    &quot;fcd_not_enabled&quot;: &quot;PASS&quot;,
+    &quot;merge_control_tls_available&quot;: &quot;PASS&quot;,
+    &quot;background_inflow_hold_available&quot;: &quot;PASS&quot;,
+    &quot;ev_release_control&quot;: &quot;WARN&quot;,
+    &quot;ev_release_control_status&quot;: &quot;uncontrolled_by_merge_tls&quot;
+  },
+  &quot;input_artifacts&quot;: {
+    &quot;b04_manifest&quot;: &quot;configs/compact_v9_B04_b0_manifest.json&quot;,
+    &quot;b04_net&quot;: &quot;09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml&quot;,
+    &quot;firetruck_route_xml&quot;: &quot;data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml&quot;,
+    &quot;firetruck_route_csv&quot;: &quot;data_prepared/compact_v9/routes/firetruck_route.csv&quot;,
+    &quot;entry_tls_summary&quot;: &quot;data_prepared/compact_v9/net/entry_tls_summary.json&quot;,
+    &quot;b04_traffic_demand_review&quot;: &quot;results/metrics/compact_v9_B04/queue_audit/b04_traffic_demand_review.json&quot;,
+    &quot;b04_queue_definition_audit&quot;: &quot;results/metrics/compact_v9_B04/queue_audit/b04_queue_definition_audit.json&quot;,
+    &quot;b04_queue_proxy_by_segment&quot;: &quot;results/metrics/compact_v9_B04/queue_audit/b04_queue_proxy_by_segment.csv&quot;,
+    &quot;b4_queue_measurement_diagnostics&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/_active_b04_sources/b4_queue_measurement_diagnostics.csv&quot;,
+    &quot;primary_run_summary&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/_active_b04_sources/b0_run_summary.json&quot;,
+    &quot;edgeData&quot;: &quot;runs/compact_v9_B4_u130_toegye_general15_selected/u130_toegye_general15_selected_20260606_u130_shoulder_p20/B04/no_control/repeat_001/edgeData.xml&quot;,
+    &quot;laneData&quot;: &quot;runs/compact_v9_B4_u130_toegye_general15_selected/u130_toegye_general15_selected_20260606_u130_shoulder_p20/B04/no_control/repeat_001/laneData.xml&quot;,
+    &quot;tripinfo&quot;: &quot;runs/compact_v9_B4_u130_toegye_general15_selected/u130_toegye_general15_selected_20260606_u130_shoulder_p20/B04/no_control/repeat_001/tripinfo.xml&quot;,
+    &quot;segment_speed_recall&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/_active_b04_sources/B04_segment_speed_recall.csv&quot;
+  },
+  &quot;outputs&quot;: {
+    &quot;b4_route_movement_plan_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_route_movement_plan.json&quot;,
+    &quot;b4_intersections_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_intersections.csv&quot;,
+    &quot;b4_approach_storage_link_plan_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_approach_storage_link_plan.csv&quot;,
+    &quot;b4_merge_zone_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_merge_zone.json&quot;,
+    &quot;b4_departure_flow_plan_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_departure_flow_plan.json&quot;,
+    &quot;b4_bottleneck_queue_readiness_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_bottleneck_queue_readiness.csv&quot;,
+    &quot;b4_case_b_candidates_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_case_b_candidates.csv&quot;,
+    &quot;b4_case_b_candidates_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_case_b_candidates.json&quot;,
+    &quot;b4_control_queue_threshold_proposal_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_control_queue_threshold_proposal.json&quot;,
+    &quot;b4_b0_measured_signal_params_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_b0_measured_signal_params.csv&quot;,
+    &quot;b4_ta_proxy_policy_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_ta_proxy_policy.json&quot;,
+    &quot;b4_stage2_b0_merge_hold_params_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_stage2_b0_merge_hold_params.json&quot;,
+    &quot;b4_stage2_b0_merge_hold_params_csv&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_stage2_b0_merge_hold_params.csv&quot;,
+    &quot;b4_runtime_index_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_runtime_index.json&quot;,
+    &quot;b4_stage1_summary_json&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_stage1_summary.json&quot;,
+    &quot;b4_stage1_review_html&quot;: &quot;data_prepared/compact_v9/b4_stage1_u130_toegye15/b4_stage1_review.html&quot;
+  },
+  &quot;policy_notes&quot;: [
+    &quot;B4 Stage 1 reads existing B04 B0/no-control artifacts only.&quot;,
+    &quot;No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.&quot;,
+    &quot;B0 measured signal parameters are SUMO B04_u130_toegye15 no-control measurements, not field-observed queue lengths.&quot;,
+    &quot;Stage 2 B0 merge hold parameters are SUMO B04_u130_toegye15 no-control laneData/edgeData proxy values, not field-observed occupancy.&quot;,
+    &quot;Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.&quot;,
+    &quot;TA_proxy_sec is used with the B4 local fill / low speed safety filter.&quot;,
+    &quot;stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.&quot;,
+    &quot;Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.&quot;,
+    &quot;linkIndex is a SUMO TLS movement index, not physical storage length.&quot;,
+    &quot;Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.&quot;
+  ]
+}</pre>
+</section>
+</body>
+</html>

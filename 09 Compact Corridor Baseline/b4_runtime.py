@@ -13,7 +13,7 @@ import csv
 import json
 import math
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -24,12 +24,15 @@ STAGE1_DIR = DATA_ROOT / "b4_stage1"
 B4_CASE_B_CANDIDATES_CSV = "b4_case_b_candidates.csv"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
-B04_AA_BACKGROUND_ROUTE = DATA_ROOT / "demand/background_routes_compact_v9_B04_aa_balanced_growth.rou.xml"
 B04_FIRETRUCK_ROUTE_XML = DATA_ROOT / "routes/firetruck_to_seoul_station_front.rou.xml"
 
-B4_PRIMARY_CANDIDATE = "B04_aa_balanced_growth"
+B4_PRIMARY_CANDIDATE = "B04_ad_variance_smoothed"
+B04_AA_BACKGROUND_ROUTE = DATA_ROOT / f"demand/background_routes_compact_v9_{B4_PRIMARY_CANDIDATE}.rou.xml"
 B4_MANIFEST_SELECTED_CANDIDATE = B4_PRIMARY_CANDIDATE
 B4_MANIFEST_SELECTED_ROLE = "primary_selected"
+B4_PRIMARY_B0_MEASURED_PROXY = "SUMO_B04_AD_B0_measured_proxy"
+B4_PRIMARY_LANE_DATA_SOURCE = "SUMO_B04_AD_B0_laneData_edgeData_proxy"
+B4_PRIMARY_EDGE_LANE_SOURCE = "SUMO_B04_AD_B0_edge_lane_data"
 B4_PARAMETER_ID = "B4_MVP_DEFAULT"
 EV_ID = "emergency_0"
 B004_MODE = "B004"
@@ -48,10 +51,13 @@ DEFAULT_PHASE_BUFFER_SEC = 5.0
 DEFAULT_MAX_HOLD_SEC = 30.0
 DEFAULT_NEAR_HOLD_DISTANCE_M = 250.0
 DEFAULT_STAGE3_CONTROL_DISTANCE_M = 250.0
+DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M = 80.0
+DEFAULT_STAGE3_MAX_CONTROL_DISTANCE_M = 1000.0
 DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC = 2.0
 DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC = 10.0
 EMPTY_APPROACH_SPEED_KMH = 999.0
 FREE_FLOW_SPEED_KMH = 50.0
+TAU_SPEED_FREEFLOW_KMH = FREE_FLOW_SPEED_KMH
 QUEUE_PROXY_CONFIDENCE = 0.65
 QUEUE_CALIBRATED_CONFIDENCE = 0.70
 QUEUE_EXACT_CONFIDENCE = 0.85
@@ -67,6 +73,14 @@ B4_DEFAULT_PHASE = "bo-smoke"
 B4_EV_DEPARTURE_POLICY = "fixed"
 B4_EV_DEPART_RANDOMIZED = False
 B4_FINAL_VALIDATION_RANDOM_DEPARTURE_IMPLEMENTED = False
+B4_DECISION_VARIABLES = ("alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig")
+B4_FIXED_STRUCTURE_PARAMS = {
+    "tau": 0.75,
+    "hold_max": 14.0,
+    "d_up": 1,
+    "tau_scale": 0.85,
+    "tau_numerator_gamma": 5.0,
+}
 
 REQUIRED_STAGE1_EVENT_FIELDS = [
     "time",
@@ -131,6 +145,7 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "D_merge_m",
     "tE_merge_sec",
     "L_merge_m",
+    "Lq_merge_m",
     "C_merge_proxy_veh",
     "n_need_proxy_veh",
     "n_occ_runtime_veh",
@@ -171,6 +186,16 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "tls_queue_m_est",
     "tls_queue_veh_est",
     "tls_queue_max_back_m",
+    "original_tau_segment_id",
+    "original_tau_queue_m_proxy",
+    "original_tau_fill",
+    "original_tau_raw_fill",
+    "original_tau_adjusted_fill",
+    "original_tau_effective_fill",
+    "original_tau_scale",
+    "original_tau_numerator_gamma",
+    "original_tau_denominator_m",
+    "original_tau_source",
 ]
 
 EXPERIMENT_RESULT_FIELDS = [
@@ -192,6 +217,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "alpha",
     "G_ext",
     "tau",
+    "tau_scale",
+    "tau_numerator_gamma",
     "ext_max",
     "hold_max",
     "d_up",
@@ -279,6 +306,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "queue_local_fill_100m_max",
     "queue_local_fill_120m_max",
     "queue_corridor_fill_250m_max",
+    "original_tau_fill_max",
+    "original_tau_fill_p95",
     "queue_trigger_count",
     "queue_sampling_period_sec",
     "queue_runtime_lane_count",
@@ -293,13 +322,13 @@ class B4RuntimeError(RuntimeError):
 
 @dataclass(frozen=True)
 class B4MvpParams:
-    """Single default B4 MVP theta; future BO will vary these."""
+    """Single default B4 MVP parameters."""
 
     parameter_id: str = B4_PARAMETER_ID
     delta_T_thr: float = 0.0
-    Q_trig: float = 0.50
+    Q_trig: float = 0.0
     t_lead: float = 35.0
-    alpha: float = 5.0
+    alpha: float = 1.0
     G_ext: float = 30.0
     tau: float = 0.50
     ext_max: float = 30.0
@@ -323,38 +352,57 @@ class B4MvpParams:
 
 @dataclass(frozen=True)
 class B4ThetaParams(B4MvpParams):
-    """Five-variable B4 theta used by the independent BO runner."""
+    """Five screened B4 decision variables plus fixed structure parameters."""
 
-    parameter_id: str = "theta_default"
-    t_lead: float = 0.0
-    tau: float = 0.75
-    ext_max: float = 30.0
-    hold_max: float = DEFAULT_MAX_HOLD_SEC
-    d_up: int = 1
-    delta_T_thr: float = 0.0
-    Q_trig: float = 0.75
-    alpha: float = DEFAULT_PHASE_BUFFER_SEC
-    G_ext: float = 30.0
+    parameter_id: str = B4_PARAMETER_ID
+    alpha: float = 1.15
+    t_lead: float = 21.0
+    delta_T_thr: float = 80.0
+    G_ext: float = 32.0
+    Q_trig: float = 0.0
+    tau: float = B4_FIXED_STRUCTURE_PARAMS["tau"]
+    ext_max: float = 32.0
+    hold_max: float = B4_FIXED_STRUCTURE_PARAMS["hold_max"]
+    d_up: int = B4_FIXED_STRUCTURE_PARAMS["d_up"]
+    tau_scale: float = B4_FIXED_STRUCTURE_PARAMS["tau_scale"]
+    tau_numerator_gamma: float = B4_FIXED_STRUCTURE_PARAMS["tau_numerator_gamma"]
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "alpha", round_float(max(float(self.alpha), 1.0), 2))
         object.__setattr__(self, "t_lead", round_float(max(float(self.t_lead), 0.0), 0))
+        object.__setattr__(self, "delta_T_thr", round_float(max(float(self.delta_T_thr), 0.0), 0))
+        object.__setattr__(self, "G_ext", round_float(max(float(self.G_ext), 0.0), 0))
+        object.__setattr__(self, "Q_trig", round_float(max(float(self.Q_trig), 0.0), 0))
         object.__setattr__(self, "tau", round_float(clamp_float(float(self.tau), 0.0, 10.0), 2))
-        object.__setattr__(self, "ext_max", round_float(max(float(self.ext_max), DEFAULT_PHASE_BUFFER_SEC), 0))
+        object.__setattr__(self, "ext_max", self.G_ext)
         object.__setattr__(self, "hold_max", round_float(max(float(self.hold_max), 0.0), 0))
         object.__setattr__(self, "d_up", max(1, min(int(self.d_up), 3)))
-        object.__setattr__(self, "Q_trig", self.tau)
-        object.__setattr__(self, "G_ext", self.ext_max)
+        object.__setattr__(self, "tau_scale", round_float(clamp_float(float(self.tau_scale), 0.0, 1.0), 3))
+        object.__setattr__(self, "tau_numerator_gamma", round_float(max(float(self.tau_numerator_gamma), 0.1), 3))
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "B4ThetaParams":
         return cls(
-            parameter_id=str(row.get("parameter_id", "theta")),
-            t_lead=safe_float(row.get("t_lead"), 0.0),
-            tau=safe_float(row.get("tau"), 0.75),
-            ext_max=safe_float(row.get("ext_max"), 30.0),
-            hold_max=safe_float(row.get("hold_max"), DEFAULT_MAX_HOLD_SEC),
-            d_up=safe_int(row.get("d_up"), 1),
+            parameter_id=str(row.get("parameter_id", cls.parameter_id)),
+            alpha=safe_float(row.get("alpha"), cls.alpha),
+            t_lead=safe_float(row.get("t_lead"), cls.t_lead),
+            delta_T_thr=safe_float(row.get("delta_T_thr", row.get("delta_T_th")), cls.delta_T_thr),
+            G_ext=safe_float(row.get("G_ext", row.get("ext_max")), cls.G_ext),
+            Q_trig=safe_float(row.get("Q_trig"), cls.Q_trig),
+            tau=safe_float(row.get("tau"), cls.tau),
+            hold_max=safe_float(row.get("hold_max"), cls.hold_max),
+            d_up=safe_int(row.get("d_up"), cls.d_up),
+            tau_scale=safe_float(row.get("tau_scale"), cls.tau_scale),
+            tau_numerator_gamma=safe_float(row.get("tau_numerator_gamma"), cls.tau_numerator_gamma),
         )
+
+    def as_result_fields(self) -> dict[str, Any]:
+        fields = super().as_result_fields()
+        fields.update({
+            "tau_scale": self.tau_scale,
+            "tau_numerator_gamma": self.tau_numerator_gamma,
+        })
+        return fields
 
 
 @dataclass(frozen=True)
@@ -547,6 +595,49 @@ def load_edge_lanes(net_file: Path = B04_NET) -> dict[str, tuple[str, ...]]:
     return lanes
 
 
+def tl_logic_details(net_file: Path = B04_NET) -> dict[str, list[dict[str, Any]]]:
+    phases: dict[str, list[dict[str, Any]]] = {}
+    root = ET.parse(net_file).getroot()
+    for tl in root.findall("tlLogic"):
+        tls_id = tl.get("id", "")
+        phases[tls_id] = [
+            {
+                "phase_index": index,
+                "duration": safe_float(phase.get("duration")),
+                "state": phase.get("state", ""),
+                "name": phase.get("name", ""),
+            }
+            for index, phase in enumerate(tl.findall("phase"))
+        ]
+    return phases
+
+
+def movement_signal_switch_bound_sec(movement: "B4Movement", phases: list[dict[str, Any]]) -> float:
+    if not phases or movement.selected_green_phase is None:
+        return DEFAULT_PHASE_BUFFER_SEC
+    target_phase = next((phase for phase in phases if safe_int(phase.get("phase_index"), -1) == movement.selected_green_phase), {})
+    green_main = safe_float(target_phase.get("duration"), DEFAULT_PHASE_BUFFER_SEC)
+    yellow = max(
+        (
+            safe_float(phase.get("duration"))
+            for phase in phases
+            if "y" in str(phase.get("state", "")).lower() or "yellow" in str(phase.get("name", "")).lower()
+        ),
+        default=0.0,
+    )
+    all_red = max(
+        (
+            safe_float(phase.get("duration"))
+            for phase in phases
+            if str(phase.get("state", ""))
+            and not any(token in str(phase.get("state", "")) for token in ("G", "g", "y"))
+        ),
+        default=0.0,
+    )
+    # Stage 1 has no runtime ge measurement, so use the conservative ge=0 upper bound.
+    return max(DEFAULT_PHASE_BUFFER_SEC, yellow + all_red + max(0.0, green_main))
+
+
 @dataclass(frozen=True)
 class B4Thresholds:
     local_fill_trigger: float = 0.50
@@ -577,10 +668,12 @@ class B4Movement:
     local_storage_lanes: tuple[str, ...]
     corridor_storage_lanes: tuple[str, ...]
     selected_green_phase: int
-    selected_red_phase: int
+    selected_red_phase: int | None
     route_order_index: int
     mapped_s_segment: str
     controllable: bool
+    local_storage_edges: tuple[str, ...] = tuple()
+    corridor_storage_edges: tuple[str, ...] = tuple()
     stopline_local_storage_m: float = 100.0
     corridor_storage_length_m: float = 250.0
     lane_count: int = 1
@@ -590,6 +683,8 @@ class B4Movement:
     same_lane_blocking_link_indices: tuple[int, ...] = tuple()
     flush_link_indices: tuple[int, ...] = tuple()
     selected_flush_phase: int | None = None
+    red_phase_available: bool = False
+    green_only_no_red_phase: bool = False
     full_through_phase: int | None = None
     ev_route_phase: int | None = None
     full_through_phase_available: bool = False
@@ -649,7 +744,7 @@ class B4CaseBCandidate:
     mapping_status: str
     tau_default: float = 0.75
     case_b_prior_risk: bool = False
-    b0_source: str = "SUMO_B04_AA_B0_measured_proxy"
+    b0_source: str = B4_PRIMARY_B0_MEASURED_PROXY
     segment_edges: tuple[str, ...] = tuple()
     segment_lanes: tuple[str, ...] = tuple()
     segment_route_start_index: int = -1
@@ -719,7 +814,7 @@ class B4Stage2MergeHoldParams:
     b0_background_inflow_lambda_vph: float = 0.0
     b0_merge_waiting_max_sec: float = 0.0
     b0_merge_halting_proxy_max: float = 0.0
-    measurement_source: str = "SUMO_B04_AA_B0_laneData_edgeData_proxy"
+    measurement_source: str = B4_PRIMARY_LANE_DATA_SOURCE
     stage2_formula: str = "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec"
     runtime_control_uses_formula_directly: bool = False
 
@@ -740,7 +835,7 @@ class B4Stage2MergeHoldParams:
             b0_background_inflow_lambda_vph=safe_float(params.get("b0_background_inflow_lambda_vph"), 0.0),
             b0_merge_waiting_max_sec=safe_float(params.get("b0_merge_waiting_max_sec"), 0.0),
             b0_merge_halting_proxy_max=safe_float(params.get("b0_merge_halting_proxy_max"), 0.0),
-            measurement_source=str(params.get("measurement_source", payload.get("measurement_source", "SUMO_B04_AA_B0_laneData_edgeData_proxy"))),
+            measurement_source=str(params.get("measurement_source", payload.get("measurement_source", B4_PRIMARY_LANE_DATA_SOURCE))),
             stage2_formula=str(payload.get("stage2_formula", "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec")),
             runtime_control_uses_formula_directly=truthy(payload.get("runtime_control_uses_formula_directly", False)),
         )
@@ -829,19 +924,20 @@ class B4Stage1Inputs:
         return stage1
 
     def validate(self) -> None:
+        allow_input_override = truthy(self.summary.get("allow_runtime_input_override")) or bool(self.summary.get("runtime_input_provenance"))
         if self.runtime_index.get("algorithm") != "B4":
             raise B4RuntimeError("runtime_index_algorithm_must_be_B4")
-        if self.primary_candidate != B4_PRIMARY_CANDIDATE:
-            raise B4RuntimeError(f"b4_primary_candidate_must_be_AA:{self.primary_candidate}")
-        if self.manifest_selected_candidate != B4_MANIFEST_SELECTED_CANDIDATE:
-            raise B4RuntimeError(f"manifest_selected_candidate_must_be_AA:{self.manifest_selected_candidate}")
-        if self.manifest_selected_candidate_role != B4_MANIFEST_SELECTED_ROLE:
+        if not allow_input_override and self.primary_candidate != B4_PRIMARY_CANDIDATE:
+            raise B4RuntimeError(f"b4_primary_candidate_mismatch:{self.primary_candidate}")
+        if not allow_input_override and self.manifest_selected_candidate != B4_MANIFEST_SELECTED_CANDIDATE:
+            raise B4RuntimeError(f"manifest_selected_candidate_mismatch:{self.manifest_selected_candidate}")
+        if not allow_input_override and self.manifest_selected_candidate_role != B4_MANIFEST_SELECTED_ROLE:
             raise B4RuntimeError(f"manifest_selected_candidate_role_must_be_primary_selected:{self.manifest_selected_candidate_role}")
         if self.departure.merge_control_tls != "COMPACT_V9_FIRE_STATION_ENTRY_TLS":
             raise B4RuntimeError(f"unexpected_merge_control_tls:{self.departure.merge_control_tls}")
         if self.departure.ev_release_control_status != "uncontrolled_by_merge_tls":
             raise B4RuntimeError(f"unexpected_ev_release_control_status:{self.departure.ev_release_control_status}")
-        if self.stage2_merge_hold.measurement_source and self.stage2_merge_hold.measurement_source != "SUMO_B04_AA_B0_laneData_edgeData_proxy":
+        if not allow_input_override and self.stage2_merge_hold.measurement_source and self.stage2_merge_hold.measurement_source != B4_PRIMARY_LANE_DATA_SOURCE:
             raise B4RuntimeError(f"unexpected_stage2_measurement_source:{self.stage2_merge_hold.measurement_source}")
         missing_event_fields = [field for field in REQUIRED_STAGE1_EVENT_FIELDS if field not in self.event_schema]
         if missing_event_fields:
@@ -903,7 +999,7 @@ def case_b_candidates_from_rows(rows: list[dict[str, str]]) -> tuple[B4CaseBCand
             mapping_status=str(row.get("mapping_status", "")),
             tau_default=safe_float(row.get("tau_default"), 0.75),
             case_b_prior_risk=truthy(row.get("case_b_prior_risk")),
-            b0_source=str(row.get("b0_source", "SUMO_B04_AA_B0_measured_proxy")),
+            b0_source=str(row.get("b0_source", B4_PRIMARY_B0_MEASURED_PROXY)),
             segment_edges=tuple(split_tokens(row.get("segment_edges", ""))),
             segment_lanes=tuple(split_tokens(row.get("segment_lanes", ""))),
             segment_route_start_index=safe_int(row.get("segment_route_start_index"), -1),
@@ -928,6 +1024,11 @@ def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) ->
     parallel_through_link_indices = tuple(parse_link_indices(item.get("parallel_through_link_indices", approach_row.get("parallel_through_linkIndex", ""))))
     same_lane_blocking_link_indices = tuple(parse_link_indices(item.get("same_lane_blocking_link_indices", approach_row.get("same_lane_blocking_linkIndex", ""))))
     flush_link_indices = tuple(parse_link_indices(item.get("flush_link_indices", approach_row.get("flush_linkIndex", ""))))
+    selected_red = parse_optional_phase(item.get("selected_red_phase", approach_row.get("selected_red_phase", "")))
+    red_available = truthy(item.get("red_phase_available", approach_row.get("red_phase_available", selected_red is not None))) or selected_red is not None
+    green_only_no_red = truthy(item.get("green_only_no_red_phase", approach_row.get("green_only_no_red_phase", False))) or (
+        selected_red is None and str(item.get("tls_id", "")).startswith("CSV_TLS_")
+    )
     return B4Movement(
         movement_id=str(item.get("movement_id", "")),
         tls_id=str(item.get("tls_id", "")),
@@ -938,10 +1039,12 @@ def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) ->
         local_storage_lanes=tuple(split_tokens(item.get("local_storage_lanes", approach_row.get("local_storage_lanes", "")))),
         corridor_storage_lanes=tuple(split_tokens(item.get("corridor_storage_lanes", approach_row.get("corridor_storage_lanes", "")))),
         selected_green_phase=safe_int(item.get("selected_green_phase", approach_row.get("selected_green_phase")), 0),
-        selected_red_phase=safe_int(item.get("selected_red_phase", approach_row.get("selected_red_phase")), 0),
+        selected_red_phase=selected_red,
         route_order_index=safe_int(item.get("route_order_index", approach_row.get("route_order_index")), 0),
         mapped_s_segment=str(item.get("mapped_S_segment", approach_row.get("mapped_S_segment", ""))),
         controllable=truthy(item.get("controllable", approach_row.get("controllable", True))),
+        local_storage_edges=tuple(split_tokens(item.get("local_storage_edges", approach_row.get("local_storage_edges", approach_row.get("storage_edges", ""))))),
+        corridor_storage_edges=tuple(split_tokens(item.get("corridor_storage_edges", approach_row.get("corridor_storage_edges", "")))),
         stopline_local_storage_m=safe_float(approach_row.get("stopline_local_storage_m"), 100.0),
         corridor_storage_length_m=min(safe_float(approach_row.get("corridor_storage_length_m"), 250.0), 250.0),
         lane_count=max(safe_int(approach_row.get("lane_count"), len(split_tokens(item.get("approach_lanes", []))) or 1), 1),
@@ -951,6 +1054,8 @@ def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) ->
         same_lane_blocking_link_indices=same_lane_blocking_link_indices,
         flush_link_indices=flush_link_indices,
         selected_flush_phase=parse_optional_phase(item.get("selected_flush_phase", approach_row.get("selected_flush_phase", ""))),
+        red_phase_available=red_available,
+        green_only_no_red_phase=green_only_no_red,
         full_through_phase=parse_optional_phase(item.get("full_through_phase", approach_row.get("full_through_phase", ""))),
         ev_route_phase=parse_optional_phase(item.get("ev_route_phase", approach_row.get("ev_route_phase", ""))),
         full_through_phase_available=truthy(item.get("full_through_phase_available", approach_row.get("full_through_phase_available", False))),
@@ -1078,6 +1183,16 @@ class MovementRuntimeMetrics:
     tls_queue_m_est: float = 0.0
     tls_queue_veh_est: int = 0
     tls_queue_max_back_m: float = 0.0
+    original_tau_segment_id: str = ""
+    original_tau_queue_m_proxy: float = 0.0
+    original_tau_fill: float = 0.0
+    original_tau_raw_fill: float = 0.0
+    original_tau_adjusted_fill: float = 0.0
+    original_tau_effective_fill: float = 0.0
+    original_tau_scale: float = 1.0
+    original_tau_numerator_gamma: float = 1.0
+    original_tau_denominator_m: float = 0.0
+    original_tau_source: str = ""
 
 
 @dataclass(frozen=True)
@@ -1114,6 +1229,18 @@ class CaseBSegmentRuntimeMetrics:
     queue_confidence: float = QUEUE_STALE_CONFIDENCE
     observed_lane_count: int = 0
     missing_lane_count: int = 0
+
+
+@dataclass(frozen=True)
+class OriginalTauRuntimeMetrics:
+    movement_id: str
+    segment_id: str
+    queue_m_proxy: float = 0.0
+    fill: float = 0.0
+    denominator_m: float = 0.0
+    source: str = ""
+    observed_edge_count: int = 0
+    missing_edge_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -1163,6 +1290,7 @@ class B4ControllerStats:
     local_fill_120_samples: list[float] = field(default_factory=list)
     corridor_fill_250_samples: list[float] = field(default_factory=list)
     queue_method_counts: dict[str, int] = field(default_factory=dict)
+    original_tau_fill_samples: list[float] = field(default_factory=list)
     queue_trigger_count: int = 0
     queue_runtime_lane_count: int = 0
     queue_runtime_call_mode: str = ""
@@ -1175,6 +1303,7 @@ class B4ControllerStats:
             self.local_fill_100_samples.append(float(metric.local_fill_100m))
             self.local_fill_120_samples.append(float(metric.local_fill_120m))
             self.corridor_fill_250_samples.append(float(metric.corridor_fill_250m))
+            self.original_tau_fill_samples.append(float(metric.original_tau_fill))
             method = metric.queue_method or "lane_proxy"
             self.queue_method_counts[method] = self.queue_method_counts.get(method, 0) + 1
             if metric.control_candidate:
@@ -1210,6 +1339,8 @@ class B4ControllerStats:
             "queue_local_fill_100m_max": round_float(max(self.local_fill_100_samples) if self.local_fill_100_samples else 0.0),
             "queue_local_fill_120m_max": round_float(max(self.local_fill_120_samples) if self.local_fill_120_samples else 0.0),
             "queue_corridor_fill_250m_max": round_float(max(self.corridor_fill_250_samples) if self.corridor_fill_250_samples else 0.0),
+            "original_tau_fill_max": round_float(max(self.original_tau_fill_samples) if self.original_tau_fill_samples else 0.0),
+            "original_tau_fill_p95": percentile(self.original_tau_fill_samples, 0.95),
             "queue_trigger_count": self.queue_trigger_count,
             "queue_sampling_period_sec": DEFAULT_STEP_SEC,
             "queue_runtime_lane_count": self.queue_runtime_lane_count,
@@ -1271,11 +1402,15 @@ def evaluate_queue_levels(
 
 def theta_runtime_thresholds(base: B4Thresholds, params: B4MvpParams) -> B4Thresholds:
     tau = safe_float(getattr(params, "tau", base.local_fill_trigger), base.local_fill_trigger)
+    local_fill_trigger = tau
+    speed_trigger_kmh = base.speed_trigger_kmh
+    if isinstance(params, B4ThetaParams):
+        local_fill_trigger = base.local_fill_trigger
     return B4Thresholds(
-        local_fill_trigger=tau,
-        speed_trigger_kmh=base.speed_trigger_kmh,
+        local_fill_trigger=local_fill_trigger,
+        speed_trigger_kmh=speed_trigger_kmh,
         traffic_pressure_local_fill_100m=base.traffic_pressure_local_fill_100m,
-        bottleneck_local_fill_100m=max(tau, base.bottleneck_local_fill_100m),
+        bottleneck_local_fill_100m=max(local_fill_trigger, base.bottleneck_local_fill_100m),
         bottleneck_corridor_fill_250m=base.bottleneck_corridor_fill_250m,
     )
 
@@ -1286,20 +1421,35 @@ def theta_ta_lead_sec(params: B4MvpParams) -> float:
     return 0.0
 
 
-def theta_bounds_from_stage1(stage1: B4Stage1Inputs) -> dict[str, Any]:
-    max_tq = max((safe_float(movement.tQ_hist_b0_sec) for movement in stage1.movements), default=0.0)
-    t_lead_ub = max(DEFAULT_PHASE_BUFFER_SEC, math.ceil(max_tq + DEFAULT_PHASE_BUFFER_SEC))
+def theta_bounds_from_stage1(stage1: B4Stage1Inputs, net_file: Path = B04_NET) -> dict[str, Any]:
+    phases_by_tls = tl_logic_details(net_file) if net_file.is_file() else {}
+    max_signal_switch = max(
+        (
+            movement_signal_switch_bound_sec(movement, phases_by_tls.get(movement.tls_id, []))
+            for movement in stage1.movements
+            if movement.controllable
+        ),
+        default=DEFAULT_PHASE_BUFFER_SEC,
+    )
+    t_lead_ub = max(DEFAULT_PHASE_BUFFER_SEC, math.ceil(max_signal_switch))
     ext_ub = max(DEFAULT_STAGE2_HOLD_REFRESH_SEC, math.ceil(stage1.departure.dispatch_lead_time_range_sec[1] + DEFAULT_PHASE_BUFFER_SEC))
-    hold_proxy = stage1.stage2_merge_hold.tE_merge_sec - stage1.stage2_merge_hold.tS_merge_sec
-    hold_ub = max(DEFAULT_STAGE2_HOLD_REFRESH_SEC, math.ceil(max(hold_proxy, stage1.departure.dispatch_lead_time_sec)))
+    delta_ub = max(120, int(math.ceil(t_lead_ub * 2)))
+    q_trig_ub = max(50, int(math.ceil(stage1.stage2_merge_hold.L_merge_m)))
     return {
-        "schema": "compact_v9_B4_theta_bounds.v1",
-        "source": "B4Stage1Inputs+B04_signal_proxy",
+        "schema": "compact_v9_B4_theta_bounds.v2",
+        "source": "B4Stage1Inputs+B04_signal_program_proxy",
+        "decision_variables": list(B4_DECISION_VARIABLES),
+        "screening_policy": "Only alpha, t_lead, delta_T_thr, G_ext, and Q_trig are optimized. tau, hold_max, d_up, tau_scale, and tau_numerator_gamma are fixed structure parameters unless explicitly reclassified.",
+        "fixed_structure_params": dict(B4_FIXED_STRUCTURE_PARAMS),
+        "alpha": {"type": "continuous_quantized_0p05", "lower": 1.0, "upper": 1.8, "step": 0.05},
         "t_lead": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(t_lead_ub)},
-        "ext_max": {"type": "continuous_quantized_1s", "lower": int(DEFAULT_STAGE2_HOLD_REFRESH_SEC), "upper": int(ext_ub)},
-        "hold_max": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(hold_ub)},
-        "tau": {"type": "categorical", "values": [0.65, 0.70, 0.75, 0.80, 0.85]},
-        "d_up": {"type": "categorical", "values": [1, 2, 3]},
+        "delta_T_thr": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(delta_ub)},
+        "G_ext": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(ext_ub)},
+        "Q_trig": {"type": "continuous_quantized_1m", "lower": 0, "upper": int(q_trig_ub)},
+        "constraints": [
+            "delta_T_thr is the Stage 3 ETA gate; 0 disables the gate for legacy smoke runs.",
+            "Q_trig is measured in meters of merge-zone queue proxy; 0 keeps Stage 2 always eligible inside the dispatch window.",
+        ],
     }
 
 
@@ -1330,8 +1480,9 @@ def compute_ta_proxy(
     queue_method: str = "lane_proxy",
     b0_tQ_hist_sec: float = 0.0,
     b0_queue_veh: float = 0.0,
+    eta_buffer_alpha: float = 1.0,
 ) -> TAProxyMetrics:
-    t_e = max(ev_distance_m, 0.0) / TA_EV_SPEED_MPS
+    t_e = max(eta_buffer_alpha, 1.0) * max(ev_distance_m, 0.0) / TA_EV_SPEED_MPS
     if previous_phase == target_phase:
         t_s = 0.0
         t_s_source = "current_phase_direct"
@@ -1615,6 +1766,78 @@ def estimate_lane_set_queue_from_snapshots(
         missing_lane_count=missing,
         max_lane_queue_m=round_float(queue_m_proxy),
     )
+
+
+def lane_edge_id(lane_id: str) -> str:
+    if "_" not in lane_id:
+        return lane_id
+    return lane_id.rsplit("_", 1)[0]
+
+
+def edge_queue_proxy_from_snapshots(
+    snapshots: dict[str, LaneSnapshot],
+    edge_id: str,
+) -> tuple[float, int, float]:
+    edge_lanes = [snapshot for lane_id, snapshot in snapshots.items() if lane_edge_id(lane_id) == edge_id]
+    if not edge_lanes:
+        return 0.0, 0, 0.0
+    queue_m_values: list[float] = []
+    speed_weight = 0
+    speed_sum = 0.0
+    for snapshot in edge_lanes:
+        lane_queue_m, _lane_queue_veh, _slow = lane_queue_proxy_from_snapshot(snapshot, snapshot.length_m)
+        queue_m_values.append(lane_queue_m)
+        if snapshot.speed_observed:
+            speed_weight += max(snapshot.vehicle_count, 1)
+            speed_sum += snapshot.mean_speed_mps * max(snapshot.vehicle_count, 1)
+    mean_speed_kmh = (speed_sum / speed_weight) * 3.6 if speed_weight > 0 else EMPTY_APPROACH_SPEED_KMH
+    return round_float(max(queue_m_values) if queue_m_values else 0.0), len(edge_lanes), round_float(mean_speed_kmh)
+
+
+def estimate_original_tau_for_movement(
+    movement: B4Movement,
+    snapshots: dict[str, LaneSnapshot],
+) -> OriginalTauRuntimeMetrics:
+    if not movement.mapped_s_segment:
+        return OriginalTauRuntimeMetrics(movement_id=movement.movement_id, segment_id="")
+    edges = movement.corridor_storage_edges or tuple(
+        dict.fromkeys(lane_edge_id(lane_id) for lane_id in movement.corridor_storage_lanes if lane_id)
+    )
+    denominator_m = max(movement.corridor_storage_length_m, 1.0)
+    queue_m = 0.0
+    observed = 0
+    missing = 0
+    for edge_id in edges:
+        edge_queue_m, observed_lanes, _speed = edge_queue_proxy_from_snapshots(snapshots, edge_id)
+        if observed_lanes <= 0:
+            missing += 1
+            continue
+        observed += 1
+        queue_m += edge_queue_m
+    queue_m = min(queue_m, denominator_m)
+    fill = queue_m / denominator_m
+    return OriginalTauRuntimeMetrics(
+        movement_id=movement.movement_id,
+        segment_id=movement.mapped_s_segment,
+        queue_m_proxy=round_float(queue_m),
+        fill=round_float(fill),
+        denominator_m=round_float(denominator_m),
+        source="route_order_corridor_edge_queue_sum",
+        observed_edge_count=observed,
+        missing_edge_count=missing,
+    )
+
+
+def original_tau_metrics_from_snapshots(
+    movements: tuple[B4Movement, ...] | list[B4Movement],
+    snapshots: dict[str, LaneSnapshot],
+) -> dict[str, OriginalTauRuntimeMetrics]:
+    result: dict[str, OriginalTauRuntimeMetrics] = {}
+    for movement in movements:
+        if not movement.controllable or not movement.mapped_s_segment:
+            continue
+        result[movement.movement_id] = estimate_original_tau_for_movement(movement, snapshots)
+    return result
 
 
 def estimate_movement_queue_from_snapshots(
@@ -1926,6 +2149,7 @@ def stage2_merge_hold_proxy_snapshot(traci: Any, stage1: B4Stage1Inputs) -> dict
         "D_merge_m": round_float(params.D_merge_m),
         "tE_merge_sec": round_float(params.tE_merge_sec),
         "L_merge_m": round_float(params.L_merge_m),
+        "Lq_merge_m": round_float(metrics.queue_m_proxy),
         "C_merge_proxy_veh": round_float(params.C_merge_proxy_veh),
         "n_need_proxy_veh": round_float(params.n_need_proxy_veh),
         "n_occ_runtime_veh": round_float(n_occ),
@@ -2270,7 +2494,7 @@ def event_row(
         "b0_lambda_vph": round_float(movement.lambda_b0_vph),
         "ta_triggered": ta_triggered,
         "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
-        "ta_input_source": movement.b0_measurement_source or "SUMO_B04_AA_B0_edge_lane_data",
+        "ta_input_source": movement.b0_measurement_source or B4_PRIMARY_EDGE_LANE_SOURCE,
         "queue_source": queue_source,
         "case_b_source": case_b_source,
         "tS_source": tS_source,
@@ -2285,6 +2509,7 @@ def event_row(
         "D_merge_m": stage2_proxy.get("D_merge_m", ""),
         "tE_merge_sec": stage2_proxy.get("tE_merge_sec", ""),
         "L_merge_m": stage2_proxy.get("L_merge_m", ""),
+        "Lq_merge_m": stage2_proxy.get("Lq_merge_m", ""),
         "C_merge_proxy_veh": stage2_proxy.get("C_merge_proxy_veh", ""),
         "n_need_proxy_veh": stage2_proxy.get("n_need_proxy_veh", ""),
         "n_occ_runtime_veh": stage2_proxy.get("n_occ_runtime_veh", ""),
@@ -2328,6 +2553,16 @@ def event_row(
             "tls_queue_m_est": round_float(metrics.tls_queue_m_est),
             "tls_queue_veh_est": metrics.tls_queue_veh_est,
             "tls_queue_max_back_m": round_float(metrics.tls_queue_max_back_m),
+            "original_tau_segment_id": metrics.original_tau_segment_id,
+            "original_tau_queue_m_proxy": round_float(metrics.original_tau_queue_m_proxy),
+            "original_tau_fill": round_float(metrics.original_tau_fill),
+            "original_tau_raw_fill": round_float(metrics.original_tau_raw_fill),
+            "original_tau_adjusted_fill": round_float(metrics.original_tau_adjusted_fill),
+            "original_tau_effective_fill": round_float(metrics.original_tau_effective_fill),
+            "original_tau_scale": round_float(metrics.original_tau_scale),
+            "original_tau_numerator_gamma": round_float(metrics.original_tau_numerator_gamma),
+            "original_tau_denominator_m": round_float(metrics.original_tau_denominator_m),
+            "original_tau_source": metrics.original_tau_source,
         })
     return {field: row.get(field, "") for field in RUNTIME_EVENT_FIELDS}
 
@@ -2336,7 +2571,7 @@ def event_row(
 class B4RuntimeController:
     traci: Any
     stage1: B4Stage1Inputs
-    params: B4MvpParams = field(default_factory=B4MvpParams)
+    params: B4MvpParams = field(default_factory=B4ThetaParams)
     run_id: str = ""
     repeat_id: int = 1
     edge_lengths: dict[str, float] = field(default_factory=load_edge_lengths)
@@ -2471,6 +2706,99 @@ class B4RuntimeController:
             seen.add(movement_id)
         return ordered[:max_active]
 
+    def apply_original_tau_stage3_trigger(
+        self,
+        metrics: list[MovementRuntimeMetrics],
+        original_tau_by_movement: dict[str, OriginalTauRuntimeMetrics] | None = None,
+        segment_metrics_by_id: dict[str, CaseBSegmentRuntimeMetrics] | None = None,
+    ) -> list[MovementRuntimeMetrics]:
+        if not isinstance(self.params, B4ThetaParams):
+            return metrics
+        original_tau_by_movement = original_tau_by_movement or {}
+        segment_metrics_by_id = segment_metrics_by_id or {}
+        candidates_by_movement: dict[str, list[B4CaseBCandidate]] = {}
+        for candidate in self.stage1.case_b_candidates:
+            if not candidate.mapped:
+                continue
+            candidates_by_movement.setdefault(candidate.bottleneck_movement_id, []).append(candidate)
+            candidates_by_movement.setdefault(candidate.upstream_movement_id, []).append(candidate)
+        adjusted: list[MovementRuntimeMetrics] = []
+        for metric in metrics:
+            original_tau = original_tau_by_movement.get(metric.movement.movement_id)
+            candidates = candidates_by_movement.get(metric.movement.movement_id, [])
+            if original_tau is None and candidates:
+                best_fill = 0.0
+                best_queue = 0.0
+                best_segment = ""
+                best_denominator = 0.0
+                for candidate in candidates:
+                    segment_metric = segment_metrics_by_id.get(candidate.segment_id)
+                    if segment_metric is not None and segment_metric.queue_confidence > QUEUE_STALE_CONFIDENCE:
+                        fill = segment_metric.fill
+                        queue_m = segment_metric.queue_m_proxy
+                    elif metric.queue_confidence > QUEUE_STALE_CONFIDENCE and candidate.L_b0_m > 0.0:
+                        fill = metric.queue_m_proxy / max(candidate.L_b0_m, 0.001)
+                        queue_m = metric.queue_m_proxy
+                    else:
+                        continue
+                    if fill >= best_fill:
+                        best_fill = fill
+                        best_queue = queue_m
+                        best_segment = candidate.segment_id
+                        best_denominator = candidate.L_b0_m
+                if best_segment:
+                    original_tau = OriginalTauRuntimeMetrics(
+                        movement_id=metric.movement.movement_id,
+                        segment_id=best_segment,
+                        queue_m_proxy=round_float(best_queue),
+                        fill=round_float(best_fill),
+                        denominator_m=round_float(best_denominator),
+                        source="case_b_segment_fallback",
+                    )
+            if original_tau is None and not metric.movement.mapped_s_segment:
+                adjusted.append(metric)
+                continue
+            if original_tau is None:
+                original_tau = OriginalTauRuntimeMetrics(
+                    movement_id=metric.movement.movement_id,
+                    segment_id=metric.movement.mapped_s_segment,
+                    source="missing_original_tau_metric",
+                )
+            raw_fill = max(0.0, original_tau.fill)
+            bounded_raw_fill = min(raw_fill, 1.0)
+            numerator_gamma = safe_float(getattr(self.params, "tau_numerator_gamma", 1.0), 1.0)
+            adjusted_fill = bounded_raw_fill ** max(numerator_gamma, 0.1)
+            tau_scale = safe_float(getattr(self.params, "tau_scale", 1.0), 1.0)
+            effective_fill = min(adjusted_fill * tau_scale, 1.0)
+            tau_trigger = effective_fill >= safe_float(getattr(self.params, "tau", 0.75), 0.75)
+            combined_candidate = metric.control_candidate or tau_trigger
+            if tau_trigger and metric.control_candidate and metric.trigger_reason != "not_triggered":
+                trigger_reason = f"{metric.trigger_reason}+original_tau_segment"
+            elif tau_trigger:
+                trigger_reason = "original_tau_segment"
+            else:
+                trigger_reason = metric.trigger_reason
+            adjusted.append(replace(
+                metric,
+                control_candidate=combined_candidate,
+                trigger_reason=trigger_reason,
+                traffic_pressure=metric.traffic_pressure or tau_trigger or metric.fast_dense_flow,
+                operational_queue=metric.operational_queue or tau_trigger,
+                bottleneck_risk=tau_trigger or metric.bottleneck_risk,
+                control_mode="bottleneck_downstream_first" if tau_trigger or metric.bottleneck_risk else metric.control_mode,
+                original_tau_segment_id=original_tau.segment_id,
+                original_tau_queue_m_proxy=original_tau.queue_m_proxy,
+                original_tau_fill=round_float(effective_fill),
+                original_tau_raw_fill=round_float(raw_fill),
+                original_tau_adjusted_fill=round_float(adjusted_fill),
+                original_tau_effective_fill=round_float(effective_fill),
+                original_tau_scale=round_float(tau_scale),
+                original_tau_numerator_gamma=round_float(numerator_gamma),
+                original_tau_denominator_m=original_tau.denominator_m,
+                original_tau_source=original_tau.source,
+            ))
+        return adjusted
+
     def metric_ta(
         self,
         metric: MovementRuntimeMetrics,
@@ -2492,6 +2820,7 @@ class B4RuntimeController:
             queue_method=metric.queue_method or "lane_proxy",
             b0_tQ_hist_sec=movement.tQ_hist_b0_sec,
             b0_queue_veh=movement.q_max_b0_proxy_veh,
+            eta_buffer_alpha=safe_float(getattr(self.params, "alpha", 1.0), 1.0),
         )
 
     def case_b_evaluation(
@@ -2547,6 +2876,15 @@ class B4RuntimeController:
             case_b_segment_fill=round_float(segment_metric.fill) if segment_metric is not None else "",
             case_b_same_tls_policy=same_tls_policy,
         )
+
+    def event_case_b_source(self, metric: MovementRuntimeMetrics, case_b: CaseBEvaluation) -> str:
+        if case_b.case_b_source != "not_case_b":
+            return case_b.case_b_source
+        if "original_tau_segment" in metric.trigger_reason and metric.original_tau_source:
+            return f"original_tau_{metric.original_tau_source}"
+        if "original_tau_segment" in metric.trigger_reason:
+            return "original_tau_segment"
+        return case_b.case_b_source
 
     def same_tls_case_b_deferred(
         self,
@@ -2610,6 +2948,10 @@ class B4RuntimeController:
         earliest_control_time = self.stage1.ev_depart_sec - departure.dispatch_lead_time_sec
         if now < earliest_control_time:
             return False
+        q_trig = safe_float(getattr(self.params, "Q_trig", 0.0), 0.0)
+        if q_trig > 0.0 and stage2_proxy:
+            if safe_float(stage2_proxy.get("Lq_merge_m"), 0.0) < q_trig:
+                return False
         if not self.stage1.stage2_merge_hold.runtime_control_uses_formula_directly:
             return True
 
@@ -2726,12 +3068,14 @@ class B4RuntimeController:
             ]
             tls_estimates: dict[str, TlsQueueEstimate] = {}
             case_b_segment_metrics: dict[str, CaseBSegmentRuntimeMetrics] = {}
+            original_tau_metrics: dict[str, OriginalTauRuntimeMetrics] = {}
             ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
         else:
             queue_lanes = self.stage3_queue_lanes()
             lane_snapshots = sample_lane_snapshots(self.traci, queue_lanes, now)
             tls_estimates = tls_queue_estimates_from_snapshots(self.stage1.movements, lane_snapshots, now)
             case_b_segment_metrics = self.case_b_segment_metrics_from_snapshots(lane_snapshots, now)
+            original_tau_metrics = original_tau_metrics_from_snapshots(self.stage1.movements, lane_snapshots)
             exact_cache: dict[str, dict[str, Any]] = {}
             ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
             movement_metrics = [
@@ -2752,6 +3096,7 @@ class B4RuntimeController:
             self.stats.queue_runtime_call_mode = QUEUE_RUNTIME_CALL_MODE
             if self.stage1.queue_calibration_priors:
                 self.stats.queue_calibration_source = QUEUE_CALIBRATION_SOURCE
+        movement_metrics = self.apply_original_tau_stage3_trigger(movement_metrics, original_tau_metrics, case_b_segment_metrics)
         self.stats.observe_queue_metrics(movement_metrics, tls_estimates)
         metrics_by_id = {metric.movement.movement_id: metric for metric in movement_metrics}
         selected = order_stage3_candidates(
@@ -2767,9 +3112,14 @@ class B4RuntimeController:
             self.stage1.max_active_movements,
             case_b_segment_metrics,
         )
+        new_stage3_action_count = 0
+        max_new_stage3_actions = self.stage3_max_new_actions_per_step()
+        active_tls_ids = {control.tls_id for control in self.active_controls.values()}
         for metric in selected:
             movement = metric.movement
             if len(self.active_controls) >= self.stage1.max_active_movements:
+                break
+            if new_stage3_action_count >= max_new_stage3_actions:
                 break
             if movement.tls_id == self.stage1.departure.merge_control_tls and self.stage2_hold_active:
                 continue
@@ -2779,13 +3129,15 @@ class B4RuntimeController:
             ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(ev_state, movement))
             ta = self.metric_ta(metric, ev_distances, previous_phase)
             case_b = self.case_b_evaluation(metric, metrics_by_id, ev_distances, ta, case_b_segment_metrics)
+            event_case_b_source = self.event_case_b_source(metric, case_b)
             ta_proxy_sec = (
                 ta.TA_proxy_sec
                 if case_b.effective_TA_proxy_sec is None
                 else case_b.effective_TA_proxy_sec
             )
             active_count = len(self.active_controls)
-            theta_ta_triggered = ta_proxy_sec <= theta_ta_lead_sec(self.params)
+            delta_gate_open = self.stage3_delta_gate_open(ta.tE_sec)
+            theta_ta_triggered = delta_gate_open and ta_proxy_sec <= theta_ta_lead_sec(self.params)
             if self.same_tls_case_b_deferred(metric, metrics_by_id, case_b_segment_metrics):
                 events.append(event_row(
                     time=now,
@@ -2810,7 +3162,7 @@ class B4RuntimeController:
                     TA_proxy_sec=ta_proxy_sec,
                     ta_triggered=theta_ta_triggered,
                     queue_source=ta.queue_source,
-                    case_b_source=case_b.case_b_source,
+                    case_b_source=event_case_b_source,
                     tS_source=ta.tS_source,
                     TA_case=case_b.TA_case,
                     TA_upstream_sec=case_b.TA_upstream_sec,
@@ -2821,6 +3173,8 @@ class B4RuntimeController:
                     case_b_segment_fill=case_b.case_b_segment_fill,
                     case_b_same_tls_policy=case_b.case_b_same_tls_policy,
                 ))
+                continue
+            if movement.tls_id in active_tls_ids:
                 continue
             if not self.can_act_on_tls(movement.tls_id, now):
                 continue
@@ -2835,8 +3189,20 @@ class B4RuntimeController:
                 ev_state=ev_state,
                 ev_distance_m=round_float(ev_distance),
                 control_mode=metric.control_mode,
-                safety_status="ta_ready" if theta_ta_triggered else "ta_not_due",
-                trigger_reason=metric.trigger_reason if theta_ta_triggered else f"{metric.trigger_reason}+TA_proxy_gt_t_lead",
+                safety_status=(
+                    "ta_ready"
+                    if theta_ta_triggered
+                    else "delta_T_gate_closed"
+                    if not delta_gate_open
+                    else "ta_not_due"
+                ),
+                trigger_reason=(
+                    metric.trigger_reason
+                    if theta_ta_triggered
+                    else f"{metric.trigger_reason}+delta_T_thr_gate"
+                    if not delta_gate_open
+                    else f"{metric.trigger_reason}+TA_proxy_gt_t_lead"
+                ),
                 active_movement_count=active_count,
                 run_id=self.run_id,
                 parameter_id=self.params.parameter_id,
@@ -2847,7 +3213,7 @@ class B4RuntimeController:
                 TA_proxy_sec=ta_proxy_sec,
                 ta_triggered=theta_ta_triggered,
                 queue_source=ta.queue_source,
-                case_b_source=case_b.case_b_source,
+                case_b_source=event_case_b_source,
                 tS_source=ta.tS_source,
                 TA_case=case_b.TA_case,
                 TA_upstream_sec=case_b.TA_upstream_sec,
@@ -2858,11 +3224,22 @@ class B4RuntimeController:
                 case_b_segment_fill=case_b.case_b_segment_fill,
                 case_b_same_tls_policy=case_b.case_b_same_tls_policy,
             ))
-            if isinstance(ev_distance, (int, float)) and ev_distance > DEFAULT_STAGE3_CONTROL_DISTANCE_M:
+            if isinstance(ev_distance, (int, float)) and ev_distance > self.stage3_control_distance_m():
+                continue
+            if not delta_gate_open:
                 continue
             if not theta_ta_triggered:
                 continue
             duration = self.target_phase_duration(ta.tE_sec)
+            if duration <= 0.0:
+                continue
+            stage3_hold_budget = self.stage3_hold_budget_sec()
+            if self.stage3_hold_budget_enforced() and stage3_hold_budget <= 0.0:
+                continue
+            if self.stage3_hold_budget_enforced():
+                first_deadline_sec = max(DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC, min(duration, stage3_hold_budget))
+            else:
+                first_deadline_sec = DEFAULT_MAX_HOLD_SEC
             self.set_tls_phase(movement.tls_id, movement.selected_green_phase, duration)
             self.last_tls_action_at[movement.tls_id] = now
             self.active_controls[movement.movement_id] = ActiveControl(
@@ -2871,9 +3248,11 @@ class B4RuntimeController:
                 previous_phase=previous_phase,
                 target_phase=movement.selected_green_phase,
                 started_at=now,
-                deadline=now + DEFAULT_MAX_HOLD_SEC,
+                deadline=now + first_deadline_sec,
                 route_order_index=movement.route_order_index,
             )
+            new_stage3_action_count += 1
+            active_tls_ids.add(movement.tls_id)
             self.stats.stage3_preemption_count += 1
             self.stats.signal_burden_sec += duration
             if metric.trigger_reason in {"local_fill", "local_fill_and_low_speed"}:
@@ -2906,7 +3285,7 @@ class B4RuntimeController:
                 TA_proxy_sec=ta_proxy_sec,
                 ta_triggered=theta_ta_triggered,
                 queue_source=ta.queue_source,
-                case_b_source=case_b.case_b_source,
+                case_b_source=event_case_b_source,
                 tS_source=ta.tS_source,
                 TA_case=case_b.TA_case,
                 TA_upstream_sec=case_b.TA_upstream_sec,
@@ -2932,7 +3311,34 @@ class B4RuntimeController:
                 continue
             if expired and not passed:
                 ev_distance = self.ev_distance_to_movement(ev_state, movement)
-                if isinstance(ev_distance, (int, float)) and ev_distance > DEFAULT_NEAR_HOLD_DISTANCE_M:
+                elapsed = max(now - control.started_at, 0.0)
+                hold_budget = self.stage3_hold_budget_sec()
+                if self.stage3_hold_budget_enforced() and (hold_budget <= 0.0 or elapsed >= hold_budget):
+                    previous_phase = self.get_tls_phase(control.tls_id)
+                    self.set_tls_phase(control.tls_id, control.previous_phase, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
+                    self.last_tls_action_at[control.tls_id] = now
+                    self.stats.stage3_restore_count += 1
+                    events.append(event_row(
+                        time=now,
+                        stage="stage3",
+                        action_type="restore_previous_phase",
+                        movement=movement,
+                        target_phase=control.previous_phase,
+                        previous_phase=previous_phase,
+                        ev_state=ev_state,
+                        ev_distance_m=round_float(ev_distance),
+                        control_mode="restore_after_stage3_hold_max",
+                        safety_status="restored_previous_phase",
+                        trigger_reason="stage3_hold_max_elapsed",
+                        phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
+                        active_movement_count=max(len(self.active_controls) - 1, 0),
+                        run_id=self.run_id,
+                        parameter_id=self.params.parameter_id,
+                        repeat_id=self.repeat_id,
+                    ))
+                    del self.active_controls[movement_id]
+                    continue
+                if isinstance(ev_distance, (int, float)) and ev_distance > self.stage3_near_hold_distance_m():
                     previous_phase = self.get_tls_phase(control.tls_id)
                     self.set_tls_phase(control.tls_id, control.previous_phase, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
                     self.last_tls_action_at[control.tls_id] = now
@@ -2975,6 +3381,9 @@ class B4RuntimeController:
                         trigger_reason = "ev_stopped_same_lane_blocker_flush"
                         control.flushing_same_lane_blockers = True
                     duration = DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC
+                    if self.stage3_hold_budget_enforced():
+                        remaining_budget = max(hold_budget - elapsed, 0.0)
+                        duration = min(duration, remaining_budget)
                     self.set_tls_phase(control.tls_id, target_phase, duration)
                     self.last_tls_action_at[control.tls_id] = now
                     control.deadline = now + duration
@@ -3010,9 +3419,14 @@ class B4RuntimeController:
                     action_type = "extend_target_green"
                     trigger_reason = "ev_not_passed_extend_target_green"
                     control_mode = "extend_until_ev_pass"
-                self.set_tls_phase(control.tls_id, target_phase, self.params.G_ext)
-                control.deadline = now + self.params.G_ext
-                self.stats.signal_burden_sec += self.params.G_ext
+                if self.stage3_hold_budget_enforced():
+                    remaining_budget = max(hold_budget - elapsed, 0.0)
+                    extension_duration = min(self.params.G_ext, remaining_budget)
+                else:
+                    extension_duration = self.params.G_ext
+                self.set_tls_phase(control.tls_id, target_phase, extension_duration)
+                control.deadline = now + extension_duration
+                self.stats.signal_burden_sec += extension_duration
                 events.append(event_row(
                     time=now,
                     stage="stage3",
@@ -3025,7 +3439,7 @@ class B4RuntimeController:
                     control_mode=control_mode,
                     safety_status="stage1_selected_phase_mvp",
                     trigger_reason=trigger_reason,
-                    phase_duration_sec=self.params.G_ext,
+                    phase_duration_sec=extension_duration,
                     active_movement_count=len(self.active_controls),
                     run_id=self.run_id,
                     parameter_id=self.params.parameter_id,
@@ -3082,10 +3496,49 @@ class B4RuntimeController:
             distance += self.edge_lengths.get(edge_id, 0.0)
         return round_float(distance)
 
+    def stage3_control_distance_m(self) -> float:
+        if isinstance(self.params, B4ThetaParams):
+            lead_sec = theta_ta_lead_sec(self.params)
+            if lead_sec <= 0.0:
+                return DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M
+            d_up = max(1, safe_int(getattr(self.params, "d_up", 1), 1))
+            lookahead_multiplier = 1.0 + 0.25 * (d_up - 1)
+            return round_float(clamp_float(
+                TA_EV_SPEED_MPS * lead_sec * lookahead_multiplier,
+                DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M,
+                DEFAULT_STAGE3_MAX_CONTROL_DISTANCE_M,
+            ))
+        return DEFAULT_STAGE3_CONTROL_DISTANCE_M
+
+    def stage3_near_hold_distance_m(self) -> float:
+        return max(DEFAULT_NEAR_HOLD_DISTANCE_M, self.stage3_control_distance_m())
+
+    def stage3_max_new_actions_per_step(self) -> int:
+        if not isinstance(self.params, B4ThetaParams):
+            return self.stage1.max_active_movements
+        return min(max(1, safe_int(getattr(self.params, "d_up", 1), 1)), 2)
+
+    def stage3_hold_budget_sec(self) -> float:
+        if isinstance(self.params, B4ThetaParams):
+            return safe_float(getattr(self.params, "G_ext", 0.0), 0.0) + safe_float(
+                getattr(self.params, "hold_max", DEFAULT_MAX_HOLD_SEC),
+                DEFAULT_MAX_HOLD_SEC,
+            )
+        return DEFAULT_MAX_HOLD_SEC
+
+    def stage3_hold_budget_enforced(self) -> bool:
+        return isinstance(self.params, B4ThetaParams)
+
+    def stage3_delta_gate_open(self, t_e_eff: float | str) -> bool:
+        delta_t = safe_float(getattr(self.params, "delta_T_thr", 0.0), 0.0)
+        if delta_t <= 0.0 or t_e_eff == "":
+            return True
+        return safe_float(t_e_eff, float("inf")) <= delta_t
+
     def target_phase_duration(self, t_e: float | str) -> float:
         if t_e == "":
             return DEFAULT_PHASE_BUFFER_SEC
-        return min(max(float(t_e) + self.params.alpha, DEFAULT_PHASE_BUFFER_SEC), self.params.G_ext)
+        return max(float(t_e) + safe_float(getattr(self.params, "G_ext", 0.0), 0.0), DEFAULT_PHASE_BUFFER_SEC)
 
     def can_act_on_tls(self, tls_id: str, now: float) -> bool:
         return now - self.last_tls_action_at.get(tls_id, -9999.0) >= DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC

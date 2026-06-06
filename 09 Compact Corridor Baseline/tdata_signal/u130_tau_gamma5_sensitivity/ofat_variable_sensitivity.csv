@@ -1,0 +1,6 @@
+variable,candidate_count,pass_count,fail_count,best_EV_sec,worst_EV_sec,EV_range_sec,best_score_sec,worst_score_sec,mean_abs_delta_EV_sec,max_abs_delta_EV_sec,sensitivity_label
+t_lead,0,0,0,,,,,,,,low
+tau,4,4,0,571.0,869.0,298.0,5937.89,8969.06,166.0,298.0,high
+ext_max,0,0,0,,,,,,,,low
+hold_max,0,0,0,,,,,,,,low
+d_up,0,0,0,,,,,,,,low

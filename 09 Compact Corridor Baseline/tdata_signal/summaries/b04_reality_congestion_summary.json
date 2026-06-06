@@ -1,0 +1,31 @@
+{
+  "schema": "compact_v9_b04_reality_congestion.v1",
+  "generated_at": "2026-06-05T12:37:38.383660+00:00",
+  "signal": {
+    "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched.net.xml",
+    "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired.net.xml",
+    "active_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+    "active_net_overwritten": false,
+    "active_backup": "",
+    "applied_tls_count": 16,
+    "single_phase_repaired_count": 3,
+    "profiles_csv": "09 Compact Corridor Baseline/tdata_signal/reality_repaired_signal_profiles.csv",
+    "applied_profiles_csv": "09 Compact Corridor Baseline/tdata_signal/reality_repaired_applied_signal_profiles.csv"
+  },
+  "demand": {
+    "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
+    "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_reality_4000_sustained.rou.xml",
+    "begin_sec": 180.0,
+    "end_sec": 3900.0,
+    "duration_sec": 3720.0,
+    "hour_factor": 1.033333,
+    "main_up_count": 913,
+    "main_down_count": 1093,
+    "feeder_count": 1102,
+    "mid_count_each_direction": 90,
+    "sideflow_count": 180,
+    "vehicle_count": 3468,
+    "peak_hour_avg_up_vph": 883.227,
+    "peak_hour_avg_down_vph": 1057.818
+  }
+}

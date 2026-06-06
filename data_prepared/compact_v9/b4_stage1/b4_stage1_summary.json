@@ -1,26 +1,82 @@
 {
   "schema": "compact_v9_B4_stage1_summary.v1",
-  "generated_at": "2026-06-05T02:13:47.893989+00:00",
+  "generated_at": "2026-06-06T07:27:20.665462+00:00",
   "algorithm": "B4",
   "status": "WARN",
-  "primary_candidate": "B04_aa_balanced_growth",
-  "manifest_selected_candidate": "B04_aa_balanced_growth",
+  "primary_candidate": "B04_ad_variance_smoothed",
+  "manifest_selected_candidate": "B04_ad_variance_smoothed",
   "manifest_selected_candidate_role": "primary_selected",
+  "decision_variable_screening": {
+    "schema": "compact_v9_B4_decision_variable_screening.v1",
+    "model_form": "Y = f(X, Z)",
+    "decision_variables_X": [
+      "alpha",
+      "t_lead",
+      "delta_T_thr",
+      "G_ext",
+      "Q_trig"
+    ],
+    "screening_filters": [
+      "controllability",
+      "state_variable_exclusion",
+      "safety_constraint_exclusion",
+      "objective_sensitivity",
+      "structure_and_scenario_factor_exclusion",
+      "algorithm_registration"
+    ],
+    "state_variables_S": [
+      "Lq",
+      "n_occ",
+      "elapsed_green",
+      "TA_proxy_sec",
+      "T_hold_proxy_sec"
+    ],
+    "environment_variables_Z": [
+      "network_geometry",
+      "vehicle_physics",
+      "simulation_begin_end_step_seed",
+      "demand_scale_scenario"
+    ],
+    "safety_constraints": [
+      "phase_order",
+      "yellow_clearance",
+      "all_red_clearance",
+      "minimum_pedestrian_crossing_time"
+    ],
+    "fixed_structure_params": [
+      "tau",
+      "beta",
+      "hold_max",
+      "d_up",
+      "tau_scale",
+      "tau_numerator_gamma"
+    ],
+    "concept_only_or_unimplemented": [
+      "green_split",
+      "offset",
+      "cycle_length",
+      "green_wave_intersection_set"
+    ],
+    "notes": [
+      "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+      "seed and demand scale remain experiment design or robustness factors, not theta variables."
+    ]
+  },
   "primary_candidate_lock": {
-    "primary_candidate": "B04_aa_balanced_growth",
-    "manifest_selected_candidate": "B04_aa_balanced_growth",
+    "primary_candidate": "B04_ad_variance_smoothed",
+    "manifest_selected_candidate": "B04_ad_variance_smoothed",
     "manifest_selected_candidate_role": "primary_selected",
-    "reason": "AA is the current balanced B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+    "reason": "AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
     "metrics": {
-      "candidate": "B04_aa_balanced_growth",
-      "vehicles": 1309,
-      "main_through_flow": 333,
+      "candidate": "B04_ad_variance_smoothed",
+      "vehicles": 1302,
+      "main_through_flow": 657,
       "terminal_sink_flow": 0,
-      "top_sink_share": 0.074102,
-      "speed_mae_kmh": 12.653,
-      "free_count": 13,
-      "od_undercovered": 6,
-      "queue_not_forming": 7,
+      "top_sink_share": 0.141321,
+      "speed_mae_kmh": 11.533,
+      "free_count": 10,
+      "od_undercovered": 10,
+      "queue_not_forming": 0,
       "teleport": 0,
       "arrived_ratio": 1.0
     }
@@ -31,13 +87,13 @@
   "ta_proxy_policy": {
     "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
     "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
-    "b0_measured_params_source": "SUMO B04_aa_balanced_growth no-control edgeData/laneData/tripinfo outputs",
+    "b0_measured_params_source": "SUMO B04_ad_variance_smoothed no-control edgeData/laneData/tripinfo outputs",
     "field_queue_claim": false
   },
   "movement_summary": {
-    "movement_count": 6,
-    "controllable_movement_count": 6,
-    "control_candidate_count": 4,
+    "movement_count": 17,
+    "controllable_movement_count": 17,
+    "control_candidate_count": 7,
     "bottleneck_risk_count": 2,
     "case_b_candidate_count": 3,
     "case_b_mapped_count": 3
@@ -49,8 +105,10 @@
     "ev_release_control_status": "uncontrolled_by_merge_tls",
     "dispatch_lead_time_sec": 35.0,
     "stage2_b0_formula": "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
-    "stage2_b0_measurement_source": "SUMO_B04_AA_B0_laneData_edgeData_proxy",
-    "stage2_runtime_control_uses_formula_directly": true
+    "stage2_b0_measurement_source": "SUMO_B04_AD_B0_laneData_edgeData_proxy",
+    "stage2_runtime_control_uses_formula_directly": true,
+    "stage2_b0_merge_support_status": "weak_runtime_required",
+    "stage2_runtime_dependency": "runtime_n_occ_and_Lq_merge_primary"
   },
   "validation": {
     "overall": "WARN",
@@ -73,11 +131,11 @@
     "b04_queue_definition_audit": "results/metrics/compact_v9_B04/queue_audit/b04_queue_definition_audit.json",
     "b04_queue_proxy_by_segment": "results/metrics/compact_v9_B04/queue_audit/b04_queue_proxy_by_segment.csv",
     "b4_queue_measurement_diagnostics": "results/metrics/compact_v9_B04/queue_audit/b4_queue_measurement_diagnostics.csv",
-    "primary_run_summary": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/b0_run_summary.json",
-    "edgeData": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/edgeData.xml",
-    "laneData": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/laneData.xml",
-    "tripinfo": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/run/tripinfo.xml",
-    "segment_speed_recall": "results/metrics/compact_v9_B04/B04_aa_balanced_growth/B04_segment_speed_recall.csv"
+    "primary_run_summary": "results/metrics/compact_v9_B04/B04_ad_variance_smoothed/b0_run_summary.json",
+    "edgeData": "results/metrics/compact_v9_B04/B04_ad_variance_smoothed/run/edgeData.xml",
+    "laneData": "results/metrics/compact_v9_B04/B04_ad_variance_smoothed/run/laneData.xml",
+    "tripinfo": "results/metrics/compact_v9_B04/B04_ad_variance_smoothed/run/tripinfo.xml",
+    "segment_speed_recall": "results/metrics/compact_v9_B04/B04_ad_variance_smoothed/B04_segment_speed_recall.csv"
   },
   "outputs": {
     "b4_route_movement_plan_json": "data_prepared/compact_v9/b4_stage1/b4_route_movement_plan.json",
@@ -100,8 +158,8 @@
   "policy_notes": [
     "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
     "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
-    "B0 measured signal parameters are SUMO B04 AA no-control measurements, not field-observed queue lengths.",
-    "Stage 2 B0 merge hold parameters are SUMO B04 AA no-control laneData/edgeData proxy values, not field-observed occupancy.",
+    "B0 measured signal parameters are SUMO B04_ad_variance_smoothed no-control measurements, not field-observed queue lengths.",
+    "Stage 2 B0 merge hold parameters are SUMO B04_ad_variance_smoothed no-control laneData/edgeData proxy values, not field-observed occupancy.",
     "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
     "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
     "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",

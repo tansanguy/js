@@ -1,0 +1,103 @@
+{
+  "schema": "compact_v9_target15_archive_manifest.v1",
+  "generated_at": "2026-06-05T14:52:39.676769+00:00",
+  "active_keep": {
+    "demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+    "net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
+    "stage1_dir": "data_prepared/compact_v9/b4_stage1",
+    "b04_validation": "results/metrics/compact_v9_B4_target15_demand/u130_B04/experiment_results.csv",
+    "b4_validation": "results/metrics/compact_v9_B4_target15_demand/u130_tau085/experiment_results.csv"
+  },
+  "entries": [
+    {
+      "variant": "u120",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u120.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u120.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/u120_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_u120_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "u140",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u140.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u140.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/u140_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_u140_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "u150",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u150.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u150.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/u150_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_u150_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "u160",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u160.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u160.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/u160_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_u160_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "s125",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s125.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s125.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/s125_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_s125_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "s135",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s135.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s135.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/s135_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_s135_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "s145",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s145.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s145.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/s145_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_s145_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "s160",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s160.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s160.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/s160_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_s160_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    },
+    {
+      "variant": "s175",
+      "reason": "failed_or_non_active_target15_variant",
+      "demand_file": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s175.rou.xml",
+      "demand_summary": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_s175.rou.summary.json",
+      "metrics_dir": "results/metrics/compact_v9_B4_target15_demand/s175_tau085",
+      "run_dir": "runs/compact_v9_B4_target15_demand/target15_s175_tau085_20260605",
+      "active_replacement": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+      "archive_policy": "manifest_quarantine_files_left_in_place"
+    }
+  ]
+}

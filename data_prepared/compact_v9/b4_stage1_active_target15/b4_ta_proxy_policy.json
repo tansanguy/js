@@ -1,0 +1,50 @@
+{
+  "schema": "compact_v9_B4_ta_proxy_policy.v1",
+  "generated_at": "2026-06-06T06:27:29.018552+00:00",
+  "algorithm": "B4",
+  "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
+  "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+  "tE_sec": "EV_to_stopline_distance_m / 13.9mps",
+  "tS_sec": "0 if selected target phase is already active, else 5s direct switch safety buffer using existing SUMO phases only",
+  "tQ_sec": "(queue_m_proxy / 6.5m) * 3600 / (1800 veh/h/lane * lane_count)",
+  "b0_measured_params_source": "SUMO B04_active_target15_s400 no-control edgeData/laneData/tripinfo outputs",
+  "field_queue_claim": false,
+  "notes": [
+    "B0 measured values are simulation-internal proxies, not field-observed queue lengths.",
+    "TA is used with the existing B4 local fill / low speed safety filter, not as a standalone trigger.",
+    "B4 only switches to phases that already exist in the SUMO net.",
+    "When runtime queue is stale or empty, B0 tQ_hist may be used as a fallback and is logged with queue_source=b0_fallback."
+  ],
+  "b0_source_policy": [
+    {
+      "field_group": "stage1_signal_params",
+      "primary_source": "b4_b0_measured_signal_params.csv",
+      "fallback_source": "none",
+      "policy": "SUMO B04 no-control B0 measured proxy fills q_avg/q_max/tQ_hist/lambda."
+    },
+    {
+      "field_group": "stage2_merge",
+      "primary_source": "runtime TraCI lane snapshot",
+      "fallback_source": "b4_stage2_b0_merge_hold_params.json",
+      "policy": "Runtime n_occ wins; B0 mean/max is fallback only when merge lanes are unavailable."
+    },
+    {
+      "field_group": "stage3_tQ",
+      "primary_source": "runtime TraCI queue proxy",
+      "fallback_source": "b4_b0_measured_signal_params.csv",
+      "policy": "Runtime queue wins; stale or empty runtime queue may use B0 tQ_hist."
+    },
+    {
+      "field_group": "case_b",
+      "primary_source": "runtime queue/L tau check",
+      "fallback_source": "b4_case_b_candidates.csv B0 prior",
+      "policy": "Runtime tau wins; mapped B0 prior can mark Case B when runtime queue is not decisive."
+    }
+  ],
+  "constants": {
+    "v_E_mps": 13.9,
+    "headway_m_per_vehicle": 6.5,
+    "saturation_flow_vph_per_lane": 1800.0,
+    "direct_switch_buffer_sec": 5.0
+  }
+}

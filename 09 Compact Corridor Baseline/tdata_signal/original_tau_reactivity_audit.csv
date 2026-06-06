@@ -1,0 +1,17 @@
+mode,metric,segment_id,source,sample_count,mean,p50,p95,max,hit_count_tau_0.65,hit_ratio_tau_0.65,hit_count_tau_0.70,hit_ratio_tau_0.70,hit_count_tau_0.75,hit_ratio_tau_0.75,hit_count_tau_0.80,hit_ratio_tau_0.80,hit_count_tau_0.85,hit_ratio_tau_0.85
+B04,original_tau_avg_vehicle_length_fill,S7,laneData.xml_60s_proxy,53,0.927307,1.0,1.0,1.0,48,0.90566,48,0.90566,48,0.90566,48,0.90566,48,0.90566
+B04,original_tau_waiting_length_fill,S7,laneData.xml_60s_proxy,53,0.909794,1.0,1.0,1.0,47,0.886792,47,0.886792,47,0.886792,47,0.886792,46,0.867925
+B04,original_tau_avg_vehicle_length_fill,S10,laneData.xml_60s_proxy,53,0.159275,0.157424,0.228794,0.269563,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B04,original_tau_waiting_length_fill,S10,laneData.xml_60s_proxy,53,0.103181,0.110723,0.178904,0.208042,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B04,original_tau_avg_vehicle_length_fill,S11,laneData.xml_60s_proxy,53,0.023311,0.018988,0.032758,0.193784,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B04,original_tau_waiting_length_fill,S11,laneData.xml_60s_proxy,53,0.006331,0.0,0.0,0.15031,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B4,event_local_fill_100m,ALL,signal_events.csv,152,0.914245,1.0,1.0,1.0,131,0.861842,131,0.861842,131,0.861842,131,0.861842,131,0.861842
+B4,event_local_fill_80m,ALL,signal_events.csv,152,1.142806,1.25,1.25,1.25,136,0.894737,136,0.894737,136,0.894737,131,0.861842,131,0.861842
+B4,event_local_fill_120m,ALL,signal_events.csv,152,0.76187,0.833333,0.833333,0.833333,131,0.861842,131,0.861842,131,0.861842,131,0.861842,0,0.0
+B4,event_corridor_fill_250m,ALL,signal_events.csv,152,0.327871,0.31848,0.491711,0.491711,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B4,original_tau_avg_vehicle_length_fill,S7,laneData.xml_60s_proxy,16,0.69075,0.971665,1.0,1.0,9,0.5625,9,0.5625,8,0.5,8,0.5,8,0.5
+B4,original_tau_waiting_length_fill,S7,laneData.xml_60s_proxy,16,0.544902,0.694769,1.0,1.0,8,0.5,7,0.4375,6,0.375,6,0.375,6,0.375
+B4,original_tau_avg_vehicle_length_fill,S10,laneData.xml_60s_proxy,16,0.175795,0.196171,0.236206,0.251065,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B4,original_tau_waiting_length_fill,S10,laneData.xml_60s_proxy,16,0.099544,0.08683,0.198135,0.238398,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B4,original_tau_avg_vehicle_length_fill,S11,laneData.xml_60s_proxy,16,0.021389,0.023284,0.055615,0.062112,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0
+B4,original_tau_waiting_length_fill,S11,laneData.xml_60s_proxy,16,0.0,0.0,0.0,0.0,0,0.0,0,0.0,0,0.0,0,0.0,0,0.0

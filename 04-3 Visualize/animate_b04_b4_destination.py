@@ -86,6 +86,31 @@ def parse_tripinfo(path: Path) -> dict[str, str]:
     raise B04B4AnimationError(f"missing_emergency_tripinfo:{rel(path)}")
 
 
+def tripinfo_or_fcd_fallback(path: Path, fcd: FcdResult, mode: str) -> dict[str, str]:
+    try:
+        return parse_tripinfo(path)
+    except B04B4AnimationError as exc:
+        if not str(exc).startswith("missing_emergency_tripinfo:"):
+            raise
+        points = fcd.emergency.points
+        if not points:
+            raise
+        duration = max(0.0, points[-1].time - fcd.emergency.start_time)
+        return {
+            "id": EV_ID,
+            "depart": str(fcd.emergency.start_time),
+            "arrival": "-1",
+            "arrivalLane": points[-1].edge_id,
+            "arrivalPos": "",
+            "arrivalSpeed": "0",
+            "duration": str(duration),
+            "waitingTime": "0",
+            "waitingCount": "0",
+            "timeLoss": "0",
+            "fallback_reason": f"{mode}_missing_emergency_tripinfo_partial_fcd",
+        }
+
+
 def emergency_pos_by_time(fcd: FcdResult) -> dict[float, tuple[float, float]]:
     return {point.time: (point.lat, point.lon) for point in fcd.emergency.points}
 
@@ -273,8 +298,8 @@ def build_doc(args: argparse.Namespace) -> dict[str, Any]:
 
     b04_fcd = parse_fcd(paths["B04"]["fcd"], mode="B04")
     b4_fcd = parse_fcd(paths["B4"]["fcd"], mode="B4")
-    b04_tripinfo = parse_tripinfo(paths["B04"]["tripinfo"])
-    b4_tripinfo = parse_tripinfo(paths["B4"]["tripinfo"])
+    b04_tripinfo = tripinfo_or_fcd_fallback(paths["B04"]["tripinfo"], b04_fcd, "B04")
+    b4_tripinfo = tripinfo_or_fcd_fallback(paths["B4"]["tripinfo"], b4_fcd, "B4")
     b04_payload = build_mode_payload(mode="B04", fcd=b04_fcd, tripinfo=b04_tripinfo, bg_radius_m=args.bg_radius_m)
     b4_payload = build_mode_payload(mode="B4", fcd=b4_fcd, tripinfo=b4_tripinfo, bg_radius_m=args.bg_radius_m)
     b4_payload["signal_events"] = load_signal_events(paths["B4"]["signal_events"], b4_fcd)

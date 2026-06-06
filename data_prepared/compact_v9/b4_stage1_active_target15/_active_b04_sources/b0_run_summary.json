@@ -1,0 +1,26 @@
+{
+  "schema": "compact_v9_active_B04_run_summary_for_B4_stage1.v1",
+  "generated_at": "2026-06-06T06:27:25.538025+00:00",
+  "candidate": "B04_active_target15_s400",
+  "source_run_id": "active_target15_s400",
+  "edgeData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/edgeData.xml",
+  "laneData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/laneData.xml",
+  "tripinfo": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/tripinfo.xml",
+  "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
+  "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_active15.rou.xml",
+  "tripinfo_summary": {
+    "tripinfo": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/tripinfo.xml",
+    "vehicle_count": 292,
+    "emergency_arrived": true,
+    "emergency_duration_sec": 973.0,
+    "emergency_route_length_m": 4072.77,
+    "emergency_speed_kmh": 15.06883
+  },
+  "measurement_summary": {
+    "speed_csv": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/B04_segment_speed_recall.csv",
+    "diagnostics_csv": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/b4_queue_measurement_diagnostics.csv",
+    "segment_count": 44,
+    "speed_le_15_count": 10,
+    "physical_queue_like_count": 10
+  }
+}

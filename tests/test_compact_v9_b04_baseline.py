@@ -71,7 +71,7 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         self.assertEqual(selected["sumo_exit_code"], 0)
         self.assertTrue(selected["emergency_arrived"])
         self.assertIn(selected["candidate"], {row["candidate"] for row in payload["candidates"]})
-        self.assertEqual(payload["manifest_selected_candidate"], "B04_j_balanced_recall")
+        self.assertEqual(payload["manifest_selected_candidate"], "B04_ad_variance_smoothed")
         self.assertIn(payload["manifest_selection_policy"], {
             "updated_to_pass_or_warn",
             "retained_previous_because_all_candidates_failed",
@@ -82,6 +82,8 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         self.assertIn("Compact V9 B04", text)
         self.assertIn("toegye_ro_mainstream_segments_english.csv", text)
         self.assertIn("B04_j_balanced_recall", text)
+        self.assertIn("B04_ac_main_through_rebalanced", text)
+        self.assertIn("B04_ad_variance_smoothed", text)
         self.assertIn("진단상 최선 후보", text)
 
     def test_third_calibration_candidates_exist(self):
@@ -108,6 +110,8 @@ class CompactV9B04BaselineTest(unittest.TestCase):
             "B04_z_signal_queue_pulse",
             "B04_aa_balanced_growth",
             "B04_ab_queue_pressure",
+            "B04_ac_main_through_rebalanced",
+            "B04_ad_variance_smoothed",
         ]:
             self.assertIn(name, self.pipeline.CANDIDATES)
             self.assertEqual(self.pipeline.CANDIDATES[name].get("net_profile"), "speed50_sanity")
@@ -119,6 +123,9 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         self.assertEqual(self.pipeline.CANDIDATES["B04_z_signal_queue_pulse"]["target_pulse_mode"], "two_burst")
         self.assertGreater(self.pipeline.CANDIDATES["B04_aa_balanced_growth"]["use_balanced_main_through"], 0)
         self.assertGreater(self.pipeline.CANDIDATES["B04_ab_queue_pressure"]["through_scale_downbound"], 0.30)
+        self.assertGreater(self.pipeline.CANDIDATES["B04_ac_main_through_rebalanced"]["through_scale_upbound"], 0.30)
+        self.assertLess(self.pipeline.CANDIDATES["B04_ad_variance_smoothed"]["pulse_share"], self.pipeline.CANDIDATES["B04_ac_main_through_rebalanced"]["pulse_share"])
+        self.assertLess(self.pipeline.CANDIDATES["B04_ad_variance_smoothed"]["speed_dev"], self.pipeline.CANDIDATES["B04_ac_main_through_rebalanced"]["speed_dev"])
 
     def test_candidate_subset_parser(self):
         self.assertEqual(
@@ -281,10 +288,12 @@ class CompactV9B04BaselineTest(unittest.TestCase):
             summary = self.pipeline.build_b04_traffic_demand_review()
         finally:
             self.pipeline.run_b0_candidate = original
-        self.assertEqual(summary["primary_candidate"], "B04_aa_balanced_growth")
+        self.assertEqual(summary["primary_candidate"], "B04_ad_variance_smoothed")
         self.assertIn("B04_j_balanced_recall", summary["review_candidates"])
         self.assertIn("B04_z_signal_queue_pulse", summary["review_candidates"])
         self.assertIn("B04_ab_queue_pressure", summary["review_candidates"])
+        self.assertIn("B04_ac_main_through_rebalanced", summary["review_candidates"])
+        self.assertIn("B04_ad_variance_smoothed", summary["review_candidates"])
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["traffic_demand_review_json"]).is_file())
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["free_flow_cause_by_segment_csv"]).is_file())
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["main_vs_offmain_demand_audit_csv"]).is_file())
@@ -343,6 +352,29 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertGreaterEqual(int(rows[0]["main_through_flow"]), 250)
         self.assertEqual(int(rows[0]["terminal_sink_flow"]), 0)
+
+    def test_main_through_rebalanced_demand_keeps_total_and_rebalances_main(self):
+        original = self.pipeline.run_b0_candidate
+        candidates = ["B04_ac_main_through_rebalanced", "B04_ad_variance_smoothed"]
+        self.pipeline.run_b0_candidate = lambda _candidate: self.fail("demand build must not run SUMO")
+        try:
+            self.pipeline.build_demand(candidates)
+        finally:
+            self.pipeline.run_b0_candidate = original
+        rows = self.pipeline.build_main_vs_offmain_demand_rows(candidates)
+        for row in rows:
+            with self.subTest(candidate=row["candidate"]):
+                vehicle_count = int(row["vehicle_count"])
+                main_through = int(row["main_through_flow"])
+                self.assertGreaterEqual(vehicle_count, 1300)
+                self.assertLessEqual(vehicle_count, 1500)
+                self.assertGreaterEqual(main_through, 650)
+                self.assertLessEqual(main_through, 800)
+                self.assertGreaterEqual(main_through / vehicle_count, 0.50)
+                self.assertLessEqual(float(row["off_main_background_share"]), 0.08)
+                self.assertEqual(int(row["terminal_sink_flow"]), 0)
+                self.assertLess(float(row["top_source_share"]), 0.25)
+                self.assertLess(float(row["top_sink_share"]), 0.25)
 
     def test_queue_measurement_diagnostic_flags_fast_dense_no_stopline_queue(self):
         speed_rows = [{

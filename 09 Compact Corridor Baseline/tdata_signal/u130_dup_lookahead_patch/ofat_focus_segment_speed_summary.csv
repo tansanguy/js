@@ -1,0 +1,16 @@
+parameter_id,changed_variable,changed_value,final_status,movement_id,segment_id,route_order_index,speed_kmh,low_lt10_ratio,waiting_sec,density
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,B4_MOVEMENT_04,S6:upbound,23,8.555,0.7812,19359.0,206.11
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,B4_MOVEMENT_05,S7:upbound,28,5.681,0.8378,26325.0,207.589
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,B4_MOVEMENT_06,S9:upbound,35,1.971,0.9937,71872.85,288.617
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,B4_MOVEMENT_07,S9:upbound,37,1.819,1.0,60249.85,296.387
+baseline_tl21_ta70_ex32_ho14_du1,baseline,,PASS,B4_MOVEMENT_11,S15:upbound,50,4.505,0.935,10054.76,180.921
+ofat_d_up_3,d_up,3,PASS,B4_MOVEMENT_04,S6:upbound,23,7.325,0.8208,23334.0,213.636
+ofat_d_up_3,d_up,3,PASS,B4_MOVEMENT_05,S7:upbound,28,3.867,0.9477,35055.0,225.409
+ofat_d_up_3,d_up,3,PASS,B4_MOVEMENT_06,S9:upbound,35,1.582,0.9942,80280.38,294.518
+ofat_d_up_3,d_up,3,PASS,B4_MOVEMENT_07,S9:upbound,37,1.541,0.997,66272.38,300.061
+ofat_d_up_3,d_up,3,PASS,B4_MOVEMENT_11,S15:upbound,50,5.909,0.8733,7719.0,170.777
+ofat_d_up_2,d_up,2,PASS,B4_MOVEMENT_04,S6:upbound,23,8.392,0.8119,20844.0,206.92
+ofat_d_up_2,d_up,2,PASS,B4_MOVEMENT_05,S7:upbound,28,4.294,0.9525,33328.0,214.156
+ofat_d_up_2,d_up,2,PASS,B4_MOVEMENT_06,S9:upbound,35,1.526,0.9943,82588.73,299.362
+ofat_d_up_2,d_up,2,PASS,B4_MOVEMENT_07,S9:upbound,37,1.471,0.9999,67711.73,301.94
+ofat_d_up_2,d_up,2,PASS,B4_MOVEMENT_11,S15:upbound,50,4.752,0.91,9094.0,162.064

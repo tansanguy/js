@@ -1,0 +1,1586 @@
+{
+  "schema": "compact_v9_B4_route_movement_plan.v1",
+  "generated_at": "2026-06-06T06:27:29.018555+00:00",
+  "algorithm": "B4",
+  "decision_variable_screening": {
+    "schema": "compact_v9_B4_decision_variable_screening.v1",
+    "model_form": "Y = f(X, Z)",
+    "decision_variables_X": [
+      "alpha",
+      "t_lead",
+      "delta_T_thr",
+      "G_ext",
+      "Q_trig"
+    ],
+    "screening_filters": [
+      "controllability",
+      "state_variable_exclusion",
+      "safety_constraint_exclusion",
+      "objective_sensitivity",
+      "structure_and_scenario_factor_exclusion",
+      "algorithm_registration"
+    ],
+    "state_variables_S": [
+      "Lq",
+      "n_occ",
+      "elapsed_green",
+      "TA_proxy_sec",
+      "T_hold_proxy_sec"
+    ],
+    "environment_variables_Z": [
+      "network_geometry",
+      "vehicle_physics",
+      "simulation_begin_end_step_seed",
+      "demand_scale_scenario"
+    ],
+    "safety_constraints": [
+      "phase_order",
+      "yellow_clearance",
+      "all_red_clearance",
+      "minimum_pedestrian_crossing_time"
+    ],
+    "fixed_structure_params": [
+      "tau",
+      "beta",
+      "hold_max",
+      "d_up",
+      "tau_scale",
+      "tau_numerator_gamma"
+    ],
+    "concept_only_or_unimplemented": [
+      "green_split",
+      "offset",
+      "cycle_length",
+      "green_wave_intersection_set"
+    ],
+    "notes": [
+      "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+      "seed and demand scale remain experiment design or robustness factors, not theta variables."
+    ]
+  },
+  "route": {
+    "route_id": "COMPACT_V9_FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "vehicle_id": "emergency_0",
+    "depart_sec": 600.0,
+    "start_edge_id": "420331801#1",
+    "merge_edge_id": "-174870621#8",
+    "target_edge_id": "619147738#1",
+    "route_edge_count": 61,
+    "route_length_m": 2934.91,
+    "route_edges": [
+      "420331801#1",
+      "-174870621#8",
+      "-174870621#7",
+      "-174870621#6",
+      "-174870621#5",
+      "-174870621#4",
+      "-174870621#2",
+      "-174870621#0",
+      "578313748#0",
+      "578313748#2",
+      "800229255",
+      "180368918#0",
+      "180368918#3",
+      "180368918#5",
+      "180368918#6",
+      "180368918#7",
+      "180368918#8",
+      "218773868#0",
+      "218773868#2",
+      "218773868#3",
+      "218773868#4",
+      "218773868#5",
+      "218773868#6",
+      "-1455512070",
+      "428260110",
+      "785130600#0",
+      "785130600#1",
+      "785130600#2",
+      "785130600#3",
+      "1455497345",
+      "218773869#1",
+      "218773869#3",
+      "218773869#4",
+      "218773869#5",
+      "218773869#6",
+      "218773869#7",
+      "218773869#8",
+      "218773869#9",
+      "219696193#1",
+      "219696193#2",
+      "781985793#0",
+      "781985793#1",
+      "420361196",
+      "180445419",
+      "347237859#0",
+      "347237859#1",
+      "347237859#2",
+      "347237859#3",
+      "347237859#4",
+      "347237859#5",
+      "781985787#0",
+      "218915135#3",
+      "218915135#4",
+      "781983104#0",
+      "781983104#1",
+      "333557072#1",
+      "333557072#2",
+      "333557072#3",
+      "333557072#5",
+      "619147738#0",
+      "619147738#1"
+    ]
+  },
+  "ordered_movements": [
+    {
+      "movement_id": "B4_MOVEMENT_00",
+      "tls_id": "CSV_TLS_S01_S02_SEONGDONG_GLOBAL_BUSINESS_HIGH_SCHOOL",
+      "from_edge": "-174870621#2",
+      "to_edge": "-174870621#0",
+      "link_indices": [
+        1,
+        2,
+        3
+      ],
+      "control_link_indices": [
+        1,
+        2,
+        3
+      ],
+      "ev_route_link_indices": [
+        1,
+        2,
+        3
+      ],
+      "parallel_through_link_indices": [
+        1,
+        2,
+        3
+      ],
+      "same_lane_blocking_link_indices": [
+        0
+      ],
+      "flush_link_indices": [
+        0
+      ],
+      "approach_lanes": [
+        "-174870621#2_0",
+        "-174870621#2_1",
+        "-174870621#2_2"
+      ],
+      "local_storage_lanes": [
+        "-174870621#4_0",
+        "-174870621#4_1",
+        "-174870621#4_2",
+        "-174870621#2_0",
+        "-174870621#2_1",
+        "-174870621#2_2"
+      ],
+      "corridor_storage_lanes": [
+        "420331801#1_0",
+        "-174870621#8_0",
+        "-174870621#8_1",
+        "-174870621#8_2",
+        "-174870621#7_0",
+        "-174870621#7_1",
+        "-174870621#7_2",
+        "-174870621#6_0",
+        "-174870621#6_1",
+        "-174870621#6_2",
+        "-174870621#5_0",
+        "-174870621#5_1",
+        "-174870621#5_2",
+        "-174870621#4_0",
+        "-174870621#4_1",
+        "-174870621#4_2",
+        "-174870621#2_0",
+        "-174870621#2_1",
+        "-174870621#2_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 6,
+      "mapped_S_segment": "S1:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.002219,
+      "q_max_b0_proxy_veh": 0.165776,
+      "tQ_hist_b0_sec": 0.110517,
+      "lambda_b0_vph": 66.27913,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_01",
+      "tls_id": "CSV_TLS_S02_S03_HANYANG_TECHNICAL_HIGH_SCHOOL_FRONT",
+      "from_edge": "800229255",
+      "to_edge": "180368918#0",
+      "link_indices": [
+        3,
+        4,
+        5
+      ],
+      "control_link_indices": [
+        3,
+        4,
+        5
+      ],
+      "ev_route_link_indices": [
+        3,
+        4,
+        5
+      ],
+      "parallel_through_link_indices": [
+        3,
+        4,
+        5
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "800229255_0",
+        "800229255_1",
+        "800229255_2"
+      ],
+      "local_storage_lanes": [
+        "-174870621#0_0",
+        "-174870621#0_1",
+        "-174870621#0_2",
+        "578313748#0_0",
+        "578313748#0_1",
+        "578313748#0_2",
+        "578313748#2_0",
+        "578313748#2_1",
+        "578313748#2_2",
+        "800229255_0",
+        "800229255_1",
+        "800229255_2"
+      ],
+      "corridor_storage_lanes": [
+        "-174870621#0_0",
+        "-174870621#0_1",
+        "-174870621#0_2",
+        "578313748#0_0",
+        "578313748#0_1",
+        "578313748#0_2",
+        "578313748#2_0",
+        "578313748#2_1",
+        "578313748#2_2",
+        "800229255_0",
+        "800229255_1",
+        "800229255_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": "",
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 10,
+      "mapped_S_segment": "S2:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.055253,
+      "q_max_b0_proxy_veh": 1.153819,
+      "tQ_hist_b0_sec": 0.769213,
+      "lambda_b0_vph": 191.872063,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_02",
+      "tls_id": "cluster_3846534041_436877431",
+      "from_edge": "180368918#3",
+      "to_edge": "180368918#5",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [
+        3
+      ],
+      "flush_link_indices": [
+        3
+      ],
+      "approach_lanes": [
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "local_storage_lanes": [
+        "578313748#0_0",
+        "578313748#0_1",
+        "578313748#0_2",
+        "578313748#2_0",
+        "578313748#2_1",
+        "578313748#2_2",
+        "800229255_0",
+        "800229255_1",
+        "800229255_2",
+        "180368918#0_0",
+        "180368918#0_1",
+        "180368918#0_2",
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "corridor_storage_lanes": [
+        "180368918#0_0",
+        "180368918#0_1",
+        "180368918#0_2",
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 0,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 12,
+      "mapped_S_segment": "S3:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.045771,
+      "q_max_b0_proxy_veh": 1.153819,
+      "tQ_hist_b0_sec": 0.769213,
+      "lambda_b0_vph": 228.56246,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_03",
+      "tls_id": "CSV_TLS_S05_S06_GWANGHUI_INTERSECTION",
+      "from_edge": "180368918#8",
+      "to_edge": "218773868#0",
+      "link_indices": [
+        5,
+        6
+      ],
+      "control_link_indices": [
+        5,
+        6
+      ],
+      "ev_route_link_indices": [
+        5,
+        6
+      ],
+      "parallel_through_link_indices": [
+        5,
+        6
+      ],
+      "same_lane_blocking_link_indices": [
+        4,
+        7
+      ],
+      "flush_link_indices": [
+        4,
+        7
+      ],
+      "approach_lanes": [
+        "180368918#8_0",
+        "180368918#8_1"
+      ],
+      "local_storage_lanes": [
+        "180368918#3_0",
+        "180368918#3_1",
+        "180368918#3_2",
+        "180368918#5_0",
+        "180368918#5_1",
+        "180368918#5_2",
+        "180368918#6_0",
+        "180368918#6_1",
+        "180368918#6_2",
+        "180368918#7_0",
+        "180368918#7_1",
+        "180368918#7_2",
+        "180368918#8_0",
+        "180368918#8_1"
+      ],
+      "corridor_storage_lanes": [
+        "180368918#5_0",
+        "180368918#5_1",
+        "180368918#5_2",
+        "180368918#6_0",
+        "180368918#6_1",
+        "180368918#6_2",
+        "180368918#7_0",
+        "180368918#7_1",
+        "180368918#7_2",
+        "180368918#8_0",
+        "180368918#8_1"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 16,
+      "mapped_S_segment": "S5:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.035524,
+      "q_max_b0_proxy_veh": 1.023262,
+      "tQ_hist_b0_sec": 1.023262,
+      "lambda_b0_vph": 257.470531,
+      "C_local_proxy_veh": 30.769231,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_04",
+      "tls_id": "joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+      "from_edge": "-1455512070",
+      "to_edge": "428260110",
+      "link_indices": [
+        7,
+        8
+      ],
+      "control_link_indices": [
+        7,
+        8
+      ],
+      "ev_route_link_indices": [
+        7,
+        8
+      ],
+      "parallel_through_link_indices": [
+        7,
+        8
+      ],
+      "same_lane_blocking_link_indices": [
+        6,
+        9
+      ],
+      "flush_link_indices": [
+        6,
+        9
+      ],
+      "approach_lanes": [
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "local_storage_lanes": [
+        "218773868#5_0",
+        "218773868#5_1",
+        "218773868#6_0",
+        "218773868#6_1",
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "corridor_storage_lanes": [
+        "218773868#0_0",
+        "218773868#0_1",
+        "218773868#2_0",
+        "218773868#2_1",
+        "218773868#3_0",
+        "218773868#3_1",
+        "218773868#4_0",
+        "218773868#4_1",
+        "218773868#5_0",
+        "218773868#5_1",
+        "218773868#6_0",
+        "218773868#6_1",
+        "-1455512070_0",
+        "-1455512070_1"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 0,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 23,
+      "mapped_S_segment": "S6:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.247276,
+      "q_max_b0_proxy_veh": 3.712021,
+      "tQ_hist_b0_sec": 3.712021,
+      "lambda_b0_vph": 264.773309,
+      "C_local_proxy_veh": 30.769231,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_05",
+      "tls_id": "CSV_TLS_S08_S09_TOEGYE_RO_4_GA",
+      "from_edge": "785130600#3",
+      "to_edge": "1455497345",
+      "link_indices": [
+        0,
+        1
+      ],
+      "control_link_indices": [
+        0,
+        1
+      ],
+      "ev_route_link_indices": [
+        0,
+        1
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1
+      ],
+      "same_lane_blocking_link_indices": [
+        2
+      ],
+      "flush_link_indices": [
+        2
+      ],
+      "approach_lanes": [
+        "785130600#3_0",
+        "785130600#3_1"
+      ],
+      "local_storage_lanes": [
+        "785130600#2_0",
+        "785130600#2_1",
+        "785130600#3_0",
+        "785130600#3_1"
+      ],
+      "corridor_storage_lanes": [
+        "428260110_0",
+        "428260110_1",
+        "785130600#0_0",
+        "785130600#0_1",
+        "785130600#1_0",
+        "785130600#1_1",
+        "785130600#2_0",
+        "785130600#2_1",
+        "785130600#3_0",
+        "785130600#3_1"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 28,
+      "mapped_S_segment": "S7:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.038292,
+      "q_max_b0_proxy_veh": 0.857852,
+      "tQ_hist_b0_sec": 0.857852,
+      "lambda_b0_vph": 317.359333,
+      "C_local_proxy_veh": 30.769231,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_06",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "from_edge": "218773869#7",
+      "to_edge": "218773869#8",
+      "link_indices": [
+        6,
+        7,
+        8
+      ],
+      "control_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "ev_route_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "parallel_through_link_indices": [
+        6,
+        7,
+        8
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "local_storage_lanes": [
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "corridor_storage_lanes": [
+        "1455497345_0",
+        "1455497345_1",
+        "1455497345_2",
+        "218773869#1_0",
+        "218773869#1_1",
+        "218773869#1_2",
+        "218773869#3_0",
+        "218773869#3_1",
+        "218773869#3_2",
+        "218773869#4_0",
+        "218773869#4_1",
+        "218773869#4_2",
+        "218773869#5_0",
+        "218773869#5_1",
+        "218773869#5_2",
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2"
+      ],
+      "selected_green_phase": 2,
+      "selected_red_phase": 0,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": "",
+      "full_through_phase": 2,
+      "ev_route_phase": 2,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 35,
+      "mapped_S_segment": "S9:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50+speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 6.086328,
+      "q_max_b0_proxy_veh": 24.306761,
+      "tQ_hist_b0_sec": 16.204507,
+      "lambda_b0_vph": 132.619533,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_07",
+      "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "from_edge": "218773869#9",
+      "to_edge": "219696193#1",
+      "link_indices": [
+        24,
+        25
+      ],
+      "control_link_indices": [
+        24,
+        25
+      ],
+      "ev_route_link_indices": [
+        24,
+        25
+      ],
+      "parallel_through_link_indices": [
+        24,
+        25
+      ],
+      "same_lane_blocking_link_indices": [
+        23
+      ],
+      "flush_link_indices": [
+        23
+      ],
+      "approach_lanes": [
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "local_storage_lanes": [
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2",
+        "218773869#8_0",
+        "218773869#8_1",
+        "218773869#8_2",
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "corridor_storage_lanes": [
+        "218773869#1_0",
+        "218773869#1_1",
+        "218773869#1_2",
+        "218773869#3_0",
+        "218773869#3_1",
+        "218773869#3_2",
+        "218773869#4_0",
+        "218773869#4_1",
+        "218773869#4_2",
+        "218773869#5_0",
+        "218773869#5_1",
+        "218773869#5_2",
+        "218773869#6_0",
+        "218773869#6_1",
+        "218773869#6_2",
+        "218773869#7_0",
+        "218773869#7_1",
+        "218773869#7_2",
+        "218773869#8_0",
+        "218773869#8_1",
+        "218773869#8_2",
+        "218773869#9_0",
+        "218773869#9_1",
+        "218773869#9_2"
+      ],
+      "selected_green_phase": 8,
+      "selected_red_phase": 0,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 8,
+      "full_through_phase": 8,
+      "ev_route_phase": 8,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 37,
+      "mapped_S_segment": "S9:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50+speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 3.567516,
+      "q_max_b0_proxy_veh": 24.306761,
+      "tQ_hist_b0_sec": 16.204507,
+      "lambda_b0_vph": 125.847255,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_08",
+      "tls_id": "CSV_TLS_S11_S12_TOEGYE_RO_2_GA",
+      "from_edge": "420361196",
+      "to_edge": "180445419",
+      "link_indices": [
+        0,
+        1
+      ],
+      "control_link_indices": [
+        0,
+        1
+      ],
+      "ev_route_link_indices": [
+        0,
+        1
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "420361196_0",
+        "420361196_1"
+      ],
+      "local_storage_lanes": [
+        "420361196_0",
+        "420361196_1"
+      ],
+      "corridor_storage_lanes": [
+        "219696193#2_0",
+        "219696193#2_1",
+        "781985793#0_0",
+        "781985793#0_1",
+        "781985793#1_0",
+        "781985793#1_1",
+        "420361196_0",
+        "420361196_1"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": "",
+      "red_phase_available": false,
+      "green_only_no_red_phase": true,
+      "selected_flush_phase": "",
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 42,
+      "mapped_S_segment": "S11:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.0,
+      "q_max_b0_proxy_veh": 0.0,
+      "tQ_hist_b0_sec": 0.0,
+      "lambda_b0_vph": 30.0,
+      "C_local_proxy_veh": 30.769231,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_09",
+      "tls_id": "CSV_TLS_S13_S14_MYEONGDONG_STATION_FRONT",
+      "from_edge": "347237859#1",
+      "to_edge": "347237859#2",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [
+        3
+      ],
+      "flush_link_indices": [
+        3
+      ],
+      "approach_lanes": [
+        "347237859#1_0",
+        "347237859#1_1",
+        "347237859#1_2"
+      ],
+      "local_storage_lanes": [
+        "180445419_0",
+        "180445419_1",
+        "347237859#0_0",
+        "347237859#0_1",
+        "347237859#1_0",
+        "347237859#1_1",
+        "347237859#1_2"
+      ],
+      "corridor_storage_lanes": [
+        "180445419_0",
+        "180445419_1",
+        "347237859#0_0",
+        "347237859#0_1",
+        "347237859#1_0",
+        "347237859#1_1",
+        "347237859#1_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 45,
+      "mapped_S_segment": "S13:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.018343,
+      "q_max_b0_proxy_veh": 0.966165,
+      "tQ_hist_b0_sec": 0.64411,
+      "lambda_b0_vph": 229.417538,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_10",
+      "tls_id": "CSV_TLS_S14_S15_DAYS_HOTEL_FRONT",
+      "from_edge": "347237859#4",
+      "to_edge": "347237859#5",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "347237859#4_0",
+        "347237859#4_1",
+        "347237859#4_2"
+      ],
+      "local_storage_lanes": [
+        "347237859#3_0",
+        "347237859#3_1",
+        "347237859#3_2",
+        "347237859#4_0",
+        "347237859#4_1",
+        "347237859#4_2"
+      ],
+      "corridor_storage_lanes": [
+        "347237859#2_0",
+        "347237859#2_1",
+        "347237859#2_2",
+        "347237859#3_0",
+        "347237859#3_1",
+        "347237859#3_2",
+        "347237859#4_0",
+        "347237859#4_1",
+        "347237859#4_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": "",
+      "red_phase_available": false,
+      "green_only_no_red_phase": true,
+      "selected_flush_phase": "",
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 48,
+      "mapped_S_segment": "S14:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50",
+      "q_avg_b0_proxy_veh": 0.326374,
+      "q_max_b0_proxy_veh": 9.344335,
+      "tQ_hist_b0_sec": 6.229557,
+      "lambda_b0_vph": 277.515577,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_11",
+      "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+      "from_edge": "781985787#0",
+      "to_edge": "218915135#3",
+      "link_indices": [
+        18
+      ],
+      "control_link_indices": [
+        18
+      ],
+      "ev_route_link_indices": [
+        18
+      ],
+      "parallel_through_link_indices": [
+        14,
+        15,
+        16,
+        18
+      ],
+      "same_lane_blocking_link_indices": [
+        15,
+        16,
+        17
+      ],
+      "flush_link_indices": [
+        15,
+        16,
+        17
+      ],
+      "approach_lanes": [
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "local_storage_lanes": [
+        "347237859#5_0",
+        "347237859#5_1",
+        "347237859#5_2",
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "corridor_storage_lanes": [
+        "347237859#5_0",
+        "347237859#5_1",
+        "347237859#5_2",
+        "781985787#0_0",
+        "781985787#0_1",
+        "781985787#0_2"
+      ],
+      "selected_green_phase": 4,
+      "selected_red_phase": 0,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": "",
+      "ev_route_phase": 4,
+      "full_through_phase_available": false,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "route_green_with_same_lane_blocker_flush",
+      "route_order_index": 50,
+      "mapped_S_segment": "S15:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50+speed_le_15kmh",
+      "q_avg_b0_proxy_veh": 2.544084,
+      "q_max_b0_proxy_veh": 16.059944,
+      "tQ_hist_b0_sec": 10.706629,
+      "lambda_b0_vph": 212.524789,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_12",
+      "tls_id": "CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE",
+      "from_edge": "218915135#4",
+      "to_edge": "781983104#0",
+      "link_indices": [
+        5,
+        6,
+        7
+      ],
+      "control_link_indices": [
+        5,
+        6,
+        7
+      ],
+      "ev_route_link_indices": [
+        5,
+        6,
+        7
+      ],
+      "parallel_through_link_indices": [
+        5,
+        6,
+        7
+      ],
+      "same_lane_blocking_link_indices": [
+        8,
+        9
+      ],
+      "flush_link_indices": [
+        8,
+        9
+      ],
+      "approach_lanes": [
+        "218915135#4_0",
+        "218915135#4_1",
+        "218915135#4_2"
+      ],
+      "local_storage_lanes": [
+        "218915135#3_0",
+        "218915135#3_1",
+        "218915135#3_2",
+        "218915135#4_0",
+        "218915135#4_1",
+        "218915135#4_2"
+      ],
+      "corridor_storage_lanes": [
+        "218915135#3_0",
+        "218915135#3_1",
+        "218915135#3_2",
+        "218915135#4_0",
+        "218915135#4_1",
+        "218915135#4_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 52,
+      "mapped_S_segment": "S16:upbound",
+      "controllable": true,
+      "default_control_candidate": true,
+      "default_trigger_reason": "local_fill_ge_0p50",
+      "q_avg_b0_proxy_veh": 0.13835,
+      "q_max_b0_proxy_veh": 11.837593,
+      "tQ_hist_b0_sec": 7.891729,
+      "lambda_b0_vph": 251.10566,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_13",
+      "tls_id": "CSV_TLS_S17_S18_NAMDAEMUN_MARKET",
+      "from_edge": "781983104#0",
+      "to_edge": "781983104#1",
+      "link_indices": [
+        2,
+        3,
+        4
+      ],
+      "control_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "ev_route_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "parallel_through_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "same_lane_blocking_link_indices": [
+        0,
+        1
+      ],
+      "flush_link_indices": [
+        0,
+        1
+      ],
+      "approach_lanes": [
+        "781983104#0_0",
+        "781983104#0_1",
+        "781983104#0_2"
+      ],
+      "local_storage_lanes": [
+        "218915135#4_0",
+        "218915135#4_1",
+        "218915135#4_2",
+        "781983104#0_0",
+        "781983104#0_1",
+        "781983104#0_2"
+      ],
+      "corridor_storage_lanes": [
+        "781983104#0_0",
+        "781983104#0_1",
+        "781983104#0_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": 2,
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": true,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 53,
+      "mapped_S_segment": "S17:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.140305,
+      "q_max_b0_proxy_veh": 11.837593,
+      "tQ_hist_b0_sec": 7.891729,
+      "lambda_b0_vph": 204.208596,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_14",
+      "tls_id": "CSV_TLS_S18_S19_SAMSEON_BUILDING",
+      "from_edge": "333557072#1",
+      "to_edge": "333557072#2",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "333557072#1_0",
+        "333557072#1_1",
+        "333557072#1_2"
+      ],
+      "local_storage_lanes": [
+        "781983104#1_0",
+        "781983104#1_1",
+        "781983104#1_2",
+        "333557072#1_0",
+        "333557072#1_1",
+        "333557072#1_2"
+      ],
+      "corridor_storage_lanes": [
+        "781983104#1_0",
+        "781983104#1_1",
+        "781983104#1_2",
+        "333557072#1_0",
+        "333557072#1_1",
+        "333557072#1_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": "",
+      "red_phase_available": false,
+      "green_only_no_red_phase": true,
+      "selected_flush_phase": "",
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 55,
+      "mapped_S_segment": "S18:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.0,
+      "q_max_b0_proxy_veh": 0.0,
+      "tQ_hist_b0_sec": 0.0,
+      "lambda_b0_vph": 189.913208,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_15",
+      "tls_id": "CSV_TLS_S19_S20_SEVERANCE_BUILDING",
+      "from_edge": "333557072#5",
+      "to_edge": "619147738#0",
+      "link_indices": [
+        0,
+        1,
+        2
+      ],
+      "control_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "ev_route_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "parallel_through_link_indices": [
+        0,
+        1,
+        2
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "333557072#5_0",
+        "333557072#5_1",
+        "333557072#5_2"
+      ],
+      "local_storage_lanes": [
+        "333557072#3_0",
+        "333557072#3_1",
+        "333557072#3_2",
+        "333557072#5_0",
+        "333557072#5_1",
+        "333557072#5_2"
+      ],
+      "corridor_storage_lanes": [
+        "333557072#2_0",
+        "333557072#2_1",
+        "333557072#2_2",
+        "333557072#3_0",
+        "333557072#3_1",
+        "333557072#3_2",
+        "333557072#5_0",
+        "333557072#5_1",
+        "333557072#5_2"
+      ],
+      "selected_green_phase": 0,
+      "selected_red_phase": 2,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": "",
+      "full_through_phase": 0,
+      "ev_route_phase": 0,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 58,
+      "mapped_S_segment": "S19:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.002354,
+      "q_max_b0_proxy_veh": 0.508371,
+      "tQ_hist_b0_sec": 0.338914,
+      "lambda_b0_vph": 170.561754,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_16",
+      "tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+      "from_edge": "619147738#0",
+      "to_edge": "619147738#1",
+      "link_indices": [
+        2,
+        3,
+        4
+      ],
+      "control_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "ev_route_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "parallel_through_link_indices": [
+        2,
+        3,
+        4
+      ],
+      "same_lane_blocking_link_indices": [],
+      "flush_link_indices": [],
+      "approach_lanes": [
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "local_storage_lanes": [
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "corridor_storage_lanes": [
+        "619147738#0_0",
+        "619147738#0_1",
+        "619147738#0_2"
+      ],
+      "selected_green_phase": 2,
+      "selected_red_phase": 0,
+      "red_phase_available": true,
+      "green_only_no_red_phase": false,
+      "selected_flush_phase": "",
+      "full_through_phase": 2,
+      "ev_route_phase": 2,
+      "full_through_phase_available": true,
+      "same_lane_blocker_flush_available": false,
+      "control_strategy": "parallel_through_green",
+      "route_order_index": 59,
+      "mapped_S_segment": "S21:upbound",
+      "controllable": true,
+      "default_control_candidate": false,
+      "default_trigger_reason": "below_default_trigger",
+      "q_avg_b0_proxy_veh": 0.0,
+      "q_max_b0_proxy_veh": 0.0,
+      "tQ_hist_b0_sec": 0.0,
+      "lambda_b0_vph": 107.982143,
+      "C_local_proxy_veh": 46.153846,
+      "b0_measurement_source": "SUMO_B04_active_target15_s400_edge_lane_data"
+    }
+  ],
+  "stage_policy": {
+    "stage1": "dispatch capture and static route/movement/storage precompute",
+    "stage2": "departure/merge zone space control before EV joins mainline",
+    "stage3": "preemptive control of controllable movements ahead of the EV",
+    "bottleneck_order": "open mapped downstream bottleneck movement first, upstream movement later"
+  },
+  "case_b_candidates": {
+    "schema": "compact_v9_B4_case_b_candidates.v1",
+    "generated_at": "2026-06-06T06:27:28.246374+00:00",
+    "candidate_segments": [
+      "S7",
+      "S10",
+      "S11"
+    ],
+    "tau_default": 0.75,
+    "measurement_source": "SUMO B04 no-control B0 measured proxy",
+    "mapping_policy": "Exact mapped controllable SUMO movements are preferred; otherwise S7/S10/S11 use conservative route-span proxy mapping to existing controllable movements.",
+    "source_policy": [
+      {
+        "field_group": "stage1_signal_params",
+        "primary_source": "b4_b0_measured_signal_params.csv",
+        "fallback_source": "none",
+        "policy": "SUMO B04 no-control B0 measured proxy fills q_avg/q_max/tQ_hist/lambda."
+      },
+      {
+        "field_group": "stage2_merge",
+        "primary_source": "runtime TraCI lane snapshot",
+        "fallback_source": "b4_stage2_b0_merge_hold_params.json",
+        "policy": "Runtime n_occ wins; B0 mean/max is fallback only when merge lanes are unavailable."
+      },
+      {
+        "field_group": "stage3_tQ",
+        "primary_source": "runtime TraCI queue proxy",
+        "fallback_source": "b4_b0_measured_signal_params.csv",
+        "policy": "Runtime queue wins; stale or empty runtime queue may use B0 tQ_hist."
+      },
+      {
+        "field_group": "case_b",
+        "primary_source": "runtime queue/L tau check",
+        "fallback_source": "b4_case_b_candidates.csv B0 prior",
+        "policy": "Runtime tau wins; mapped B0 prior can mark Case B when runtime queue is not decisive."
+      }
+    ],
+    "mapped_count": 3,
+    "runtime_enabled_count": 3,
+    "rows": [
+      {
+        "segment_id": "S7",
+        "bottleneck_movement_id": "B4_MOVEMENT_05",
+        "upstream_movement_id": "B4_MOVEMENT_04",
+        "L_b0_m": 342.2,
+        "lane_drop_delta": -1,
+        "q_avg_B0": 0.038292,
+        "q_max_B0": 0.857852,
+        "tQ_hist_B0": 0.857852,
+        "lambda_B0": 317.359333,
+        "fill_B0": 0.05576,
+        "speed_B0": 67.505121,
+        "segment_q_avg_B0": 0.0185,
+        "segment_q_max_B0": 0.857852,
+        "segment_tQ_hist_B0": 0.571901,
+        "segment_lambda_B0": 312.816293,
+        "segment_fill_B0": 0.016295,
+        "segment_speed_B0": 67.505121,
+        "mapping_status": "mapped_exact",
+        "segment_edges": "428260110 785130600#0 785130600#1 785130600#2 785130600#3 1455497345",
+        "segment_lanes": "428260110_0 428260110_1 785130600#0_0 785130600#0_1 785130600#1_0 785130600#1_1 785130600#2_0 785130600#2_1 785130600#3_0 785130600#3_1 1455497345_0 1455497345_1 1455497345_2",
+        "segment_route_start_index": 24,
+        "segment_route_end_index": 29,
+        "proxy_edge_gap_upstream": 1,
+        "proxy_edge_gap_bottleneck": 0,
+        "same_tls_chain": false,
+        "case_b_runtime_enabled": true,
+        "tau_default": 0.75,
+        "case_b_prior_risk": false,
+        "b0_source": "SUMO_B04_active_target15_s400_measured_proxy",
+        "mapping_note": "mapped_exact"
+      },
+      {
+        "segment_id": "S10",
+        "bottleneck_movement_id": "B4_MOVEMENT_07",
+        "upstream_movement_id": "B4_MOVEMENT_06",
+        "L_b0_m": 214.5,
+        "lane_drop_delta": 1,
+        "q_avg_B0": 3.567516,
+        "q_max_B0": 24.306761,
+        "tQ_hist_B0": 16.204507,
+        "lambda_B0": 125.847255,
+        "fill_B0": 1.0,
+        "speed_B0": 36.490047,
+        "segment_q_avg_B0": 0.323311,
+        "segment_q_max_B0": 7.805647,
+        "segment_tQ_hist_B0": 5.203765,
+        "segment_lambda_B0": 211.461318,
+        "segment_fill_B0": 0.236535,
+        "segment_speed_B0": 36.490047,
+        "mapping_status": "mapped_route_span_proxy",
+        "segment_edges": "218773869#9 219696193#1 219696193#2 781985793#0 781985793#1 420361196",
+        "segment_lanes": "218773869#9_0 218773869#9_1 218773869#9_2 219696193#1_0 219696193#1_1 219696193#2_0 219696193#2_1 781985793#0_0 781985793#0_1 781985793#1_0 781985793#1_1 420361196_0 420361196_1",
+        "segment_route_start_index": 37,
+        "segment_route_end_index": 42,
+        "proxy_edge_gap_upstream": 2,
+        "proxy_edge_gap_bottleneck": 0,
+        "same_tls_chain": true,
+        "case_b_runtime_enabled": true,
+        "tau_default": 0.75,
+        "case_b_prior_risk": true,
+        "b0_source": "SUMO_B04_active_target15_s400_measured_proxy",
+        "mapping_note": "mapped_route_span_proxy"
+      },
+      {
+        "segment_id": "S11",
+        "bottleneck_movement_id": "B4_MOVEMENT_08",
+        "upstream_movement_id": "B4_MOVEMENT_07",
+        "L_b0_m": 128.9,
+        "lane_drop_delta": 0,
+        "q_avg_B0": 0.0,
+        "q_max_B0": 0.0,
+        "tQ_hist_B0": 0.0,
+        "lambda_B0": 30.0,
+        "fill_B0": 0.0,
+        "speed_B0": 71.792471,
+        "segment_q_avg_B0": 0.0,
+        "segment_q_max_B0": 0.0,
+        "segment_tQ_hist_B0": 0.0,
+        "segment_lambda_B0": 324.705882,
+        "segment_fill_B0": 0.0,
+        "segment_speed_B0": 71.792471,
+        "mapping_status": "mapped_exact",
+        "segment_edges": "781985793#1 420361196",
+        "segment_lanes": "781985793#1_0 781985793#1_1 420361196_0 420361196_1",
+        "segment_route_start_index": 41,
+        "segment_route_end_index": 42,
+        "proxy_edge_gap_upstream": 4,
+        "proxy_edge_gap_bottleneck": 0,
+        "same_tls_chain": false,
+        "case_b_runtime_enabled": true,
+        "tau_default": 0.75,
+        "case_b_prior_risk": false,
+        "b0_source": "SUMO_B04_active_target15_s400_measured_proxy",
+        "mapping_note": "mapped_exact"
+      }
+    ]
+  }
+}

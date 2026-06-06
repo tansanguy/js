@@ -40,7 +40,8 @@ B04_QUEUE_DEFINITION_AUDIT = QUEUE_AUDIT_DIR / "b04_queue_definition_audit.json"
 B04_QUEUE_PROXY_BY_SEGMENT = QUEUE_AUDIT_DIR / "b04_queue_proxy_by_segment.csv"
 B04_MEASUREMENT_DIAGNOSTICS = QUEUE_AUDIT_DIR / "b4_queue_measurement_diagnostics.csv"
 B04_SEGMENT_EDGE_MAPPING = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
-B4_PRIMARY_CANDIDATE = "B04_aa_balanced_growth"
+B04_CSV_SIGNAL_CANDIDATES = DATA_ROOT / "net/B04_csv_signal_candidates.csv"
+B4_PRIMARY_CANDIDATE = "B04_ad_variance_smoothed"
 B4_PRIMARY_RUN_SUMMARY = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "b0_run_summary.json"
 B4_PRIMARY_SPEED_RECALL = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "B04_segment_speed_recall.csv"
 
@@ -81,7 +82,9 @@ TA_SATURATION_FLOW_VPH_PER_LANE = 1800.0
 TA_DIRECT_SWITCH_BUFFER_SEC = 5.0
 STAGE2_MERGE_DESIGN_LENGTH_M = 50.0
 STAGE2_N_NEED_PROXY_VEH = 2.0
-STAGE2_MEASUREMENT_SOURCE = "SUMO_B04_AA_B0_laneData_edgeData_proxy"
+STAGE2_MEASUREMENT_SOURCE = "SUMO_B04_AD_B0_laneData_edgeData_proxy"
+B4_PRIMARY_EDGE_LANE_SOURCE = "SUMO_B04_AD_B0_edge_lane_data"
+B4_PRIMARY_B0_MEASURED_PROXY = "SUMO_B04_AD_B0_measured_proxy"
 CASE_B_SEGMENT_IDS = ("S7", "S10", "S11")
 CASE_B_DEFAULT_TAU = 0.75
 QUEUE_CALIBRATION_MIN = 0.5
@@ -134,6 +137,7 @@ EVENT_SCHEMA = [
     "D_merge_m",
     "tE_merge_sec",
     "L_merge_m",
+    "Lq_merge_m",
     "C_merge_proxy_veh",
     "n_need_proxy_veh",
     "n_occ_runtime_veh",
@@ -147,6 +151,38 @@ EVENT_SCHEMA = [
     "stage2_measurement_source",
     "runtime_or_b0_fallback",
 ]
+
+B4_DECISION_VARIABLES = ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"]
+
+
+def decision_variable_screening_payload() -> dict[str, Any]:
+    return {
+        "schema": "compact_v9_B4_decision_variable_screening.v1",
+        "model_form": "Y = f(X, Z)",
+        "decision_variables_X": B4_DECISION_VARIABLES,
+        "screening_filters": [
+            "controllability",
+            "state_variable_exclusion",
+            "safety_constraint_exclusion",
+            "objective_sensitivity",
+            "structure_and_scenario_factor_exclusion",
+            "algorithm_registration",
+        ],
+        "state_variables_S": ["Lq", "n_occ", "elapsed_green", "TA_proxy_sec", "T_hold_proxy_sec"],
+        "environment_variables_Z": [
+            "network_geometry",
+            "vehicle_physics",
+            "simulation_begin_end_step_seed",
+            "demand_scale_scenario",
+        ],
+        "safety_constraints": ["phase_order", "yellow_clearance", "all_red_clearance", "minimum_pedestrian_crossing_time"],
+        "fixed_structure_params": ["tau", "beta", "hold_max", "d_up", "tau_scale", "tau_numerator_gamma"],
+        "concept_only_or_unimplemented": ["green_split", "offset", "cycle_length", "green_wave_intersection_set"],
+        "notes": [
+            "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+            "seed and demand scale remain experiment design or robustness factors, not theta variables.",
+        ],
+    }
 
 
 class B4Stage1Error(RuntimeError):
@@ -288,6 +324,16 @@ def selected_red_phase(phases: list[dict[str, Any]], link_indices: list[int]) ->
         if all(index < len(state) and state[index] not in {"G", "g", "y"} for index in link_indices):
             return int(phase["phase_index"])
     return ""
+
+
+def created_tls_phase_counts() -> dict[str, int]:
+    if not B04_CSV_SIGNAL_CANDIDATES.is_file():
+        return {}
+    return {
+        row.get("tls_id", ""): safe_int(row.get("phase_count"), 0)
+        for row in read_csv(B04_CSV_SIGNAL_CANDIDATES)
+        if row.get("action") == "created_tls" and row.get("tls_id")
+    }
 
 
 def selected_partial_green_phase(phases: list[dict[str, Any]], link_indices: list[int]) -> int | str:
@@ -591,6 +637,15 @@ def build_stage2_b0_merge_hold_params(
         for sample in lane_samples.get(lane_id, [])
         if safe_float(sample.get("flow")) > 0.0
     ]
+    b0_merge_occ_mean = sum(merge_occ_values) / len(merge_occ_values) if merge_occ_values else 0.0
+    b0_merge_occ_max = max(merge_occ_values) if merge_occ_values else 0.0
+    b0_merge_support_status = "weak_runtime_required" if q_a_proxy_veh <= 0.0 and b0_merge_occ_max < STAGE2_N_NEED_PROXY_VEH else "usable_b0_proxy"
+    runtime_control_note = (
+        "Runtime TraCI merge lane snapshot is primary. B0 mean/max is documented only as fallback/provenance, "
+        "and weak B0 support requires runtime n_occ/Lq before deciding Q_trig and T_hold."
+        if b0_merge_support_status == "weak_runtime_required"
+        else "Runtime TraCI merge lane snapshot remains primary; B0 mean/max is fallback/provenance."
+    )
     row = {
         "stage2_param_id": "B4_STAGE2_MERGE_HOLD_B0_PROXY",
         "merge_control_tls": departure_plan.get("merge_control_tls", ""),
@@ -604,16 +659,18 @@ def build_stage2_b0_merge_hold_params(
         "entry_open_green_sec": round(open_duration, 6),
         "direct_switch_buffer_sec": direct_switch_buffer,
         "q_A_proxy_veh": round(q_a_proxy_veh, 6),
-        "b0_merge_n_occ_mean_proxy_veh": round(sum(merge_occ_values) / len(merge_occ_values), 6) if merge_occ_values else 0.0,
-        "b0_merge_n_occ_max_proxy_veh": round(max(merge_occ_values), 6) if merge_occ_values else 0.0,
+        "b0_merge_n_occ_mean_proxy_veh": round(b0_merge_occ_mean, 6),
+        "b0_merge_n_occ_max_proxy_veh": round(b0_merge_occ_max, 6),
         "b0_background_inflow_lambda_vph": round(sum(background_flow_values) / len(background_flow_values), 6) if background_flow_values else 0.0,
         "b0_merge_waiting_max_sec": round(max(waiting_values), 6) if waiting_values else 0.0,
         "b0_merge_halting_proxy_max": round(max(halting_proxy_values), 6) if halting_proxy_values else 0.0,
+        "b0_merge_support_status": b0_merge_support_status,
+        "runtime_dependency": "runtime_n_occ_and_Lq_merge_primary",
         "merge_zone_lanes": " ".join(merge_lanes),
         "background_inflow_lanes": " ".join(background_lanes),
         "measurement_source": STAGE2_MEASUREMENT_SOURCE,
         "field_measurement_claim": "false",
-        "runtime_control_note": "Runtime uses T_hold_proxy_sec inside the 35s dispatch window; if T_hold_proxy_sec <= 0, hold starts immediately once the dispatch window opens.",
+        "runtime_control_note": runtime_control_note,
     }
     payload = {
         "schema": "compact_v9_B4_stage2_b0_merge_hold_params.v1",
@@ -626,6 +683,8 @@ def build_stage2_b0_merge_hold_params(
         "runtime_hold_condition": "if T_hold_proxy_sec > 0, now >= ev_depart_sec - min(T_hold_proxy_sec, dispatch_lead_time_sec); if T_hold_proxy_sec <= 0, hold at dispatch-window open; EV not merged; merge hold TLS available",
         "runtime_control_uses_formula_directly": True,
         "measurement_source": STAGE2_MEASUREMENT_SOURCE,
+        "b0_merge_support_status": b0_merge_support_status,
+        "runtime_dependency": "runtime_n_occ_and_Lq_merge_primary",
         "field_measurement_claim": False,
         "params": row,
     }
@@ -674,9 +733,12 @@ def b0_measured_signal_params(
             "L_corridor_m": min(safe_float(row.get("corridor_storage_length_m"), CORRIDOR_STORAGE_MAX_M), CORRIDOR_STORAGE_MAX_M),
             "C_local_proxy_veh": round(STOPLINE_LOCAL_STORAGE_M * lane_count / TA_HEADWAY_M, 6),
             "lane_count": lane_count,
-            "measurement_source": "SUMO_B04_AA_B0_edge_lane_data",
+            "measurement_source": B4_PRIMARY_EDGE_LANE_SOURCE,
             "field_queue_claim": "false",
-            "measurement_note": "B0 measured means SUMO B04 AA no-control edge/lane data proxy, not field-observed queue length.",
+            "measurement_note": (
+                f"B0 measured means SUMO {B4_PRIMARY_CANDIDATE} no-control edge/lane data proxy, "
+                "not field-observed queue length."
+            ),
         })
     return rows
 
@@ -742,6 +804,7 @@ def build_approach_storage_plan(
     route_edges = route["route_edges"]
     movements = b04.route_tls_movements(B04_NET, route_edges)
     connections_by_from_edge = controlled_connection_index(B04_NET)
+    csv_phase_count_by_tls = created_tls_phase_counts()
     plan_rows: list[dict[str, Any]] = []
     readiness_rows: list[dict[str, Any]] = []
     for movement in movements:
@@ -772,6 +835,11 @@ def build_approach_storage_plan(
         ev_route_link_indices = list(signal_context["ev_route_link_indices"])
         green_phase = signal_context["selected_green_phase"]
         red_phase = selected_red_phase(tls_phases, link_indices)
+        csv_single_phase_tls = csv_phase_count_by_tls.get(str(movement["tls_id"])) == 1
+        if csv_single_phase_tls:
+            red_phase = ""
+        red_phase_available = red_phase != ""
+        green_only_no_red_phase = bool((csv_single_phase_tls or len(tls_phases) == 1) and not red_phase_available)
         from_edge_lanes = b04.edge_lanes(sumo_net, str(movement["from_edge"]))
         approach_lanes = from_edge_lanes or list(movement["approach_lanes"])
         from_lane_count = len(from_edge_lanes)
@@ -848,6 +916,8 @@ def build_approach_storage_plan(
             "lane_drop_delta": from_lane_count - to_lane_count,
             "selected_green_phase": green_phase,
             "selected_red_phase": red_phase,
+            "red_phase_available": red_phase_available,
+            "green_only_no_red_phase": green_only_no_red_phase,
             "mapped_S_segment": mapped,
             "mapped_segment_id": segment.get("segment_id", ""),
             "mapped_direction": segment.get("direction", ""),
@@ -1058,6 +1128,8 @@ def build_intersection_rows(plan_rows: list[dict[str, Any]]) -> list[dict[str, A
             "phase_count": len(phases.get(tls_id, [])),
             "selected_green_phases": " ".join(str(row["selected_green_phase"]) for row in items),
             "selected_red_phases": " ".join(str(row["selected_red_phase"]) for row in items),
+            "red_phase_available_count": sum(1 for row in items if truthy(row.get("red_phase_available"))),
+            "green_only_no_red_phase_count": sum(1 for row in items if truthy(row.get("green_only_no_red_phase"))),
             "linkIndex": " ".join(str(row["linkIndex"]) for row in items),
             "control_linkIndex": " ".join(str(row["control_linkIndex"]) for row in items),
             "ev_route_linkIndex": " ".join(str(row["ev_route_linkIndex"]) for row in items),
@@ -1074,6 +1146,8 @@ def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[s
         "schema": "compact_v9_B4_control_queue_threshold_proposal.v1",
         "generated_at": utc_now(),
         "candidate": primary_candidate,
+        "decision_variables": B4_DECISION_VARIABLES,
+        "decision_variable_screening": decision_variable_screening_payload(),
         "primary_control_fill_metric": "stopline_local_fill_100m",
         "local_fill_comparison_metrics": [
             "local_fill_80m",
@@ -1134,7 +1208,7 @@ def build_ta_proxy_policy() -> dict[str, Any]:
         "tE_sec": "EV_to_stopline_distance_m / 13.9mps",
         "tS_sec": "0 if selected target phase is already active, else 5s direct switch safety buffer using existing SUMO phases only",
         "tQ_sec": "(queue_m_proxy / 6.5m) * 3600 / (1800 veh/h/lane * lane_count)",
-        "b0_measured_params_source": "SUMO B04_aa_balanced_growth no-control edgeData/laneData/tripinfo outputs",
+        "b0_measured_params_source": f"SUMO {B4_PRIMARY_CANDIDATE} no-control edgeData/laneData/tripinfo outputs",
         "field_queue_claim": False,
         "notes": [
             "B0 measured values are simulation-internal proxies, not field-observed queue lengths.",
@@ -1179,6 +1253,8 @@ def runtime_movement_rows(
             "corridor_storage_lanes": str(row["corridor_storage_lanes"]).split(),
             "selected_green_phase": row["selected_green_phase"],
             "selected_red_phase": row["selected_red_phase"],
+            "red_phase_available": truthy(row["red_phase_available"]),
+            "green_only_no_red_phase": truthy(row["green_only_no_red_phase"]),
             "selected_flush_phase": row["selected_flush_phase"],
             "full_through_phase": row["full_through_phase"],
             "ev_route_phase": row["ev_route_phase"],
@@ -1491,7 +1567,7 @@ def build_case_b_candidates(
             "case_b_runtime_enabled": case_b_runtime_enabled,
             "tau_default": CASE_B_DEFAULT_TAU,
             "case_b_prior_risk": prior_risk,
-            "b0_source": "SUMO_B04_AA_B0_measured_proxy",
+            "b0_source": B4_PRIMARY_B0_MEASURED_PROXY,
             "mapping_note": mapping_status if mapped else "no route-span controllable movement pair for this CSV segment",
         }
         rows.append(row)
@@ -1673,6 +1749,7 @@ def build_b4_stage1() -> dict[str, Any]:
         "schema": "compact_v9_B4_route_movement_plan.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
+        "decision_variable_screening": decision_variable_screening_payload(),
         "route": {
             "route_id": route["route_id"],
             "vehicle_id": route["vehicle_id"],
@@ -1697,7 +1774,9 @@ def build_b4_stage1() -> dict[str, Any]:
         "schema": "compact_v9_B4_runtime_index.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
-        "runtime_status": "stage1_static_index_only_runtime_not_implemented",
+        "runtime_status": "stage1_static_index_consumed_by_b4_runtime",
+        "decision_variables": B4_DECISION_VARIABLES,
+        "decision_variable_screening": decision_variable_screening_payload(),
         "max_active_movements": MAX_ACTIVE_MOVEMENTS,
         "thresholds": threshold_proposal["thresholds"],
         "ta_proxy_policy": ta_proxy_policy,
@@ -1753,11 +1832,12 @@ def build_b4_stage1() -> dict[str, Any]:
         "primary_candidate": primary_candidate,
         "manifest_selected_candidate": manifest.get("selected_candidate", ""),
         "manifest_selected_candidate_role": "primary_selected",
+        "decision_variable_screening": decision_variable_screening_payload(),
         "primary_candidate_lock": {
             "primary_candidate": B4_PRIMARY_CANDIDATE,
             "manifest_selected_candidate": manifest.get("selected_candidate", ""),
             "manifest_selected_candidate_role": "primary_selected",
-            "reason": "AA is the current balanced B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+            "reason": "AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
             "metrics": primary_metrics,
         },
         "mode": "Stage1 static preparation only",
@@ -1786,6 +1866,8 @@ def build_b4_stage1() -> dict[str, Any]:
             "stage2_b0_formula": stage2_b0_payload["stage2_formula"],
             "stage2_b0_measurement_source": stage2_b0_payload["measurement_source"],
             "stage2_runtime_control_uses_formula_directly": stage2_b0_payload["runtime_control_uses_formula_directly"],
+            "stage2_b0_merge_support_status": stage2_b0_payload["b0_merge_support_status"],
+            "stage2_runtime_dependency": stage2_b0_payload["runtime_dependency"],
         },
         "validation": validation,
         "input_artifacts": {
@@ -1808,8 +1890,8 @@ def build_b4_stage1() -> dict[str, Any]:
         "policy_notes": [
             "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
             "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
-            "B0 measured signal parameters are SUMO B04 AA no-control measurements, not field-observed queue lengths.",
-            "Stage 2 B0 merge hold parameters are SUMO B04 AA no-control laneData/edgeData proxy values, not field-observed occupancy.",
+            f"B0 measured signal parameters are SUMO {B4_PRIMARY_CANDIDATE} no-control measurements, not field-observed queue lengths.",
+            f"Stage 2 B0 merge hold parameters are SUMO {B4_PRIMARY_CANDIDATE} no-control laneData/edgeData proxy values, not field-observed occupancy.",
             "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
             "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
             "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
@@ -1822,7 +1904,8 @@ def build_b4_stage1() -> dict[str, Any]:
     write_csv(B4_INTERSECTIONS_CSV, intersection_rows, [
         "tls_id", "route_order_min", "route_order_max", "movement_ids", "mapped_S_segments",
         "movement_count", "controllable_count", "phase_count", "selected_green_phases",
-        "selected_red_phases", "linkIndex", "control_linkIndex", "ev_route_linkIndex",
+        "selected_red_phases", "red_phase_available_count", "green_only_no_red_phase_count",
+        "linkIndex", "control_linkIndex", "ev_route_linkIndex",
         "same_lane_blocking_linkIndex", "control_strategies", "from_edges", "to_edges",
     ])
     write_csv(B4_APPROACH_STORAGE_LINK_PLAN_CSV, plan_rows, [
@@ -1836,7 +1919,8 @@ def build_b4_stage1() -> dict[str, Any]:
         "corridor_storage_edges", "corridor_storage_lanes", "stopline_local_storage_m",
         "stopline_local_actual_length_m", "corridor_storage_length_m", "corridor_storage_raw_length_m",
         "lane_count", "from_edge_lane_count", "to_edge_lane_count", "lane_drop_delta",
-        "selected_green_phase", "selected_red_phase", "mapped_S_segment", "mapped_segment_id",
+        "selected_green_phase", "selected_red_phase", "red_phase_available", "green_only_no_red_phase",
+        "mapped_S_segment", "mapped_segment_id",
         "mapped_direction", "route_order_index", "controllable", "storage_definition", "linkIndex_note",
     ])
     write_json(B4_MERGE_ZONE, merge_zone)
@@ -1885,6 +1969,7 @@ def build_b4_stage1() -> dict[str, Any]:
         "q_A_proxy_veh", "b0_merge_n_occ_mean_proxy_veh", "b0_merge_n_occ_max_proxy_veh",
         "b0_background_inflow_lambda_vph", "b0_merge_waiting_max_sec",
         "b0_merge_halting_proxy_max", "merge_zone_lanes", "background_inflow_lanes",
+        "b0_merge_support_status", "runtime_dependency",
         "measurement_source", "field_measurement_claim", "runtime_control_note",
     ])
     write_json(B4_RUNTIME_INDEX, runtime_index)

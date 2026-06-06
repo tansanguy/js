@@ -1,0 +1,58 @@
+{
+  "schema": "compact_v9_B4_departure_flow_plan.v1",
+  "generated_at": "2026-06-06T07:14:21.813655+00:00",
+  "fire_station_start_edge": "420331801#1",
+  "fire_station_start_lane": "420331801#1_0",
+  "departure_edge": "420331801#1",
+  "departure_lane": "420331801#1_0",
+  "merge_approach_edge": "420331801#1",
+  "merge_approach_lane": "420331801#1_0",
+  "mainline_target_edge": "-174870621#8",
+  "mainline_target_lane": "-174870621#8_0 -174870621#8_1 -174870621#8_2",
+  "ev_turn_movement": {
+    "from_edge": "420331801#1",
+    "to_edge": "-174870621#8",
+    "linkIndex": "9",
+    "control_status": "uncontrolled_by_merge_tls"
+  },
+  "background_inflow_edges": [
+    "-174870621#9",
+    "381807698#2"
+  ],
+  "background_inflow_lanes": [
+    "-174870621#9_0",
+    "-174870621#9_1",
+    "-174870621#9_2",
+    "381807698#2_0"
+  ],
+  "merge_control_tls": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+  "merge_control_linkIndex": "0 4 5 6",
+  "ev_connection_linkIndex": "9",
+  "ev_release_green_phase": "uncontrolled_by_merge_tls",
+  "ev_release_control_status": "uncontrolled_by_merge_tls",
+  "background_inflow_red_hold_phase": 2,
+  "background_inflow_open_phase": 0,
+  "merge_zone_edges": [
+    "420331801#1",
+    "-174870621#8"
+  ],
+  "merge_zone_lanes": [
+    "420331801#1_0",
+    "-174870621#8_0",
+    "-174870621#8_1",
+    "-174870621#8_2"
+  ],
+  "merge_zone_length_m": 138.9,
+  "dispatch_lead_time_sec": 35.0,
+  "dispatch_lead_time_range_sec": [
+    30.0,
+    40.0
+  ],
+  "validation_status": "WARN",
+  "validation": {
+    "merge_control_tls_available": "PASS",
+    "background_inflow_hold_available": "PASS",
+    "ev_release_control": "WARN"
+  },
+  "stage2_policy": "Before EV reaches the merge zone, hold only the precomputed background inflow movements and release after EV passes the merge point."
+}

@@ -1,0 +1,12 @@
+label,mode,final_status,failure_reason,termination_time_sec,EV_travel_time_sec,EV_avg_speed_including_stops_kmh,EV_last_edge,EV_last_route_index,background_departed,background_arrived_ratio,general_mean_delay_sec,stage3_preemption_count,signal_burden_sec,metrics_csv
+u120_tau085,B4,FAIL,emergency_stuck,1266.0,,,347237859#2,46,4162,0.087938,121.780055,3,415.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u120_tau085/experiment_results.csv
+u130_tau085,B4,PASS,,1561.0,660.0,22.215,619147738#1,60,4508,0.12866,175.575586,4,475.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u130_tau085/experiment_results.csv
+u130_B04,B04,PASS,,1573.0,972.0,15.084,619147738#1,60,4508,0.11291,164.013458,0,0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u130_B04/experiment_results.csv
+u140_tau085,B4,FAIL,emergency_stuck,867.0,,,:3269944950_2,29,4855,0.048198,66.104615,1,25.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u140_tau085/experiment_results.csv
+u150_tau085,B4,FAIL,emergency_stuck,1516.0,,,180445419,43,5202,0.099577,118.945367,3,690.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u150_tau085/experiment_results.csv
+u160_tau085,B4,FAIL,emergency_stuck,871.0,,,:3269944950_2,29,5549,0.048117,81.201161,1,25.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/u160_tau085/experiment_results.csv
+s125_tau085,B4,FAIL,emergency_stuck,1199.0,,,180445419,43,4335,0.092503,99.423516,5,360.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/s125_tau085/experiment_results.csv
+s135_tau085,B4,FAIL,emergency_stuck,955.0,,,785130600#2,27,4682,0.074327,83.930948,1,240.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/s135_tau085/experiment_results.csv
+s145_tau085,B4,FAIL,emergency_stuck,971.0,,,428260110,24,5029,0.07934,90.911704,2,260.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/s145_tau085/experiment_results.csv
+s160_tau085,B4,FAIL,emergency_stuck,893.0,,,218773868#4,20,5549,0.070103,71.262057,2,135.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/s160_tau085/experiment_results.csv
+s175_tau085,B4,FAIL,emergency_stuck,893.0,,,218773868#3,19,6069,0.074806,74.309604,3,175.0,/Users/junlee/Desktop/js/results/metrics/compact_v9_B4_target15_demand/s175_tau085/experiment_results.csv

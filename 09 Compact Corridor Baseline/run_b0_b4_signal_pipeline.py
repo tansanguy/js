@@ -2,7 +2,7 @@
 """Run Compact V9 B0/B4 Runtime MVP experiments.
 
 The runner compares a no-control B0 run with the B4 MVP controller on the
-same B04 AA demand.  It never updates the B04 manifest, never creates new
+manifest-selected B04 demand.  It never updates the B04 manifest, never creates new
 demand, never runs BO, and does not enable FCD by default.
 """
 
@@ -17,7 +17,7 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -58,6 +58,7 @@ from b4_runtime import (  # noqa: E402
     run_b04_traci_loop,
     run_b4_traci_loop,
     safe_float,
+    theta_runtime_thresholds,
     unique_queue_lanes_for_movements,
     write_csv,
 )
@@ -136,16 +137,19 @@ def default_run_id() -> str:
     return "b4_mvp_" + datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def validate_static_inputs(stage1_dir: Path | None = None) -> B4Stage1Inputs:
+def validate_static_inputs(
+    stage1_dir: Path | None = None,
+    net_file: Path = B04_NET,
+    background_route: Path = B04_AA_BACKGROUND_ROUTE,
+) -> B4Stage1Inputs:
     stage1 = B4Stage1Inputs.load(stage1_dir) if stage1_dir is not None else B4Stage1Inputs.load()
-    for path in [B04_NET, B04_AA_BACKGROUND_ROUTE, B04_FIRETRUCK_ROUTE_XML, B04_MANIFEST]:
+    for path in [net_file, background_route, B04_FIRETRUCK_ROUTE_XML, B04_MANIFEST]:
         if not path.is_file():
             raise B4RunnerError(f"missing_required_input:{rel(path)}")
     manifest = read_json(B04_MANIFEST)
-    if manifest.get("selected_candidate") != B4_PRIMARY_CANDIDATE:
+    allow_input_override = bool(stage1.summary.get("allow_runtime_input_override") or stage1.summary.get("runtime_input_provenance"))
+    if not allow_input_override and manifest.get("selected_candidate") != B4_PRIMARY_CANDIDATE:
         raise B4RunnerError(f"unexpected_manifest_selected_candidate:{manifest.get('selected_candidate')}")
-    if B4_PRIMARY_CANDIDATE not in B04_AA_BACKGROUND_ROUTE.name:
-        raise B4RunnerError(f"background_route_must_be_AA:{rel(B04_AA_BACKGROUND_ROUTE)}")
     return stage1
 
 
@@ -156,6 +160,8 @@ def build_tasks(
     seed: int = DEFAULT_SEED,
     repeat_id: int = DEFAULT_REPEAT_ID,
     run_root: Path = RUN_ROOT,
+    net_file: Path = B04_NET,
+    background_route: Path = B04_AA_BACKGROUND_ROUTE,
 ) -> list[B4RunTask]:
     if repeat_id != DEFAULT_REPEAT_ID:
         raise B4RunnerError("B4 Runtime MVP supports repeat_id=1 only")
@@ -169,15 +175,15 @@ def build_tasks(
             raise B4RunnerError(f"unknown_mode:{mode}")
         if mode == B004_MODE:
             leaf = "free_emv_analytic_50kmh"
-            background_route = Path("")
+            task_background_route = Path("")
         elif mode == B04_MODE:
             leaf = "no_control"
-            background_route = B04_AA_BACKGROUND_ROUTE
+            task_background_route = background_route
         else:
             leaf = B4_PARAMETER_ID
-            background_route = B04_AA_BACKGROUND_ROUTE
+            task_background_route = background_route
         run_dir = run_root / run_id / mode / leaf / f"repeat_{repeat_id:03d}"
-        tasks.append(B4RunTask(run_id, mode, leaf, repeat_id, seed, run_dir, background_route=background_route))
+        tasks.append(B4RunTask(run_id, mode, leaf, repeat_id, seed, run_dir, net_file=net_file, background_route=task_background_route))
     return tasks
 
 
@@ -389,8 +395,8 @@ def controllable_v_edges(stage1: B4Stage1Inputs) -> set[str]:
     return edges
 
 
-def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float]) -> list[dict[str, Any]]:
-    routes, vehicles = parse_route_file(B04_AA_BACKGROUND_ROUTE)
+def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float], background_route: Path = B04_AA_BACKGROUND_ROUTE) -> list[dict[str, Any]]:
+    routes, vehicles = parse_route_file(background_route)
     v_edges = controllable_v_edges(stage1)
     rows: list[dict[str, Any]] = []
     for vehicle in vehicles:
@@ -414,13 +420,13 @@ def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float
     return rows
 
 
-def build_b004_free_reference(stage1: B4Stage1Inputs) -> dict[str, Any]:
-    edge_lengths = load_edge_lengths(B04_NET)
+def build_b004_free_reference(stage1: B4Stage1Inputs, net_file: Path = B04_NET, background_route: Path = B04_AA_BACKGROUND_ROUTE) -> dict[str, Any]:
+    edge_lengths = load_edge_lengths(net_file)
     route_meta = load_firetruck_route(B04_FIRETRUCK_ROUTE_XML)
     route_edges = list(route_meta["route_edges"])
     route_length = route_length_m(route_edges, edge_lengths)
     emv_free = free_time_sec(route_edges, edge_lengths)
-    vehicle_rows = vehicle_free_time_rows(stage1, edge_lengths)
+    vehicle_rows = vehicle_free_time_rows(stage1, edge_lengths, background_route)
     veh_free_values = [safe_float(row.get("free_time_sec")) for row in vehicle_rows]
     reference = {
         "schema": "compact_v9_B004_free_emv_reference.v1",
@@ -428,6 +434,7 @@ def build_b004_free_reference(stage1: B4Stage1Inputs) -> dict[str, Any]:
         "mode": B004_MODE,
         "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front",
         "primary_candidate": B4_PRIMARY_CANDIDATE,
+        "net_file": rel(net_file),
         "free_time_method": FREE_TIME_METHOD,
         "vehicle_free_time_method": VEHICLE_FREE_TIME_METHOD,
         "free_flow_speed_kmh": FREE_FLOW_SPEED_KMH,
@@ -489,23 +496,24 @@ def b004_result_row(task: B4RunTask, stage1: B4Stage1Inputs, reference: dict[str
 
 
 def base_result_row(task: B4RunTask, stage1: B4Stage1Inputs, params: B4MvpParams, phase_config: B4RuntimePhaseConfig) -> dict[str, Any]:
+    runtime_thresholds = theta_runtime_thresholds(stage1.thresholds, params)
     return {
         "run_id": task.run_id,
         "mode": task.mode,
-        "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front" if task.mode == B004_MODE else "compact_v9_B04_AA_real_demand",
+        "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front" if task.mode == B004_MODE else "compact_v9_B04_AD_real_demand",
         "seed": task.seed,
         "repeat_id": task.repeat_id,
-        "primary_candidate": B4_PRIMARY_CANDIDATE,
-        "stage1_dir": rel(PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1"),
+        "primary_candidate": stage1.primary_candidate or B4_PRIMARY_CANDIDATE,
+        "stage1_dir": rel(stage1.stage1_dir),
         "net_file": rel(task.net_file),
         "background_route_file": rel(task.background_route) if str(task.background_route) else "",
         "ev_route_file": rel(task.firetruck_route),
         "free_time_method": FREE_TIME_METHOD,
-        **params.as_result_fields(),
         "parameter_id": task.parameter_id,
+        **params.as_result_fields(),
         **phase_config.as_result_fields(),
-        "local_fill_trigger": stage1.thresholds.local_fill_trigger,
-        "speed_trigger_kmh": stage1.thresholds.speed_trigger_kmh,
+        "local_fill_trigger": runtime_thresholds.local_fill_trigger,
+        "speed_trigger_kmh": runtime_thresholds.speed_trigger_kmh,
         "max_active_movements": stage1.max_active_movements,
         "stage2_dispatch_lead_sec": stage1.departure.dispatch_lead_time_sec,
         "w_EMV": W_EMV,
@@ -725,7 +733,7 @@ def summarize_task(
     delays = [safe_float(row.get("timeLoss")) for row in background if row.get("timeLoss") not in {"", None}]
     stats = stats or {}
     monitor_fields = monitor_fields or {}
-    params = params or B4MvpParams()
+    params = params or B4ThetaParams()
     row = base_result_row(task, stage1, params, phase_config)
     emergency_tripinfo_found = bool(emergency)
     monitor_fields["emergency_tripinfo_found"] = emergency_tripinfo_found
@@ -885,7 +893,7 @@ def run_b4_task(
     monitor_fields: dict[str, Any] = {}
     exit_code = 0
     failure_reason = ""
-    params = params or B4MvpParams()
+    params = params or B4ThetaParams()
     try:
         traci.start(command)
         controller_events, controller_stats, monitor = run_b4_traci_loop(
@@ -1057,7 +1065,7 @@ def write_ta_b0_measurement_review(stage1: B4Stage1Inputs, rows: list[dict[str, 
         )
 
     variable_rows = [
-        {"original": "q_avg, q_max", "b4": "q_avg_b0_proxy_veh, q_max_b0_proxy_veh", "meaning": "B04 AA no-control SUMO lane/edge data에서 추정한 평균/최대 queue proxy"},
+        {"original": "q_avg, q_max", "b4": "q_avg_b0_proxy_veh, q_max_b0_proxy_veh", "meaning": f"{B4_PRIMARY_CANDIDATE} no-control SUMO lane/edge data에서 추정한 평균/최대 queue proxy"},
         {"original": "tQ_hist", "b4": "tQ_hist_b0_sec", "meaning": "B0 q_max proxy를 포화류율로 방출한다고 본 시간"},
         {"original": "lambda", "b4": "lambda_b0_vph", "meaning": "B0 laneData flow 기반 접근부 교통량 proxy"},
         {"original": "D_merge, tE_merge", "b4": "D_merge_m, tE_merge_sec", "meaning": "소방서 출발 edge부터 본선 합류 edge까지 route geometry proxy와 50km/h 기준 도달시간"},
@@ -1098,7 +1106,7 @@ code{{background:#edf2f7;border-radius:4px;padding:2px 5px}} pre{{background:#f8
 <body>
 <header>
 <h1>B4 TA Proxy + B0 Measurement Review</h1>
-<p>B0 측정값은 현장 실측값이 아니라 <code>B04_aa_balanced_growth</code> no-control SUMO 내부 edge/lane data proxy입니다.</p>
+<p>B0 측정값은 현장 실측값이 아니라 <code>{html.escape(B4_PRIMARY_CANDIDATE)}</code> no-control SUMO 내부 edge/lane data proxy입니다.</p>
 <p>실제 제어 조건: <code>(local_fill_100m &gt;= 0.50 OR speed &lt;= 15) AND TA_proxy_sec &lt;= 0</code></p>
 </header>
 <section>
@@ -1270,14 +1278,24 @@ def run_pipeline(
     sumo_binary: str | None = None,
     dry_run: bool = False,
     emit_fcd: bool = False,
+    net_file: Path = B04_NET,
+    background_route: Path = B04_AA_BACKGROUND_ROUTE,
+    hard_max_sim_time: float | None = None,
+    b4_params: B4MvpParams | None = None,
+    stage1_dir: Path | None = None,
 ) -> dict[str, Any]:
-    stage1 = validate_static_inputs()
+    net_file = net_file if net_file.is_absolute() else (PROJECT_ROOT / net_file)
+    background_route = background_route if background_route.is_absolute() else (PROJECT_ROOT / background_route)
+    stage1_dir = stage1_dir.resolve() if stage1_dir is not None else None
+    stage1 = validate_static_inputs(stage1_dir=stage1_dir, net_file=net_file, background_route=background_route)
     phase_config = B4RuntimePhaseConfig.from_phase(phase)
-    tasks = build_tasks(run_id=run_id, modes=modes, run_root=run_root)
+    if hard_max_sim_time is not None:
+        phase_config = replace(phase_config, hard_max_sim_time=float(hard_max_sim_time))
+    tasks = build_tasks(run_id=run_id, modes=modes, run_root=run_root, net_file=net_file, background_route=background_route)
     for task in tasks:
         if not task.is_analytic:
             write_sumo_config(task, phase_config, emit_fcd=emit_fcd)
-    free_reference = build_b004_free_reference(stage1)
+    free_reference = build_b004_free_reference(stage1, net_file=net_file, background_route=background_route)
     free_rows = read_free_vehicle_rows()
     free_rows_by_id = {row["vehicle_id"]: row for row in free_rows}
     if dry_run:
@@ -1287,6 +1305,8 @@ def run_pipeline(
             "free_time_method": FREE_TIME_METHOD,
             "phase": phase_config.phase,
             "emit_fcd": emit_fcd,
+            "net_file": rel(net_file),
+            "background_route_file": rel(background_route),
             "phase_config": phase_config.as_result_fields(),
             "tasks": [
                 task.__dict__ | {
@@ -1305,7 +1325,7 @@ def run_pipeline(
         elif task.mode == B04_MODE:
             rows.append(run_b04_task(task, stage1, phase_config, free_reference, free_rows_by_id, sumo_binary, emit_fcd))
         elif task.mode == B4_MODE:
-            rows.append(run_b4_task(task, stage1, phase_config, free_reference, free_rows_by_id, sumo_binary, emit_fcd))
+            rows.append(run_b4_task(task, stage1, phase_config, free_reference, free_rows_by_id, sumo_binary, emit_fcd, params=b4_params))
         else:
             raise B4RuntimeError(f"unsupported_mode:{task.mode}")
     outputs = write_metric_outputs(rows, tasks, stage1, metrics_root, emit_fcd=emit_fcd)
@@ -1313,6 +1333,8 @@ def run_pipeline(
         "schema": "compact_v9_B4_runtime_mvp_run.v1",
         "generated_at": utc_now(),
         "primary_candidate": B4_PRIMARY_CANDIDATE,
+        "net_file": rel(net_file),
+        "background_route_file": rel(background_route),
         "phase": phase_config.phase,
         "run_id": tasks[0].run_id if tasks else "",
         "outputs": outputs,
@@ -1330,7 +1352,42 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sumo-binary", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true", help="Write geo FCD output for visualization runs only.")
+    parser.add_argument("--net-file", type=Path, default=B04_NET, help="Optional B04/B4 SUMO net file override.")
+    parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE, help="Optional B04/B4 background route file override.")
+    parser.add_argument("--stage1-dir", type=Path, default=None, help="Optional B4 Stage1 directory generated from the same B04 inputs.")
+    parser.add_argument("--hard-max-sim-time", type=float, default=None, help="Optional SUMO/B4 hard max simulation time in seconds.")
+    parser.add_argument("--b4-parameter-id", default=B4_PARAMETER_ID)
+    parser.add_argument("--b4-alpha", type=float, default=None)
+    parser.add_argument("--b4-t-lead", type=float, default=None)
+    parser.add_argument("--b4-delta-t-thr", type=float, default=None)
+    parser.add_argument("--b4-q-trig", type=float, default=None)
+    parser.add_argument("--b4-g-ext", type=float, default=None)
+    parser.add_argument("--b4-ext-max", type=float, default=None, help="Legacy alias for --b4-g-ext.")
+    parser.add_argument("--b4-hold-max", type=float, default=None, help="Fixed structure override; not a screened decision variable.")
+    parser.add_argument("--b4-tau", type=float, default=None, help="Fixed Case B tau override; not a screened decision variable.")
+    parser.add_argument("--b4-d-up", type=int, default=None, help="Fixed lookahead/action-budget override; not a screened decision variable.")
+    parser.add_argument("--b4-tau-scale", type=float, default=None)
+    parser.add_argument("--b4-tau-numerator-gamma", type=float, default=None)
+    parser.add_argument("--b4-theta", action="store_true", help="Compatibility flag; B4ThetaParams is now the default B4 runtime.")
     args = parser.parse_args(argv)
+    b4_g_ext = args.b4_g_ext if args.b4_g_ext is not None else args.b4_ext_max
+    b4_params = B4ThetaParams(
+        parameter_id=args.b4_parameter_id,
+        alpha=args.b4_alpha if args.b4_alpha is not None else B4ThetaParams.alpha,
+        t_lead=args.b4_t_lead if args.b4_t_lead is not None else B4ThetaParams.t_lead,
+        delta_T_thr=args.b4_delta_t_thr if args.b4_delta_t_thr is not None else B4ThetaParams.delta_T_thr,
+        Q_trig=args.b4_q_trig if args.b4_q_trig is not None else B4ThetaParams.Q_trig,
+        G_ext=b4_g_ext if b4_g_ext is not None else B4ThetaParams.G_ext,
+        tau=args.b4_tau if args.b4_tau is not None else B4ThetaParams.tau,
+        hold_max=args.b4_hold_max if args.b4_hold_max is not None else B4ThetaParams.hold_max,
+        d_up=args.b4_d_up if args.b4_d_up is not None else B4ThetaParams.d_up,
+        tau_scale=args.b4_tau_scale if args.b4_tau_scale is not None else B4ThetaParams.tau_scale,
+        tau_numerator_gamma=(
+            args.b4_tau_numerator_gamma
+            if args.b4_tau_numerator_gamma is not None
+            else B4ThetaParams.tau_numerator_gamma
+        ),
+    )
     try:
         result = run_pipeline(
             modes=parse_modes(args.modes),
@@ -1341,6 +1398,11 @@ def main(argv: list[str] | None = None) -> int:
             sumo_binary=args.sumo_binary,
             dry_run=args.dry_run,
             emit_fcd=args.emit_fcd,
+            net_file=args.net_file,
+            background_route=args.background_route,
+            hard_max_sim_time=args.hard_max_sim_time,
+            b4_params=b4_params,
+            stage1_dir=args.stage1_dir,
         )
     except (B4RunnerError, B4RuntimeError, FileNotFoundError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

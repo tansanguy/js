@@ -1,0 +1,35 @@
+{
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_reality_4000_sustained.rou.xml",
+  "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u120.rou.xml",
+  "scale": 1.2,
+  "warmup_factor": 0.0,
+  "warmup_begin_sec": 240.0,
+  "warmup_end_sec": 900.0,
+  "base_vehicle_count": 3468,
+  "uniform_clone_count": 694,
+  "warmup_pressure_clone_count": 0,
+  "vehicle_count": 4162,
+  "vehicle_count_ratio": 1.200115,
+  "depart_300s_bins": {
+    "0": 123,
+    "300": 326,
+    "600": 343,
+    "900": 331,
+    "1200": 340,
+    "1500": 335,
+    "1800": 338,
+    "2100": 339,
+    "2400": 337,
+    "2700": 339,
+    "3000": 339,
+    "3300": 334,
+    "3600": 337,
+    "3900": 1
+  },
+  "route_prefix_counts": {
+    "mainline": 2391,
+    "segment": 1349,
+    "midcorridor": 212,
+    "sideflow": 210
+  }
+}

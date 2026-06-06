@@ -6,10 +6,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import random
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,7 +25,9 @@ if str(PIPELINE_DIR) not in sys.path:
     sys.path.insert(0, str(PIPELINE_DIR))
 
 from b4_runtime import (  # noqa: E402
+    B04_AA_BACKGROUND_ROUTE,
     B04_MODE,
+    B04_NET,
     B4_MODE,
     B4RuntimeError,
     B4RuntimePhaseConfig,
@@ -58,19 +62,27 @@ DEFAULT_SEED = 20260605
 W_EMV_THETA = 10.0
 W_VEH_THETA = 1.0
 FAILURE_PENALTY_SEC = 1_000_000.0
+DEFAULT_EI_CANDIDATE_COUNT = 600
+DEFAULT_SUBSPACE_COUNT = 6
+DEFAULT_SPC_WINDOW = 5
+DEFAULT_SPC_ALPHA = 0.30
+DEFAULT_SPC_MIN_ROUNDS = 15
+DEFAULT_SPC_MIN_IMPROVEMENT_SEC = 1.0
+ESSI_EPS = 1.0e-12
+DEFAULT_TAU_NUMERATOR_GAMMA = 5.0
 
-THETA_FIELDS = ["parameter_id", "t_lead", "tau", "ext_max", "hold_max", "d_up"]
+THETA_FIELDS = ["parameter_id", "alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"]
 SCORE_FIELDS = [
     "run_id",
     "round",
     "parameter_id",
     "seed",
     "repeat_id",
+    "alpha",
     "t_lead",
-    "tau",
-    "ext_max",
-    "hold_max",
-    "d_up",
+    "delta_T_thr",
+    "G_ext",
+    "Q_trig",
     "T_actual_EMV_sec",
     "d_EMV_sec",
     "general_mean_travel_time_sec",
@@ -78,6 +90,20 @@ SCORE_FIELDS = [
     "score_sec",
     "bo_score_sec",
     "final_status",
+]
+TOP20_FIELDS = [
+    "rank",
+    *SCORE_FIELDS,
+    "failure_reason",
+    "emergency_arrived",
+    "emergency_teleport",
+    "emergency_stuck_duration_sec",
+    "background_arrived_ratio",
+    "general_mean_delay_sec",
+    "signal_burden_sec",
+    "original_tau_fill_max",
+    "original_tau_fill_p95",
+    "signal_events_csv",
 ]
 ALL_VALUE_FIELDS = list(dict.fromkeys([
     "bo_round",
@@ -135,40 +161,51 @@ def sec(value: Any) -> str:
     return f"{float(value):.2f}"
 
 
-def theta_key(row: dict[str, Any]) -> tuple[float, float, float, float, int]:
+def theta_key(row: dict[str, Any]) -> tuple[float, float, float, float, float]:
     return (
+        round(safe_float(row.get("alpha"), 1.0), 2),
         round(safe_float(row.get("t_lead")), 0),
-        round(safe_float(row.get("tau")), 2),
-        round(safe_float(row.get("ext_max")), 0),
-        round(safe_float(row.get("hold_max")), 0),
-        int(round(safe_float(row.get("d_up"), 1))),
+        round(safe_float(row.get("delta_T_thr")), 0),
+        round(safe_float(row.get("G_ext")), 0),
+        round(safe_float(row.get("Q_trig")), 0),
     )
 
 
 def theta_id(prefix: str, rank: int, theta: dict[str, Any]) -> str:
     return (
         f"{prefix}_{rank:03d}"
+        f"_al{int(round(safe_float(theta['alpha']) * 100))}"
         f"_tl{int(round(safe_float(theta['t_lead'])))}"
-        f"_ta{int(round(safe_float(theta['tau']) * 100))}"
-        f"_ex{int(round(safe_float(theta['ext_max'])))}"
-        f"_ho{int(round(safe_float(theta['hold_max'])))}"
-        f"_du{int(round(safe_float(theta['d_up'])))}"
+        f"_dt{int(round(safe_float(theta['delta_T_thr'])))}"
+        f"_ge{int(round(safe_float(theta['G_ext'])))}"
+        f"_q{int(round(safe_float(theta['Q_trig'])))}"
     )
 
 
 def clamp_theta(theta: dict[str, Any], bounds: dict[str, Any], parameter_id: str | None = None) -> dict[str, Any]:
+    alpha_step = safe_float(bounds["alpha"].get("step"), 0.05)
+    alpha_raw = max(bounds["alpha"]["lower"], min(bounds["alpha"]["upper"], safe_float(theta.get("alpha"), bounds["alpha"]["lower"])))
+    alpha = round(round(alpha_raw / alpha_step) * alpha_step, 2)
     clamped = {
+        "alpha": alpha,
         "t_lead": int(round(max(bounds["t_lead"]["lower"], min(bounds["t_lead"]["upper"], safe_float(theta.get("t_lead")))))),
-        "tau": min(bounds["tau"]["values"], key=lambda value: abs(float(value) - safe_float(theta.get("tau"), 0.75))),
-        "ext_max": int(round(max(bounds["ext_max"]["lower"], min(bounds["ext_max"]["upper"], safe_float(theta.get("ext_max")))))),
-        "hold_max": int(round(max(bounds["hold_max"]["lower"], min(bounds["hold_max"]["upper"], safe_float(theta.get("hold_max")))))),
-        "d_up": int(min(bounds["d_up"]["values"], key=lambda value: abs(int(value) - safe_float(theta.get("d_up"), 1)))),
+        "delta_T_thr": int(round(max(bounds["delta_T_thr"]["lower"], min(bounds["delta_T_thr"]["upper"], safe_float(theta.get("delta_T_thr")))))),
+        "G_ext": int(round(max(bounds["G_ext"]["lower"], min(bounds["G_ext"]["upper"], safe_float(theta.get("G_ext")))))),
+        "Q_trig": int(round(max(bounds["Q_trig"]["lower"], min(bounds["Q_trig"]["upper"], safe_float(theta.get("Q_trig")))))),
     }
     clamped["parameter_id"] = parameter_id or str(theta.get("parameter_id") or theta_id("theta", 1, clamped))
     return clamped
 
 
-def random_theta_samples(bounds: dict[str, Any], count: int, seed: int, prefix: str, existing: set[tuple[float, float, float, float, int]] | None = None) -> list[dict[str, Any]]:
+def random_alpha(rng: random.Random, bounds: dict[str, Any]) -> float:
+    lower = safe_float(bounds["alpha"]["lower"], 1.0)
+    upper = safe_float(bounds["alpha"]["upper"], 1.8)
+    step = safe_float(bounds["alpha"].get("step"), 0.05)
+    steps = int(round((upper - lower) / step))
+    return round(lower + rng.randint(0, steps) * step, 2)
+
+
+def random_theta_samples(bounds: dict[str, Any], count: int, seed: int, prefix: str, existing: set[tuple[float, float, float, float, float]] | None = None) -> list[dict[str, Any]]:
     rng = random.Random(seed)
     existing = set(existing or set())
     samples: list[dict[str, Any]] = []
@@ -176,11 +213,11 @@ def random_theta_samples(bounds: dict[str, Any], count: int, seed: int, prefix: 
     while len(samples) < count and attempts < count * 200:
         attempts += 1
         row = {
+            "alpha": random_alpha(rng, bounds),
             "t_lead": rng.randint(int(bounds["t_lead"]["lower"]), int(bounds["t_lead"]["upper"])),
-            "tau": rng.choice(bounds["tau"]["values"]),
-            "ext_max": rng.randint(int(bounds["ext_max"]["lower"]), int(bounds["ext_max"]["upper"])),
-            "hold_max": rng.randint(int(bounds["hold_max"]["lower"]), int(bounds["hold_max"]["upper"])),
-            "d_up": rng.choice(bounds["d_up"]["values"]),
+            "delta_T_thr": rng.randint(int(bounds["delta_T_thr"]["lower"]), int(bounds["delta_T_thr"]["upper"])),
+            "G_ext": rng.randint(int(bounds["G_ext"]["lower"]), int(bounds["G_ext"]["upper"])),
+            "Q_trig": rng.randint(int(bounds["Q_trig"]["lower"]), int(bounds["Q_trig"]["upper"])),
         }
         key = theta_key(row)
         if key in existing:
@@ -193,10 +230,33 @@ def random_theta_samples(bounds: dict[str, Any], count: int, seed: int, prefix: 
     return samples
 
 
-def score_for_row(row: dict[str, Any]) -> tuple[float, float, float]:
-    d_emv = safe_float(row.get("d_EMV_sec"), 0.0)
-    d_veh = safe_float(row.get("d_veh_sec"), 0.0)
-    score = W_EMV_THETA * d_emv + W_VEH_THETA * d_veh
+ROUND_FIELDS = [
+    "round",
+    "phase",
+    "recommendation_csv",
+    "result_count",
+    "best_parameter_id",
+    "best_bo_score_sec",
+    "essi_1",
+    "essi_2",
+    "essi_3",
+    "essi_4",
+    "essi_5",
+    "essi_6",
+    "essi_max",
+    "essi_mean",
+    "essi_log_max",
+    "essi_log_max_ewma",
+    "essi_spc_status",
+    "essi_stop_recommended",
+    "essi_best_improvement_sec",
+]
+
+
+def score_for_row(row: dict[str, Any], w_emv: float = W_EMV_THETA, w_veh: float = W_VEH_THETA) -> tuple[float, float, float]:
+    emergency_time = safe_float(row.get("T_actual_EMV_sec"), safe_float(row.get("d_EMV_sec"), 0.0))
+    general_time = safe_float(row.get("general_mean_travel_time_sec"), safe_float(row.get("d_veh_sec"), 0.0))
+    score = w_emv * emergency_time + w_veh * general_time
     failed = (
         row.get("final_status") not in {"PASS", "WARNING"}
         or not bool_cell(row.get("emergency_arrived"))
@@ -207,8 +267,15 @@ def score_for_row(row: dict[str, Any]) -> tuple[float, float, float]:
     return round(score, 6), penalty, round(score + penalty, 6)
 
 
-def append_scores(row: dict[str, Any], theta: dict[str, Any], round_index: int, phase: str) -> dict[str, Any]:
-    score, penalty, bo_score = score_for_row(row)
+def append_scores(
+    row: dict[str, Any],
+    theta: dict[str, Any],
+    round_index: int,
+    phase: str,
+    w_emv: float = W_EMV_THETA,
+    w_veh: float = W_VEH_THETA,
+) -> dict[str, Any]:
+    score, penalty, bo_score = score_for_row(row, w_emv, w_veh)
     row.update({
         "bo_round": round_index,
         "bo_phase": phase,
@@ -227,11 +294,11 @@ def score_summary_row(row: dict[str, Any]) -> dict[str, Any]:
         "parameter_id": row.get("parameter_id", ""),
         "seed": row.get("seed", ""),
         "repeat_id": row.get("repeat_id", ""),
+        "alpha": row.get("alpha", ""),
         "t_lead": row.get("t_lead", ""),
-        "tau": row.get("tau", ""),
-        "ext_max": row.get("ext_max", ""),
-        "hold_max": row.get("hold_max", ""),
-        "d_up": row.get("d_up", ""),
+        "delta_T_thr": row.get("delta_T_thr", ""),
+        "G_ext": row.get("G_ext", ""),
+        "Q_trig": row.get("Q_trig", ""),
         "T_actual_EMV_sec": row.get("T_actual_EMV_sec", ""),
         "d_EMV_sec": row.get("d_EMV_sec", ""),
         "general_mean_travel_time_sec": row.get("general_mean_travel_time_sec", ""),
@@ -242,6 +309,37 @@ def score_summary_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def top20_ranked_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates = [row for row in rows if row.get("mode") == B4_MODE]
+    ranked = sorted(
+        candidates,
+        key=lambda row: (
+            safe_float(row.get("bo_score_sec"), float("inf")),
+            safe_float(row.get("signal_burden_sec"), float("inf")),
+            safe_float(row.get("general_mean_delay_sec"), float("inf")),
+            safe_float(row.get("emergency_stuck_duration_sec"), float("inf")),
+            str(row.get("parameter_id", "")),
+        ),
+    )[:20]
+    output: list[dict[str, Any]] = []
+    for rank, row in enumerate(ranked, start=1):
+        output.append({
+            "rank": rank,
+            **score_summary_row(row),
+            "failure_reason": row.get("failure_reason", ""),
+            "emergency_arrived": row.get("emergency_arrived", ""),
+            "emergency_teleport": row.get("emergency_teleport", ""),
+            "emergency_stuck_duration_sec": row.get("emergency_stuck_duration_sec", ""),
+            "background_arrived_ratio": row.get("background_arrived_ratio", ""),
+            "general_mean_delay_sec": row.get("general_mean_delay_sec", ""),
+            "signal_burden_sec": row.get("signal_burden_sec", ""),
+            "original_tau_fill_max": row.get("original_tau_fill_max", ""),
+            "original_tau_fill_p95": row.get("original_tau_fill_p95", ""),
+            "signal_events_csv": row.get("signal_events_csv", ""),
+        })
+    return output
+
+
 def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[tuple[float, float, float, float, int], dict[str, Any]] = {}
     for row in rows:
@@ -250,11 +348,11 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key = theta_key(row)
         entry = grouped.setdefault(key, {
             "parameter_id": row.get("parameter_id", ""),
-            "t_lead": key[0],
-            "tau": key[1],
-            "ext_max": key[2],
-            "hold_max": key[3],
-            "d_up": key[4],
+            "alpha": key[0],
+            "t_lead": key[1],
+            "delta_T_thr": key[2],
+            "G_ext": key[3],
+            "Q_trig": key[4],
             "bo_scores": [],
             "score_values": [],
             "repeat_count": 0,
@@ -272,27 +370,157 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(aggregated, key=lambda row: (float(row["bo_score_sec"]), theta_key(row)))
 
 
-def skopt_dimensions(bounds: dict[str, Any]) -> list[Any]:
-    try:
-        from skopt.space import Categorical, Integer  # type: ignore
-    except Exception as exc:  # noqa: BLE001
-        raise B4ThetaBoError(f"skopt_unavailable:{type(exc).__name__}:{exc}") from exc
+def theta_feature_vector(row: dict[str, Any], bounds: dict[str, Any]) -> list[float]:
+    def scale_continuous(name: str) -> float:
+        lower = safe_float(bounds[name]["lower"])
+        upper = safe_float(bounds[name]["upper"])
+        width = max(upper - lower, 1.0)
+        return (safe_float(row.get(name), lower) - lower) / width
+
+    def scale_category(name: str) -> float:
+        values = list(bounds[name]["values"])
+        if len(values) <= 1:
+            return 0.0
+        closest = min(range(len(values)), key=lambda index: abs(float(values[index]) - safe_float(row.get(name), float(values[0]))))
+        return closest / float(len(values) - 1)
+
     return [
-        Integer(int(bounds["t_lead"]["lower"]), int(bounds["t_lead"]["upper"]), name="t_lead"),
-        Categorical([float(value) for value in bounds["tau"]["values"]], name="tau"),
-        Integer(int(bounds["ext_max"]["lower"]), int(bounds["ext_max"]["upper"]), name="ext_max"),
-        Integer(int(bounds["hold_max"]["lower"]), int(bounds["hold_max"]["upper"]), name="hold_max"),
-        Categorical([int(value) for value in bounds["d_up"]["values"]], name="d_up"),
+        scale_continuous("alpha"),
+        scale_continuous("t_lead"),
+        scale_continuous("delta_T_thr"),
+        scale_continuous("G_ext"),
+        scale_continuous("Q_trig"),
     ]
 
 
-def recommend_bo_batch(observations: list[dict[str, Any]], bounds: dict[str, Any], batch_size: int, seed: int, existing: set[tuple[float, float, float, float, int]]) -> list[dict[str, Any]]:
+def random_theta_candidates(
+    bounds: dict[str, Any],
+    count: int,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]] | None = None,
+) -> list[dict[str, Any]]:
+    rng = random.Random(seed)
+    blocked = set(existing or set())
+    selected = set(blocked)
+    candidates: list[dict[str, Any]] = []
+    attempts = 0
+    while len(candidates) < count and attempts < max(count * 60, 1000):
+        attempts += 1
+        row = {
+            "alpha": random_alpha(rng, bounds),
+            "t_lead": rng.randint(int(bounds["t_lead"]["lower"]), int(bounds["t_lead"]["upper"])),
+            "delta_T_thr": rng.randint(int(bounds["delta_T_thr"]["lower"]), int(bounds["delta_T_thr"]["upper"])),
+            "G_ext": rng.randint(int(bounds["G_ext"]["lower"]), int(bounds["G_ext"]["upper"])),
+            "Q_trig": rng.randint(int(bounds["Q_trig"]["lower"]), int(bounds["Q_trig"]["upper"])),
+        }
+        key = theta_key(row)
+        if key in selected:
+            continue
+        selected.add(key)
+        candidates.append(row)
+    return candidates
+
+
+def expected_improvement_candidates(
+    observations: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]],
+    candidate_count: int = DEFAULT_EI_CANDIDATE_COUNT,
+) -> list[dict[str, Any]]:
+    aggregated = aggregate_observations(observations)
+    if len(aggregated) < 2:
+        return []
+    try:
+        import numpy as np  # type: ignore
+        from scipy.stats import norm  # type: ignore
+        from sklearn.gaussian_process import GaussianProcessRegressor  # type: ignore
+        from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel  # type: ignore
+    except Exception:
+        return []
+
+    x_train = np.array([theta_feature_vector(row, bounds) for row in aggregated], dtype=float)
+    y_raw = np.array([float(row["bo_score_sec"]) for row in aggregated], dtype=float)
+    y_mean = float(np.mean(y_raw))
+    y_std = float(np.std(y_raw))
+    if not math.isfinite(y_std) or y_std < 1.0e-9:
+        y_std = 1.0
+    y_train = (y_raw - y_mean) / y_std
+    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(nu=2.5) + WhiteKernel(noise_level=1.0e-6, noise_level_bounds="fixed")
+    try:
+        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=False, random_state=seed, alpha=1.0e-8, n_restarts_optimizer=0)
+        gp.fit(x_train, y_train)
+    except Exception:
+        return []
+
+    candidates = random_theta_candidates(bounds, candidate_count, seed + 1009, existing)
+    if not candidates:
+        return []
+    x_candidate = np.array([theta_feature_vector(row, bounds) for row in candidates], dtype=float)
+    try:
+        mu, sigma = gp.predict(x_candidate, return_std=True)
+    except Exception:
+        return []
+    sigma = np.maximum(sigma, 1.0e-9)
+    best_scaled = float(np.min(y_train))
+    improvement = best_scaled - mu - 0.01
+    z = improvement / sigma
+    ei_scaled = improvement * norm.cdf(z) + sigma * norm.pdf(z)
+    ei_sec = np.maximum(ei_scaled, 0.0) * y_std
+    ranked: list[dict[str, Any]] = []
+    for row, ei in zip(candidates, ei_sec):
+        ranked.append({**row, "acquisition": float(ei)})
+    ranked.sort(key=lambda row: (-safe_float(row.get("acquisition")), theta_key(row)))
+    return ranked
+
+
+def recommend_bo_batch_sklearn(
+    observations: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    batch_size: int,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]],
+) -> list[dict[str, Any]]:
+    ranked = expected_improvement_candidates(observations, bounds, seed, existing)
+    recommendations: list[dict[str, Any]] = []
+    selected = set(existing)
+    for row in ranked:
+        clamped = clamp_theta(row, bounds)
+        key = theta_key(clamped)
+        if key in selected:
+            continue
+        selected.add(key)
+        clamped["parameter_id"] = theta_id("bo_sklearn", len(recommendations) + 1, clamped)
+        recommendations.append(clamped)
+        if len(recommendations) >= batch_size:
+            break
+    return recommendations
+
+
+def skopt_dimensions(bounds: dict[str, Any]) -> list[Any]:
+    try:
+        from skopt.space import Integer, Real  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise B4ThetaBoError(f"skopt_unavailable:{type(exc).__name__}:{exc}") from exc
+    return [
+        Real(float(bounds["alpha"]["lower"]), float(bounds["alpha"]["upper"]), name="alpha"),
+        Integer(int(bounds["t_lead"]["lower"]), int(bounds["t_lead"]["upper"]), name="t_lead"),
+        Integer(int(bounds["delta_T_thr"]["lower"]), int(bounds["delta_T_thr"]["upper"]), name="delta_T_thr"),
+        Integer(int(bounds["G_ext"]["lower"]), int(bounds["G_ext"]["upper"]), name="G_ext"),
+        Integer(int(bounds["Q_trig"]["lower"]), int(bounds["Q_trig"]["upper"]), name="Q_trig"),
+    ]
+
+
+def recommend_bo_batch(observations: list[dict[str, Any]], bounds: dict[str, Any], batch_size: int, seed: int, existing: set[tuple[float, float, float, float, float]]) -> list[dict[str, Any]]:
     aggregated = aggregate_observations(observations)
     if len(aggregated) < 2:
         return random_theta_samples(bounds, batch_size, seed, "bo_fallback", existing)
     try:
         from skopt import Optimizer  # type: ignore
     except Exception as exc:  # noqa: BLE001
+        fallback = recommend_bo_batch_sklearn(observations, bounds, batch_size, seed + 31, existing)
+        if fallback:
+            return fallback
         return random_theta_samples(bounds, batch_size, seed + 31, "bo_random_fallback", existing)
     optimizer = Optimizer(
         dimensions=skopt_dimensions(bounds),
@@ -301,13 +529,13 @@ def recommend_bo_batch(observations: list[dict[str, Any]], bounds: dict[str, Any
         random_state=seed,
     )
     optimizer.tell(
-        [[row["t_lead"], row["tau"], row["ext_max"], row["hold_max"], row["d_up"]] for row in aggregated],
+        [[row["alpha"], row["t_lead"], row["delta_T_thr"], row["G_ext"], row["Q_trig"]] for row in aggregated],
         [float(row["bo_score_sec"]) for row in aggregated],
     )
     recommendations: list[dict[str, Any]] = []
     selected = set(existing)
     for values in optimizer.ask(n_points=max(batch_size * 4, batch_size), strategy="cl_min"):
-        raw = {"t_lead": values[0], "tau": values[1], "ext_max": values[2], "hold_max": values[3], "d_up": values[4]}
+        raw = {"alpha": values[0], "t_lead": values[1], "delta_T_thr": values[2], "G_ext": values[3], "Q_trig": values[4]}
         row = clamp_theta(raw, bounds)
         key = theta_key(row)
         if key in selected:
@@ -322,15 +550,127 @@ def recommend_bo_batch(observations: list[dict[str, Any]], bounds: dict[str, Any
     return recommendations
 
 
+def default_route_subspaces(stage1: B4Stage1Inputs, count: int = DEFAULT_SUBSPACE_COUNT) -> list[dict[str, Any]]:
+    route_orders = sorted({int(safe_float(movement.route_order_index)) for movement in stage1.movements})
+    if not route_orders:
+        return [{"index": index + 1, "weight": 1.0} for index in range(count)]
+    low = min(route_orders)
+    high = max(route_orders)
+    span = max(high - low + 1, count)
+    subspaces: list[dict[str, Any]] = []
+    max_movement_count = 1
+    for index in range(count):
+        start = low + math.floor(index * span / count)
+        end = low + math.floor((index + 1) * span / count) - 1
+        movements = [
+            movement
+            for movement in stage1.movements
+            if start <= int(safe_float(movement.route_order_index)) <= end and movement.controllable
+        ]
+        max_movement_count = max(max_movement_count, len(movements))
+        subspaces.append({
+            "index": index + 1,
+            "route_order_min": start,
+            "route_order_max": end,
+            "movement_count": len(movements),
+            "case_b_count": sum(1 for movement in movements if any(candidate.bottleneck_movement_id == movement.movement_id for candidate in stage1.case_b_candidates)),
+        })
+    for item in subspaces:
+        risk = 1.0 + safe_float(item.get("case_b_count"), 0.0)
+        density = max(safe_float(item.get("movement_count"), 0.0), 1.0) / max_movement_count
+        item["weight"] = density * risk
+    max_weight = max((safe_float(item["weight"]) for item in subspaces), default=1.0)
+    for item in subspaces:
+        item["weight"] = safe_float(item["weight"]) / max(max_weight, 1.0e-9)
+    return subspaces
+
+
+def essi_round_fields(
+    observations: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    stage1: B4Stage1Inputs,
+    seed: int,
+    round_rows: list[dict[str, Any]],
+    best: dict[str, Any],
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    existing = {theta_key(row) for row in observations}
+    ranked = expected_improvement_candidates(observations, bounds, seed, existing, args.ei_candidate_count)
+    top_ei = max((safe_float(row.get("acquisition")) for row in ranked), default=0.0)
+    subspaces = default_route_subspaces(stage1)
+    essi_values = [top_ei * safe_float(item.get("weight"), 1.0) for item in subspaces]
+    while len(essi_values) < DEFAULT_SUBSPACE_COUNT:
+        essi_values.append(0.0)
+    essi_values = essi_values[:DEFAULT_SUBSPACE_COUNT]
+    essi_max = max(essi_values) if essi_values else 0.0
+    essi_mean = sum(essi_values) / len(essi_values) if essi_values else 0.0
+    essi_log_max = math.log(essi_max + ESSI_EPS)
+    previous_ewma = next(
+        (
+            safe_float(row.get("essi_log_max_ewma"))
+            for row in reversed(round_rows)
+            if row.get("essi_log_max_ewma") not in {"", None}
+        ),
+        essi_log_max,
+    )
+    ewma = args.spc_alpha * essi_log_max + (1.0 - args.spc_alpha) * previous_ewma
+    previous_best = next(
+        (
+            safe_float(row.get("best_bo_score_sec"), float("inf"))
+            for row in reversed(round_rows)
+            if row.get("best_bo_score_sec") not in {"", None}
+        ),
+        float("inf"),
+    )
+    best_score = safe_float(best.get("bo_score_sec"), float("inf"))
+    best_improvement = max(0.0, previous_best - best_score) if math.isfinite(previous_best) else 0.0
+    prior_logs = [
+        safe_float(row.get("essi_log_max"))
+        for row in round_rows
+        if row.get("essi_log_max") not in {"", None}
+    ]
+    window_logs = (prior_logs + [essi_log_max])[-args.spc_window :]
+    bo_round_count = sum(1 for row in round_rows if row.get("phase") == "bo") + 1
+    if len(window_logs) < args.spc_window or bo_round_count < args.spc_min_rounds:
+        spc_status = "warmup"
+        stop_recommended = False
+    else:
+        center = sum(window_logs) / len(window_logs)
+        variance = sum((value - center) ** 2 for value in window_logs) / max(len(window_logs) - 1, 1)
+        sigma = math.sqrt(max(variance, 0.0))
+        lower = center - 3.0 * sigma
+        upper = center + 3.0 * sigma
+        stable = lower <= ewma <= upper and best_improvement <= args.spc_min_improvement_sec
+        spc_status = "stable" if stable else "active"
+        stop_recommended = stable
+    fields = {
+        f"essi_{index + 1}": sec(value)
+        for index, value in enumerate(essi_values)
+    }
+    fields.update({
+        "essi_max": sec(essi_max),
+        "essi_mean": sec(essi_mean),
+        "essi_log_max": f"{essi_log_max:.8f}",
+        "essi_log_max_ewma": f"{ewma:.8f}",
+        "essi_spc_status": spc_status,
+        "essi_stop_recommended": str(stop_recommended),
+        "essi_best_improvement_sec": sec(best_improvement),
+    })
+    return fields
+
+
 def mock_eval_row(run_id: str, theta: dict[str, Any], seed: int, repeat_id: int) -> dict[str, Any]:
+    alpha = safe_float(theta["alpha"])
     t_lead = safe_float(theta["t_lead"])
-    tau = safe_float(theta["tau"])
-    ext_max = safe_float(theta["ext_max"])
-    hold_max = safe_float(theta["hold_max"])
-    d_up = safe_float(theta["d_up"])
+    delta_t = safe_float(theta["delta_T_thr"])
+    g_ext = safe_float(theta["G_ext"])
+    q_trig = safe_float(theta["Q_trig"])
     noise = random.Random(f"{seed}:{repeat_id}:{theta_key(theta)}").uniform(-2.5, 2.5)
-    d_emv = 420 - 5.5 * t_lead - 4.0 * ext_max - 2.2 * hold_max - 12.0 * d_up + 260.0 * abs(tau - 0.75) + noise
-    d_veh = 95 + 0.35 * ext_max + 0.55 * hold_max + 3.0 * max(0.0, 0.75 - tau) + noise / 4.0
+    eta_penalty = 38.0 * abs(alpha - 1.2)
+    gate_penalty = 1.4 * max(0.0, 55.0 - delta_t)
+    merge_penalty = 0.8 * max(0.0, q_trig - 12.0)
+    d_emv = 420 - 5.5 * t_lead - 4.0 * g_ext + eta_penalty + gate_penalty + merge_penalty + noise
+    d_veh = 95 + 0.35 * g_ext + 0.18 * t_lead + 0.55 * max(0.0, 30.0 - q_trig) + noise / 4.0
     d_emv = max(60.0, d_emv)
     t_free = 218.0
     return {
@@ -340,11 +680,11 @@ def mock_eval_row(run_id: str, theta: dict[str, Any], seed: int, repeat_id: int)
         "parameter_id": theta["parameter_id"],
         "seed": seed,
         "repeat_id": repeat_id,
+        "alpha": theta["alpha"],
         "t_lead": theta["t_lead"],
-        "tau": theta["tau"],
-        "ext_max": theta["ext_max"],
-        "hold_max": theta["hold_max"],
-        "d_up": theta["d_up"],
+        "delta_T_thr": theta["delta_T_thr"],
+        "G_ext": theta["G_ext"],
+        "Q_trig": theta["Q_trig"],
         "T_actual_EMV_sec": sec(t_free + d_emv),
         "T_free_EMV_sec": sec(t_free),
         "d_EMV_sec": sec(d_emv),
@@ -355,14 +695,14 @@ def mock_eval_row(run_id: str, theta: dict[str, Any], seed: int, repeat_id: int)
         "emergency_arrived": True,
         "emergency_teleport": False,
         "queue_method_primary": "mock_local_fill_100m",
-        "queue_max_m": sec(100.0 * tau),
-        "queue_p95_m": sec(85.0 * tau),
-        "tls_queue_max_m": sec(120.0 * tau),
-        "queue_local_fill_80m_max": sec((100.0 * tau) / 80.0),
-        "queue_local_fill_100m_max": sec(tau),
-        "queue_local_fill_120m_max": sec((100.0 * tau) / 120.0),
-        "queue_corridor_fill_250m_max": sec(tau / 2.0),
-        "queue_trigger_count": int(max(0, round((0.9 - tau) * 10))),
+        "queue_max_m": sec(max(q_trig, 1.0) * 2.0),
+        "queue_p95_m": sec(max(q_trig, 1.0) * 1.7),
+        "tls_queue_max_m": sec(max(q_trig, 1.0) * 2.4),
+        "queue_local_fill_80m_max": sec(max(q_trig, 1.0) * 2.0 / 80.0),
+        "queue_local_fill_100m_max": sec(max(q_trig, 1.0) * 2.0 / 100.0),
+        "queue_local_fill_120m_max": sec(max(q_trig, 1.0) * 2.0 / 120.0),
+        "queue_corridor_fill_250m_max": sec(max(q_trig, 1.0) * 2.0 / 250.0),
+        "queue_trigger_count": int(max(0, round((50.0 - q_trig) / 10.0))),
     }
 
 
@@ -374,11 +714,11 @@ def failure_row_for_worker(run_id: str, theta: dict[str, Any], seed: int, repeat
         "parameter_id": theta["parameter_id"],
         "seed": seed,
         "repeat_id": repeat_id,
+        "alpha": theta["alpha"],
         "t_lead": theta["t_lead"],
-        "tau": theta["tau"],
-        "ext_max": theta["ext_max"],
-        "hold_max": theta["hold_max"],
-        "d_up": theta["d_up"],
+        "delta_T_thr": theta["delta_T_thr"],
+        "G_ext": theta["G_ext"],
+        "Q_trig": theta["Q_trig"],
         "final_status": "FAIL",
         "failed": True,
         "failure_reason": f"worker_exception:{type(exc).__name__}:{exc}",
@@ -387,10 +727,30 @@ def failure_row_for_worker(run_id: str, theta: dict[str, Any], seed: int, repeat
     }
 
 
+def emergency_route_length_from_tripinfo(path: Path) -> float:
+    if not path.is_file():
+        return 0.0
+    try:
+        import xml.etree.ElementTree as ET
+
+        for _event, elem in ET.iterparse(path, events=("end",)):
+            if elem.tag == "tripinfo" and elem.get("id") == "emergency_0":
+                return safe_float(elem.get("routeLength"))
+    except Exception:
+        return 0.0
+    return 0.0
+
+
 def prepare_real_context(run_id: str, args: argparse.Namespace) -> dict[str, Any]:
-    stage1 = validate_static_inputs()
+    stage1 = validate_static_inputs(
+        stage1_dir=getattr(args, "stage1_dir", None),
+        net_file=args.net_file,
+        background_route=args.background_route,
+    )
     phase_config = B4RuntimePhaseConfig.from_phase(args.phase)
-    free_reference = build_b004_free_reference(stage1)
+    if args.hard_max_sim_time is not None:
+        phase_config = replace(phase_config, hard_max_sim_time=float(args.hard_max_sim_time))
+    free_reference = build_b004_free_reference(stage1, net_file=args.net_file, background_route=args.background_route)
     free_rows = read_free_vehicle_rows()
     free_rows_by_id = {row["vehicle_id"]: row for row in free_rows}
     baseline_dir = args.run_root / run_id / B04_MODE / "no_control" / "repeat_001"
@@ -398,9 +758,28 @@ def prepare_real_context(run_id: str, args: argparse.Namespace) -> dict[str, Any
     if baseline_json.is_file() and args.resume:
         b04_baseline = read_json(baseline_json)
     else:
-        task = B4RunTask(run_id, B04_MODE, "no_control", 1, args.seed, baseline_dir)
+        task = B4RunTask(
+            run_id,
+            B04_MODE,
+            "no_control",
+            1,
+            args.seed,
+            baseline_dir,
+            net_file=args.net_file,
+            background_route=args.background_route,
+        )
         b04_baseline = run_b04_task(task, stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd)
         write_json(baseline_json, b04_baseline)
+    if b04_baseline.get("final_status") != "PASS" or str(b04_baseline.get("emergency_teleport", "")).lower() == "true":
+        raise B4ThetaBoError("b04_baseline_validation_failed")
+    route_length_m = emergency_route_length_from_tripinfo(baseline_dir / "tripinfo.xml")
+    if route_length_m <= 0.0:
+        route_length_m = safe_float(free_reference.get("route_length_m"))
+    ev_time_sec = safe_float(b04_baseline.get("T_actual_EMV_sec"))
+    ev_speed_kmh = route_length_m / ev_time_sec * 3.6 if route_length_m > 0 and ev_time_sec > 0 else 0.0
+    b04_baseline["b04_ev_speed_kmh"] = round(ev_speed_kmh, 3)
+    if not 15.0 <= ev_speed_kmh <= 17.0 and not getattr(args, "allow_baseline_speed_out_of_target", False):
+        raise B4ThetaBoError(f"b04_baseline_speed_out_of_target:{ev_speed_kmh:.3f}kmh")
     return {
         "stage1": stage1,
         "phase_config": phase_config,
@@ -427,7 +806,12 @@ def evaluate_theta_repeat(job: dict[str, Any]) -> dict[str, Any]:
         repeat,
         seed,
         args.run_root / run_id / B4_MODE / theta["parameter_id"] / f"repeat_{repeat:03d}",
+        net_file=args.net_file,
+        background_route=args.background_route,
     )
+    theta_params = dict(theta)
+    theta_params["tau_scale"] = args.tau_scale
+    theta_params["tau_numerator_gamma"] = args.tau_numerator_gamma
     return run_b4_task(
         task,
         real_context["stage1"],
@@ -436,7 +820,7 @@ def evaluate_theta_repeat(job: dict[str, Any]) -> dict[str, Any]:
         real_context["free_rows_by_id"],
         args.sumo_binary,
         args.emit_fcd,
-        B4ThetaParams.from_row(theta),
+        B4ThetaParams.from_row(theta_params),
     )
 
 
@@ -467,7 +851,7 @@ def evaluate_theta_batch(
                 raw = evaluate_theta_repeat(job)
             except Exception as exc:  # noqa: BLE001
                 raw = failure_row_for_worker(run_id, theta, int(job["seed"]), int(job["repeat"]), exc)
-            rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo"))
+            rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_emv, args.w_veh))
     else:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
             future_map = {executor.submit(evaluate_theta_repeat, job): job for job in jobs}
@@ -478,7 +862,7 @@ def evaluate_theta_batch(
                     raw = future.result()
                 except Exception as exc:  # noqa: BLE001
                     raw = failure_row_for_worker(run_id, theta, int(job["seed"]), int(job["repeat"]), exc)
-                rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo"))
+                rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_emv, args.w_veh))
     rows.sort(key=lambda row: (str(row.get("parameter_id", "")), int(safe_float(row.get("repeat_id"), 0))))
     return rows
 
@@ -486,16 +870,18 @@ def evaluate_theta_batch(
 def write_bo_outputs(run_dir: Path, rows: list[dict[str, Any]], round_rows: list[dict[str, Any]], state: dict[str, Any]) -> dict[str, str]:
     all_values = run_dir / "bo_all_values.csv"
     score_summary = run_dir / "bo_score_summary.csv"
+    top20 = run_dir / "top20_ranked.csv"
     observations = run_dir / "bo_observations.csv"
     penalized = run_dir / "bo_excluded_or_penalized.csv"
     rounds = run_dir / "bo_rounds.csv"
     summary = run_dir / "bo_loop_summary.json"
     write_csv(all_values, rows, ALL_VALUE_FIELDS)
     write_csv(score_summary, [score_summary_row(row) for row in rows], SCORE_FIELDS)
+    write_csv(top20, top20_ranked_rows(rows), TOP20_FIELDS)
     aggregated = aggregate_observations(rows)
-    write_csv(observations, aggregated, ["parameter_id", "t_lead", "tau", "ext_max", "hold_max", "d_up", "score_sec", "bo_score_sec", "repeat_count"])
+    write_csv(observations, aggregated, ["parameter_id", "alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig", "score_sec", "bo_score_sec", "repeat_count"])
     write_csv(penalized, [row for row in rows if safe_float(row.get("failure_penalty_sec")) > 0.0], ALL_VALUE_FIELDS)
-    write_csv(rounds, round_rows, ["round", "phase", "recommendation_csv", "result_count", "best_parameter_id", "best_bo_score_sec"])
+    write_csv(rounds, round_rows, ROUND_FIELDS)
     best = aggregated[0] if aggregated else {}
     write_json(summary, {
         "schema": "compact_v9_B4_theta_bo_summary.v1",
@@ -504,11 +890,13 @@ def write_bo_outputs(run_dir: Path, rows: list[dict[str, Any]], round_rows: list
         "completed_round": state.get("completed_round", 0),
         "output_prefix": state.get("output_prefix", DEFAULT_OUTPUT_PREFIX),
         "workers": state.get("workers", 1),
-        "weights": {"w_emv": W_EMV_THETA, "w_veh": W_VEH_THETA},
+        "weights": state.get("weights", {"w_emv": W_EMV_THETA, "w_veh": W_VEH_THETA}),
+        "inputs": state.get("inputs", {}),
         "best": best,
         "outputs": {
             "bo_all_values_csv": rel(all_values),
             "bo_score_summary_csv": rel(score_summary),
+            "top20_ranked_csv": rel(top20),
             "bo_observations_csv": rel(observations),
             "bo_excluded_or_penalized_csv": rel(penalized),
             "bo_rounds_csv": rel(rounds),
@@ -517,6 +905,7 @@ def write_bo_outputs(run_dir: Path, rows: list[dict[str, Any]], round_rows: list
     return {
         "bo_all_values_csv": rel(all_values),
         "bo_score_summary_csv": rel(score_summary),
+        "top20_ranked_csv": rel(top20),
         "bo_observations_csv": rel(observations),
         "bo_excluded_or_penalized_csv": rel(penalized),
         "bo_rounds_csv": rel(rounds),
@@ -529,7 +918,7 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = args.metrics_root / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     stage1 = B4Stage1Inputs.load()
-    bounds = theta_bounds_from_stage1(stage1)
+    bounds = theta_bounds_from_stage1(stage1, args.net_file)
     write_json(run_dir / "theta_bounds.json", bounds)
     real_context = None if args.mock_eval else prepare_real_context(run_id, args)
     state_path = run_dir / "state.json"
@@ -565,9 +954,10 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             "result_count": len(result_rows),
             "best_parameter_id": best.get("parameter_id", ""),
             "best_bo_score_sec": sec(best.get("bo_score_sec", "")),
+            **essi_round_fields(rows, bounds, stage1, args.seed, round_rows, best, args),
         })
         completed_round = 0
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
 
@@ -588,16 +978,21 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             "result_count": len(result_rows),
             "best_parameter_id": best.get("parameter_id", ""),
             "best_bo_score_sec": sec(best.get("bo_score_sec", "")),
+            **essi_round_fields(rows, bounds, stage1, args.seed + round_index, round_rows, best, args),
         })
         completed_round = round_index
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
+        if args.spc_stop and bool_cell(round_rows[-1].get("essi_stop_recommended")):
+            break
 
-    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers}
+    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
     write_json(state_path, state)
     outputs = write_bo_outputs(run_dir, rows, round_rows, state)
-    write_json(latest_path, {"schema": "compact_v9_B4_theta_bo_latest.v1", "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, **outputs})
+    weights = {"w_emv": args.w_emv, "w_veh": args.w_veh}
+    inputs = {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}
+    write_json(latest_path, {"schema": "compact_v9_B4_theta_bo_latest.v1", "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": weights, "inputs": inputs, **outputs})
     return {
         "schema": "compact_v9_B4_theta_bo_run.v1",
         "generated_at": utc_now(),
@@ -606,6 +1001,8 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
         "completed_round": completed_round,
         "output_prefix": args.output_prefix,
         "workers": args.workers,
+        "weights": weights,
+        "inputs": inputs,
         "outputs": outputs,
     }
 
@@ -638,6 +1035,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--repeats", type=int, default=DEFAULT_REPEATS)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--workers", type=int, default=default_workers())
+    parser.add_argument("--w-emv", "--w1", dest="w_emv", type=float, default=W_EMV_THETA)
+    parser.add_argument("--w-veh", "--w2", dest="w_veh", type=float, default=W_VEH_THETA)
+    parser.add_argument("--ei-candidate-count", type=int, default=DEFAULT_EI_CANDIDATE_COUNT)
+    parser.add_argument("--spc-window", type=int, default=DEFAULT_SPC_WINDOW)
+    parser.add_argument("--spc-alpha", type=float, default=DEFAULT_SPC_ALPHA)
+    parser.add_argument("--spc-min-rounds", type=int, default=DEFAULT_SPC_MIN_ROUNDS)
+    parser.add_argument("--spc-min-improvement-sec", type=float, default=DEFAULT_SPC_MIN_IMPROVEMENT_SEC)
+    parser.add_argument("--spc-stop", action="store_true")
+    parser.add_argument("--net-file", type=Path, default=B04_NET)
+    parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE)
+    parser.add_argument("--stage1-dir", type=Path, default=None)
+    parser.add_argument("--hard-max-sim-time", type=float, default=None)
+    parser.add_argument("--tau-scale", type=float, default=B4ThetaParams.tau_scale)
+    parser.add_argument("--tau-numerator-gamma", type=float, default=DEFAULT_TAU_NUMERATOR_GAMMA)
     parser.add_argument("--sumo-binary", default=None)
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true")
@@ -652,6 +1063,21 @@ def validate_args(args: argparse.Namespace) -> None:
     args.output_prefix = output_prefix
     args.metrics_root = (args.metrics_root or (METRICS_PARENT_ROOT / output_prefix)).resolve()
     args.run_root = (args.run_root or (RUNS_ROOT / output_prefix)).resolve()
+    args.net_file = Path(args.net_file).resolve()
+    args.background_route = Path(args.background_route).resolve()
+    args.stage1_dir = Path(args.stage1_dir).resolve() if args.stage1_dir else None
+    if not args.net_file.is_file():
+        raise B4ThetaBoError(f"missing_net_file:{args.net_file}")
+    if not args.background_route.is_file():
+        raise B4ThetaBoError(f"missing_background_route:{args.background_route}")
+    if args.stage1_dir is not None and not args.stage1_dir.is_dir():
+        raise B4ThetaBoError(f"missing_stage1_dir:{args.stage1_dir}")
+    if args.hard_max_sim_time is not None and args.hard_max_sim_time <= 0:
+        raise B4ThetaBoError("hard_max_sim_time_must_be_positive")
+    if not 0.0 <= args.tau_scale <= 1.0:
+        raise B4ThetaBoError("tau_scale_must_be_between_0_and_1")
+    if args.tau_numerator_gamma < 0.1:
+        raise B4ThetaBoError("tau_numerator_gamma_must_be_at_least_0p1")
     if args.initial_count < 2:
         raise B4ThetaBoError("initial_count_must_be_at_least_2")
     if args.bo_rounds < 0:
@@ -662,6 +1088,16 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4ThetaBoError("repeats_must_be_1_to_3")
     if args.workers < 1:
         raise B4ThetaBoError("workers_must_be_at_least_1")
+    if args.w_emv < 0.0 or args.w_veh < 0.0:
+        raise B4ThetaBoError("objective_weights_must_be_nonnegative")
+    if args.ei_candidate_count < args.bo_batch_size:
+        raise B4ThetaBoError("ei_candidate_count_must_cover_bo_batch_size")
+    if args.spc_window < 2:
+        raise B4ThetaBoError("spc_window_must_be_at_least_2")
+    if not 0.0 < args.spc_alpha <= 1.0:
+        raise B4ThetaBoError("spc_alpha_must_be_between_0_and_1")
+    if args.spc_min_rounds < 1:
+        raise B4ThetaBoError("spc_min_rounds_must_be_positive")
 
 
 def main(argv: list[str] | None = None) -> int:

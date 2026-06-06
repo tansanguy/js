@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b004_b04_b4_route_comparison_visualization.v1",
-  "generated_at": "2026-06-05T02:13:43.262860+00:00",
+  "generated_at": "2026-06-06T07:27:14.517338+00:00",
   "route_edges": [
     "420331801#1",
     "-174870621#8",
@@ -82,7 +82,7 @@
     {
       "run_id": "contract",
       "mode": "B04",
-      "scenario_name": "compact_v9_B04_AA_real_demand",
+      "scenario_name": "compact_v9_B04_AD_real_demand",
       "parameter_id": "no_control",
       "T_actual_EMV_sec": 100.0,
       "T_free_EMV_sec": 10.0,
@@ -93,7 +93,7 @@
     {
       "run_id": "contract",
       "mode": "B4",
-      "scenario_name": "compact_v9_B04_AA_real_demand",
+      "scenario_name": "compact_v9_B04_AD_real_demand",
       "parameter_id": "B4_MVP_DEFAULT",
       "T_actual_EMV_sec": 90.0,
       "T_free_EMV_sec": 10.0,
@@ -111,36 +111,102 @@
   "movement_markers": [
     {
       "movement_id": "B4_MOVEMENT_00",
+      "mapped": "S1:upbound",
+      "x": "1080.44",
+      "y": "79.03"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_01",
+      "mapped": "S2:upbound",
+      "x": "1023.84",
+      "y": "92.85"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_02",
       "mapped": "S3:upbound",
       "x": "992.25",
       "y": "107.67"
     },
     {
-      "movement_id": "B4_MOVEMENT_01",
+      "movement_id": "B4_MOVEMENT_03",
+      "mapped": "S5:upbound",
+      "x": "939.26",
+      "y": "132.28"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_04",
       "mapped": "S6:upbound",
       "x": "823.68",
       "y": "198.59"
     },
     {
-      "movement_id": "B4_MOVEMENT_02",
+      "movement_id": "B4_MOVEMENT_05",
+      "mapped": "S7:upbound",
+      "x": "710.96",
+      "y": "269.01"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_06",
       "mapped": "S9:upbound",
       "x": "573.87",
       "y": "360.51"
     },
     {
-      "movement_id": "B4_MOVEMENT_03",
+      "movement_id": "B4_MOVEMENT_07",
       "mapped": "S9:upbound",
       "x": "564.12",
       "y": "365.18"
     },
     {
-      "movement_id": "B4_MOVEMENT_04",
+      "movement_id": "B4_MOVEMENT_08",
+      "mapped": "S11:upbound",
+      "x": "469.9",
+      "y": "353.77"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_09",
+      "mapped": "S13:upbound",
+      "x": "382.1",
+      "y": "364.45"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_10",
+      "mapped": "S14:upbound",
+      "x": "331.0",
+      "y": "379.14"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_11",
       "mapped": "S15:upbound",
       "x": "287.11",
       "y": "388.35"
     },
     {
-      "movement_id": "B4_MOVEMENT_05",
+      "movement_id": "B4_MOVEMENT_12",
+      "mapped": "S16:upbound",
+      "x": "212.12",
+      "y": "471.76"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_13",
+      "mapped": "S17:upbound",
+      "x": "189.83",
+      "y": "489.24"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_14",
+      "mapped": "S18:upbound",
+      "x": "127.72",
+      "y": "611.49"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_15",
+      "mapped": "S19:upbound",
+      "x": "69.77",
+      "y": "672.75"
+    },
+    {
+      "movement_id": "B4_MOVEMENT_16",
       "mapped": "S21:upbound",
       "x": "36.78",
       "y": "697.81"

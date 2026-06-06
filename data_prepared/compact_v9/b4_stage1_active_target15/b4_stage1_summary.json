@@ -1,0 +1,194 @@
+{
+  "schema": "compact_v9_B4_stage1_summary.v1",
+  "generated_at": "2026-06-06T06:27:29.019655+00:00",
+  "algorithm": "B4",
+  "status": "WARN",
+  "primary_candidate": "B04_active_target15_s400",
+  "manifest_selected_candidate": "B04_ad_variance_smoothed",
+  "manifest_selected_candidate_role": "primary_selected",
+  "decision_variable_screening": {
+    "schema": "compact_v9_B4_decision_variable_screening.v1",
+    "model_form": "Y = f(X, Z)",
+    "decision_variables_X": [
+      "alpha",
+      "t_lead",
+      "delta_T_thr",
+      "G_ext",
+      "Q_trig"
+    ],
+    "screening_filters": [
+      "controllability",
+      "state_variable_exclusion",
+      "safety_constraint_exclusion",
+      "objective_sensitivity",
+      "structure_and_scenario_factor_exclusion",
+      "algorithm_registration"
+    ],
+    "state_variables_S": [
+      "Lq",
+      "n_occ",
+      "elapsed_green",
+      "TA_proxy_sec",
+      "T_hold_proxy_sec"
+    ],
+    "environment_variables_Z": [
+      "network_geometry",
+      "vehicle_physics",
+      "simulation_begin_end_step_seed",
+      "demand_scale_scenario"
+    ],
+    "safety_constraints": [
+      "phase_order",
+      "yellow_clearance",
+      "all_red_clearance",
+      "minimum_pedestrian_crossing_time"
+    ],
+    "fixed_structure_params": [
+      "tau",
+      "beta",
+      "hold_max",
+      "d_up",
+      "tau_scale",
+      "tau_numerator_gamma"
+    ],
+    "concept_only_or_unimplemented": [
+      "green_split",
+      "offset",
+      "cycle_length",
+      "green_wave_intersection_set"
+    ],
+    "notes": [
+      "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+      "seed and demand scale remain experiment design or robustness factors, not theta variables."
+    ]
+  },
+  "primary_candidate_lock": {
+    "primary_candidate": "B04_active_target15_s400",
+    "manifest_selected_candidate": "B04_ad_variance_smoothed",
+    "manifest_selected_candidate_role": "primary_selected",
+    "reason": "AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+    "metrics": {
+      "candidate": "B04_active_target15_s400",
+      "vehicles": 0,
+      "main_through_flow": 0,
+      "terminal_sink_flow": 0,
+      "top_sink_share": 0.0,
+      "speed_mae_kmh": 0.0,
+      "free_count": 0,
+      "od_undercovered": 0,
+      "queue_not_forming": 0,
+      "teleport": 0,
+      "arrived_ratio": 0.0
+    }
+  },
+  "mode": "Stage1 static preparation only",
+  "runtime_implemented": false,
+  "control_candidate_expression": "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
+  "ta_proxy_policy": {
+    "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
+    "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+    "b0_measured_params_source": "SUMO B04_active_target15_s400 no-control edgeData/laneData/tripinfo outputs",
+    "field_queue_claim": false
+  },
+  "movement_summary": {
+    "movement_count": 17,
+    "controllable_movement_count": 17,
+    "control_candidate_count": 5,
+    "bottleneck_risk_count": 6,
+    "case_b_candidate_count": 3,
+    "case_b_mapped_count": 3
+  },
+  "departure_summary": {
+    "fire_station_start_edge": "420331801#1",
+    "mainline_target_edge": "-174870621#8",
+    "merge_control_tls": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
+    "ev_release_control_status": "uncontrolled_by_merge_tls",
+    "dispatch_lead_time_sec": 35.0,
+    "stage2_b0_formula": "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
+    "stage2_b0_measurement_source": "SUMO_B04_active_target15_s400_laneData_edgeData_proxy",
+    "stage2_runtime_control_uses_formula_directly": true,
+    "stage2_b0_merge_support_status": "weak_runtime_required",
+    "stage2_runtime_dependency": "runtime_n_occ_and_Lq_merge_primary"
+  },
+  "validation": {
+    "overall": "WARN",
+    "b04_inputs_available": "PASS",
+    "sumo_not_run": "PASS",
+    "bo_not_run": "PASS",
+    "fcd_not_enabled": "PASS",
+    "merge_control_tls_available": "PASS",
+    "background_inflow_hold_available": "PASS",
+    "ev_release_control": "WARN",
+    "ev_release_control_status": "uncontrolled_by_merge_tls"
+  },
+  "input_artifacts": {
+    "b04_manifest": "configs/compact_v9_B04_b0_manifest.json",
+    "b04_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
+    "firetruck_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "firetruck_route_csv": "data_prepared/compact_v9/routes/firetruck_route.csv",
+    "entry_tls_summary": "data_prepared/compact_v9/net/entry_tls_summary.json",
+    "b04_traffic_demand_review": "results/metrics/compact_v9_B04/queue_audit/b04_traffic_demand_review.json",
+    "b04_queue_definition_audit": "results/metrics/compact_v9_B04/queue_audit/b04_queue_definition_audit.json",
+    "b04_queue_proxy_by_segment": "results/metrics/compact_v9_B04/queue_audit/b04_queue_proxy_by_segment.csv",
+    "b4_queue_measurement_diagnostics": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/b4_queue_measurement_diagnostics.csv",
+    "primary_run_summary": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/b0_run_summary.json",
+    "edgeData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/edgeData.xml",
+    "laneData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/laneData.xml",
+    "tripinfo": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/tripinfo.xml",
+    "segment_speed_recall": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/B04_segment_speed_recall.csv",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_active15.rou.xml"
+  },
+  "outputs": {
+    "b4_route_movement_plan_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_route_movement_plan.json",
+    "b4_intersections_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_intersections.csv",
+    "b4_approach_storage_link_plan_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_approach_storage_link_plan.csv",
+    "b4_merge_zone_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_merge_zone.json",
+    "b4_departure_flow_plan_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_departure_flow_plan.json",
+    "b4_bottleneck_queue_readiness_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_bottleneck_queue_readiness.csv",
+    "b4_case_b_candidates_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_case_b_candidates.csv",
+    "b4_case_b_candidates_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_case_b_candidates.json",
+    "b4_control_queue_threshold_proposal_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_control_queue_threshold_proposal.json",
+    "b4_b0_measured_signal_params_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_b0_measured_signal_params.csv",
+    "b4_ta_proxy_policy_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_ta_proxy_policy.json",
+    "b4_stage2_b0_merge_hold_params_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_stage2_b0_merge_hold_params.json",
+    "b4_stage2_b0_merge_hold_params_csv": "data_prepared/compact_v9/b4_stage1_active_target15/b4_stage2_b0_merge_hold_params.csv",
+    "b4_runtime_index_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_runtime_index.json",
+    "b4_stage1_summary_json": "data_prepared/compact_v9/b4_stage1_active_target15/b4_stage1_summary.json",
+    "b4_stage1_review_html": "data_prepared/compact_v9/b4_stage1_active_target15/b4_stage1_review.html"
+  },
+  "policy_notes": [
+    "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
+    "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
+    "B0 measured signal parameters are SUMO B04_active_target15_s400 no-control measurements, not field-observed queue lengths.",
+    "Stage 2 B0 merge hold parameters are SUMO B04_active_target15_s400 no-control laneData/edgeData proxy values, not field-observed occupancy.",
+    "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
+    "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
+    "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
+    "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
+    "linkIndex is a SUMO TLS movement index, not physical storage length.",
+    "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.",
+    "This Stage1 directory is bound to an active B04 run; use it with matching --net-file and --background-route.",
+    "Stage2 merge B0 values are provenance/fallback only when weak; runtime n_occ/Lq is the primary intervention signal."
+  ],
+  "allow_runtime_input_override": true,
+  "runtime_input_provenance": {
+    "source": "active_B04_no_control_run",
+    "source_run_id": "active_target15_s400",
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_active15.rou.xml",
+    "edgeData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/edgeData.xml",
+    "laneData": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/laneData.xml",
+    "tripinfo": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/tripinfo.xml",
+    "source_run_summary": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/b0_run_summary.json",
+    "segment_speed_recall": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/B04_segment_speed_recall.csv",
+    "queue_measurement_diagnostics": "data_prepared/compact_v9/b4_stage1_active_target15/_active_b04_sources/b4_queue_measurement_diagnostics.csv",
+    "tripinfo_summary": {
+      "tripinfo": "runs/compact_v9_B4_active_target15_recalibration/active_target15_s400/B04/no_control/repeat_001/tripinfo.xml",
+      "vehicle_count": 292,
+      "emergency_arrived": true,
+      "emergency_duration_sec": 973.0,
+      "emergency_route_length_m": 4072.77,
+      "emergency_speed_kmh": 15.06883
+    }
+  }
+}

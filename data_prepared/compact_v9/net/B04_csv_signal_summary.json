@@ -1,0 +1,39 @@
+{
+  "schema": "compact_v9_B04_csv_boundary_signals.v1",
+  "generated_at": "2026-06-05T02:57:51.038232+00:00",
+  "source_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml",
+  "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "reference_csv": "toegye_ro_mainstream_segments_english.csv",
+  "mapping_csv": "data_prepared/compact_v9/map/B04_toegye_segment_edge_mapping.csv",
+  "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+  "candidate_point_count": 18,
+  "route_candidate_count": 16,
+  "created_tls_count": 11,
+  "existing_tls_count": 5,
+  "skipped_candidate_count": 0,
+  "terminal_egress_tuning": {
+    "applied": true,
+    "reason": "terminal_egress_green_priority",
+    "terminal_tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+    "terminal_from_edge": "619147738#0",
+    "terminal_to_edge": "619147738#1",
+    "terminal_route_linkIndex": "2 3 4",
+    "original_cycle_sec": 296.0,
+    "tuned_cycle_sec": 176.0,
+    "terminal_green_sec": 96.0,
+    "terminal_yellow_sec": 3.0,
+    "terminal_green_ratio": 0.545455,
+    "policy": "Map-boundary egress: Seoul Station target sits immediately after a large terminal junction, so the final through movement receives dominant green to avoid artificial end-of-map delay."
+  },
+  "candidate_csv": "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv",
+  "policy": {
+    "selection": "Named CSV segment-boundary intersections on the B4 firetruck route are mapped to the actual SUMO route transition junction.",
+    "s1_s2_no_phase_policy": "A shared named boundary without CSV phase is still treated as a conservative signal candidate.",
+    "cycle_sec": 72.0,
+    "yellow_sec": 3.0,
+    "mainline_min_green_sec": 57.0,
+    "green_wave_target_phase_sec": 10.0,
+    "mainline_priority": "Mainline straight/right movements receive the dominant green and a route-progression offset; side/turn movements receive a short service phase.",
+    "terminal_egress": "The final Seoul Station-front route movement is a map-boundary egress and is tuned separately from CSV-created TLS."
+  }
+}

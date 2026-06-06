@@ -1,0 +1,40 @@
+{
+  "schema": "compact_v9_u130_toegye_general15_variant.v1",
+  "generated_at": "2026-06-06T07:11:48.703024+00:00",
+  "label": "u130_shoulder_p50",
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+  "output_demand": "09 Compact Corridor Baseline/tdata_signal/u130_toegye_general15_partial/background_routes_compact_v9_B04_u130_shoulder_p50.rou.xml",
+  "vehicle_count": 4508,
+  "clone_count": 1040,
+  "route_changed_count": 0,
+  "time_changed_count": 552,
+  "time_profile": "shoulder_p50",
+  "spatial_shift": 0.0,
+  "depart_300s_bins": {
+    "0": 193,
+    "300": 429,
+    "600": 320,
+    "900": 316,
+    "1200": 328,
+    "1500": 361,
+    "1800": 367,
+    "2100": 368,
+    "2400": 365,
+    "2700": 367,
+    "3000": 365,
+    "3300": 365,
+    "3600": 362,
+    "3900": 2
+  },
+  "route_prefix_counts": {
+    "mainline": 2593,
+    "segment": 1456,
+    "sideflow": 230,
+    "midcorridor": 229
+  },
+  "route_direction_counts": {
+    "downbound": 2325,
+    "upbound": 1953,
+    "other": 230
+  }
+}

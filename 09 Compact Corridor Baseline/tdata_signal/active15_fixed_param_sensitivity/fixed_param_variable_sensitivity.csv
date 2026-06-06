@@ -1,0 +1,6 @@
+variable,candidate_count,pass_count,fail_count,best_EV_sec,worst_EV_sec,EV_range_sec,best_score_sec,worst_score_sec,preemption_range,tau_hit_0p75_range,sensitivity_label
+tau,6,6,0,619.0,619.0,0.0,6459.64,6459.64,0.0,0.0,low
+tau_scale,0,0,0,,,,,,,,low
+tau_numerator_gamma,0,0,0,,,,,,,,low
+hold_max,0,0,0,,,,,,,,low
+d_up,0,0,0,,,,,,,,low

@@ -27,6 +27,10 @@ results/html/*.html
 # named config file before treating it as a reproducible input.
 configs/generated/*.csv
 
+# Raw traffic API snapshots are provenance inputs for local audit, not curated
+# repository artifacts.
+09\ Compact\ Corridor\ Baseline/tdata_signal/api_snapshots/*.jsonl
+
 # Generated demand variants are artifacts unless explicitly whitelisted as the
 # final manifest input.
 data_prepared/demand/*_scale_*.rou.xml

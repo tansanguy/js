@@ -1,0 +1,39 @@
+{
+  "schema": "compact_v9_b04_b4_bo_best_visualization.v1",
+  "generated_at": "2026-06-05T04:45:33.869647+00:00",
+  "run_id": "b4_theta_bo_spc_20260605_123953",
+  "best": {
+    "parameter_id": "bo_r09_003_tl86_ta80_ex24_ho10_du2",
+    "t_lead": "86",
+    "tau": "0.8",
+    "speed_trigger_kmh": "9.999999999999998",
+    "ext_max": "24",
+    "hold_max": "10",
+    "d_up": "2",
+    "bo_score_sec": "5491.08",
+    "T_actual_EMV_sec": "533.0",
+    "general_mean_travel_time_sec": "161.078667",
+    "final_status": "PASS",
+    "signal_events_csv": "runs/compact_v9_B4_theta_bo/b4_theta_bo_spc_20260605_123953/B4/bo_r09_003_tl86_ta80_ex24_ho10_du2/repeat_001/signal_events.csv"
+  },
+  "b04": {
+    "final_status": "FAIL",
+    "failure_reason": "hard_max_sim_time",
+    "T_actual_EMV_sec": "",
+    "general_mean_travel_time_sec": 233.693714,
+    "termination_reason": "hard_max_sim_time"
+  },
+  "phase_change_count": 10,
+  "created_tls_phase_change_count": 4,
+  "phase_by_tls": {
+    "cluster_3846534041_436877431": 1,
+    "joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more": 1,
+    "CSV_TLS_S08_S09_TOEGYE_RO_4_GA": 1,
+    "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more": 2,
+    "CSV_TLS_S14_S15_DAYS_HOTEL_FRONT": 1,
+    "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more": 1,
+    "CSV_TLS_S13_S14_MYEONGDONG_STATION_FRONT": 1,
+    "CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE": 1,
+    "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more": 1
+  }
+}

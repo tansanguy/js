@@ -182,27 +182,34 @@ class B4RuntimeContractTest(unittest.TestCase):
             queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE,
         )
 
-    def test_stage1_load_contract_keeps_aa_primary_and_manifest_selected(self):
+    def test_stage1_load_contract_keeps_primary_and_manifest_selected(self):
         manifest_before = B04_MANIFEST.read_text(encoding="utf-8")
         stage1 = self.runtime.B4Stage1Inputs.load()
         manifest_after = B04_MANIFEST.read_text(encoding="utf-8")
         self.assertEqual(manifest_before, manifest_after)
-        self.assertEqual(stage1.primary_candidate, "B04_aa_balanced_growth")
-        self.assertEqual(stage1.manifest_selected_candidate, "B04_aa_balanced_growth")
+        self.assertEqual(stage1.primary_candidate, "B04_ad_variance_smoothed")
+        self.assertEqual(stage1.manifest_selected_candidate, "B04_ad_variance_smoothed")
         self.assertEqual(stage1.manifest_selected_candidate_role, "primary_selected")
         self.assertEqual(stage1.max_active_movements, 3)
         self.assertEqual(stage1.departure.merge_control_tls, "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
         self.assertEqual(stage1.departure.ev_release_control_status, "uncontrolled_by_merge_tls")
-        self.assertEqual(stage1.stage2_merge_hold.measurement_source, "SUMO_B04_AA_B0_laneData_edgeData_proxy")
+        self.assertEqual(stage1.stage2_merge_hold.measurement_source, "SUMO_B04_AD_B0_laneData_edgeData_proxy")
         self.assertAlmostEqual(stage1.stage2_merge_hold.L_merge_m, 50.0)
         self.assertAlmostEqual(stage1.stage2_merge_hold.C_merge_proxy_veh, 50.0 / 6.5, places=5)
         self.assertAlmostEqual(stage1.stage2_merge_hold.n_need_proxy_veh, 2.0)
         self.assertEqual({candidate.segment_id for candidate in stage1.case_b_candidates}, {"S7", "S10", "S11"})
-        self.assertTrue(all(candidate.mapping_status == "mapped_route_span_proxy" for candidate in stage1.case_b_candidates))
+        self.assertEqual(
+            {candidate.segment_id: candidate.mapping_status for candidate in stage1.case_b_candidates},
+            {"S7": "mapped_exact", "S10": "mapped_route_span_proxy", "S11": "mapped_exact"},
+        )
         self.assertTrue(all(candidate.mapped for candidate in stage1.case_b_candidates))
         self.assertTrue(all(candidate.segment_lanes for candidate in stage1.case_b_candidates))
         self.assertTrue(stage1.queue_calibration_priors)
         self.assertTrue(all(prior.calibration_factor > 0.0 for prior in stage1.queue_calibration_priors.values()))
+        movement_06 = next(movement for movement in stage1.movements if movement.movement_id == "B4_MOVEMENT_06")
+        self.assertEqual(movement_06.mapped_s_segment, "S9:upbound")
+        self.assertIn("218773869#6", movement_06.corridor_storage_edges)
+        self.assertIn("218773869#7", movement_06.local_storage_edges)
 
     def test_trigger_contract_uses_local_100m_or_speed(self):
         thresholds = self.runtime.B4Thresholds()
@@ -263,7 +270,12 @@ class B4RuntimeContractTest(unittest.TestCase):
 
     def test_stage2_entry_hold_and_release_preserves_ev_uncontrolled_warn(self):
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         traci.simulation.time = self.stage1.ev_depart_sec - self.stage1.departure.dispatch_lead_time_sec
         early_events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
         if self.stage1.stage2_merge_hold.runtime_control_uses_formula_directly:
@@ -276,7 +288,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(hold_events[0]["tls_id"], "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
         self.assertEqual(hold_events[0]["target_phase"], 2)
         self.assertEqual(hold_events[0]["safety_status"], "ev_release_uncontrolled_warn")
-        self.assertEqual(hold_events[0]["stage2_measurement_source"], "SUMO_B04_AA_B0_laneData_edgeData_proxy")
+        self.assertEqual(hold_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
         self.assertEqual(float(hold_events[0]["L_merge_m"]), 50.0)
         self.assertIn("T_hold_proxy_sec", hold_events[0])
         self.assertIn("n_occ_runtime_veh", hold_events[0])
@@ -296,7 +308,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(len(release_events), 1)
         self.assertEqual(release_events[0]["action_type"], "entry_hold_release")
         self.assertEqual(release_events[0]["target_phase"], 0)
-        self.assertEqual(release_events[0]["stage2_measurement_source"], "SUMO_B04_AA_B0_laneData_edgeData_proxy")
+        self.assertEqual(release_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
         self.assertEqual(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], 0)
 
         traci.vehicle.vehicles.clear()
@@ -420,6 +432,237 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(case_b.case_b_segment_id, "S_TEST")
         self.assertAlmostEqual(float(case_b.case_b_segment_fill), 0.80)
 
+    def test_theta_stage3_trigger_uses_original_segment_tau_for_case_b_movements(self):
+        upstream = self.stage1.movements[0]
+        bottleneck = self.stage1.movements[1]
+        candidate = self.runtime.B4CaseBCandidate(
+            segment_id="S_TEST",
+            bottleneck_movement_id=bottleneck.movement_id,
+            upstream_movement_id=upstream.movement_id,
+            L_b0_m=100.0,
+            lane_drop_delta=1,
+            q_avg_B0=1.0,
+            q_max_B0=2.0,
+            tQ_hist_B0=4.0,
+            lambda_B0=100.0,
+            fill_B0=0.10,
+            speed_B0=30.0,
+            mapping_status="mapped_route_span_proxy",
+            tau_default=0.75,
+            case_b_prior_risk=False,
+            segment_lanes=("lane_a",),
+            case_b_runtime_enabled=True,
+        )
+        stage1 = replace(self.stage1, case_b_candidates=(candidate,))
+        metric = self.metric(bottleneck, candidate=True, local_fill_100m=1.0, approach_speed_kmh=30.0, trigger_reason="local_fill")
+        segment_metrics = {
+            "S_TEST": self.runtime.CaseBSegmentRuntimeMetrics(
+                segment_id="S_TEST",
+                queue_m_proxy=80.0,
+                fill=0.80,
+                queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE,
+                observed_lane_count=1,
+            )
+        }
+
+        permissive = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=stage1,
+            params=self.runtime.B4ThetaParams(tau=0.75, tau_scale=1.0, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], segment_metrics_by_id=segment_metrics)[0]
+        strict = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=stage1,
+            params=self.runtime.B4ThetaParams(tau=0.85, tau_scale=1.0, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], segment_metrics_by_id=segment_metrics)[0]
+
+        self.assertTrue(permissive.control_candidate)
+        self.assertEqual(permissive.trigger_reason, "local_fill+original_tau_segment")
+        self.assertTrue(strict.control_candidate)
+        self.assertEqual(strict.trigger_reason, "local_fill")
+
+    def test_theta_stage3_trigger_uses_original_tau_for_all_mapped_segments(self):
+        movement = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_06")
+        metric = self.metric(movement, candidate=False, local_fill_100m=0.0, approach_speed_kmh=30.0, trigger_reason="not_triggered")
+        original_tau = {
+            movement.movement_id: self.runtime.OriginalTauRuntimeMetrics(
+                movement_id=movement.movement_id,
+                segment_id=movement.mapped_s_segment,
+                queue_m_proxy=180.0,
+                fill=0.72,
+                denominator_m=250.0,
+                source="test",
+            )
+        }
+
+        triggered = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.70, tau_scale=1.0, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+        blocked = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.75, tau_scale=1.0, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+
+        self.assertTrue(triggered.control_candidate)
+        self.assertEqual(triggered.trigger_reason, "original_tau_segment")
+        self.assertEqual(triggered.original_tau_segment_id, "S9:upbound")
+        self.assertFalse(blocked.control_candidate)
+
+    def test_theta_original_tau_trigger_uses_scaled_effective_fill(self):
+        movement = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_06")
+        metric = self.metric(movement, candidate=False, local_fill_100m=0.0, approach_speed_kmh=30.0, trigger_reason="not_triggered")
+        original_tau = {
+            movement.movement_id: self.runtime.OriginalTauRuntimeMetrics(
+                movement_id=movement.movement_id,
+                segment_id=movement.mapped_s_segment,
+                queue_m_proxy=225.0,
+                fill=0.90,
+                denominator_m=250.0,
+                source="test",
+            )
+        }
+
+        scaled = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.80, tau_scale=0.85, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+        permissive = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.75, tau_scale=0.85, tau_numerator_gamma=1.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+
+        self.assertFalse(scaled.control_candidate)
+        self.assertEqual(scaled.original_tau_raw_fill, 0.90)
+        self.assertEqual(scaled.original_tau_adjusted_fill, 0.90)
+        self.assertEqual(scaled.original_tau_effective_fill, 0.765)
+        self.assertEqual(scaled.original_tau_fill, 0.765)
+        self.assertEqual(scaled.original_tau_scale, 0.85)
+        self.assertEqual(scaled.original_tau_numerator_gamma, 1.0)
+        self.assertTrue(permissive.control_candidate)
+
+    def test_theta_original_tau_trigger_uses_numerator_gamma_to_restore_sensitivity(self):
+        movement = next(m for m in self.stage1.movements if m.mapped_s_segment)
+        metric = self.metric(movement, candidate=False, local_fill_100m=0.0, approach_speed_kmh=30.0, trigger_reason="not_triggered")
+        original_tau = {
+            movement.movement_id: self.runtime.OriginalTauRuntimeMetrics(
+                movement_id=movement.movement_id,
+                segment_id=movement.mapped_s_segment,
+                queue_m_proxy=225.0,
+                fill=0.90,
+                denominator_m=250.0,
+                source="test",
+            )
+        }
+
+        strict = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.65, tau_scale=0.85, tau_numerator_gamma=3.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+        permissive = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(tau=0.60, tau_scale=0.85, tau_numerator_gamma=3.0),
+            run_id="contract",
+        ).apply_original_tau_stage3_trigger([metric], original_tau)[0]
+
+        self.assertFalse(strict.control_candidate)
+        self.assertAlmostEqual(strict.original_tau_adjusted_fill, 0.729, places=3)
+        self.assertAlmostEqual(strict.original_tau_effective_fill, 0.61965, places=5)
+        self.assertEqual(strict.original_tau_numerator_gamma, 3.0)
+        self.assertTrue(permissive.control_candidate)
+
+    def test_theta_t_lead_controls_stage3_distance_gate(self):
+        near = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(t_lead=10),
+            run_id="contract",
+        )
+        far = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(t_lead=35),
+            run_id="contract",
+        )
+
+        self.assertAlmostEqual(near.stage3_control_distance_m(), 139.0)
+        self.assertAlmostEqual(far.stage3_control_distance_m(), 486.5)
+        self.assertGreater(far.stage3_control_distance_m(), near.stage3_control_distance_m())
+
+    def test_theta_hold_max_caps_stage3_active_control_budget(self):
+        movement = next(item for item in self.stage1.movements if item.controllable)
+        fake = FakeTraci()
+        fake.trafficlight.phases[movement.tls_id] = 3
+        controller = self.runtime.B4RuntimeController(
+            traci=fake,
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(G_ext=0, hold_max=10),
+            run_id="contract",
+        )
+        controller.active_controls[movement.movement_id] = self.runtime.ActiveControl(
+            movement_id=movement.movement_id,
+            tls_id=movement.tls_id,
+            previous_phase=1,
+            target_phase=movement.selected_green_phase,
+            started_at=100.0,
+            deadline=110.0,
+            route_order_index=movement.route_order_index,
+        )
+        ev_state = self.runtime.EVState(
+            present=True,
+            departed=True,
+            arrived=False,
+            vehicle_id=self.runtime.EV_ID,
+            route_index=movement.route_order_index,
+            speed_kmh=20.0,
+        )
+
+        events = controller.restore_passed_or_expired_controls(111.0, ev_state)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["trigger_reason"], "stage3_hold_max_elapsed")
+        self.assertNotIn(movement.movement_id, controller.active_controls)
+        self.assertEqual(fake.trafficlight.phases[movement.tls_id], 1)
+
+    def test_theta_d_up_controls_stage3_new_action_budget(self):
+        one = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(d_up=1),
+            run_id="contract",
+        )
+        two = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(d_up=2),
+            run_id="contract",
+        )
+        three = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(d_up=3),
+            run_id="contract",
+        )
+
+        self.assertEqual(one.stage3_max_new_actions_per_step(), 1)
+        self.assertEqual(two.stage3_max_new_actions_per_step(), 2)
+        self.assertEqual(three.stage3_max_new_actions_per_step(), 2)
+        self.assertLess(one.stage3_control_distance_m(), two.stage3_control_distance_m())
+        self.assertLess(two.stage3_control_distance_m(), three.stage3_control_distance_m())
+
     def test_case_b_runtime_tau_miss_stays_case_a(self):
         upstream = self.stage1.movements[0]
         bottleneck = self.stage1.movements[1]
@@ -507,7 +750,12 @@ class B4RuntimeContractTest(unittest.TestCase):
             "lane_position": 0.0,
             "speed": 0.0,
         }
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(d_up=2, tau_scale=1.0, tau_numerator_gamma=1.0),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
@@ -537,7 +785,12 @@ class B4RuntimeContractTest(unittest.TestCase):
         same_tls_pair.sort(key=lambda movement: movement.route_order_index)
         current, downstream = same_tls_pair[0], same_tls_pair[1]
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         controller.active_controls[current.movement_id] = self.runtime.ActiveControl(
             movement_id=current.movement_id,
             tls_id=current.tls_id,
@@ -573,7 +826,12 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(movement.selected_flush_phase, 2)
         self.assertTrue(movement.same_lane_blocker_flush_available)
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         controller.active_controls[movement.movement_id] = self.runtime.ActiveControl(
             movement_id=movement.movement_id,
             tls_id=movement.tls_id,
@@ -608,7 +866,12 @@ class B4RuntimeContractTest(unittest.TestCase):
 
     def test_stage3_does_not_evaluate_before_ev_merges(self):
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fail_if_called(*_args, **_kwargs):
@@ -664,7 +927,12 @@ class B4RuntimeContractTest(unittest.TestCase):
     def test_stage3_low_speed_candidate_selected_when_fill_below_threshold(self):
         movement = self.stage1.movements[0]
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
@@ -701,7 +969,12 @@ class B4RuntimeContractTest(unittest.TestCase):
     def test_stage3_local_fill_candidate_selected_when_speed_above_threshold(self):
         movement = self.stage1.movements[0]
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
@@ -776,7 +1049,12 @@ class B4RuntimeContractTest(unittest.TestCase):
     def test_stage3_far_ahead_expired_control_restores_previous_phase(self):
         movement = self.stage1.movements[-1]
         traci = FakeTraci()
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         controller.active_controls[movement.movement_id] = self.runtime.ActiveControl(
             movement_id=movement.movement_id,
             tls_id=movement.tls_id,
@@ -843,7 +1121,12 @@ class B4RuntimeContractTest(unittest.TestCase):
             "lane_position": 0.0,
             "speed": 8.0,
         }
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
@@ -870,7 +1153,12 @@ class B4RuntimeContractTest(unittest.TestCase):
             "lane_position": 0.0,
             "speed": 0.0,
         }
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
@@ -981,7 +1269,7 @@ class B4RuntimeContractTest(unittest.TestCase):
                     with self.assertRaises(Exception):
                         self.runner.write_sumo_config(task)
                     continue
-                self.assertIn("B04_aa_balanced_growth", task.background_route.name)
+                self.assertIn("B04_ad_variance_smoothed", task.background_route.name)
                 paths = self.runner.write_sumo_config(task)
                 cfg = paths["sumocfg"].read_text(encoding="utf-8")
                 add = paths["additional"].read_text(encoding="utf-8")
@@ -1012,8 +1300,8 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.runner.build_b004_free_reference(stage1)
             rows = [
                 {"run_id": "contract", "mode": "B004", "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front", "parameter_id": "free_emv_analytic_50kmh", "T_actual_EMV_sec": 10.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 0.0, "objective_score": 0.0},
-                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AA_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 90.0, "d_veh_sec": 1.0, "objective_score": 1801.0},
-                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AA_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 80.0, "d_veh_sec": 2.0, "objective_score": 1602.0},
+                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 90.0, "d_veh_sec": 1.0, "objective_score": 1801.0},
+                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 80.0, "d_veh_sec": 2.0, "objective_score": 1602.0},
             ]
             outputs = self.runner.write_metric_outputs(rows, tasks, stage1, Path(metrics_tmp))
             self.assertEqual(

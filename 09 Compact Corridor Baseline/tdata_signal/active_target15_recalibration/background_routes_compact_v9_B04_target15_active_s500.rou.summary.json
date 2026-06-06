@@ -1,0 +1,33 @@
+{
+  "schema": "compact_v9_B04_active_target15_scaled_demand.v1",
+  "generated_at": "2026-06-06T06:27:06.444658+00:00",
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml",
+  "output_demand": "09 Compact Corridor Baseline/tdata_signal/active_target15_recalibration/background_routes_compact_v9_B04_target15_active_s500.rou.xml",
+  "scale": 0.5,
+  "seed": 20260605,
+  "base_vehicle_count": 4508,
+  "vehicle_count": 2247,
+  "vehicle_count_ratio": 0.498447,
+  "depart_300s_bins": {
+    "0": 61,
+    "300": 171,
+    "600": 198,
+    "900": 191,
+    "1200": 171,
+    "1500": 185,
+    "1800": 197,
+    "2100": 178,
+    "2400": 181,
+    "2700": 171,
+    "3000": 170,
+    "3300": 199,
+    "3600": 173,
+    "3900": 1
+  },
+  "route_prefix_counts": {
+    "mainline": 1279,
+    "segment": 755,
+    "midcorridor": 110,
+    "sideflow": 103
+  }
+}
