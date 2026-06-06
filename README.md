@@ -14,6 +14,7 @@
 ## 핵심 파이프라인
 
 - `parameter_input_sim`: **서울역 직선 고정 경로**(`FIRE_TO_SEOUL_STATION`, `straight_seoul_station_fixed`)로 파라미터 입력용 지표를 만든다.
+- `09 Compact Corridor Baseline`: Compact V9 기반 B04 baseline과 B4 emergency preemption 실험 파이프라인이다. B04/B4 실행법, 옵션 의미, BO/민감도 실행법은 `09 Compact Corridor Baseline/README.md`에 정리되어 있다.
 
 실행 진입점은 하나다.
 
