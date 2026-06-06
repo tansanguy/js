@@ -31,7 +31,12 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# All TLS in the network (93). The geometric buffer over this set also catches
+# off-corridor signals, so the animation prefers the on-route subset below
+# (authoritative: the TLS junctions the route actually passes through, from
+# tools/export_route_tls.py).
 DEFAULT_TLS_GEOJSON = PROJECT_ROOT / "data_prepared/geojson/ellipse_passenger_tls.geojson"
+DEFAULT_ROUTE_TLS_GEOJSON = PROJECT_ROOT / "data_prepared/geojson/ellipse_passenger_route_tls.geojson"
 
 # Influence-zone / speed thresholds for the motion-based approximation (Q2=B).
 ROUTE_BUFFER_M = 60.0      # keep TLS whose nearest route point is within this

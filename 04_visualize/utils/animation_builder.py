@@ -124,6 +124,18 @@ const DATA = __DATA__;
 const TILES = "__TILES__", ATTR = "__ATTR__";
 const COLORS = {B0:"__B0COLOR__", B2:"__B2COLOR__"};
 const FOLLOW_ZOOM = 17;
+const BASEMAP = "__BASEMAP__";  // none | osm | carto_light | carto_light_nolabels | carto_dark
+const _CARTO = "© OpenStreetMap, © CARTO";
+const TILE_URLS = {
+  osm:[TILES,ATTR],
+  // light_all: roads + road/place/district labels, water, parks — no shop POIs/icons,
+  // buildings barely rendered. Realistic but clean.
+  carto_light:["https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",_CARTO],
+  carto_light_nolabels:["https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",_CARTO],
+  carto_dark:["https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",_CARTO],
+};
+// solid canvas colour when no basemap tiles are drawn (light so black cars/lanes pop)
+const NO_TILE_BG = (BASEMAP==="carto_dark") ? "#0b1324" : "#eef2f6";
 
 // last state at/before t in a compressed [[t,state],...] signal timeline
 function stateAt(tl,tt){const a=tl.states;let r=a.length?a[0][1]:"off";for(let i=0;i<a.length;i++){if(a[i][0]<=tt)r=a[i][1];else break;}return r;}
@@ -144,14 +156,26 @@ function emAt(pts,t){
 
 function makeMap(id){
   const m=L.map(id,{zoomControl:false,attributionControl:false,preferCanvas:true});
-  L.tileLayer(TILES,{maxZoom:19,attribution:ATTR}).addTo(m);
+  const t=TILE_URLS[BASEMAP];
+  if(t){ L.tileLayer(t[0],{maxZoom:19,attribution:t[1]}).addTo(m); }
+  else { m.getContainer().style.background=NO_TILE_BG; }  // no basemap: solid canvas
   return m;
 }
 
 // per-mode follow panel
+function drawLanes(map){
+  // SUMO per-lane geometry near the route: one thin line per lane, so a 2-lane
+  // road shows as two parallel lines.
+  (DATA.lanes||[]).forEach(e=>{
+    L.polyline(e.coords,{color:"#334155",weight:2.2,opacity:.55,
+      lineCap:"round",lineJoin:"round"}).addTo(map);
+  });
+}
+
 function Panel(mode){
   const p=DATA.modes[mode];
   const map=makeMap(mode==="B0"?"mapB0":"mapB2");
+  drawLanes(map);
   L.polyline(p.route_polyline,{color:COLORS[mode],weight:3,opacity:.35}).addTo(map);
   map.setView(p.route_polyline[0],FOLLOW_ZOOM);
   const marker=L.circleMarker(p.route_polyline[0],
@@ -181,7 +205,7 @@ function updatePanel(panel,t,mode){
   panel.bgLayer.clearLayers();
   const veh=panel.bgByT[Math.round(t)]||[];
   veh.forEach(v=>L.circleMarker([v.lat,v.lon],
-    {radius:4,color:"#cbd5e1",weight:1,fillColor:"#94a3b8",fillOpacity:.85}).addTo(panel.bgLayer));
+    {radius:4.5,color:"#ffffff",weight:1,fillColor:"#0a0a0a",fillOpacity:1}).addTo(panel.bgLayer));
   // signal lights: recolour by approximated state; highlight the next light ahead
   let nextS=Infinity,nextEl=null;
   panel.tlMarkers.forEach(tl=>{
@@ -273,8 +297,15 @@ render();
 """
 
 
-def build_animated_dual_map_html(doc: dict[str, Any], output_path: Path, title: str) -> None:
-    """Render the animation JSON document to a standalone HTML file."""
+def build_animated_dual_map_html(
+    doc: dict[str, Any], output_path: Path, title: str, basemap: str = "carto_light"
+) -> None:
+    """Render the animation JSON document to a standalone HTML file.
+
+    ``basemap``: ``carto_light`` (clean light map WITH road/district labels, no
+    shop POIs/buildings — default), ``carto_light_nolabels`` (same, no labels),
+    ``carto_dark``, ``osm`` (cluttered), ``none`` (solid canvas, SUMO geometry only).
+    """
     html = (
         _TEMPLATE
         .replace("__DATA__", json.dumps(doc, ensure_ascii=False))
@@ -282,6 +313,7 @@ def build_animated_dual_map_html(doc: dict[str, Any], output_path: Path, title: 
         .replace("__ATTR__", MAP_ATTRIBUTION)
         .replace("__B0COLOR__", MODE_COLORS["B0"])
         .replace("__B2COLOR__", MODE_COLORS["B2"])
+        .replace("__BASEMAP__", basemap)
         .replace("__TITLE__", title)
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)

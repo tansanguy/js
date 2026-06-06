@@ -24,7 +24,8 @@ from extract_emergency_fcd import (
 from config import SEOUL_STATION_ROUTE_ID, SEOUL_STATION_ROUTE_LENGTH_M
 from utils import parse_fcd
 from utils.animation_builder import build_animated_dual_map_html
-from utils.traffic_lights import augment_doc_with_tls, DEFAULT_TLS_GEOJSON
+from utils.traffic_lights import augment_doc_with_tls, DEFAULT_ROUTE_TLS_GEOJSON
+from utils.road_network import augment_doc_with_lanes, DEFAULT_LANES_GEOJSON
 
 
 def main() -> None:
@@ -33,12 +34,23 @@ def main() -> None:
     parser.add_argument("--b2-fcd", type=Path, default=MOCK_DIR / "fcd_B2.xml")
     parser.add_argument("--b2-signals", type=Path, default=MOCK_DIR / "signal_events_B2.csv")
     parser.add_argument("--bg-radius-m", type=float, default=250.0)
-    parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_TLS_GEOJSON,
-                        help="Network TLS positions used for the signal-light icons")
+    parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_ROUTE_TLS_GEOJSON,
+                        help="On-route TLS positions for the signal-light icons "
+                             "(authoritative corridor subset from export_route_tls.py)")
     parser.add_argument("--route-buffer-m", type=float, default=60.0)
     parser.add_argument("--stop-speed-kmh", type=float, default=5.0)
+    parser.add_argument("--edges-geojson", type=Path, default=DEFAULT_LANES_GEOJSON,
+                        help="Per-lane geometry drawn as parallel lanes under the vehicles")
+    parser.add_argument("--lane-buffer-m", type=float, default=200.0,
+                        help="Keep lanes within this distance of the route")
     parser.add_argument("--json-output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_animation.json")
     parser.add_argument("--output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_progress_animation.html")
+    parser.add_argument(
+        "--basemap",
+        choices=["carto_light", "carto_light_nolabels", "carto_dark", "osm", "none"],
+        default="carto_light",
+        help="Background map: carto_light=clean map with road/district labels, no "
+             "shop POIs/buildings (default); none=solid canvas + SUMO geometry only")
     parser.add_argument("--title", default="B0 vs B2 응급차 진행 비교 — 서울역 경로")
     args = parser.parse_args()
 
@@ -62,10 +74,11 @@ def main() -> None:
         doc, args.tls_geojson,
         route_buffer_m=args.route_buffer_m, stop_speed_kmh=args.stop_speed_kmh,
     )
+    lanes_summary = augment_doc_with_lanes(doc, args.edges_geojson, buffer_m=args.lane_buffer_m)
 
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
-    build_animated_dual_map_html(doc, args.output, args.title)
+    build_animated_dual_map_html(doc, args.output, args.title, basemap=args.basemap)
 
     print(f"JSON : {args.json_output}")
     print(f"HTML : {args.output}")
@@ -75,6 +88,7 @@ def main() -> None:
               f"avg={p['avg_speed_kmh']} km/h, bg_snaps={len(p['background'])}{extra}")
     print(f"  TLS: {tls_summary['tls_kept']}/{tls_summary['tls_total']} on route, "
           f"states {tls_summary['per_mode']}")
+    print(f"  lanes: {lanes_summary['lanes_kept']} road edges near route")
 
 
 if __name__ == "__main__":
