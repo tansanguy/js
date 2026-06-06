@@ -70,6 +70,7 @@ DEFAULT_SPC_MIN_ROUNDS = 15
 DEFAULT_SPC_MIN_IMPROVEMENT_SEC = 1.0
 ESSI_EPS = 1.0e-12
 DEFAULT_TAU_NUMERATOR_GAMMA = 5.0
+STRUCTURE_PARAM_FIELDS = ["tau", "hold_max", "d_up", "tau_scale", "tau_numerator_gamma"]
 
 THETA_FIELDS = ["parameter_id", "alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"]
 SCORE_FIELDS = [
@@ -149,6 +150,65 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def default_structure_params() -> dict[str, Any]:
+    return {
+        "tau": B4ThetaParams.tau,
+        "hold_max": B4ThetaParams.hold_max,
+        "d_up": B4ThetaParams.d_up,
+        "tau_scale": B4ThetaParams.tau_scale,
+        "tau_numerator_gamma": B4ThetaParams.tau_numerator_gamma,
+    }
+
+
+def read_structure_lock(path: Path) -> dict[str, Any]:
+    payload = read_json(path)
+    selected = payload.get("selected_structure")
+    if not isinstance(selected, dict):
+        raise B4ThetaBoError("structure_lock_missing_selected_structure")
+    structure = default_structure_params()
+    for field in STRUCTURE_PARAM_FIELDS:
+        if field in selected:
+            structure[field] = selected[field]
+    return {
+        "path": rel(path),
+        "lock_status": payload.get("lock_status", ""),
+        "selected_structure": structure,
+    }
+
+
+def apply_structure_params(args: argparse.Namespace) -> None:
+    structure = default_structure_params()
+    lock_info: dict[str, Any] = {}
+    if getattr(args, "structure_lock_json", None):
+        args.structure_lock_json = Path(args.structure_lock_json).resolve()
+        if not args.structure_lock_json.is_file():
+            raise B4ThetaBoError(f"missing_structure_lock_json:{args.structure_lock_json}")
+        lock_info = read_structure_lock(args.structure_lock_json)
+        structure.update(lock_info["selected_structure"])
+
+    for field in STRUCTURE_PARAM_FIELDS:
+        value = getattr(args, field, None)
+        if value is not None:
+            structure[field] = value
+
+    normalized = B4ThetaParams.from_row(structure)
+    args.tau = normalized.tau
+    args.hold_max = normalized.hold_max
+    args.d_up = normalized.d_up
+    args.tau_scale = normalized.tau_scale
+    args.tau_numerator_gamma = normalized.tau_numerator_gamma
+    args.structure_lock_info = lock_info
+
+
+def structure_inputs(args: argparse.Namespace) -> dict[str, Any]:
+    inputs = {field: getattr(args, field) for field in STRUCTURE_PARAM_FIELDS}
+    lock_info = getattr(args, "structure_lock_info", {}) or {}
+    if lock_info:
+        inputs["structure_lock_json"] = lock_info.get("path", "")
+        inputs["structure_lock_status"] = lock_info.get("lock_status", "")
+    return inputs
 
 
 def bool_cell(value: Any) -> bool:
@@ -810,6 +870,9 @@ def evaluate_theta_repeat(job: dict[str, Any]) -> dict[str, Any]:
         background_route=args.background_route,
     )
     theta_params = dict(theta)
+    theta_params["tau"] = args.tau
+    theta_params["hold_max"] = args.hold_max
+    theta_params["d_up"] = args.d_up
     theta_params["tau_scale"] = args.tau_scale
     theta_params["tau_numerator_gamma"] = args.tau_numerator_gamma
     return run_b4_task(
@@ -957,7 +1020,7 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             **essi_round_fields(rows, bounds, stage1, args.seed, round_rows, best, args),
         })
         completed_round = 0
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
 
@@ -981,17 +1044,17 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             **essi_round_fields(rows, bounds, stage1, args.seed + round_index, round_rows, best, args),
         })
         completed_round = round_index
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
         if args.spc_stop and bool_cell(round_rows[-1].get("essi_stop_recommended")):
             break
 
-    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}}
+    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
     write_json(state_path, state)
     outputs = write_bo_outputs(run_dir, rows, round_rows, state)
     weights = {"w_emv": args.w_emv, "w_veh": args.w_veh}
-    inputs = {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, "tau_scale": args.tau_scale, "tau_numerator_gamma": args.tau_numerator_gamma}
+    inputs = {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}
     write_json(latest_path, {"schema": "compact_v9_B4_theta_bo_latest.v1", "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": weights, "inputs": inputs, **outputs})
     return {
         "schema": "compact_v9_B4_theta_bo_run.v1",
@@ -1047,8 +1110,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE)
     parser.add_argument("--stage1-dir", type=Path, default=None)
     parser.add_argument("--hard-max-sim-time", type=float, default=None)
-    parser.add_argument("--tau-scale", type=float, default=B4ThetaParams.tau_scale)
-    parser.add_argument("--tau-numerator-gamma", type=float, default=DEFAULT_TAU_NUMERATOR_GAMMA)
+    parser.add_argument("--require-target15-baseline", action="store_true")
+    parser.add_argument("--structure-lock-json", type=Path, default=None)
+    parser.add_argument("--tau", type=float, default=None)
+    parser.add_argument("--hold-max", dest="hold_max", type=float, default=None)
+    parser.add_argument("--d-up", dest="d_up", type=int, default=None)
+    parser.add_argument("--tau-scale", type=float, default=None)
+    parser.add_argument("--tau-numerator-gamma", type=float, default=None)
     parser.add_argument("--sumo-binary", default=None)
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true")
@@ -1066,6 +1134,12 @@ def validate_args(args: argparse.Namespace) -> None:
     args.net_file = Path(args.net_file).resolve()
     args.background_route = Path(args.background_route).resolve()
     args.stage1_dir = Path(args.stage1_dir).resolve() if args.stage1_dir else None
+    args.allow_baseline_speed_out_of_target = not args.require_target15_baseline
+    if args.tau_scale is not None and not 0.0 <= args.tau_scale <= 1.0:
+        raise B4ThetaBoError("tau_scale_must_be_between_0_and_1")
+    if args.tau_numerator_gamma is not None and args.tau_numerator_gamma < 0.1:
+        raise B4ThetaBoError("tau_numerator_gamma_must_be_at_least_0p1")
+    apply_structure_params(args)
     if not args.net_file.is_file():
         raise B4ThetaBoError(f"missing_net_file:{args.net_file}")
     if not args.background_route.is_file():

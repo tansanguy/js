@@ -152,6 +152,12 @@ def build_combined_candidate(structure: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def normalized_structure_value(variable: str, value: Any) -> float | int:
+    if variable == "d_up":
+        return int(round(safe_float(value, BASE_STRUCTURE[variable])))
+    return float(safe_float(value, BASE_STRUCTURE[variable]))
+
+
 def bool_cell(value: Any) -> bool:
     return value is True or str(value).strip().lower() in {"true", "1", "yes"}
 
@@ -181,6 +187,11 @@ def candidate_rollups(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "signal_burden_sec",
             "stage3_preemption_count",
             "bottleneck_mode_count",
+            "case_b_active_count",
+            "case_b_original_tau_count",
+            "original_tau_trigger_count",
+            "case_b_runtime_segment_count",
+            "case_b_runtime_movement_count",
             "original_tau_hit_0p75",
         ]
         out = dict(first)
@@ -221,6 +232,87 @@ def best_candidate(rows: list[dict[str, Any]], baseline: dict[str, Any]) -> dict
     )
 
 
+def best_passing_candidate_unfiltered(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    eligible = [row for row in rows if row.get("rollup_status") == "PASS"]
+    if not eligible:
+        return None
+    return min(
+        eligible,
+        key=lambda row: (
+            safe_float(row.get("bo_score_sec"), FAILURE_PENALTY_SEC * 10),
+            safe_float(row.get("T_actual_EMV_sec"), FAILURE_PENALTY_SEC * 10),
+            safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC * 10),
+            str(row.get("parameter_id", "")),
+        ),
+    )
+
+
+def activation_count(row: dict[str, Any]) -> float:
+    return max(
+        safe_float(row.get("case_b_original_tau_count")),
+        safe_float(row.get("original_tau_trigger_count")),
+        safe_float(row.get("case_b_runtime_segment_count")),
+        safe_float(row.get("case_b_runtime_movement_count")),
+    )
+
+
+def diagnostic_candidate(variable: str, rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    active = [row for row in rows if activation_count(row) > 0.0]
+    if not active:
+        return None
+    counts = {activation_count(row) for row in rows}
+    if len(counts) <= 1 and variable in {"tau_scale", "tau_numerator_gamma", "d_up"}:
+        return None
+    if variable == "tau":
+        return max(
+            active,
+            key=lambda row: (
+                safe_float(row.get("tau")),
+                activation_count(row),
+                -safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC),
+                str(row.get("parameter_id", "")),
+            ),
+        )
+    if variable == "tau_scale":
+        return min(
+            active,
+            key=lambda row: (
+                safe_float(row.get("tau_scale"), 1.0),
+                safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC),
+                str(row.get("parameter_id", "")),
+            ),
+        )
+    if variable == "tau_numerator_gamma":
+        return max(
+            active,
+            key=lambda row: (
+                safe_float(row.get("tau_numerator_gamma")),
+                activation_count(row),
+                -safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC),
+                str(row.get("parameter_id", "")),
+            ),
+        )
+    if variable == "d_up":
+        return max(
+            active,
+            key=lambda row: (
+                activation_count(row),
+                safe_float(row.get("d_up")),
+                -safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC),
+                str(row.get("parameter_id", "")),
+            ),
+        )
+    return max(
+        active,
+        key=lambda row: (
+            activation_count(row),
+            safe_float(row.get("stage3_preemption_count")),
+            -safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC),
+            str(row.get("parameter_id", "")),
+        ),
+    )
+
+
 def variable_sensitivity_label(rows: list[dict[str, Any]]) -> str:
     passed = [row for row in rows if row.get("rollup_status") == "PASS"]
     failed = [row for row in rows if row.get("rollup_status") != "PASS"]
@@ -255,7 +347,7 @@ def structure_lock_summary(rows: list[dict[str, Any]], combined_row: dict[str, A
             selected_ev = safe_float(selected.get("T_actual_EMV_sec"), FAILURE_PENALTY_SEC * 10)
             score_improvement = baseline_score - selected_score
             ev_improvement = baseline_ev - selected_ev
-            selected_value = selected.get(variable, selected.get("changed_value", BASE_STRUCTURE[variable]))
+            selected_value = normalized_structure_value(variable, selected.get(variable, selected.get("changed_value", BASE_STRUCTURE[variable])))
             best_row_id = str(selected.get("parameter_id", ""))
             if baseline_pass:
                 if (
@@ -273,6 +365,22 @@ def structure_lock_summary(rows: list[dict[str, Any]], combined_row: dict[str, A
                 status = "provisional"
                 reason = "baseline_failed_best_passing_candidate"
                 candidate_structure[variable] = selected_value
+        elif not baseline_pass:
+            tradeoff = best_passing_candidate_unfiltered(subset)
+            if tradeoff is not None:
+                selected_value = normalized_structure_value(variable, tradeoff.get(variable, tradeoff.get("changed_value", BASE_STRUCTURE[variable])))
+                best_row_id = str(tradeoff.get("parameter_id", ""))
+                status = "provisional_pass_signal_tradeoff"
+                reason = "baseline_failed_passing_candidate_exceeds_signal_burden_gate"
+                candidate_structure[variable] = selected_value
+            else:
+                diagnostic = diagnostic_candidate(variable, subset)
+                if diagnostic is not None:
+                    selected_value = normalized_structure_value(variable, diagnostic.get(variable, diagnostic.get("changed_value", BASE_STRUCTURE[variable])))
+                    best_row_id = str(diagnostic.get("parameter_id", ""))
+                    status = "provisional_diagnostic"
+                    reason = "baseline_failed_selected_by_runtime_original_tau_activation"
+                    candidate_structure[variable] = selected_value
         variables[variable] = {
             "variable": variable,
             "status": status,
@@ -318,6 +426,9 @@ def structure_lock_summary(rows: list[dict[str, Any]], combined_row: dict[str, A
         if changed and combined_status == "PASS":
             selected_structure = dict(candidate_structure)
             lock_status = "LOCKED"
+        elif changed and not baseline_pass:
+            selected_structure = dict(candidate_structure)
+            lock_status = "DIAGNOSTIC_LOCKED_BASELINE_FAIL"
         elif changed:
             lock_status = "PARTIAL_CANDIDATES_ONLY"
 
@@ -335,6 +446,18 @@ def signal_event_summary(signal_events: Path) -> dict[str, Any]:
     rows = read_csv(signal_events)
     case_b_counts = Counter(row.get("case_b_source", "") for row in rows if row.get("case_b_source"))
     action_counts = Counter(row.get("action_type", "") for row in rows if row.get("action_type"))
+    active_case_b_count = 0
+    original_tau_case_b_count = 0
+    original_tau_trigger_count = 0
+    for row in rows:
+        source = row.get("case_b_source", "")
+        reason = row.get("trigger_reason", "")
+        if source and source != "not_case_b":
+            active_case_b_count += 1
+        if source.startswith("original_tau_") or source == "original_tau_segment":
+            original_tau_case_b_count += 1
+        if "original_tau_segment" in reason:
+            original_tau_trigger_count += 1
     tau_rows = [
         row for row in rows
         if row.get("original_tau_segment_id") or safe_float(row.get("original_tau_raw_fill"), 0.0) > 0.0
@@ -353,10 +476,13 @@ def signal_event_summary(signal_events: Path) -> dict[str, Any]:
         "signal_event_count": len(rows),
         "phase_change_count": action_counts.get("phase_change_target_green", 0),
         "trigger_eval_count": action_counts.get("trigger_evaluation", 0),
+        "case_b_active_count": active_case_b_count,
         "case_b_not_case_b_count": case_b_counts.get("not_case_b", 0),
         "case_b_runtime_segment_count": case_b_counts.get("runtime_tau_segment", 0),
         "case_b_runtime_movement_count": case_b_counts.get("runtime_tau_movement", 0),
+        "case_b_original_tau_count": original_tau_case_b_count,
         "case_b_b0_prior_count": case_b_counts.get("b0_prior", 0),
+        "original_tau_trigger_count": original_tau_trigger_count,
         "original_tau_sample_count": len(tau_rows),
         "original_tau_raw_max": round(max(raw_values), 6) if raw_values else 0.0,
         "original_tau_effective_max": round(max(effective_values), 6) if effective_values else 0.0,
@@ -460,6 +586,7 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
         f"- B04 baseline speed={payload.get('b04_baseline_speed_kmh')} km/h "
         f"(target15_check={'required' if payload.get('target15_baseline_required') else 'diagnostic_bypassed'})",
         f"- stage3_preemption_count={baseline.get('stage3_preemption_count')}, "
+        f"original_tau_caseB={baseline.get('case_b_original_tau_count')}, "
         f"original_tau_hit_0p75={baseline.get('original_tau_hit_0p75')}",
         "",
         "## Variable Sensitivity",
@@ -492,6 +619,7 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
             f"- {row['parameter_id']}: status={row['final_status']}, changed={row['changed_variable']}={row['changed_value']}, "
             f"EV={row['T_actual_EMV_sec']}, score={row['bo_score_sec']}, "
             f"caseB_segment={row['case_b_runtime_segment_count']}, caseB_movement={row['case_b_runtime_movement_count']}, "
+            f"original_tau_caseB={row.get('case_b_original_tau_count', '')}, "
             f"tau_hit_0p75={row['original_tau_hit_0p75']}"
         )
     lines.extend([
@@ -544,13 +672,33 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     run_metrics_dir.mkdir(parents=True, exist_ok=True)
     candidates = build_candidates(args.only_variable)
     candidate_fields = ["parameter_id", "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys()]
+    extra_result_fields = list(dict.fromkeys([
+        *ALL_VALUE_FIELDS,
+        "changed_variable",
+        "changed_value",
+        *BASE_DECISION.keys(),
+        *BASE_STRUCTURE.keys(),
+        "score_sec",
+        "bo_score_sec",
+        "failure_penalty_sec",
+        "case_b_active_count",
+        "case_b_runtime_segment_count",
+        "case_b_runtime_movement_count",
+        "case_b_original_tau_count",
+        "case_b_b0_prior_count",
+        "original_tau_trigger_count",
+        "original_tau_hit_0p65",
+        "original_tau_hit_0p75",
+        "original_tau_hit_0p85",
+        "segment_hits_json",
+    ]))
     write_rows(run_metrics_dir / "fixed_param_candidates.csv", candidates, candidate_fields)
     context = prepare_real_context(run_id, args)
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         for repeat in range(1, args.repeats + 1):
             rows.append(evaluate_candidate(run_id, candidate, repeat, args, context))
-            write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"])))
+            write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, extra_result_fields)
     lock_without_combined = structure_lock_summary(rows)
     combined_row: dict[str, Any] | None = None
     if args.confirm_combined_lock and lock_without_combined["lock_status"] == "PENDING_COMBINED_CONFIRMATION":
@@ -561,9 +709,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             rows.append(row)
             if repeat == 1:
                 combined_row = row
-            write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"])))
+            write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, extra_result_fields)
     structure_lock = structure_lock_summary(rows, combined_row)
-    all_fields = list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"]))
+    all_fields = extra_result_fields
     all_values = run_metrics_dir / "fixed_param_all_values.csv"
     write_csv(all_values, rows, all_fields)
     write_rows(run_metrics_dir / "fixed_param_candidates.csv", candidates, candidate_fields)
@@ -573,7 +721,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(),
         "T_actual_EMV_sec", "general_mean_travel_time_sec", "bo_score_sec",
         "stage3_preemption_count", "bottleneck_mode_count", "signal_burden_sec",
-        "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count",
+        "case_b_active_count", "case_b_runtime_segment_count", "case_b_runtime_movement_count",
+        "case_b_original_tau_count", "case_b_b0_prior_count", "original_tau_trigger_count",
         "original_tau_sample_count", "original_tau_raw_max", "original_tau_effective_max",
         "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85",
         "segment_hits_json", "signal_events_csv",

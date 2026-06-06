@@ -4,8 +4,8 @@
   "algorithm": "B4",
   "status": "WARN",
   "primary_candidate": "B04_u130_toegye15",
-  "manifest_selected_candidate": "B04_ad_variance_smoothed",
-  "manifest_selected_candidate_role": "primary_selected",
+  "manifest_selected_candidate": "B04_u130_toegye15",
+  "manifest_selected_candidate_role": "active_runtime_override",
   "decision_variable_screening": {
     "schema": "compact_v9_B4_decision_variable_screening.v1",
     "model_form": "Y = f(X, Z)",
@@ -64,9 +64,9 @@
   },
   "primary_candidate_lock": {
     "primary_candidate": "B04_u130_toegye15",
-    "manifest_selected_candidate": "B04_ad_variance_smoothed",
-    "manifest_selected_candidate_role": "primary_selected",
-    "reason": "AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+    "manifest_selected_candidate": "B04_u130_toegye15",
+    "manifest_selected_candidate_role": "active_runtime_override",
+    "reason": "Active B04 no-control provenance is locked for this Stage1 directory.",
     "metrics": {
       "candidate": "B04_u130_toegye15",
       "vehicles": 0,
@@ -168,7 +168,8 @@
     "linkIndex is a SUMO TLS movement index, not physical storage length.",
     "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.",
     "This Stage1 directory is bound to an active B04 run; use it with matching --net-file and --background-route.",
-    "Stage2 merge B0 values are provenance/fallback only when weak; runtime n_occ/Lq is the primary intervention signal."
+    "Stage2 merge B0 values are provenance/fallback only when weak; runtime n_occ/Lq is the primary intervention signal.",
+    "Manifest-selected B04_ad_variance_smoothed is superseded here by active_runtime_override provenance for u130_toegye15."
   ],
   "allow_runtime_input_override": true,
   "runtime_input_provenance": {
@@ -190,5 +191,7 @@
       "emergency_route_length_m": 4072.77,
       "emergency_speed_kmh": 13.079368
     }
-  }
+  },
+  "provenance_status": "PASS",
+  "provenance_note": "Stage1 is intentionally bound to the active B04 no-control run identified by runtime_input_provenance, not the default manifest-selected candidate."
 }

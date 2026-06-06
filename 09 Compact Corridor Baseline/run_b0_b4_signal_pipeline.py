@@ -301,8 +301,10 @@ def build_sumo_command(
     stage1: B4Stage1Inputs | None = None,
 ) -> list[str]:
     paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd, emit_e2=emit_e2, stage1=stage1)
+    binary = sumo_binary or find_executable("sumo")
+    ensure_sumo_home(binary)
     return [
-        sumo_binary or find_executable("sumo"),
+        binary,
         "-c",
         str(paths["sumocfg"]),
         "--seed",
@@ -310,6 +312,31 @@ def build_sumo_command(
         "--no-step-log",
         "true",
     ]
+
+
+def valid_sumo_home(path: Path) -> bool:
+    return (path / "data/xsd/net_file.xsd").is_file() or (path / "data/typemap/osmNetconvert.typ.xml").is_file()
+
+
+def infer_sumo_home(sumo_binary: str) -> Path | None:
+    binary = Path(sumo_binary).resolve()
+    candidates = [
+        binary.parents[1] / "share/sumo",
+        binary.parents[0].parent / "share/sumo",
+    ]
+    for candidate in candidates:
+        if valid_sumo_home(candidate):
+            return candidate
+    return None
+
+
+def ensure_sumo_home(sumo_binary: str) -> None:
+    current = os.environ.get("SUMO_HOME")
+    if current and valid_sumo_home(Path(current)):
+        return
+    inferred = infer_sumo_home(sumo_binary)
+    if inferred is not None:
+        os.environ["SUMO_HOME"] = str(inferred)
 
 
 def count_background_departures(route_file: Path) -> int:

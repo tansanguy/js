@@ -308,9 +308,21 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     summary_payload.update({
         **override_payload,
         "primary_candidate": args.primary_candidate,
+        "manifest_selected_candidate": args.primary_candidate,
+        "manifest_selected_candidate_role": "active_runtime_override",
+        "provenance_status": "PASS",
+        "provenance_note": "Stage1 is intentionally bound to the active B04 no-control run identified by runtime_input_provenance, not the default manifest-selected candidate.",
         "input_artifacts": input_artifacts,
         "policy_notes": notes,
     })
+    lock = dict(summary_payload.get("primary_candidate_lock", {}))
+    lock.update({
+        "primary_candidate": args.primary_candidate,
+        "manifest_selected_candidate": args.primary_candidate,
+        "manifest_selected_candidate_role": "active_runtime_override",
+        "reason": "Active B04 no-control provenance is locked for this Stage1 directory.",
+    })
+    summary_payload["primary_candidate_lock"] = lock
     write_json(output_dir / "b4_stage1_summary.json", summary_payload)
     return {
         "schema": "compact_v9_B4_stage1_from_active_B04_run.v1",

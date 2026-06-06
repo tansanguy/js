@@ -122,8 +122,8 @@ B4만 실행할 때는 B04와 같은 net/demand에서 생성된 Stage1 디렉터
 .venv/bin/python "09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py" \
   --modes B4 \
   --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
   --hard-max-sim-time 4000 \
   --run-id b4_only_001
 ```
@@ -169,6 +169,25 @@ B4의 최적화 대상 결정변수는 5개입니다.
 | `--b4-parameter-id` | 결과에 남길 B4 파라미터 ID입니다. |
 | `--b4-theta` | 호환성 flag입니다. 현재 B4ThetaParams가 기본 런타임입니다. |
 
+현재 u130_toegye15 구조 파라미터 선확정 결과는 다음 artifact에 저장되어 있습니다.
+
+```text
+09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json
+```
+
+선택된 구조값은 `tau=0.85`, `tau_scale=0.8`, `tau_numerator_gamma=5.0`, `hold_max=33.0`, `d_up=3`입니다. 이 값들은 BO 대상이 아니라 고정 구조값으로 주입합니다.
+
+## 신호 state 길이 정규화
+
+`Unused states in tlLogic ... after tl-index ...` warning은 phase `state` 문자열이 실제 `connection linkIndex` 개수보다 길 때 발생합니다. 차량 connection에는 영향이 없지만 신호 provenance를 엄밀히 맞추려면 active net을 정규화합니다.
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_global_reality_signal_pipeline.py" \
+  --normalize-only \
+  --input-net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
+  --output-net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
+```
+
 ## B4 BO 실행
 
 5개 결정변수 `alpha`, `t_lead`, `delta_T_thr`, `G_ext`, `Q_trig`를 Bayesian Optimization으로 탐색할 때 사용합니다.
@@ -181,9 +200,10 @@ B4의 최적화 대상 결정변수는 5개입니다.
   --bo-batch-size 5 \
   --repeats 1 \
   --workers 4 \
+  --structure-lock-json "09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json" \
   --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
   --hard-max-sim-time 4000
 ```
 
@@ -206,7 +226,9 @@ B4의 최적화 대상 결정변수는 5개입니다.
 | `--spc-alpha` | SPC 통계 유의수준입니다. |
 | `--spc-min-rounds` | 조기종료 판단 전 최소 라운드 수입니다. |
 | `--spc-min-improvement-sec` | 의미 있는 개선으로 볼 최소 score 개선폭입니다. |
-| `--tau-scale`, `--tau-numerator-gamma` | BO 중 고정할 tau 보정 구조 파라미터입니다. 5개 BO 결정변수에는 포함하지 않습니다. |
+| `--structure-lock-json` | BO 전에 선확정한 구조 파라미터 lock artifact입니다. `tau`, `hold_max`, `d_up`, `tau_scale`, `tau_numerator_gamma`를 고정 주입합니다. |
+| `--tau`, `--hold-max`, `--d-up`, `--tau-scale`, `--tau-numerator-gamma` | lock artifact를 명시적으로 덮어쓸 때만 사용합니다. 5개 BO 결정변수에는 포함하지 않습니다. |
+| `--require-target15-baseline` | B04 no-control EV 정지포함 평균속도가 15~17km/h 밖이면 실패 처리합니다. 기본은 diagnostic bypass입니다. |
 | `--resume`, `--bo-resume` | 기존 `latest/state`를 읽어 중단된 BO를 이어갑니다. |
 | `--mock-eval` | SUMO 대신 mock 평가를 사용합니다. 코드 경로 확인용입니다. |
 
@@ -218,9 +240,10 @@ B4의 최적화 대상 결정변수는 5개입니다.
 .venv/bin/python "09 Compact Corridor Baseline/run_b4_theta_ofat_sensitivity.py" \
   --run-id b4_theta_ofat_001 \
   --only-variable alpha \
+  --structure-lock-json "09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json" \
   --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
   --hard-max-sim-time 4000
 ```
 
@@ -233,8 +256,8 @@ B4의 최적화 대상 결정변수는 5개입니다.
   --run-id b4_fixed_param_001 \
   --only-variable tau \
   --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
   --hard-max-sim-time 4000
 ```
 

@@ -199,6 +199,58 @@ def logic_link_count(input_net: Path) -> dict[str, int]:
     return counts
 
 
+def required_state_lengths(root: ET.Element) -> dict[str, int]:
+    required: dict[str, int] = {}
+    for connection in root.findall("connection"):
+        tls_id = connection.get("tl")
+        link_index = connection.get("linkIndex")
+        if not tls_id or link_index is None:
+            continue
+        try:
+            index = int(link_index)
+        except ValueError:
+            continue
+        required[tls_id] = max(required.get(tls_id, 0), index + 1)
+    return required
+
+
+def normalize_tls_phase_state_lengths(root: ET.Element) -> dict[str, Any]:
+    required = required_state_lengths(root)
+    normalized_rows: list[dict[str, Any]] = []
+    normalized_phase_count = 0
+    for logic in root.findall("tlLogic"):
+        tls_id = str(logic.get("id", ""))
+        required_len = required.get(tls_id, 0)
+        if required_len <= 0:
+            continue
+        for phase_index, phase in enumerate(logic.findall("phase")):
+            state = phase.get("state", "")
+            before_len = len(state)
+            if before_len == required_len:
+                continue
+            if before_len > required_len:
+                phase.set("state", state[:required_len])
+                action = "truncate"
+            else:
+                phase.set("state", state + "r" * (required_len - before_len))
+                action = "pad_red"
+            normalized_phase_count += 1
+            normalized_rows.append({
+                "tls_id": tls_id,
+                "programID": logic.get("programID", ""),
+                "phase_index": phase_index,
+                "action": action,
+                "before_len": before_len,
+                "after_len": required_len,
+                "required_len": required_len,
+            })
+    return {
+        "normalized_phase_state_count": normalized_phase_count,
+        "normalized_tls_count": len({row["tls_id"] for row in normalized_rows}),
+        "normalized_rows": normalized_rows,
+    }
+
+
 def tls_xy_from_connections(tls: Any) -> tuple[float, float] | None:
     xs: list[float] = []
     ys: list[float] = []
@@ -574,15 +626,46 @@ def apply_profiles(input_net: Path, output_net: Path, profiles: list[Any]) -> di
         if str(result.get("status", "")).startswith("APPLIED") or result.get("status") == "PRESERVED_MAINROAD":
             applied_count += 1
         applied_rows.append(profile.as_row() | result)
+    normalize_stats = normalize_tls_phase_state_lengths(root)
     output_net.parent.mkdir(parents=True, exist_ok=True)
     tree.write(output_net, encoding="UTF-8", xml_declaration=True)
     write_csv(GLOBAL_APPLIED_CSV, applied_rows, list(applied_rows[0].keys()) if applied_rows else [])
+    normalized_rows = normalize_stats.pop("normalized_rows")
+    normalized_csv = TDATA_ROOT / "b04_global_reality_tls_state_normalization.csv"
+    write_csv(normalized_csv, normalized_rows, list(normalized_rows[0].keys()) if normalized_rows else [
+        "tls_id", "programID", "phase_index", "action", "before_len", "after_len", "required_len",
+    ])
     return {
         "input_net": rel(input_net),
         "output_net": rel(output_net),
         "applied_tls_count": applied_count,
         "single_phase_repaired_count": single_repaired,
         "applied_csv": rel(GLOBAL_APPLIED_CSV),
+        "tls_state_normalization_csv": rel(normalized_csv),
+        **normalize_stats,
+    }
+
+
+def normalize_existing_net(input_net: Path, output_net: Path) -> dict[str, Any]:
+    tree = ET.parse(input_net)
+    root = tree.getroot()
+    normalize_stats = normalize_tls_phase_state_lengths(root)
+    output_net.parent.mkdir(parents=True, exist_ok=True)
+    temp = output_net.with_suffix(output_net.suffix + ".tmp")
+    tree.write(temp, encoding="UTF-8", xml_declaration=True)
+    temp.replace(output_net)
+    normalized_rows = normalize_stats.pop("normalized_rows")
+    normalized_csv = TDATA_ROOT / f"{output_net.stem}_tls_state_normalization.csv"
+    write_csv(normalized_csv, normalized_rows, list(normalized_rows[0].keys()) if normalized_rows else [
+        "tls_id", "programID", "phase_index", "action", "before_len", "after_len", "required_len",
+    ])
+    return {
+        "schema": "compact_v9_b04_tls_state_normalization.v1",
+        "generated_at": utc_now(),
+        "input_net": rel(input_net),
+        "output_net": rel(output_net),
+        "tls_state_normalization_csv": rel(normalized_csv),
+        **normalize_stats,
     }
 
 
@@ -611,9 +694,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--input-net", type=Path, default=INPUT_NET)
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
     parser.add_argument("--timing-snapshot", type=Path, action="append", default=None)
+    parser.add_argument("--normalize-only", action="store_true")
     args = parser.parse_args(argv)
     try:
-        summary = run(args)
+        summary = normalize_existing_net(args.input_net, args.output_net) if args.normalize_only else run(args)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

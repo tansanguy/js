@@ -1,0 +1,109 @@
+{
+  "schema": "compact_v9_B4_structure_param_lock.v1",
+  "generated_at": "2026-06-06T07:51:57.883815+00:00",
+  "run_id": "codex_structure_full_inductive_20260606",
+  "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
+  "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml",
+  "stage1_dir": "data_prepared/compact_v9/b4_stage1_u130_toegye15",
+  "decision_variables_fixed": {
+    "alpha": 1.15,
+    "t_lead": 21.0,
+    "delta_T_thr": 80.0,
+    "G_ext": 32.0,
+    "Q_trig": 0.0
+  },
+  "baseline_structure": {
+    "tau": 0.75,
+    "hold_max": 14.0,
+    "d_up": 1,
+    "tau_scale": 0.85,
+    "tau_numerator_gamma": 5.0
+  },
+  "candidate_structure": {
+    "tau": 0.85,
+    "hold_max": 33.0,
+    "d_up": 3,
+    "tau_scale": 0.8,
+    "tau_numerator_gamma": 5.0
+  },
+  "selected_structure": {
+    "tau": 0.85,
+    "hold_max": 33.0,
+    "d_up": 3,
+    "tau_scale": 0.8,
+    "tau_numerator_gamma": 5.0
+  },
+  "lock_status": "DIAGNOSTIC_LOCKED_BASELINE_FAIL",
+  "variables": {
+    "tau": {
+      "variable": "tau",
+      "status": "provisional_diagnostic",
+      "reason": "baseline_failed_selected_by_runtime_original_tau_activation",
+      "baseline_value": 0.75,
+      "selected_value": 0.85,
+      "best_row_id": "fixed_tau_0p85",
+      "pass_count": 0,
+      "fail_count": 6,
+      "candidate_count": 6,
+      "sensitivity_label": "high"
+    },
+    "tau_scale": {
+      "variable": "tau_scale",
+      "status": "provisional_diagnostic",
+      "reason": "baseline_failed_selected_by_runtime_original_tau_activation",
+      "baseline_value": 0.85,
+      "selected_value": 0.8,
+      "best_row_id": "fixed_tau_scale_0p8",
+      "pass_count": 0,
+      "fail_count": 4,
+      "candidate_count": 4,
+      "sensitivity_label": "high"
+    },
+    "tau_numerator_gamma": {
+      "variable": "tau_numerator_gamma",
+      "status": "blocked_no_pass",
+      "reason": "no_passing_candidate_after_signal_burden_gate",
+      "baseline_value": 5.0,
+      "selected_value": 5.0,
+      "best_row_id": "",
+      "pass_count": 0,
+      "fail_count": 3,
+      "candidate_count": 3,
+      "sensitivity_label": "high"
+    },
+    "hold_max": {
+      "variable": "hold_max",
+      "status": "provisional_pass_signal_tradeoff",
+      "reason": "baseline_failed_passing_candidate_exceeds_signal_burden_gate",
+      "baseline_value": 14.0,
+      "selected_value": 33.0,
+      "best_row_id": "fixed_hold_max_33",
+      "pass_count": 1,
+      "fail_count": 2,
+      "candidate_count": 3,
+      "sensitivity_label": "high"
+    },
+    "d_up": {
+      "variable": "d_up",
+      "status": "provisional_diagnostic",
+      "reason": "baseline_failed_selected_by_runtime_original_tau_activation",
+      "baseline_value": 1,
+      "selected_value": 3,
+      "best_row_id": "fixed_d_up_3",
+      "pass_count": 0,
+      "fail_count": 2,
+      "candidate_count": 2,
+      "sensitivity_label": "high"
+    }
+  },
+  "combined_confirmation": {
+    "status": "FAIL",
+    "reason": "combined_lock_failed",
+    "parameter_id": "fixed_combined_lock_tau0p85_scale1_gamma7_hold33_dup3",
+    "final_status": "FAIL",
+    "failure_reason": "emergency_stuck",
+    "T_actual_EMV_sec": "",
+    "bo_score_sec": "1000119.26",
+    "signal_burden_sec": "346.582059"
+  }
+}

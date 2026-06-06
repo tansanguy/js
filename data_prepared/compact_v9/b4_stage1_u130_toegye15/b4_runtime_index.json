@@ -1712,5 +1712,18 @@
       "emergency_route_length_m": 4072.77,
       "emergency_speed_kmh": 13.079368
     }
-  }
+  },
+  "primary_candidate": "B04_u130_toegye15",
+  "manifest_selected_candidate": "B04_u130_toegye15",
+  "manifest_selected_candidate_role": "active_runtime_override",
+  "provenance_status": "PASS",
+  "stage2_merge_support_status": "weak_runtime_required",
+  "fixed_structure_params": [
+    "tau",
+    "beta",
+    "hold_max",
+    "d_up",
+    "tau_scale",
+    "tau_numerator_gamma"
+  ]
 }

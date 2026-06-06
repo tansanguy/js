@@ -25,8 +25,10 @@ from run_b4_theta_bo import (  # noqa: E402
     ALL_VALUE_FIELDS,
     FAILURE_PENALTY_SEC,
     SCORE_FIELDS,
+    apply_structure_params,
     evaluate_theta_batch,
     prepare_real_context,
+    structure_inputs,
     write_json,
 )
 
@@ -242,6 +244,9 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
         f"- run_id: `{payload['run_id']}`",
         f"- net: `{payload['net_file']}`",
         f"- demand: `{payload['background_route']}`",
+        f"- tau: `{payload['tau']}`",
+        f"- hold_max: `{payload['hold_max']}`",
+        f"- d_up: `{payload['d_up']}`",
         f"- tau_scale: `{payload['tau_scale']}`",
         f"- tau_numerator_gamma: `{payload['tau_numerator_gamma']}`",
         "",
@@ -364,8 +369,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "background_route": rel(args.background_route),
         "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "",
         "hard_max_sim_time": args.hard_max_sim_time,
-        "tau_scale": args.tau_scale,
-        "tau_numerator_gamma": args.tau_numerator_gamma,
+        **structure_inputs(args),
         "candidate_count": len(candidates),
         "baseline": baseline,
         "summary": summary,
@@ -392,8 +396,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--background-route", type=Path, default=DEFAULT_ROUTE)
     parser.add_argument("--stage1-dir", type=Path, default=DEFAULT_STAGE1_DIR)
     parser.add_argument("--hard-max-sim-time", type=float, default=4000.0)
-    parser.add_argument("--tau-scale", type=float, default=0.85)
-    parser.add_argument("--tau-numerator-gamma", type=float, default=DEFAULT_TAU_NUMERATOR_GAMMA)
+    parser.add_argument("--require-target15-baseline", action="store_true")
+    parser.add_argument("--structure-lock-json", type=Path, default=None)
+    parser.add_argument("--tau", type=float, default=None)
+    parser.add_argument("--hold-max", dest="hold_max", type=float, default=None)
+    parser.add_argument("--d-up", dest="d_up", type=int, default=None)
+    parser.add_argument("--tau-scale", type=float, default=None)
+    parser.add_argument("--tau-numerator-gamma", type=float, default=None)
     parser.add_argument("--phase", default="bo-smoke")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=1)
@@ -412,6 +421,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args.metrics_root = args.metrics_root.resolve()
     args.run_root = args.run_root.resolve()
     args.output_dir = args.output_dir.resolve()
+    args.allow_baseline_speed_out_of_target = not args.require_target15_baseline
+    if args.tau_scale is not None and not 0.0 <= args.tau_scale <= 1.0:
+        raise ValueError("tau_scale_must_be_between_0_and_1")
+    if args.tau_numerator_gamma is not None and args.tau_numerator_gamma < 0.1:
+        raise ValueError("tau_numerator_gamma_must_be_at_least_0p1")
+    apply_structure_params(args)
     if args.stage1_dir is not None and not args.stage1_dir.is_dir():
         raise FileNotFoundError(f"missing_stage1_dir:{args.stage1_dir}")
     return args

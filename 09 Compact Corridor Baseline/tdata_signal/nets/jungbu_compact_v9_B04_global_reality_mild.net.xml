@@ -37823,15 +37823,15 @@
         <phase duration="6" state="rrrr" />
     </tlLogic>
     <tlLogic id="8487751470" type="static" programID="GLOBAL_REALITY" offset="45">
-        <phase duration="52" state="rrrGGGGGGGg" />
-        <phase duration="3" state="rrrGyyyyyyy" />
-        <phase duration="52" state="GGGGrrrrrrr" />
-        <phase duration="3" state="yyyGrrrrrrr" />
+        <phase duration="52" state="rrrGGGGGGG" />
+        <phase duration="3" state="rrrGyyyyyy" />
+        <phase duration="52" state="GGGGrrrrrr" />
+        <phase duration="3" state="yyyGrrrrrr" />
     </tlLogic>
     <tlLogic id="COMPACT_V9_FIRE_STATION_ENTRY_TLS" type="static" programID="GLOBAL_REALITY" offset="129">
-        <phase duration="100" state="GGGGGGGGGG" name="entry_open" />
-        <phase duration="3" state="yGGGyyyGGG" name="entry_yellow" />
-        <phase duration="27" state="rGGGrrrGGG" name="entry_hold" />
+        <phase duration="100" state="GGGGGGG" name="entry_open" />
+        <phase duration="3" state="yGGGyyy" name="entry_yellow" />
+        <phase duration="27" state="rGGGrrr" name="entry_hold" />
     </tlLogic>
     <tlLogic id="cluster_11177413157_11178710207" type="static" programID="GLOBAL_REALITY" offset="23">
         <phase duration="91" state="GGG" />
@@ -37849,24 +37849,24 @@
         <phase duration="3" state="rrrryyrrrrrrrrrrrryrrrrrrr" />
     </tlLogic>
     <tlLogic id="cluster_11277565406_11277565407_11277565408_11277565409_#6more" type="static" programID="GLOBAL_REALITY" offset="14">
-        <phase duration="31" state="gggGGGGGgggggggggggggggrGGGGGrrgggggggrrrrrrrrrrrrrrrgggggggg" />
-        <phase duration="3" state="gggyyyyygggggggggggggggryyyyyrrgggggggrrrrrrrrrrrrrrrgggggggg" />
-        <phase duration="9" state="gggrrrrrGgGgggggggggggggrrrrrGggggggggrrrrrrrrrrrrrrrgggggggg" />
-        <phase duration="3" state="yyyrrrrryyyyyyyyyyyyyyyyrrrrryyyyyyyyyrrrrrrrrrrrrrrryyyyyyyy" />
-        <phase duration="31" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGrrrrrrrr" />
-        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyrrrrrrrr" />
-        <phase duration="32" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGrrrrrrrrrrrrrrrr" />
-        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyrrrrrrrrrrrrrrrr" />
+        <phase duration="31" state="gggGGGGGgggggggggggggggrGGGGGrrgggggggrrrrrrrrrrrrrr" />
+        <phase duration="3" state="gggyyyyygggggggggggggggryyyyyrrgggggggrrrrrrrrrrrrrr" />
+        <phase duration="9" state="gggrrrrrGgGgggggggggggggrrrrrGggggggggrrrrrrrrrrrrrr" />
+        <phase duration="3" state="yyyrrrrryyyyyyyyyyyyyyyyrrrrryyyyyyyyyrrrrrrrrrrrrrr" />
+        <phase duration="31" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG" />
+        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy" />
+        <phase duration="32" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGrrrrrrr" />
+        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyrrrrrrr" />
     </tlLogic>
     <tlLogic id="cluster_11347624895_11414286294" type="static" programID="GLOBAL_REALITY" offset="59">
-        <phase duration="20" state="GrrrrrrrrrrrrrrrrGGGG" />
-        <phase duration="3" state="yrrrrrrrrrrrrrrrrGyyy" />
-        <phase duration="23" state="rrrrrrrrrrrrrGGGGGrrr" />
-        <phase duration="3" state="rrrrrrrrrrrrryyyyyrrr" />
-        <phase duration="23" state="GGGGGGGGrrrrrrrrrrrrr" />
-        <phase duration="3" state="yyyyyyyyrrrrrrrrrrrrr" />
-        <phase duration="22" state="rrrrrrrrGGGGGGrrrrrrr" />
-        <phase duration="3" state="rrrrrrrryyyyyyrrrrrrr" />
+        <phase duration="20" state="Grrrrrrrrrrrrrrr" />
+        <phase duration="3" state="yrrrrrrrrrrrrrrr" />
+        <phase duration="23" state="rrrrrrrrrrrrrGGG" />
+        <phase duration="3" state="rrrrrrrrrrrrryyy" />
+        <phase duration="23" state="GGGGGGGGrrrrrrrr" />
+        <phase duration="3" state="yyyyyyyyrrrrrrrr" />
+        <phase duration="22" state="rrrrrrrrGGGGGGrr" />
+        <phase duration="3" state="rrrrrrrryyyyyyrr" />
     </tlLogic>
     <tlLogic id="cluster_12785870414_3337522189" type="static" programID="GLOBAL_REALITY" offset="45">
         <phase duration="52" state="ggGrGGGGG" />
@@ -37992,14 +37992,14 @@
         <phase duration="3" state="rrrryyrrrrrrrryrrrrrrrryyyyy" />
     </tlLogic>
     <tlLogic id="joinedS_11414286323_cluster_11414286309_7666741014" type="static" programID="GLOBAL_REALITY" offset="63">
-        <phase duration="20" state="GrrrrrrrrrrrrrrrGGGG" />
-        <phase duration="3" state="yrrrrrrrrrrrrrrrGyyy" />
-        <phase duration="23" state="rrrrrrrrrrrrGGGGGrrr" />
-        <phase duration="3" state="rrrrrrrrrrrryyyyyrrr" />
-        <phase duration="23" state="GGGGGGGrrrrrrrrrrrrr" />
-        <phase duration="3" state="yyyyyyyrrrrrrrrrrrrr" />
-        <phase duration="22" state="rrrrrrrGGGGGGrrrrrrr" />
-        <phase duration="3" state="rrrrrrryyyyyyrrrrrrr" />
+        <phase duration="20" state="Grrrrrrrrrrrrrr" />
+        <phase duration="3" state="yrrrrrrrrrrrrrr" />
+        <phase duration="23" state="rrrrrrrrrrrrGGG" />
+        <phase duration="3" state="rrrrrrrrrrrryyy" />
+        <phase duration="23" state="GGGGGGGrrrrrrrr" />
+        <phase duration="3" state="yyyyyyyrrrrrrrr" />
+        <phase duration="22" state="rrrrrrrGGGGGGrr" />
+        <phase duration="3" state="rrrrrrryyyyyyrr" />
     </tlLogic>
     <tlLogic id="joinedS_3846493837_cluster_2515564080_436883154" type="static" programID="GLOBAL_REALITY" offset="74">
         <phase duration="25" state="rrrGGGGGGGgGGGgrrrGGGG" />
