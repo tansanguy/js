@@ -66,6 +66,11 @@ OFAT_VALUES = {
     "hold_max": [7.0, 14.0, 24.0, 33.0],
     "d_up": [1, 2, 3],
 }
+STRUCTURE_FIELDS = list(BASE_STRUCTURE.keys())
+DECISION_FIELDS = list(BASE_DECISION.keys())
+SIGNAL_BURDEN_MAX_WORSENING = 1.20
+MIN_SCORE_IMPROVEMENT_RATIO = 0.01
+MIN_EV_IMPROVEMENT_SEC = 30.0
 
 
 def utc_now() -> str:
@@ -126,6 +131,27 @@ def build_candidates(only_variable: str = "") -> list[dict[str, Any]]:
     return candidates
 
 
+def combined_parameter_id(structure: dict[str, Any]) -> str:
+    return (
+        "fixed_combined_lock"
+        f"_tau{value_label(float(structure['tau']))}"
+        f"_scale{value_label(float(structure['tau_scale']))}"
+        f"_gamma{value_label(float(structure['tau_numerator_gamma']))}"
+        f"_hold{value_label(float(structure['hold_max']))}"
+        f"_dup{value_label(float(structure['d_up']))}"
+    )
+
+
+def build_combined_candidate(structure: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "parameter_id": combined_parameter_id(structure),
+        "changed_variable": "combined_lock",
+        "changed_value": "combined_lock",
+        **BASE_DECISION,
+        **structure,
+    }
+
+
 def bool_cell(value: Any) -> bool:
     return value is True or str(value).strip().lower() in {"true", "1", "yes"}
 
@@ -138,6 +164,171 @@ def row_status(row: dict[str, Any]) -> str:
     if safe_float(row.get("failure_penalty_sec")) >= FAILURE_PENALTY_SEC:
         return "FAIL"
     return "PASS"
+
+
+def candidate_rollups(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[str(row.get("parameter_id", ""))].append(row)
+    rollups: dict[str, dict[str, Any]] = {}
+    for parameter_id, group in groups.items():
+        first = group[0]
+        statuses = [row_status(row) for row in group]
+        numeric_fields = [
+            "T_actual_EMV_sec",
+            "general_mean_travel_time_sec",
+            "bo_score_sec",
+            "signal_burden_sec",
+            "stage3_preemption_count",
+            "bottleneck_mode_count",
+            "original_tau_hit_0p75",
+        ]
+        out = dict(first)
+        out["parameter_id"] = parameter_id
+        out["repeat_count"] = len(group)
+        out["rollup_status"] = "PASS" if all(status == "PASS" for status in statuses) else "FAIL"
+        for field in numeric_fields:
+            values = [safe_float(row.get(field)) for row in group if row.get(field) not in {"", None}]
+            if values:
+                out[field] = round(sum(values) / len(values), 6)
+        rollups[parameter_id] = out
+    return rollups
+
+
+def signal_burden_allowed(candidate: dict[str, Any], baseline: dict[str, Any]) -> bool:
+    baseline_signal = safe_float(baseline.get("signal_burden_sec"), 0.0)
+    candidate_signal = safe_float(candidate.get("signal_burden_sec"), 0.0)
+    if baseline_signal <= 0.0 or candidate_signal <= 0.0:
+        return True
+    return candidate_signal <= baseline_signal * SIGNAL_BURDEN_MAX_WORSENING
+
+
+def best_candidate(rows: list[dict[str, Any]], baseline: dict[str, Any]) -> dict[str, Any] | None:
+    eligible = [
+        row for row in rows
+        if row.get("rollup_status") == "PASS" and signal_burden_allowed(row, baseline)
+    ]
+    if not eligible:
+        return None
+    return min(
+        eligible,
+        key=lambda row: (
+            safe_float(row.get("bo_score_sec"), FAILURE_PENALTY_SEC * 10),
+            safe_float(row.get("T_actual_EMV_sec"), FAILURE_PENALTY_SEC * 10),
+            safe_float(row.get("signal_burden_sec"), FAILURE_PENALTY_SEC * 10),
+            str(row.get("parameter_id", "")),
+        ),
+    )
+
+
+def variable_sensitivity_label(rows: list[dict[str, Any]]) -> str:
+    passed = [row for row in rows if row.get("rollup_status") == "PASS"]
+    failed = [row for row in rows if row.get("rollup_status") != "PASS"]
+    ev_values = [safe_float(row.get("T_actual_EMV_sec")) for row in passed if row.get("T_actual_EMV_sec") not in {"", None}]
+    if failed or (len(ev_values) >= 2 and max(ev_values) - min(ev_values) >= 120.0):
+        return "high"
+    if len(ev_values) >= 2 and max(ev_values) - min(ev_values) >= 45.0:
+        return "medium"
+    return "low"
+
+
+def structure_lock_summary(rows: list[dict[str, Any]], combined_row: dict[str, Any] | None = None) -> dict[str, Any]:
+    rollups = candidate_rollups(rows)
+    baseline = next(row for row in rollups.values() if row.get("changed_variable") == "baseline")
+    baseline_pass = baseline.get("rollup_status") == "PASS"
+    baseline_score = safe_float(baseline.get("bo_score_sec"), FAILURE_PENALTY_SEC * 10)
+    baseline_ev = safe_float(baseline.get("T_actual_EMV_sec"), FAILURE_PENALTY_SEC * 10)
+    candidate_structure = dict(BASE_STRUCTURE)
+    variables: dict[str, dict[str, Any]] = {}
+
+    for variable in OFAT_VALUES:
+        subset = [row for row in rollups.values() if row.get("changed_variable") == variable]
+        pass_count = sum(row.get("rollup_status") == "PASS" for row in subset)
+        fail_count = len(subset) - pass_count
+        selected = best_candidate(subset, baseline)
+        selected_value = BASE_STRUCTURE[variable]
+        status = "blocked_no_pass"
+        reason = "no_passing_candidate_after_signal_burden_gate"
+        best_row_id = ""
+        if selected is not None:
+            selected_score = safe_float(selected.get("bo_score_sec"), FAILURE_PENALTY_SEC * 10)
+            selected_ev = safe_float(selected.get("T_actual_EMV_sec"), FAILURE_PENALTY_SEC * 10)
+            score_improvement = baseline_score - selected_score
+            ev_improvement = baseline_ev - selected_ev
+            selected_value = selected.get(variable, selected.get("changed_value", BASE_STRUCTURE[variable]))
+            best_row_id = str(selected.get("parameter_id", ""))
+            if baseline_pass:
+                if (
+                    score_improvement >= baseline_score * MIN_SCORE_IMPROVEMENT_RATIO
+                    or ev_improvement >= MIN_EV_IMPROVEMENT_SEC
+                ):
+                    status = "locked"
+                    reason = "passing_candidate_improves_baseline"
+                    candidate_structure[variable] = selected_value
+                else:
+                    status = "retained_baseline"
+                    reason = "improvement_below_lock_threshold"
+                    selected_value = BASE_STRUCTURE[variable]
+            else:
+                status = "provisional"
+                reason = "baseline_failed_best_passing_candidate"
+                candidate_structure[variable] = selected_value
+        variables[variable] = {
+            "variable": variable,
+            "status": status,
+            "reason": reason,
+            "baseline_value": BASE_STRUCTURE[variable],
+            "selected_value": selected_value,
+            "best_row_id": best_row_id,
+            "pass_count": pass_count,
+            "fail_count": fail_count,
+            "candidate_count": len(subset),
+            "sensitivity_label": variable_sensitivity_label(subset),
+        }
+
+    changed = {
+        key: value for key, value in candidate_structure.items()
+        if float(value) != float(BASE_STRUCTURE[key])
+    }
+    combined_confirmation = {
+        "status": "not_run",
+        "reason": "no_structure_change_selected",
+        "parameter_id": "",
+        "final_status": "",
+        "T_actual_EMV_sec": "",
+        "bo_score_sec": "",
+    }
+    selected_structure = dict(BASE_STRUCTURE)
+    lock_status = "NO_CHANGE"
+    if changed:
+        lock_status = "PENDING_COMBINED_CONFIRMATION"
+        combined_confirmation["reason"] = "combined_candidate_not_evaluated"
+    if combined_row is not None:
+        combined_status = row_status(combined_row)
+        combined_confirmation = {
+            "status": combined_status,
+            "reason": "combined_lock_passed" if combined_status == "PASS" else "combined_lock_failed",
+            "parameter_id": combined_row.get("parameter_id", ""),
+            "final_status": combined_row.get("final_status", ""),
+            "failure_reason": combined_row.get("failure_reason", ""),
+            "T_actual_EMV_sec": combined_row.get("T_actual_EMV_sec", ""),
+            "bo_score_sec": combined_row.get("bo_score_sec", ""),
+            "signal_burden_sec": combined_row.get("signal_burden_sec", ""),
+        }
+        if changed and combined_status == "PASS":
+            selected_structure = dict(candidate_structure)
+            lock_status = "LOCKED"
+        elif changed:
+            lock_status = "PARTIAL_CANDIDATES_ONLY"
+
+    return {
+        "baseline_structure": dict(BASE_STRUCTURE),
+        "candidate_structure": candidate_structure,
+        "selected_structure": selected_structure,
+        "lock_status": lock_status,
+        "variables": variables,
+        "combined_confirmation": combined_confirmation,
+    }
 
 
 def signal_event_summary(signal_events: Path) -> dict[str, Any]:
@@ -251,6 +442,7 @@ def aggregate_variable_rows(summary_rows: list[dict[str, Any]]) -> list[dict[str
 
 def write_report(path: Path, payload: dict[str, Any]) -> None:
     baseline = payload["baseline"]
+    lock = payload.get("structure_lock", {})
     lines = [
         "# B4 Fixed Parameter Sensitivity",
         "",
@@ -278,6 +470,22 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
             f"- {row['variable']}: {row['sensitivity_label']}, PASS {row['pass_count']}/{row['candidate_count']}, "
             f"EV_range={row['EV_range_sec']} sec, tau_hit_0p75_range={row['tau_hit_0p75_range']}"
         )
+    lines.extend(["", "## Structure Preconfirmation Lock", ""])
+    lines.append(f"- lock_status: `{lock.get('lock_status', '')}`")
+    lines.append(f"- baseline_structure: `{json.dumps(lock.get('baseline_structure', {}), ensure_ascii=False, sort_keys=True)}`")
+    lines.append(f"- candidate_structure: `{json.dumps(lock.get('candidate_structure', {}), ensure_ascii=False, sort_keys=True)}`")
+    lines.append(f"- selected_structure: `{json.dumps(lock.get('selected_structure', {}), ensure_ascii=False, sort_keys=True)}`")
+    combined = lock.get("combined_confirmation", {})
+    lines.append(
+        f"- combined_confirmation: status={combined.get('status', '')}, "
+        f"reason={combined.get('reason', '')}, EV={combined.get('T_actual_EMV_sec', '')}, score={combined.get('bo_score_sec', '')}"
+    )
+    for variable, row in lock.get("variables", {}).items():
+        lines.append(
+            f"- {variable}: {row.get('status', '')}, selected={row.get('selected_value', '')}, "
+            f"PASS {row.get('pass_count', '')}/{row.get('candidate_count', '')}, "
+            f"sensitivity={row.get('sensitivity_label', '')}, reason={row.get('reason', '')}"
+        )
     lines.extend(["", "## Best Passing Candidates", ""])
     for row in payload["summary"][:10]:
         lines.append(
@@ -293,9 +501,41 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
         f"- all values: `{payload['all_values_csv']}`",
         f"- summary: `{payload['summary_csv']}`",
         f"- variable summary: `{payload['variable_summary_csv']}`",
+        f"- structure lock json: `{payload['structure_lock_json']}`",
+        f"- structure lock csv: `{payload['structure_lock_csv']}`",
+        f"- structure preconfirm report: `{payload['structure_preconfirm_report_md']}`",
+        f"- next BO command: `{payload['next_bo_command']}`",
     ])
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def structure_lock_csv_rows(lock: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for variable, item in lock.get("variables", {}).items():
+        rows.append({
+            "variable": variable,
+            "status": item.get("status", ""),
+            "reason": item.get("reason", ""),
+            "baseline_value": item.get("baseline_value", ""),
+            "selected_value": item.get("selected_value", ""),
+            "best_row_id": item.get("best_row_id", ""),
+            "pass_count": item.get("pass_count", ""),
+            "fail_count": item.get("fail_count", ""),
+            "candidate_count": item.get("candidate_count", ""),
+            "sensitivity_label": item.get("sensitivity_label", ""),
+        })
+    return rows
+
+
+def next_bo_command(lock_json: Path, args: argparse.Namespace) -> str:
+    return (
+        "python3 '09 Compact Corridor Baseline/run_b4_theta_bo.py' "
+        f"--structure-lock-json '{rel(lock_json)}' "
+        f"--net-file '{rel(args.net_file)}' "
+        f"--background-route '{rel(args.background_route)}' "
+        f"--stage1-dir '{rel(args.stage1_dir) if args.stage1_dir else ''}'"
+    )
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -311,9 +551,22 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         for repeat in range(1, args.repeats + 1):
             rows.append(evaluate_candidate(run_id, candidate, repeat, args, context))
             write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"])))
+    lock_without_combined = structure_lock_summary(rows)
+    combined_row: dict[str, Any] | None = None
+    if args.confirm_combined_lock and lock_without_combined["lock_status"] == "PENDING_COMBINED_CONFIRMATION":
+        combined_candidate = build_combined_candidate(lock_without_combined["candidate_structure"])
+        candidates.append(combined_candidate)
+        for repeat in range(1, args.repeats + 1):
+            row = evaluate_candidate(run_id, combined_candidate, repeat, args, context)
+            rows.append(row)
+            if repeat == 1:
+                combined_row = row
+            write_csv(run_metrics_dir / "fixed_param_all_values.partial.csv", rows, list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"])))
+    structure_lock = structure_lock_summary(rows, combined_row)
     all_fields = list(dict.fromkeys([*ALL_VALUE_FIELDS, "changed_variable", "changed_value", *BASE_DECISION.keys(), *BASE_STRUCTURE.keys(), "score_sec", "bo_score_sec", "failure_penalty_sec", "case_b_runtime_segment_count", "case_b_runtime_movement_count", "case_b_b0_prior_count", "original_tau_hit_0p65", "original_tau_hit_0p75", "original_tau_hit_0p85", "segment_hits_json"]))
     all_values = run_metrics_dir / "fixed_param_all_values.csv"
     write_csv(all_values, rows, all_fields)
+    write_rows(run_metrics_dir / "fixed_param_candidates.csv", candidates, candidate_fields)
     summary = sorted(rows, key=lambda row: (safe_float(row.get("bo_score_sec"), FAILURE_PENALTY_SEC * 10), str(row.get("parameter_id", ""))))
     summary_fields = [
         "parameter_id", "changed_variable", "changed_value", "final_status", "failure_reason",
@@ -335,6 +588,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "preemption_range", "tau_hit_0p75_range", "sensitivity_label",
     ])
     baseline = next(row for row in rows if row.get("changed_variable") == "baseline")
+    structure_lock_json = args.output_dir / "structure_param_lock_summary.json"
+    structure_lock_csv = args.output_dir / "structure_param_lock.csv"
+    structure_preconfirm_report = args.output_dir / "structure_param_preconfirm_report.md"
+    lock_payload = {
+        "schema": "compact_v9_B4_structure_param_lock.v1",
+        "generated_at": utc_now(),
+        "run_id": run_id,
+        "net_file": rel(args.net_file),
+        "background_route": rel(args.background_route),
+        "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "",
+        "decision_variables_fixed": dict(BASE_DECISION),
+        **structure_lock,
+    }
+    write_json(structure_lock_json, lock_payload)
+    write_rows(structure_lock_csv, structure_lock_csv_rows(structure_lock), [
+        "variable", "status", "reason", "baseline_value", "selected_value", "best_row_id",
+        "pass_count", "fail_count", "candidate_count", "sensitivity_label",
+    ])
     payload = {
         "schema": "compact_v9_B4_fixed_param_sensitivity.v1",
         "generated_at": utc_now(),
@@ -347,14 +618,20 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "target15_baseline_required": args.require_target15_baseline,
         "summary": summary,
         "variable_summary": variable_summary,
+        "structure_lock": structure_lock,
         "all_values_csv": rel(all_values),
         "summary_csv": rel(summary_csv),
         "variable_summary_csv": rel(variable_csv),
+        "structure_lock_json": rel(structure_lock_json),
+        "structure_lock_csv": rel(structure_lock_csv),
+        "structure_preconfirm_report_md": rel(structure_preconfirm_report),
+        "next_bo_command": next_bo_command(structure_lock_json, args),
     }
     summary_json = args.output_dir / "fixed_param_sensitivity_summary.json"
     report_md = args.output_dir / "fixed_param_sensitivity_report.md"
     write_json(summary_json, payload)
     write_report(report_md, {**payload, "report_md": rel(report_md)})
+    write_report(structure_preconfirm_report, {**payload, "report_md": rel(structure_preconfirm_report)})
     latest = {
         "schema": "compact_v9_B4_fixed_param_sensitivity_latest.v1",
         "run_id": run_id,
@@ -362,6 +639,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "report_md": rel(report_md),
         "summary_csv": rel(summary_csv),
         "variable_summary_csv": rel(variable_csv),
+        "structure_lock_json": rel(structure_lock_json),
+        "structure_preconfirm_report_md": rel(structure_preconfirm_report),
     }
     write_json(args.metrics_root / "latest.json", latest)
     return {**latest, "candidate_count": len(candidates), "completed_rows": len(rows)}
@@ -389,6 +668,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--emit-fcd", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--require-target15-baseline", action="store_true")
+    parser.add_argument("--skip-confirm-combined-lock", dest="confirm_combined_lock", action="store_false")
+    parser.set_defaults(confirm_combined_lock=True)
     return parser.parse_args(argv)
 
 

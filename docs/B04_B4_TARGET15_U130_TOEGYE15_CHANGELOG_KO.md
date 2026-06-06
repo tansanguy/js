@@ -80,6 +80,12 @@ Stage1 측정 요약:
 
 해석: 새 수요는 Stage3와 original `tau`를 충분히 활성화한다. 다만 현재 기본 제어인자(`alpha=1.15`, `t_lead=21`, `delta_T_thr=80`, `G_ext=32`, `Q_trig=0`)로는 정체가 강해 EV가 `347237859#4` 부근에서 stuck 된다. 따라서 이 수요는 최적화/민감도 실험을 위한 stress scenario로 적합하지만, 기본 theta는 재탐색이 필요하다.
 
+5. fixed-parameter sensitivity 구조 lock 보조 로직
+
+`run_b4_fixed_param_sensitivity.py`에 구조 파라미터 OFAT 결과를 후보별로 roll-up하고, baseline 대비 score/EV 개선 및 signal burden gate를 적용해 `tau`, `tau_scale`, `tau_numerator_gamma`, `hold_max`, `d_up`의 lock 후보를 요약하는 helper를 추가했다. `combined_lock` 후보 생성 함수도 포함되어 있어, 개별 OFAT에서 선택된 구조 후보를 조합 run으로 재확인할 수 있다.
+
+주의: 현재 추가된 lock helper는 요약/선정 로직이며, 전체 실행 루프에서 combined confirmation을 자동 추가 실행하는 단계는 후속 wire-up이 필요하다.
+
 ## 추가된 주요 파일
 
 - `09 Compact Corridor Baseline/calibrate_u130_toegye_general15.py`
