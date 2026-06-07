@@ -43,14 +43,16 @@ def load_best_theta(run_id: str) -> dict:
     summ = PROJECT_ROOT / "results/metrics/compact_v9_B4_theta_bo" / run_id / "bo_loop_summary.json"
     data = json.loads(summ.read_text(encoding="utf-8"))
     best = data["best"]
-    return {
-        "parameter_id": best["parameter_id"],
-        "t_lead": best["t_lead"],
-        "tau": best["tau"],
-        "ext_max": best["ext_max"],
-        "hold_max": best["hold_max"],
-        "d_up": best["d_up"],
-    }
+    # Pass through every decision-variable field the summary records. The theta
+    # variable set has changed across runs (old: t_lead/tau/ext_max/hold_max/d_up;
+    # new: alpha/t_lead/delta_T_thr/G_ext/Q_trig), so we forward whatever is
+    # present and let B4ThetaParams.from_row fill the rest with defaults rather
+    # than hard-coding a fixed key list.
+    theta_keys = (
+        "parameter_id", "alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig",
+        "tau", "ext_max", "hold_max", "d_up", "tau_scale", "tau_numerator_gamma",
+    )
+    return {k: best[k] for k in theta_keys if k in best}
 
 
 def main() -> int:
@@ -71,13 +73,15 @@ def main() -> int:
     # Build the shared real context (validates static inputs, runs/loads B04 baseline).
     ctx_args = argparse.Namespace(
         phase="bo-smoke", seed=args.seed, sumo_binary=args.sumo_binary,
-        emit_fcd=True, resume=False,
+        emit_fcd=True, emit_tls_states=True, resume=False,
+        net_file=bo.B04_NET, background_route=bo.B04_AA_BACKGROUND_ROUTE,
+        hard_max_sim_time=None,
         run_root=args.run_root, metrics_root=PROJECT_ROOT / "results/metrics/compact_v9_B4_viz",
     )
-    print("running B04 baseline (no_control) with FCD ...")
+    print("running B04 baseline (no_control) with FCD + TLS state dump ...")
     real_context = bo.prepare_real_context(out_run_id, ctx_args)
 
-    # B4 controlled run at best theta, with FCD.
+    # B4 controlled run at best theta, with FCD + TLS state dump.
     print(f"running B4 controlled run at theta {theta['parameter_id']} with FCD ...")
     b4_dir = args.run_root / out_run_id / B4_MODE / theta["parameter_id"] / "repeat_001"
     task = B4RunTask(out_run_id, B4_MODE, theta["parameter_id"], 1, args.seed, b4_dir)
@@ -90,6 +94,7 @@ def main() -> int:
         args.sumo_binary,
         True,  # emit_fcd
         B4ThetaParams.from_row(theta),
+        emit_tls_states=True,
     )
 
     b04_dir = args.run_root / out_run_id / B04_MODE / "no_control" / "repeat_001"

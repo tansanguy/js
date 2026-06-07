@@ -818,6 +818,7 @@ def run_b04_task(
     free_rows_by_id: dict[str, dict[str, Any]],
     sumo_binary: str | None = None,
     emit_fcd: bool = False,
+    emit_tls_states: bool = False,
 ) -> dict[str, Any]:
     start = time.time()
     command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd)
@@ -826,6 +827,7 @@ def run_b04_task(
     monitor_fields: dict[str, Any] = {}
     exit_code = 0
     failure_reason = ""
+    tls_dump = (task.run_dir / "tls_states.csv") if emit_tls_states else None
     try:
         traci.start(command)
         events, monitor = run_b04_traci_loop(
@@ -834,6 +836,7 @@ def run_b04_task(
             task.run_id,
             task.repeat_id,
             phase_config,
+            tls_dump_path=tls_dump,
         )
         monitor_fields = monitor.as_result_fields()
     except Exception as exc:  # noqa: BLE001 - runner records failure into result schema.
@@ -884,6 +887,7 @@ def run_b4_task(
     sumo_binary: str | None = None,
     emit_fcd: bool = False,
     params: B4MvpParams | B4ThetaParams | None = None,
+    emit_tls_states: bool = False,
 ) -> dict[str, Any]:
     start = time.time()
     command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd)
@@ -894,6 +898,7 @@ def run_b4_task(
     exit_code = 0
     failure_reason = ""
     params = params or B4ThetaParams()
+    tls_dump = (task.run_dir / "tls_states.csv") if emit_tls_states else None
     try:
         traci.start(command)
         controller_events, controller_stats, monitor = run_b4_traci_loop(
@@ -903,6 +908,7 @@ def run_b4_task(
             task.repeat_id,
             params,
             phase_config,
+            tls_dump_path=tls_dump,
         )
         events = controller_events
         stats = controller_stats.as_result_fields()

@@ -768,7 +768,7 @@ def prepare_real_context(run_id: str, args: argparse.Namespace) -> dict[str, Any
             net_file=args.net_file,
             background_route=args.background_route,
         )
-        b04_baseline = run_b04_task(task, stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd)
+        b04_baseline = run_b04_task(task, stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd, emit_tls_states=getattr(args, "emit_tls_states", False))
         write_json(baseline_json, b04_baseline)
     if b04_baseline.get("final_status") != "PASS" or str(b04_baseline.get("emergency_teleport", "")).lower() == "true":
         raise B4ThetaBoError("b04_baseline_validation_failed")
