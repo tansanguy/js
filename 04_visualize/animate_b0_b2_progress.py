@@ -79,6 +79,47 @@ def build_control_history(signals_csv: Path, net_file: Path) -> dict[str, dict[s
     return history
 
 
+def _tls_link_coords_from_net(
+    net_file: Path, keys: set[tuple[str, str]]
+) -> dict[tuple[str, str], tuple[float, float]]:
+    """Resolve ``{(tls_id, link_index): (lat, lon)}`` from SUMO net stop-lines.
+
+    Used when a ``tls_states.csv`` dump omits lat/lon columns: each controlled
+    link's incoming-lane stop line (its last shape point) is the signal position.
+    Read-only: this only *reads* the static net file, like build_control_history.
+    """
+    import sumolib  # local import; only needed for the net-fallback path
+
+    want: dict[str, set[str]] = {}
+    for tid, link in keys:
+        want.setdefault(tid, set()).add(link)
+    net = sumolib.net.readNet(str(net_file))
+    out: dict[tuple[str, str], tuple[float, float]] = {}
+    for tid, links in want.items():
+        try:
+            tls = net.getTLS(tid)
+        except KeyError:
+            continue
+        per_link: dict[str, tuple[float, float]] = {}
+        all_xy: list[tuple[float, float]] = []
+        for conn in tls.getConnections():
+            x, y = conn[0].getShape()[-1]  # incoming-lane stop line
+            per_link.setdefault(str(conn[2]), (x, y))
+            all_xy.append((x, y))
+        if not all_xy:
+            continue
+        # Junction-level fallback for link indices the net does not expose as a
+        # vehicle connection (e.g. pedestrian-crossing link indices): average the
+        # TLS's controlled stop-lines so the icon still lands on the junction.
+        fx = sum(p[0] for p in all_xy) / len(all_xy)
+        fy = sum(p[1] for p in all_xy) / len(all_xy)
+        for link in links:
+            x, y = per_link.get(link, (fx, fy))
+            lon, lat = net.convertXY2LonLat(x, y)
+            out[(tid, link)] = (round(lat, 6), round(lon, 6))
+    return out
+
+
 def build_tls_dump_history(tls_csv: Path, net_file: Path | None = None) -> dict[str, dict[str, object]]:
     """Load the real per-step TLS state dump (tls_states.csv).
 
@@ -86,10 +127,14 @@ def build_tls_dump_history(tls_csv: Path, net_file: Path | None = None) -> dict[
     "lat","lon"}}`` — the authoritative EV-facing signal-colour timeline for every
     on-route MOVEMENT the simulation recorded. The unit is (tls_id, link_index),
     not tls_id, because one runtime TLS can control several on-route stop-lines
-    (a junction the route crosses twice); each gets its own stop-line lat/lon
-    (recorded by the dumper) so it matches the correct geojson icon downstream.
-    ``net_file`` is unused now (the dump carries coordinates) but kept for
-    signature stability.
+    (a junction the route crosses twice); each gets its own stop-line lat/lon so
+    it matches the correct icon downstream.
+
+    Coordinates come from the dump's own ``lat``/``lon`` columns when present.
+    Some dumps omit them; in that case we recover each movement's stop-line
+    position from the SUMO net via ``(tls_id, link_index)`` using ``net_file``.
+    This keeps the real signal-dump mode working (all on-route lights replay
+    real colours) without re-running the simulation.
     """
     if not tls_csv or not Path(tls_csv).exists():
         return {}
@@ -104,13 +149,25 @@ def build_tls_dump_history(tls_csv: Path, net_file: Path | None = None) -> dict[
             entry = grouped.get(key)
             if entry is None:
                 try:
-                    lat = float(row.get("lat", "")); lon = float(row.get("lon", ""))
-                except (TypeError, ValueError):
+                    lat = float(row["lat"]); lon = float(row["lon"])
+                except (TypeError, ValueError, KeyError):
                     lat = lon = None
-                entry = {"events": [], "kind": "tls_dump", "lat": lat, "lon": lon}
+                entry = {"events": [], "kind": "tls_dump", "lat": lat, "lon": lon,
+                         "tls_id": tid, "link_index": link}
                 grouped[key] = entry
             entry["events"].append({"time": row.get("time", ""), "state": row.get("state", "")})
-    # Drop any movement we could not geolocate (no coords in the dump).
+    # Recover any coordinates the dump did not carry from the SUMO net (a static
+    # input), so dumps without lat/lon columns still geolocate every movement.
+    missing = [e for e in grouped.values() if e.get("lat") is None]
+    if missing and net_file is not None and Path(net_file).exists():
+        coords = _tls_link_coords_from_net(
+            net_file, {(str(e["tls_id"]), str(e["link_index"])) for e in missing}
+        )
+        for e in missing:
+            ll = coords.get((str(e["tls_id"]), str(e["link_index"])))
+            if ll is not None:
+                e["lat"], e["lon"] = ll
+    # Drop any movement we still could not geolocate.
     return {k: v for k, v in grouped.items() if v.get("lat") is not None}
 
 

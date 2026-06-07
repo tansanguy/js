@@ -23,6 +23,14 @@ results/metrics/*.json
 results/metrics/*.xml
 results/html/*.html
 
+# Visualization deliverables shared on GitHub.
+# Top-level results/html/*.html is regenerable and stays ignored (above).
+# Self-contained HTML report snapshots meant for sharing (a few MB) go under
+# results/html/shared/, which is tracked. Do NOT put raw runs/ FCD here
+# (tens of MB per file) — share those out-of-band (cloud / Release / Git LFS).
+!results/html/shared/
+!results/html/shared/**
+
 # BO-generated parameter suggestions are artifacts. Promote a selected CSV to a
 # named config file before treating it as a reproducible input.
 configs/generated/*.csv

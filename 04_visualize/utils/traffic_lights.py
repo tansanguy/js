@@ -209,6 +209,73 @@ def approximate_state_timeline(
     return timeline
 
 
+def _augment_from_tls_dump(
+    doc: dict[str, Any],
+    per_mode_history: dict[str, dict[str, dict[str, Any]]],
+    modes: list[str],
+    *,
+    route_buffer_m: float = ROUTE_BUFFER_M,
+) -> dict[str, Any]:
+    """Inject ``traffic_lights`` + per-mode ``tls_states`` straight from the dump.
+
+    One icon per recorded movement ``(tls_id, link_index)``, placed at its own
+    stop-line coords, replaying its real colour timeline for the WHOLE run. This
+    bypasses the geojson + position-match + motion-proxy path entirely, so every
+    on-route signal the simulation recorded stays active the whole animation
+    (no proximity gating, no match-gap lights stuck "off"). A movement present in
+    one mode's dump but missing from another shows ``off`` in the latter.
+    """
+    # Union of dumped movements across modes, keyed by the dump key (tls_id#link).
+    positions: dict[str, tuple[float, float]] = {}
+    for m in modes:
+        for key, info in per_mode_history.get(m, {}).items():
+            if info.get("kind") != "tls_dump" or info.get("lat") is None:
+                continue
+            positions.setdefault(key, (info["lat"], info["lon"]))
+
+    kept: list[dict[str, Any]] = []
+    states: dict[str, dict[str, list[list[Any]]]] = {m: {} for m in modes}
+    for key, (lat, lon) in positions.items():
+        s_m: dict[str, float | None] = {}
+        for m in modes:
+            emergency = doc["modes"][m].get("emergency", [])
+            if emergency:
+                d_min, s = project_to_route({"lat": lat, "lon": lon}, emergency)
+                s_m[m] = round(s, 2) if d_min <= route_buffer_m else None
+            else:
+                s_m[m] = None
+            info = per_mode_history.get(m, {}).get(key)
+            if info is not None and info.get("kind") == "tls_dump":
+                anchor = doc["modes"][m].get("depart_time_sec", 0.0)
+                states[m][key] = tls_dump_timeline(info["events"], anchor)
+            else:
+                states[m][key] = [[0.0, STATE_OFF]]
+        kept.append({
+            "tls_id": key,
+            "lat": round(float(lat), 6),
+            "lon": round(float(lon), 6),
+            "phase_count": None,
+            "s_m": s_m,
+            "controlled": True,
+        })
+
+    doc["traffic_lights"] = kept
+    for m in modes:
+        doc["modes"][m]["tls_states"] = states[m]
+    doc.setdefault("meta", {})["tls_approx"] = {
+        "method": "real_tls_dump_direct",
+        "control_matched": {m: len(per_mode_history.get(m, {})) for m in modes},
+        "route_buffer_m": route_buffer_m,
+    }
+    return {
+        "tls_total": len(positions),
+        "tls_kept": len(kept),
+        "per_mode": {m: len(states[m]) for m in modes},
+        "control_used": {m: len(per_mode_history.get(m, {})) for m in modes},
+        "control_matched": {m: len(per_mode_history.get(m, {})) for m in modes},
+    }
+
+
 def augment_doc_with_tls(
     doc: dict[str, Any],
     geojson_path: Path = DEFAULT_TLS_GEOJSON,
@@ -244,6 +311,18 @@ def augment_doc_with_tls(
         per_mode_history = {m: control_history for m in control_modes}
     else:
         per_mode_history = control_history  # already {mode: {...}}
+
+    # When a real per-step dump is present, drive icons straight from it so every
+    # on-route signal replays its real colours for the whole run (see
+    # _augment_from_tls_dump). The geojson/proxy path below is only for the
+    # motion-proxy and B4-control-event fallbacks.
+    dump_present = any(
+        info.get("kind") == "tls_dump"
+        for hist in per_mode_history.values()
+        for info in hist.values()
+    )
+    if dump_present:
+        return _augment_from_tls_dump(doc, per_mode_history, modes, route_buffer_m=route_buffer_m)
 
     def match_to_geo(history: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Position-match each runtime TLS to its nearest on-route geojson light."""
