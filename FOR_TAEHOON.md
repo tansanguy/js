@@ -98,6 +98,8 @@ python -m pytest tests/test_b4_optimization_s1forced.py tests/test_final_destina
 
 세 방법은 같은 `run-id`에 순서대로 누적합니다. 첫 번째 BO 실행이 결과 폴더를 만들고, Random Search와 CMA-ES는 `--append-existing`으로 같은 폴더에 추가합니다.
 
+모든 방법론은 `--theta-per-round 6 --workers 6` 기준으로 실행합니다. 즉 BO, Random Search, CMA-ES 모두 1 round에 theta 6개를 병렬 평가하고, seed 1개당 50 round를 채워 총 300개 theta 후보를 평가합니다.
+
 결과 폴더:
 
 ```text
@@ -186,6 +188,53 @@ CMA-ES는 Python `cma` package의 `CMAEvolutionStrategy`를 사용합니다. 내
 | `figure2_bo_surrogate.png` | BO surrogate trace 그림입니다. |
 | `experiment_summary.json` | 실행 입력, seed, 방법 목록, 산출물 manifest입니다. |
 
+중간에 끊기면 같은 명령에 `--resume`을 붙여 다시 실행합니다. Random Search와 CMA-ES처럼 같은 run-id에 추가하는 단계는 기존처럼 `--append-existing`도 같이 둡니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --methods BO \
+  --resume \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+### 2-5. 시각화 정보 manifest 생성
+
+시각화 팀에 넘길 번들은 아래 명령으로 생성합니다. 이 명령은 새 최적화를 돌리지 않고 `all_evaluations.csv`에서 best theta를 고른 뒤, B04/B4를 한 번씩 `emit_fcd=True, emit_tls_states=True`로 재실행하고 로그 경로 manifest를 생성합니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --collect-visualization-info \
+  --materialize-visualization-logs \
+  --visualization-solution best \
+  --output-dir "09-1 B4 Optimization S1forced/outputs" \
+  --run-root "runs/compact_v9_B4_optimization_s1forced" \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000
+```
+
+출력 위치:
+
+```text
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/visualization_info_<parameter_id>.json
+```
+
+이미 FCD/TLS 로그가 있으면 `--materialize-visualization-logs`만 빼고 검증용 manifest를 다시 만들 수 있습니다. 세부 납품 조건은 `FOR_JUNHYEOK.md`를 따릅니다.
+
 ## 3. 민감도 분석
 
 민감도 분석은 응급차 지연 `delay_A`와 일반차 지연 `delay_N`의 상대 가중치를 바꿔가며 Pareto 후보를 보는 단계입니다.
@@ -236,7 +285,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 절차:
 
 ```text
-1. METHOD_RUN_ID의 all_evaluations.csv에서 PASS row 중 score가 가장 낮은 theta를 선택
+1. `09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/all_evaluations.csv`에서 PASS row 중 score가 가장 낮은 theta를 선택
 2. 18개 목적지 후보를 최신 S1-forced net 기준으로 shortest route 재생성
 3. screening phase에서 후보별 B004 1회, B04 1회, B4 1회 실행
 4. EV 도착, teleport 없음, B4 개선, 실제 Stage2/Stage3 개입 조건으로 후보 필터링
@@ -293,6 +342,7 @@ runs/compact_v9_final_destination_validation/taehoon_final_destination_validatio
 | `--run-id` | 전체 | 결과 폴더 이름입니다. 같은 `run-id`를 쓰면 같은 output 디렉터리를 기준으로 읽고 씁니다. |
 | `--methods` | 방법론 비교, 민감도 | 실행할 최적화 방법입니다. `BO`, `Random Search`, `CMA-ES`를 받을 수 있습니다. alias로 `bo`, `random`, `rs`, `cma`도 됩니다. |
 | `--append-existing` | 방법론 비교 | 같은 `run-id`에 이미 있는 다른 방법 결과를 유지하고 새 방법 결과를 추가합니다. 이미 같은 method가 있으면 중복 방지를 위해 실패합니다. |
+| `--resume` | 방법론 비교, 민감도 | 중간에 끊긴 run-id를 checkpoint와 기존 `all_evaluations.csv` 기준으로 이어서 실행합니다. |
 | `--n` | 방법론 비교 | 방법별 seed 개수입니다. 이번 기준은 `1`입니다. |
 | `--m` | 방법론 비교, 민감도 | seed 하나당 평가 round 수입니다. 이번 기준은 `50`입니다. 민감도에서는 각 weight ratio별 BO round 수로도 쓰입니다. |
 | `--theta-per-round` | 방법론 비교, 민감도 | 한 round에서 병렬 평가하는 theta 개수입니다. 이번 기준은 `6`입니다. |
@@ -307,6 +357,9 @@ runs/compact_v9_final_destination_validation/taehoon_final_destination_validatio
 | `--hard-max-sim-time` | 전체 | EV 미도착/정체 run이 너무 오래 걸리지 않도록 제한하는 최대 시뮬레이션 시간입니다. |
 | `--skip-pareto` | 방법론 비교 | 방법론 3개를 따로 채울 때 민감도 분석을 생략합니다. |
 | `--skip-noise-check` | 방법론 비교, 민감도 | 기준 theta 5회 반복 noise check를 생략합니다. 최종 30-repeat 검증과 혼동하지 않기 위해 별도 단계에서만 필요하면 켭니다. |
+| `--collect-visualization-info` | 시각화 핸드오프 | 새 최적화 없이 selected theta의 B04/B4 FCD/TLS 로그 manifest를 생성합니다. |
+| `--materialize-visualization-logs` | 시각화 핸드오프 | selected theta를 B04/B4로 1회 재실행해서 `fcd.xml`, `tls_states.csv`, `tripinfo.xml`, `signal_events.csv`를 만든 뒤 manifest를 씁니다. |
+| `--visualization-solution` | 시각화 핸드오프 | `best` 또는 특정 `parameter_id`를 지정합니다. 기본은 `best`입니다. |
 | `--theta-all-evaluations` | 최종 분석 | 최종 theta를 고를 `all_evaluations.csv` 경로입니다. |
 | `--theta-method` | 최종 분석 | 최종 theta 후보를 어떤 방법에서 고를지 정합니다. `ALL`이면 BO, Random Search, CMA-ES 전체 PASS row 중 score 최저를 고릅니다. |
 | `--candidate-limit` | 최종 분석 | screening할 목적지 후보 수입니다. 이번 기준은 `18`입니다. |

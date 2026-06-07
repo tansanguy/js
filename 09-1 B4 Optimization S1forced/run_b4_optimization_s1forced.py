@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
@@ -227,6 +228,14 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     temp = path.with_suffix(path.suffix + ".tmp")
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temp.replace(path)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -587,6 +596,7 @@ def build_eval_args(args: argparse.Namespace, seed: int, run_dir: Path, metrics_
         hard_max_sim_time=args.hard_max_sim_time,
         sumo_binary=args.sumo_binary,
         emit_fcd=args.emit_fcd,
+        emit_tls_states=args.emit_tls_states,
         resume=False,
         hold_max=B4ThetaParams.hold_max,
         d_up=B4ThetaParams.d_up,
@@ -1278,6 +1288,38 @@ def select_visualization_solution(rows: list[dict[str, Any]], solution: str) -> 
     return min(matches, key=lambda row: safe_float(row.get("score"), float("inf")))
 
 
+def visualization_method_run_id(run_id: str, solution: dict[str, Any]) -> str:
+    method = str(solution.get("method", ""))
+    seed = int(safe_float(solution.get("seed"), DEFAULT_SEED_BASE))
+    return f"{run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}"
+
+
+def materialize_visualization_logs(args: argparse.Namespace, solution: dict[str, Any]) -> dict[str, Any]:
+    if args.mock_eval:
+        raise B4OptimizationError("visualization_materialize_requires_real_eval")
+    method_run_id = visualization_method_run_id(args.run_id, solution)
+    seed = int(safe_float(solution.get("seed"), args.seed_base))
+    output_dir = args.output_dir / args.run_id
+    eval_args = build_eval_args(args, seed, args.run_root, output_dir)
+    eval_args.emit_fcd = True
+    eval_args.emit_tls_states = True
+    eval_args.workers = 1
+    real_context = prepare_real_context_once(args.run_id, eval_args)
+    theta = {field: solution.get(field, "") for field in THETA_FIELDS}
+    raw = theta_bo.evaluate_theta_repeat({
+        "run_id": method_run_id,
+        "theta": theta,
+        "seed": seed,
+        "repeat": 1,
+        "args": eval_args,
+        "real_context": real_context,
+    })
+    return {
+        "method_run_id": method_run_id,
+        "b4_row": raw,
+    }
+
+
 def collect_visualization_info(args: argparse.Namespace) -> dict[str, Any]:
     if not args.run_id:
         raise B4OptimizationError("visualization_run_id_required")
@@ -1286,33 +1328,56 @@ def collect_visualization_info(args: argparse.Namespace) -> dict[str, Any]:
     if not rows:
         raise B4OptimizationError(f"visualization_missing_all_evaluations:{rel(output_dir / 'all_evaluations.csv')}")
     solution = select_visualization_solution(rows, args.visualization_solution)
-    method = str(solution.get("method", ""))
-    seed = int(safe_float(solution.get("seed"), args.seed_base))
     parameter_id = str(solution.get("parameter_id", ""))
-    method_run_id = f"{args.run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}"
+    materialized: dict[str, Any] = {}
+    if args.materialize_visualization_logs:
+        materialized = materialize_visualization_logs(args, solution)
+    method_run_id = str(materialized.get("method_run_id") or visualization_method_run_id(args.run_id, solution))
     b04_repeat_dir = args.run_root / args.run_id / "B04" / "no_control" / "repeat_001"
     b4_repeat_dir = args.run_root / method_run_id / B4_MODE / parameter_id / "repeat_001"
     required = {
         "b04_fcd": b04_repeat_dir / "fcd.xml",
         "b04_tripinfo": b04_repeat_dir / "tripinfo.xml",
+        "b04_tls_states": b04_repeat_dir / "tls_states.csv",
         "b4_fcd": b4_repeat_dir / "fcd.xml",
         "b4_tripinfo": b4_repeat_dir / "tripinfo.xml",
+        "b4_tls_states": b4_repeat_dir / "tls_states.csv",
         "b4_signal_events": b4_repeat_dir / "signal_events.csv",
     }
     missing = [f"{name}:{rel(path)}" for name, path in required.items() if not path.is_file()]
     if missing:
         raise B4OptimizationError("visualization_missing_required_logs:" + ",".join(missing))
+    active_inputs = read_json(args.active_inputs) if args.active_inputs.is_file() else {}
+    firetruck_route = active_inputs.get("firetruck_route", "")
+    firetruck_route_path = (PROJECT_ROOT / str(firetruck_route)) if firetruck_route else None
+    static_inputs: dict[str, Any] = {
+        "net_file": rel(args.net_file),
+        "net_sha256": sha256_file(args.net_file) if args.net_file.is_file() else "",
+        "background_route": rel(args.background_route),
+        "background_route_sha256": sha256_file(args.background_route) if args.background_route.is_file() else "",
+        "stage1_dir": rel(args.stage1_dir),
+        "active_inputs": rel(args.active_inputs) if args.active_inputs.is_file() else "",
+    }
+    if firetruck_route_path is not None:
+        static_inputs["firetruck_route"] = rel(firetruck_route_path)
+        static_inputs["firetruck_route_sha256"] = sha256_file(firetruck_route_path) if firetruck_route_path.is_file() else ""
     output_path = args.visualization_output or (output_dir / f"visualization_info_{safe_slug(parameter_id)}.json")
     payload = {
         "schema": "compact_v9_B4_visualization_info.v1",
         "generated_at": utc_now(),
         "run_id": args.run_id,
+        "method_run_id": method_run_id,
         "solution_selector": args.visualization_solution,
         "solution": {field: solution.get(field, "") for field in EVALUATION_FIELDS},
+        "best_theta": {field: solution.get(field, "") for field in THETA_FIELDS},
+        "static_inputs": static_inputs,
         "paths": {name: rel(path) for name, path in required.items()},
+        "materialized_logs": bool(args.materialize_visualization_logs),
+        "materialized_b4_row": materialized.get("b4_row", {}),
         "notes": [
-            "FCD logs are required. Re-run the selected solution with --emit-fcd if any path is missing.",
+            "FCD and TLS state logs are required for the visualization bundle.",
             "B04 baseline and B4 theta runs live under different run_id folders in the optimization runner.",
+            "Use --materialize-visualization-logs to re-run the selected solution with emit_fcd=True and emit_tls_states=True before writing this manifest.",
         ],
     }
     write_json(output_path, payload)
@@ -1471,11 +1536,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bo-first", action="store_true", help="Run BO before the other selected methods in a single invocation.")
     parser.add_argument("--append-existing", action="store_true", help="Merge selected method results into an existing run-id instead of starting from an empty comparison.")
     parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true", help="Resume an interrupted run-id from per-method/seed checkpoints and existing all_evaluations.csv rows.")
-    parser.add_argument("--collect-visualization-info", action="store_true", help="Write a manifest for a selected solution's B04/B4 FCD logs without running optimization.")
+    parser.add_argument("--collect-visualization-info", action="store_true", help="Write a manifest for a selected solution's B04/B4 FCD and TLS logs without running optimization.")
+    parser.add_argument("--materialize-visualization-logs", "--generate-visualization-bundle", dest="materialize_visualization_logs", action="store_true", help="Re-run the selected visualization solution once with FCD and TLS state logging before writing the manifest.")
     parser.add_argument("--visualization-solution", default="best", help="Solution parameter_id to collect for visualization, or 'best' for the best PASS row.")
     parser.add_argument("--visualization-output", type=Path, default=None)
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true")
+    parser.add_argument("--emit-tls-states", dest="emit_tls_states", action="store_true")
     parser.add_argument("--skip-pareto", action="store_true")
     parser.add_argument("--skip-noise-check", action="store_true")
     parser.add_argument("--no-pareto-spc-stop", dest="pareto_spc_stop", action="store_false", help="Disable SPC-based early stop for one-search-per-weight Pareto BO sweeps.")
@@ -1494,6 +1561,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("bo_initial_must_be_between_2_and_m_minus_1")
     if args.workers < 1:
         raise B4OptimizationError("workers_must_be_positive")
+    if args.materialize_visualization_logs and args.mock_eval:
+        raise B4OptimizationError("materialize_visualization_logs_requires_real_eval")
     if args.w_emv < 0.0 or args.w_veh < 0.0:
         raise B4OptimizationError("weights_must_be_nonnegative")
     if args.w_emv + args.w_veh <= 0.0:

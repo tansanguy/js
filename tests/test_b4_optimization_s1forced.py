@@ -260,8 +260,10 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
             for path in [
                 b04_dir / "fcd.xml",
                 b04_dir / "tripinfo.xml",
+                b04_dir / "tls_states.csv",
                 b4_dir / "fcd.xml",
                 b4_dir / "tripinfo.xml",
+                b4_dir / "tls_states.csv",
                 b4_dir / "signal_events.csv",
             ]:
                 path.write_text("stub\n", encoding="utf-8")
@@ -285,7 +287,33 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
             payload = self.runner.read_json(manifest)
             self.assertEqual(payload["solution"]["parameter_id"], parameter_id)
             self.assertIn("b04_fcd", payload["paths"])
+            self.assertIn("b04_tls_states", payload["paths"])
+            self.assertIn("b4_tls_states", payload["paths"])
             self.assertIn("b4_signal_events", payload["paths"])
+            self.assertEqual(payload["best_theta"]["parameter_id"], parameter_id)
+            self.assertIn("net_sha256", payload["static_inputs"])
+            self.assertFalse(payload["materialized_logs"])
+
+    def test_emit_tls_states_flows_to_eval_args(self):
+        args = self.runner.parse_args([
+            "--mock-eval",
+            "--run-id",
+            "tls_contract",
+            "--n",
+            "1",
+            "--m",
+            "4",
+            "--bo-initial",
+            "2",
+            "--emit-fcd",
+            "--emit-tls-states",
+        ])
+        self.runner.validate_args(args)
+
+        eval_args = self.runner.build_eval_args(args, args.seed_base, args.run_root, args.output_dir / "tls_contract")
+
+        self.assertTrue(eval_args.emit_fcd)
+        self.assertTrue(eval_args.emit_tls_states)
 
     def test_mock_run_writes_best_so_far_and_surrogate_contracts(self):
         with tempfile.TemporaryDirectory() as tmp:

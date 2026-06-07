@@ -874,6 +874,7 @@ def evaluate_theta_repeat(job: dict[str, Any]) -> dict[str, Any]:
         args.sumo_binary,
         args.emit_fcd,
         B4ThetaParams.from_row(theta_params),
+        emit_tls_states=getattr(args, "emit_tls_states", False),
     )
 
 
@@ -1112,6 +1113,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true")
+    parser.add_argument("--emit-tls-states", dest="emit_tls_states", action="store_true")
     return parser.parse_args(argv)
 
 

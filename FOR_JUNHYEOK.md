@@ -8,11 +8,12 @@
 
 ## 0. 한 줄 요약
 
-지도 애니메이션 + 신호 현시 시각화를 하려면, 시뮬레이션 팀이 **best theta를 잠근 채 `--emit-fcd`와 `emit_tls_states=True`를 둘 다 켜고 B04/B4를 재실행**해서, 아래 "납품 번들"을 넘겨주면 됩니다.
+지도 애니메이션 + 신호 현시 시각화를 하려면, 시뮬레이션 팀이 **FOR_TAEHOON.md의 고정 예산 실행 결과에서 best theta를 고른 뒤, FCD 로그와 신호 상태 로그가 있는지 검증해서 아래 "납품 번들"을 넘겨주면 됩니다.**
 
 ```text
-[시뮬 팀]  best theta 확보(FOR_TAEHOON 흐름)
-        -> 그 theta로 emit-fcd + emit-tls 재실행 (B04 + B4)
+[시뮬 팀]  best theta 확보(FOR_TAEHOON 흐름: n=1, m=50, theta-per-round=6, workers=6)
+        -> 필요하면 그 theta로 emit-fcd + emit-tls 재실행 (B04 + B4)
+        -> --collect-visualization-info로 FCD/TLS 로그 manifest 검증/생성
         -> 납품 번들(아래 구조) 전달
 [시각화 팀] 번들만 읽어서 HTML 애니메이션 생성 (시뮬 무수정)
 ```
@@ -48,15 +49,15 @@ run_b4_task (..., emit_fcd=True, emit_tls_states=True)
 - `emit_fcd=True` → `fcd.xml` 생성. FCD는 자동으로 `geo=true`(x=lon, y=lat), `distance=true`, `period=1s`, `begin=600s`로 나옵니다 (`09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py:299-305`).
 - `emit_tls_states=True` → `tls_states.csv` 생성. **이게 신호 현시 시각화의 핵심**입니다.
 
-### 2-2. ⚠️ 정본 러너 2개는 신호 덤프를 안 만듭니다
+### 2-2. ⚠️ 신호 덤프는 명시적으로 켜야 합니다
 
 | 러너 | `--emit-fcd` | `emit_tls_states` |
 | --- | --- | --- |
-| `09-1 .../run_b4_optimization_s1forced.py` | ✅ 있음 | ❌ **안 켬** |
+| `09-1 .../run_b4_optimization_s1forced.py` | ✅ 있음 | ✅ `--emit-tls-states` 또는 `--materialize-visualization-logs` |
 | `10 Final Destination Validation/final_destination_validation.py` | ✅ 있음 | ❌ **안 켬** |
 | `09 .../rerun_b4_best_theta_fcd.py` | ✅ | ✅ (둘 다 True) |
 
-→ 정본 최적화/검증 러너에 `--emit-fcd`만 붙이면 **FCD만 나오고 신호 덤프(`tls_states.csv`)는 안 나옵니다.** 신호 시각화가 불가능해집니다. 따라서 **시각화용 데이터는 `rerun_b4_best_theta_fcd.py` 경로(또는 동등하게 `emit_tls_states=True`를 켠 재실행)로 뽑아야 합니다.**
+→ `--emit-fcd`만 붙이면 **FCD만 나오고 신호 덤프(`tls_states.csv`)는 안 나옵니다.** 신호 시각화가 불가능합니다. 따라서 시각화용 데이터는 `--materialize-visualization-logs` 경로 또는 동등하게 `emit_tls_states=True`를 켠 재실행으로 뽑아야 합니다.
 
 ### 2-3. `tls_states.csv`의 `lat, lon` 컬럼 (권장)
 
@@ -99,7 +100,7 @@ run_b4_task (..., emit_fcd=True, emit_tls_states=True)
   "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
   "route_rou": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
   "stage1_dir": "data_prepared/compact_v9/b4_stage1_s1forced",
-  "method_run_id": "taehoon_s1forced_methods_n15_m50",
+  "method_run_id": "taehoon_s1forced_methods_n1_m50_t6",
   "best_theta_parameter_id": "<parameter_id>",
   "best_theta": { "t_lead": 0, "delta_T_thr": 0, "G_ext": 0, "Q_ratio": 0, "tau": 0 },
   "hard_max_sim_time": 4000,
@@ -113,28 +114,58 @@ run_b4_task (..., emit_fcd=True, emit_tls_states=True)
 
 ---
 
-## 5. 실행 레시피 (best theta로 emit-fcd 재실행)
+## 5. 실행 레시피 (best theta 선택 → 시각화 manifest 생성)
 
 ### 5-1. best theta 확보 (FOR_TAEHOON 흐름)
 
-`09-1 .../outputs/${METHOD_RUN_ID}/all_evaluations.csv`에서 **PASS row 중 `score`가 가장 낮은 theta**가 best입니다 (FOR_TAEHOON.md 4절과 동일 기준).
+정본 방법론 비교 결과는 아래 파일입니다.
 
-### 5-2. 그 theta로 FCD + 신호 덤프 재실행
+```text
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/all_evaluations.csv
+```
 
-기존 도구 `09 Compact Corridor Baseline/rerun_b4_best_theta_fcd.py`가 **B04(무제어) + B4(제어)를 한 번에 `emit_fcd=True, emit_tls_states=True`로 재실행**합니다. 결과는 `runs/final/compact_v9_B4_viz/<run-id>_viz/`에 떨어집니다.
+이 파일에서 **도착 성공, teleport 없음, PASS/WARNING row 중 `score`가 가장 낮은 theta**가 시각화용 best입니다. 현재 `09-1` runner의 `--collect-visualization-info --visualization-solution best`가 같은 기준으로 best row를 고릅니다.
+
+### 5-2. 그 theta로 FCD + 신호 덤프 생성
+
+정본 방법은 `09-1` runner의 시각화 materialize 모드입니다. 이 명령은 `all_evaluations.csv`에서 best theta를 고른 뒤, B04(무제어) + B4(제어)를 한 번씩 `emit_fcd=True, emit_tls_states=True`로 재실행하고 manifest를 씁니다.
 
 ```bash
-.venv/bin/python "09 Compact Corridor Baseline/rerun_b4_best_theta_fcd.py" \
-  --bo-run-id <run-id> \
-  --run-id <run-id>_viz \
+.venv/bin/python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --collect-visualization-info \
+  --materialize-visualization-logs \
+  --visualization-solution best \
+  --output-dir "09-1 B4 Optimization S1forced/outputs" \
+  --run-root "runs/compact_v9_B4_optimization_s1forced" \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000
 ```
 
-⚠️ **연결 필요 한 가지:** 이 스크립트는 현재 theta를 `results/metrics/compact_v9_B4_theta_bo/<run-id>/bo_loop_summary.json`(옛 BO 러너 산출)에서 읽습니다. 최신 정본 theta는 `09-1 .../outputs/<METHOD_RUN_ID>/all_evaluations.csv`에 있으므로, 둘 중 하나가 필요합니다:
-- (a) `rerun_b4_best_theta_fcd.py:load_best_theta`가 `all_evaluations.csv`를 읽도록 확장, 또는
-- (b) best theta 값을 직접 전달하는 옵션 추가.
+이 경로는 옛 BO 산출물(`bo_loop_summary.json`)을 읽지 않습니다. 입력 theta는 항상 `09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/all_evaluations.csv`의 selected row입니다.
 
-이건 시뮬레이션 쪽 작업이라 시각화 팀이 손대지 않습니다. 연결만 해주시면 됩니다.
+### 5-3. FCD/TLS 로그 manifest 생성/검증
+
+FCD/TLS 로그가 이미 만들어져 있으면 `--materialize-visualization-logs` 없이 검증만 할 수 있습니다.
+
+```bash
+.venv/bin/python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --collect-visualization-info \
+  --visualization-solution best \
+  --output-dir "09-1 B4 Optimization S1forced/outputs" \
+  --run-root "runs/compact_v9_B4_optimization_s1forced"
+```
+
+기본 출력:
+
+```text
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/visualization_info_<parameter_id>.json
+```
+
+이 모드는 **새 시뮬레이션을 돌리지 않고** 기존 B04/B4 `fcd.xml`, `tripinfo.xml`, `tls_states.csv`, `signal_events.csv` 존재 여부를 검증합니다. 빠진 파일이 있으면 먼저 5-2처럼 selected theta를 재실행해서 로그를 만든 뒤 다시 실행합니다.
 
 ---
 
