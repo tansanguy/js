@@ -247,7 +247,7 @@ theta 선택 정책:
 | `final` | 선택된 3개 후보를 30회 반복 검증합니다. |
 | `all` | screening과 final을 같은 run-id로 이어서 실행합니다. |
 
-final phase의 기본 출발시각은 seed `20260606`으로 route/repeat별 deterministic random 값입니다. 범위는 `550s`부터 `650s`입니다. 최종 검증 runner는 현재 `workers=1`만 지원합니다.
+final phase의 기본 출발시각은 seed `20260606`으로 route/repeat별 deterministic random 값입니다. 범위는 `550s`부터 `650s`입니다. 최종 검증 runner는 candidate route 단위 병렬 실행을 지원하며, 기본 실행값은 `--workers 6`입니다. 한 candidate 내부의 B004/B04/B4 반복은 같은 worker에서 순차 실행됩니다.
 
 ### 실행
 
@@ -267,6 +267,7 @@ Dry-run:
   --phase all \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
   --theta-method ALL \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 
@@ -276,6 +277,7 @@ screening만 먼저 실행:
 .venv/bin/python "10 Final Destination Validation/final_destination_validation.py" \
   --phase screening \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 
@@ -285,6 +287,7 @@ screening만 먼저 실행:
 .venv/bin/python "10 Final Destination Validation/final_destination_validation.py" \
   --phase final \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 

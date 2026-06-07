@@ -19,6 +19,7 @@ import random
 import shutil
 import sys
 import xml.etree.ElementTree as ET
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,6 +74,7 @@ DEFAULT_CANDIDATE_LIMIT = 18
 DEFAULT_FINAL_SELECTION_COUNT = 3
 DEFAULT_START_EDGE = "420331801#1"
 DEFAULT_HARD_MAX_SIM_TIME = 4000.0
+DEFAULT_WORKERS = 6
 EV_ID = "emergency_0"
 THETA_FIELDS = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
 PHASE_SCREENING = "screening"
@@ -878,6 +880,19 @@ def run_candidate(
     return rows
 
 
+def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path]) -> dict[str, Any]:
+    index, args, candidate, departures, params, run_root, output_root = payload
+    route_rows = run_candidate(args, candidate, departures, params, run_root, output_root)
+    route_id = str(candidate["route_id"])
+    return {
+        "index": index,
+        "route_id": route_id,
+        "route_rows": route_rows,
+        "candidate_row": summarize_candidate(candidate, route_rows),
+        "average_rows": average_rows(route_rows, route_id),
+    }
+
+
 def t_emv(row: dict[str, Any]) -> float | None:
     value = row.get("T_actual_EMV_sec")
     if row.get("mode") == B004_MODE and value in {"", None}:
@@ -1126,8 +1141,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise FinalDestinationValidationError("final_selection_count_must_be_positive")
     if args.depart_min > args.depart_max:
         raise FinalDestinationValidationError("depart_min_must_be_lte_depart_max")
-    if args.workers != 1:
-        raise FinalDestinationValidationError("workers_other_than_1_not_supported_for_traci_final_validation")
+    if args.workers < 1:
+        raise FinalDestinationValidationError("workers_must_be_positive")
     if not args.dry_run and shutil.which(args.sumo_binary or "sumo") is None:
         raise FinalDestinationValidationError("missing_executable:sumo")
     args.run_id = args.run_id or default_run_id()
@@ -1402,15 +1417,47 @@ def run_validation_phase(
     all_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = precheck_excluded_candidate_rows(candidates)
     rows_by_route: dict[str, list[dict[str, Any]]] = {}
-    for candidate in runnable_candidates:
-        route_rows = run_candidate(args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root)
-        rows_by_route[candidate["route_id"]] = route_rows
-        all_rows.extend(route_rows)
-        candidate_rows.append(summarize_candidate(candidate, route_rows))
-        write_csv(output_root / candidate["route_id"] / "route_runs.csv", route_rows, RUN_FIELDS)
-        write_csv(output_root / candidate["route_id"] / "mode_averages.csv", average_rows(route_rows, candidate["route_id"]), AVERAGE_FIELDS)
-        write_csv(output_root / "all_route_runs.partial.csv", all_rows, RUN_FIELDS)
-        write_csv(output_root / "candidate_selection.partial.csv", candidate_rows, CANDIDATE_FIELDS)
+
+    def write_candidate_partials(completed: dict[int, dict[str, Any]]) -> None:
+        ordered = [completed[index] for index in sorted(completed)]
+        partial_rows = [row for result in ordered for row in result["route_rows"]]
+        partial_candidate_rows = [
+            *precheck_excluded_candidate_rows(candidates),
+            *[result["candidate_row"] for result in ordered],
+        ]
+        write_csv(output_root / "all_route_runs.partial.csv", partial_rows, RUN_FIELDS)
+        write_csv(output_root / "candidate_selection.partial.csv", partial_candidate_rows, CANDIDATE_FIELDS)
+
+    completed_results: dict[int, dict[str, Any]] = {}
+    max_workers = min(args.workers, len(runnable_candidates)) if runnable_candidates else 1
+    if max_workers == 1:
+        for index, candidate in enumerate(runnable_candidates):
+            result = run_candidate_worker((index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root))
+            completed_results[index] = result
+            write_csv(output_root / result["route_id"] / "route_runs.csv", result["route_rows"], RUN_FIELDS)
+            write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
+            write_candidate_partials(completed_results)
+    else:
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(
+                    run_candidate_worker,
+                    (index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root),
+                )
+                for index, candidate in enumerate(runnable_candidates)
+            ]
+            for future in as_completed(futures):
+                result = future.result()
+                completed_results[int(result["index"])] = result
+                write_csv(output_root / result["route_id"] / "route_runs.csv", result["route_rows"], RUN_FIELDS)
+                write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
+                write_candidate_partials(completed_results)
+
+    ordered_results = [completed_results[index] for index in sorted(completed_results)]
+    for result in ordered_results:
+        rows_by_route[result["route_id"]] = result["route_rows"]
+        all_rows.extend(result["route_rows"])
+        candidate_rows.append(result["candidate_row"])
     selected_candidates = select_final_candidates(candidate_rows, args.final_selection_count)
     candidate_rows = mark_selected_candidate_rows(candidate_rows, selected_candidates)
     selected_route_ids = [str(row["route_id"]) for row in selected_candidates]
@@ -1608,7 +1655,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--depart-min", type=float, default=DEFAULT_DEPART_MIN)
     parser.add_argument("--depart-max", type=float, default=DEFAULT_DEPART_MAX)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
-    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
     parser.add_argument("--metrics-root", type=Path, default=DEFAULT_METRICS_ROOT)

@@ -26,7 +26,7 @@
 | `FINAL_REPEATS` | `30` | 최종 선택된 목적지 3개를 B04/B4 각각 30회 반복 검증합니다. |
 | `FINAL_SELECTION_COUNT` | `3` | screening 후 최종 목적지 3개를 고릅니다. |
 
-주의: 최적화 단계는 `WORKERS=6`을 기본으로 둡니다. 단, `10 Final Destination Validation/final_destination_validation.py`는 현재 코드에서 TraCI final validation을 `--workers 1`만 허용합니다. 그래서 최종 분석 명령만 `--workers 1`로 실행해야 합니다.
+최적화와 최종 분석 모두 `WORKERS=6`을 기본으로 둡니다. 최종 분석은 candidate route 단위로 병렬화되며, 한 candidate 내부의 B004/B04/B4 반복은 같은 worker에서 순차 실행됩니다.
 
 공통 입력은 최신 S1-forced 기준입니다.
 
@@ -253,7 +253,7 @@ python "10 Final Destination Validation/final_destination_validation.py" \
   --depart-min 550 \
   --depart-max 650 \
   --seed 20260606 \
-  --workers 1 \
+  --workers "$WORKERS" \
   --run-id "$FINAL_RUN_ID" \
   --net "$NET_FILE" \
   --background-route "$BACKGROUND_ROUTE" \
@@ -290,7 +290,7 @@ runs/compact_v9_final_destination_validation/${FINAL_RUN_ID}/
 | `--n` | 방법론 비교 | 방법별 seed 개수입니다. 이번 기준은 `15`입니다. |
 | `--m` | 방법론 비교, 민감도 | seed 하나당 평가 round 수입니다. 이번 기준은 `50`입니다. 민감도에서는 각 weight ratio별 BO round 수로도 쓰입니다. |
 | `--bo-initial` | BO, 민감도 | BO 초기 random observation 수입니다. `2 <= bo_initial < m`이어야 합니다. 이번 기준은 `10`입니다. |
-| `--workers` | 최적화 | SUMO 평가 병렬 worker 수입니다. 이번 최적화 기본값은 `6`입니다. 최종 목적지 검증은 현재 코드 제약으로 `1`만 지원합니다. |
+| `--workers` | 전체 | SUMO 평가 병렬 worker 수입니다. 이번 기본값은 `6`입니다. 최적화는 theta 평가 단위, 최종 목적지 검증은 candidate route 단위로 병렬 실행합니다. |
 | `--ei-candidate-count` | BO, 민감도 | GP/ESSI acquisition이 다음 theta를 고르기 위해 sampling하는 후보 수입니다. 값이 클수록 후보 탐색은 촘촘하지만 시간이 늘어납니다. |
 | `--net-file` | 최적화 | S1-forced B04/B4 SUMO network 파일입니다. |
 | `--net` | 최종 분석 | 최종 목적지 검증에서 사용할 SUMO network 파일입니다. 최적화 runner의 `--net-file`과 같은 의미입니다. |

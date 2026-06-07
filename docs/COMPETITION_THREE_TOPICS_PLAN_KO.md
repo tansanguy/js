@@ -308,6 +308,7 @@ BO를 먼저 별도 실행한 뒤 나머지 두 방법론을 이어붙일 수 �
   --phase all \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
   --theta-method ALL \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 

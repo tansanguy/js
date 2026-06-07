@@ -46,6 +46,7 @@ ESSI는 9-1 BO acquisition 구성요소입니다. 10번의 3개 목적지 선택
 ```bash
 .venv/bin/python "10 Final Destination Validation/final_destination_validation.py" \
   --phase all \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 
@@ -56,6 +57,7 @@ ESSI는 9-1 BO acquisition 구성요소입니다. 10번의 3개 목적지 선택
   --phase all \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
   --theta-method ALL \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 
@@ -64,6 +66,7 @@ screening만 먼저 실행할 수 있습니다.
 ```bash
 .venv/bin/python "10 Final Destination Validation/final_destination_validation.py" \
   --phase screening \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 
@@ -72,6 +75,7 @@ screening만 먼저 실행할 수 있습니다.
 ```bash
 .venv/bin/python "10 Final Destination Validation/final_destination_validation.py" \
   --phase final \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 

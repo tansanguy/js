@@ -246,6 +246,7 @@ python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
 python "10 Final Destination Validation/final_destination_validation.py" \
   --phase all \
   --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
+  --workers 6 \
   --run-id final_destination_validation_001
 ```
 

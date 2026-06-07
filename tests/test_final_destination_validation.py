@@ -59,6 +59,28 @@ class FinalDestinationValidationTest(unittest.TestCase):
             self.module.DEFAULT_BASE_STAGE1_DIR,
             PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced",
         )
+        self.assertEqual(self.module.parse_args([]).workers, 6)
+
+    def test_validate_args_allows_six_workers_for_final_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            theta_csv = Path(tmp) / "all_evaluations.csv"
+            theta_csv.write_text(
+                "method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,score,final_status\n",
+                encoding="utf-8",
+            )
+            args = self.module.parse_args([
+                "--dry-run",
+                "--theta-all-evaluations",
+                str(theta_csv),
+                "--workers",
+                "6",
+                "--run-id",
+                "workers_six_validation",
+            ])
+
+            self.module.validate_args(args)
+
+        self.assertEqual(args.workers, 6)
 
     def test_planned_task_rows_are_61_per_candidate(self):
         candidates = [{"route_id": "FINAL_DEST_A", "candidate_rank": 1, "route_xml": "route.xml", "stage1_dir": "stage1"}]
