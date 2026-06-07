@@ -1,0 +1,38 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
+  "generated_at": "2026-06-07T12:47:17.790248+00:00",
+  "run_id": "s1forced_latest_algorithm_verification",
+  "mock_eval": false,
+  "n": 1,
+  "m": 4,
+  "methods": [
+    "Random Search",
+    "CMA-ES",
+    "BO"
+  ],
+  "seeds": [
+    20260607
+  ],
+  "bo_algorithm": "GP+EI+ESSI",
+  "essi_lambda": 0.35,
+  "objective": {
+    "score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N",
+    "w_emv": 10.0,
+    "w_veh": 1.0
+  },
+  "fixed_budget_policy": "Each round is one evaluated theta; best-so-far records cumulative minimum score.",
+  "outputs": {
+    "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/all_evaluations.csv",
+    "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/table1_best_so_far.csv",
+    "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/table2_bo_surrogate.csv",
+    "table3_pareto_csv": "",
+    "table4_sensitivity_spc_csv": "",
+    "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/bo_spatial_subspaces.json",
+    "noise_check_csv": "",
+    "figure1_png": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/figure1_best_so_far.png",
+    "figure2_png": "09-1 B4 Optimization S1forced/outputs/s1forced_latest_algorithm_verification/figure2_bo_surrogate.png",
+    "figure3_png": "",
+    "figure4_png": ""
+  },
+  "noise_check": {}
+}

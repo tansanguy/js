@@ -148,6 +148,8 @@ def parse_fcd(
                         speed_kmh=speed_kmh,
                         angle=_float(veh.get("angle")),
                         dist_m=_float(veh.get("distance")),
+                        lane_id=veh.get("lane", ""),
+                        lane_pos_m=_float(veh.get("pos")),
                     )
                 )
             elif keep_background:

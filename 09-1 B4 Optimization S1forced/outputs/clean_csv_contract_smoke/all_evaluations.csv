@@ -1,0 +1,13 @@
+method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,best_so_far,penalty,final_status,failure_reason,termination_reason,emergency_arrived,emergency_teleport,background_teleported,signal_event_count,stage2_hold_count,stage3_preemption_count,surrogate_mean,surrogate_ci_low,surrogate_ci_high,acquisition,ei_acquisition,essi_adjusted_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score
+Random Search,20260607,1,rs_r01_001_tl48_dt220_ge9_qr22_tau77,48,220,9,0.22,0.77,122.20,108.18,120.93,120.93,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+Random Search,20260607,2,rs_r02_001_tl30_dt8_ge26_qr51_tau79,30,8,26,0.51,0.79,231.06,109.77,220.03,120.93,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+Random Search,20260607,3,rs_r03_001_tl91_dt34_ge11_qr77_tau83,91,34,11,0.77,0.83,60.00,115.79,65.07,65.07,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+Random Search,20260607,4,rs_r04_001_tl118_dt71_ge29_qr60_tau90,118,71,29,0.6,0.9,60.00,126.35,66.03,65.07,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,1,cma_r01_001_tl34_dt25_ge1_qr76_tau84,34,25,1,0.76,0.84,308.07,101.85,289.32,289.32,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,2,cma_r02_001_tl62_dt161_ge20_qr0_tau90,62,161,20,0.0,0.9,60.00,118.95,65.36,65.36,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,3,cma_r03_001_tl37_dt202_ge8_qr64_tau71,37,202,8,0.64,0.71,215.04,106.06,205.13,65.36,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,4,cma_r04_001_tl46_dt177_ge39_qr53_tau72,46,177,39,0.53,0.72,60.00,118.24,65.29,65.29,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,65.22,65.22,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+BO,20260607,2,bo_init_001_tl120_dt59_ge19_qr20_tau87,120,59,19,0.2,0.87,60.00,125.30,65.94,65.22,0.00,PASS,,,True,False,,,,,,,,,,,,,,,,,,,,,
+BO,20260607,3,bo_r03_001_tl5_dt127_ge8_qr61_tau79,5,127,8,0.61,0.79,382.37,98.99,356.61,65.22,0.00,PASS,,,True,False,,,,,65.58,64.87,66.29,0.04,0.03,0.04,0.00,0.00,0.00,0.00,0.02,0.01,0.02,0.01,-4.10335952,5,0.561277
+BO,20260607,4,bo_r04_001_tl106_dt59_ge34_qr77_tau82,106,59,34,0.77,0.82,60.00,125.66,65.97,65.22,0.00,PASS,,,True,False,,,,,162.59,-106.31,431.49,25.00,18.96,25.00,5.66,3.73,4.40,3.65,17.27,8.91,17.27,7.27,2.84911493,5,0.911214

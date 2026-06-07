@@ -1,196 +1,195 @@
 # Compact V9 Corridor Baseline
 
-이 폴더는 기존 expanded V7/B3 맵이 실험 목적보다 과도하게 커진 문제를 해결하기 위해 만든 새 맵 파이프라인입니다.
+이 폴더는 중부소방서-서울역 Compact V9 corridor의 B04 no-control baseline, B4 Stage1 artifact, B04/B4 runtime 실행을 관리합니다. 현재 최종 검증 정본은 S1-forced net과 `B04_ad_stage23_trigger` demand를 쓰는 `B04_B4_S1_FORCED_OPTIMIZATION` profile입니다.
 
-목표는 서울역과 중부소방서를 두 초점으로 하는 최소 타원형 corridor 맵을 만들고, 사용자가 HTML로 맵을 accept한 뒤 수요와 B0/B3 실험으로 넘어가는 것입니다.
+## 최신 정본
 
-## 현재 구현 범위
+| 항목 | 값 |
+| --- | --- |
+| net | `09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml` |
+| demand | `data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml` |
+| B04/B0 metric source | `results/metrics/compact_v9_B04/B04_ad_stage23_trigger/` |
+| Stage1 | `data_prepared/compact_v9/b4_stage1_s1forced` |
+| Stage1 measurement source | `B04_ad_stage23_trigger` |
+| active input manifest | `configs/compact_v9_B04_B4_active_inputs.json` |
+| 최종 최적화 runner | `09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py` |
+| 목적함수 | `Score = (10/11) * delay_A + (1/11) * delay_N` |
 
-- 서울역/소방서를 초점으로 하는 타원형 분석 영역 생성
-- 기존 expanded OSM 원본을 재사용하되 최종 SUMO net은 타원 polygon 내부 edge만 유지
-- 퇴계로 S1-S22 현실 CSV 매핑
-- `1 edge = 1 차선수` 방식의 메인도로 차선 복구
-- 퇴계로 메인도로 1차선 금지
-- 전역 `3→1` 차로 급감 금지 audit
-- 소방서 진입부 virtual entry TLS 후보 생성
-- 소방차 서울역 전방 route 생성
-- HTML 리뷰 및 accept gate 준비
+## 최신 문서
 
-기준 현실 CSV:
+| 문서 | 역할 |
+| --- | --- |
+| `README.md` | 9번 계열 실행 매뉴얼입니다. |
+| `B4_09_RUN_CONDITIONS_AUDIT_KO.md` | 최신 입력과 자동 감사 기준입니다. |
+| `B4_FINAL_DECISION_VARIABLES_IMPLEMENTATION_AUDIT_KO.md` | `/Users/junlee/Desktop/js/1 4 최종_결정변수와 알고리즘 3773b21010b280f69473f5455be7ec01.md` 구현 적합도 감사입니다. |
+| `B4_FINAL_DECISION_VARIABLES_REVIEW_TODO_KO.md` | 확인할 것, 부족한 것, 의심스러운 것 점검표입니다. |
+| `B4_OPTIMIZATION_FLOW_CURRENT_KO.md` | 비교 실험, 단일 BO, Pareto 가중치 sweep 흐름 설명입니다. |
 
-`/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv`
-
-## 실행
+## 1. 환경 확인
 
 ```bash
-.venv/bin/python "09 Compact Corridor Baseline/step01_build_compact_map_review.py"
+cd /Users/junlee/Desktop/js
 ```
 
-리뷰 HTML:
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+```
 
-`/Users/junlee/Desktop/js/results/html/compact_v9_map_review.html`
+```bash
+.venv/bin/python 00_setup/verify_env.py
+```
 
-맵을 accept한 뒤에는 다음 JSON을 생성해 후속 수요/B0 단계에서 gate로 사용합니다.
+## 2. 실행 조건 감사
 
-`/Users/junlee/Desktop/js/data_prepared/compact_v9/acceptance/compact_v9_map_acceptance.json`
+```bash
+.venv/bin/python "09-1 B4 Optimization S1forced/audit_09_run_conditions.py"
+```
 
-## B04 Baseline 실행
+정상 기대값은 `FAIL=0`, `WARN=0`, `INFO=0`입니다.
 
-B04는 Compact V9 도로망에서 신호/수요 baseline을 만들고, B4가 사용할 B0 측정 proxy를 생성하는 단계입니다. 전체를 한 번에 재생성할 때는 다음 명령을 사용합니다.
+## 3. B04 Baseline 실행
+
+B04는 Compact V9 도로망에서 신호/수요 baseline을 만들고, B4 Stage1이 읽을 B0 측정 proxy를 생성하는 단계입니다. 최종 후보만 재생성할 때는 아래 순서로 실행합니다.
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-build-demand --candidates B04_ad_stage23_trigger
+```
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-run-b0 --candidates B04_ad_stage23_trigger --force
+```
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-validate --candidates B04_ad_stage23_trigger
+```
+
+현재 확인된 validation 상태는 `WARN`입니다. `B04_ad_stage23_trigger`의 S1-forced canonical 신호망/수요 run은 `emergency_arrived=true`, `emergency_teleport=false`, `background_teleported=0`, `stage23_teleported=0`, `base_background_teleported=0`, `speed_sanity_fail_count=0`, `metric_invalid_count=0`, `free_count=0`, `speed_mae_kmh=4.773`, `travel_time_mae_s=23.35`, `queue_top10_overlap=4`입니다. `queue_top10_overlap`은 병목 위치 정합성 진단값으로 유지하지만 validation 실패 조건으로 사용하지 않습니다.
+
+09-1 real smoke는 S1-forced net으로 B04 baseline을 다시 돌립니다. S1-forced net의 EV route uncontrolled minor connection 3개를 priority `M`으로 보정하고, `347237859#0`을 지나는 기존 비-Stage23 배경 수요를 제거해 Stage23 trigger만 남기면서 baseline gate를 통과했습니다. split 재배치 probe는 09-1 평가에 FAIL이 섞여 canonical에서 제외했습니다. smoke baseline은 `final_status=PASS`, `termination_reason=ev_arrived_min_summary`, `T_actual_EMV_sec=451.0`, `emergency_arrived=true`, `emergency_teleport=false`, `background_teleported=0`입니다.
+
+Stage23 삽입량, 자연 route, 도착시각 역산 time-window grid를 재탐색하려면 다음 명령을 사용합니다. 기본 grid는 720개 후보이며, 개발 확인에는 `--max-candidates`를 지정할 수 있습니다.
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-calibrate-stage23 --candidates-grid default
+```
+
+2026-06-07 기준으로 최종 canonical 수요는 `results/metrics/compact_v9_B04/B04_ad_stage23_trigger/B04_segment_speed_recall.csv`에서 확인합니다. 추가 수요 보강 실험은 `queue_top10_overlap`을 올리기 전에 다른 S구간의 속도/정체 균형을 깨는 경향이 있어 canonical에서 제외했고, overlap 수치는 preflight gate가 아닌 진단 지표로 둡니다.
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-queue-audit --candidate B04_ad_stage23_trigger
+```
+
+```bash
+.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-traffic-demand-review --candidate B04_ad_stage23_trigger
+```
+
+전체 B04 준비 절차를 한 번에 재생성하려면 다음 명령을 사용합니다.
 
 ```bash
 .venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-all
-```
-
-단계별 실행이 필요하면 아래 순서로 실행합니다.
-
-```bash
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-adopt-green18
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-map-segments
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-target-profile
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-build-demand --candidates B04_ad_variance_smoothed
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-run-b0 --candidates B04_ad_variance_smoothed
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-validate --candidates B04_ad_variance_smoothed
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-queue-audit --candidate B04_ad_variance_smoothed
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-traffic-demand-review --candidate B04_ad_variance_smoothed
-.venv/bin/python "09 Compact Corridor Baseline/b04_baseline_pipeline.py" b04-review
 ```
 
 ### B04 명령 의미
 
 | 명령 | 의미 | 주요 산출물 |
 | --- | --- | --- |
-| `b04-adopt-green18` | B04 기준 신호 net을 채택합니다. | `data_prepared/compact_v9/net/...B04_green18.net.xml` |
-| `b04-map-segments` | 퇴계로 S1-S22 현실 CSV와 SUMO edge를 매핑합니다. | segment-edge mapping CSV |
-| `b04-target-profile` | 현실 속도/통행시간/수요 target profile을 만듭니다. | target profile CSV |
 | `b04-build-demand` | B04 후보 수요 route 파일을 생성합니다. | `data_prepared/compact_v9/demand/background_routes_compact_v9_B04_*.rou.xml` |
 | `b04-run-b0` | 신호 제어 없는 B04/B0 SUMO run을 실행합니다. | `results/metrics/compact_v9_B04/{candidate}/` |
 | `b04-validate` | B04 후보의 속도, 수요, queue proxy 재현성을 검증합니다. | candidate validation JSON/CSV |
 | `b04-queue-audit` | B4 Stage1이 읽을 queue proxy와 measurement diagnostic을 생성합니다. | `results/metrics/compact_v9_B04/queue_audit/` |
 | `b04-traffic-demand-review` | 수요/교통량 진단 리뷰를 생성합니다. | traffic demand review JSON |
 | `b04-review` | 사람이 볼 HTML 리뷰를 생성합니다. | `results/html/` |
-| `b04-all` | 위 B04 준비 절차를 묶어서 실행합니다. | 전체 B04 산출물 |
+| `b04-all` | B04 준비 절차를 묶어서 실행합니다. | 전체 B04 산출물 |
 
 ### B04 옵션 의미
 
 | 옵션 | 적용 명령 | 의미 |
 | --- | --- | --- |
-| `--candidates` | `b04-build-demand`, `b04-run-b0`, `b04-validate` | 쉼표로 구분한 B04 후보명만 실행합니다. 생략하면 코드의 기본 후보 목록을 사용합니다. |
-| `--candidate` | `b04-queue-audit`, `b04-traffic-demand-review` | manifest 선택값 대신 특정 후보를 진단용으로 읽습니다. audit/review 입력만 바꾸며 manifest를 갱신하지 않습니다. |
+| `--candidates` | `b04-build-demand`, `b04-run-b0`, `b04-validate` | 쉼표로 구분한 B04 후보명만 실행합니다. |
+| `--candidate` | `b04-queue-audit`, `b04-traffic-demand-review` | 특정 후보를 진단용으로 읽습니다. |
 
-## B4 Stage1 실행
+## 4. B4 Stage1 실행
 
-B4 Stage1은 B04 no-control 산출물을 읽어 B4 런타임이 사용할 정적 입력을 만듭니다. SUMO를 새로 돌리지 않고, 이미 생성된 B04 edgeData/laneData/tripinfo proxy를 읽습니다.
+B4 Stage1은 B04 no-control 산출물을 읽어 B4 런타임이 사용할 정적 입력을 만듭니다. 최신 Stage1의 primary candidate와 B0 measurement source는 모두 `B04_ad_stage23_trigger`입니다.
 
 ```bash
-.venv/bin/python "09 Compact Corridor Baseline/b4_stage1_pipeline.py" b4-stage1
+.venv/bin/python "09 Compact Corridor Baseline/b4_stage1_pipeline.py" b4-stage1 \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 ```
 
-주요 산출물은 `data_prepared/compact_v9/b4_stage1/` 아래에 생성됩니다.
+주요 산출물:
 
 | 산출물 | 의미 |
 | --- | --- |
 | `b4_runtime_index.json` | B4 런타임이 읽는 교차로/현시/queue/event schema index |
 | `b4_route_movement_plan.json` | EV route와 제어 대상 movement 순서 |
 | `b4_approach_storage_link_plan.csv` | 각 movement의 접근부 edge/lane/storage 정의 |
-| `b4_b0_measured_signal_params.csv` | B04 B0 edge/lane data에서 추정한 q/tQ/lambda proxy |
+| `b4_b0_measured_signal_params.csv` | `B04_ad_stage23_trigger` B0 edge/lane data에서 추정한 q/tQ/lambda proxy |
 | `b4_stage2_b0_merge_hold_params.json` | Stage2 합류부 hold 계산에 쓰는 B0 proxy와 runtime fallback 정책 |
 | `b4_case_b_candidates.csv` | Case B 병목 후보와 upstream/downstream 매핑 |
 | `b4_stage1_summary.json` | Stage1 provenance, validation, decision-variable screening 요약 |
 
-## B04/B4 Runtime 실행
+## 5. B04/B4 Runtime 실행
 
-B04 no-control과 B4 제어 run을 비교할 때는 `run_b0_b4_signal_pipeline.py`를 사용합니다. 기본 실행은 B004 자유류 기준, B04 no-control, B4 제어를 모두 실행합니다.
+B04 no-control과 B4 제어 run을 비교할 때는 `run_b0_b4_signal_pipeline.py`를 사용합니다.
 
 ```bash
 .venv/bin/python "09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py" \
   --modes B004,B04,B4 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
   --run-id b04_b4_smoke_001
 ```
 
-B04 baseline만 확인할 때는 다음처럼 실행합니다. `B0`은 `B04`의 alias입니다.
-
-```bash
-.venv/bin/python "09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py" \
-  --modes B04 \
-  --run-id b04_only_001
-```
-
-B4만 실행할 때는 B04와 같은 net/demand에서 생성된 Stage1 디렉터리를 함께 넘기는 것이 원칙입니다.
+B4만 실행할 때도 같은 net/demand/Stage1 묶음을 명시합니다.
 
 ```bash
 .venv/bin/python "09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py" \
   --modes B4 \
-  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --run-id b4_only_001
 ```
 
-### Runtime 공통 옵션
+### Runtime 옵션
 
 | 옵션 | 의미 |
 | --- | --- |
-| `--modes` | 실행할 모드 목록입니다. `B004`는 배경수요 없는 자유류 EV 기준, `B04`는 no-control baseline, `B4`는 우선신호 제어 run입니다. |
-| `--phase` | 런타임 설정 묶음입니다. 현재 기본값은 `bo-smoke`입니다. |
-| `--run-id` | 결과 디렉터리 이름에 들어가는 실행 ID입니다. 생략하면 timestamp 기반 ID를 생성합니다. |
+| `--modes` | `B004`, `B04`, `B4` 중 실행할 모드 목록입니다. |
+| `--run-id` | 결과 디렉터리 이름에 들어가는 실행 ID입니다. |
 | `--run-root` | SUMO 원본 실행 파일, config, tripinfo, edgeData, laneData 저장 위치입니다. |
 | `--metrics-root` | 요약 CSV/JSON 결과 저장 위치입니다. |
 | `--net-file` | 실행할 SUMO `.net.xml`입니다. B04/B4 비교에서는 같은 net을 써야 합니다. |
-| `--background-route` | B04/B4 배경 차량 route 파일입니다. B004에는 사용하지 않습니다. |
-| `--stage1-dir` | B4가 읽을 Stage1 산출물 디렉터리입니다. `--net-file`, `--background-route`와 같은 provenance에서 만들어진 디렉터리를 써야 합니다. |
-| `--hard-max-sim-time` | SUMO run 강제 종료 시간입니다. EV 미도착/정체 run을 제한할 때 사용합니다. |
+| `--background-route` | B04/B4 배경 차량 route 파일입니다. |
+| `--stage1-dir` | B4가 읽을 Stage1 산출물 디렉터리입니다. |
+| `--hard-max-sim-time` | SUMO run 강제 종료 시간입니다. |
 | `--sumo-binary` | PATH의 기본 SUMO 대신 특정 SUMO 실행 파일을 지정합니다. |
-| `--dry-run` | SUMO를 실행하지 않고 생성될 task/config 정보만 확인합니다. |
-| `--emit-fcd` | FCD 출력을 추가로 씁니다. 시각화나 경로 애니메이션용이며 일반 반복 실험에서는 끄는 것이 기본입니다. |
+| `--dry-run` | SUMO를 실행하지 않고 task/config 정보만 확인합니다. |
+| `--emit-fcd` | FCD 출력을 추가로 씁니다. |
 
-### B4 제어인자 옵션
+## 6. B4 결정변수
 
-B4의 최적화 대상 결정변수는 5개입니다.
+현재 최적화 대상 결정변수는 5개입니다.
 
-| 옵션 | 단위 | 의미 |
-| --- | --- | --- |
-| `--b4-alpha` | 무차원 | ETA buffer 계수입니다. `tE_eff = alpha * distance / v_E`로 EV 도착시간을 보수적으로 봅니다. |
-| `--b4-t-lead` | 초 | Stage3 선행 점등 시점입니다. `TA <= t_lead`이면 목표 녹색 전환을 시도합니다. |
-| `--b4-delta-t-thr` | 초 | 선점 트리거 게이트입니다. EV 유효 도착시간이 이 값보다 크면 해당 step에서는 선점을 건너뜁니다. |
-| `--b4-g-ext` | 초 | EV 통과 이후 유지할 녹색 여유입니다. legacy alias는 `--b4-ext-max`입니다. |
-| `--b4-q-trig` | m | Stage2 합류부 queue 개입 임계값입니다. 합류부 queue가 이 값 이상일 때 hold 개입을 허용합니다. |
+| 변수 | 단위 | Stage | 코드/런타임 역할 |
+| --- | --- | --- | --- |
+| `t_lead` | 초 | Stage3 | `TA <= t_lead`이면 목표 녹색 전환을 시도합니다. |
+| `delta_T_thr` | 초 | Stage3 | `tE_gate_target > delta_T_thr`이면 아직 멀다고 보고 이번 step 선점을 건너뜁니다. |
+| `G_ext` | 초 | Stage3 | EV 통과 후 녹색을 얼마나 더 유지할지 정합니다. |
+| `Q_ratio` | 무차원 [0, 1] | Stage1/2 | `Q_th = Q_ratio * L`입니다. |
+| `tau` | 무차원 [0.70, 0.90] | Stage3 | `Lq >= tau * L` 계열 Case B spillback 판정에 쓰입니다. |
 
-아래 옵션은 현재 구현에서 민감도를 점검할 수 있는 고정 구조 파라미터입니다. 기본 실험에서는 결정변수가 아니라 구조값/진단값으로 취급합니다.
+`hold_max`, `d_up`은 runtime 안전/구조 파라미터입니다. 최종 최적화 표의 결정변수로 쓰지 않습니다. 입력 호환 때문에 일부 alias가 코드에 남아 있어도 새 표와 그림의 X는 위 5개로 고정합니다.
 
-| 옵션 | 의미 |
-| --- | --- |
-| `--b4-tau` | Case B 병목 판정 임계입니다. queue fill이 tau 이상이면 downstream-first 병목 처리를 유도합니다. |
-| `--b4-hold-max` | Stage3 hold budget의 고정 구조 부분입니다. |
-| `--b4-d-up` | 한 step에서 upstream/downstream lookahead와 신규 action budget을 제한합니다. |
-| `--b4-tau-scale` | original tau fill에 곱하는 scale입니다. |
-| `--b4-tau-numerator-gamma` | original tau fill의 비선형 보정 지수입니다. |
-| `--b4-parameter-id` | 결과에 남길 B4 파라미터 ID입니다. |
-| `--b4-theta` | 호환성 flag입니다. 현재 B4ThetaParams가 기본 런타임입니다. |
+## 7. 단일 BO 실행
 
-현재 u130_toegye15 구조 파라미터 선확정 결과는 다음 artifact에 저장되어 있습니다.
-
-```text
-09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json
-```
-
-선택된 구조값은 `tau=0.85`, `tau_scale=0.8`, `tau_numerator_gamma=5.0`, `hold_max=33.0`, `d_up=3`입니다. 이 값들은 BO 대상이 아니라 고정 구조값으로 주입합니다.
-
-## 신호 state 길이 정규화
-
-`Unused states in tlLogic ... after tl-index ...` warning은 phase `state` 문자열이 실제 `connection linkIndex` 개수보다 길 때 발생합니다. 차량 connection에는 영향이 없지만 신호 provenance를 엄밀히 맞추려면 active net을 정규화합니다.
-
-```bash
-.venv/bin/python "09 Compact Corridor Baseline/b04_global_reality_signal_pipeline.py" \
-  --normalize-only \
-  --input-net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --output-net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-```
-
-## B4 BO 실행
-
-5개 결정변수 `alpha`, `t_lead`, `delta_T_thr`, `G_ext`, `Q_trig`를 Bayesian Optimization으로 탐색할 때 사용합니다.
+단일 BO만 직접 돌릴 때는 `run_b4_theta_bo.py`를 사용할 수 있습니다. 최종 논문용 fixed-budget 비교 정본은 `09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py`입니다.
 
 ```bash
 .venv/bin/python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
@@ -199,72 +198,81 @@ B4의 최적화 대상 결정변수는 5개입니다.
   --bo-rounds 10 \
   --bo-batch-size 5 \
   --repeats 1 \
-  --workers 4 \
-  --structure-lock-json "09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json" \
-  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
+  --workers 6 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000
 ```
 
-### BO 옵션 의미
+### BO 옵션
 
 | 옵션 | 의미 |
 | --- | --- |
-| `--output-prefix` | BO 결과를 저장할 metrics/run 하위 prefix입니다. |
 | `--initial-count` | 초기 실험점 개수입니다. |
 | `--bo-rounds` | BO 추천/실행/재학습 반복 라운드 수입니다. |
-| `--bo-batch-size` | 라운드마다 새로 추천할 후보 수입니다. |
+| `--bo-batch-size` | 라운드마다 추천할 후보 수입니다. |
 | `--repeats` | 후보 하나를 반복 실행할 횟수입니다. |
 | `--seed` | BO와 SUMO 비교에 쓰는 난수 seed입니다. |
 | `--workers` | 병렬 실행 worker 수입니다. |
-| `--w-emv`, `--w1` | 목적함수에서 EV 통행시간에 주는 가중치입니다. |
-| `--w-veh`, `--w2` | 목적함수에서 일반차 평균 통행시간/지체에 주는 가중치입니다. |
+| `--w-emv`, `--w1` | 목적함수에서 EV delay에 주는 가중치입니다. |
+| `--w-veh`, `--w2` | 목적함수에서 일반차 delay에 주는 가중치입니다. |
 | `--ei-candidate-count` | Expected Improvement 후보 sampling 개수입니다. |
 | `--spc-stop` | SPC 기반 조기종료 판단을 켭니다. |
 | `--spc-window` | SPC 판단에 쓸 최근 라운드 window 크기입니다. |
 | `--spc-alpha` | SPC 통계 유의수준입니다. |
 | `--spc-min-rounds` | 조기종료 판단 전 최소 라운드 수입니다. |
 | `--spc-min-improvement-sec` | 의미 있는 개선으로 볼 최소 score 개선폭입니다. |
-| `--structure-lock-json` | BO 전에 선확정한 구조 파라미터 lock artifact입니다. `tau`, `hold_max`, `d_up`, `tau_scale`, `tau_numerator_gamma`를 고정 주입합니다. |
-| `--tau`, `--hold-max`, `--d-up`, `--tau-scale`, `--tau-numerator-gamma` | lock artifact를 명시적으로 덮어쓸 때만 사용합니다. 5개 BO 결정변수에는 포함하지 않습니다. |
-| `--require-target15-baseline` | B04 no-control EV 정지포함 평균속도가 15~17km/h 밖이면 실패 처리합니다. 기본은 diagnostic bypass입니다. |
-| `--resume`, `--bo-resume` | 기존 `latest/state`를 읽어 중단된 BO를 이어갑니다. |
-| `--mock-eval` | SUMO 대신 mock 평가를 사용합니다. 코드 경로 확인용입니다. |
+| `--resume`, `--bo-resume` | 기존 state를 읽어 중단된 BO를 이어갑니다. |
+| `--mock-eval` | SUMO 대신 mock 평가를 사용합니다. |
 
-## 민감도 분석 실행
+## 8. S1-forced 최종 최적화
 
-5개 결정변수 OFAT 민감도는 다음 명령으로 실행합니다.
+`09-1 B4 Optimization S1forced/` runner는 같은 S1-forced 입력 묶음으로 Random Search, 표준 `cma` 패키지 기반 CMA-ES, BO를 fixed-budget 방식으로 비교하고, 논문 표/그림에 쓸 CSV/PNG를 만듭니다.
 
 ```bash
-.venv/bin/python "09 Compact Corridor Baseline/run_b4_theta_ofat_sensitivity.py" \
-  --run-id b4_theta_ofat_001 \
-  --only-variable alpha \
-  --structure-lock-json "09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json" \
-  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
+.venv/bin/python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id s1forced_fixed_budget_n15_m50 \
+  --n 15 \
+  --m 50 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000
 ```
 
-`--only-variable`에는 `alpha`, `t_lead`, `delta_T_thr`, `G_ext`, `Q_trig` 중 하나를 넣습니다. 빈 값이면 모든 결정변수 OFAT을 실행합니다.
+주요 산출물:
 
-고정 구조 파라미터 민감도는 다음 명령으로 실행합니다.
+| 산출물 | 의미 |
+| --- | --- |
+| `table1_best_so_far.csv` | `method, seed, R1...R50` 형식의 누적 최솟값입니다. |
+| `table2_bo_surrogate.csv` | BO 그림 2용 long-form 표입니다. |
+| `table3_pareto.csv` | `1:1`, `5:1`, `10:1`, `15:1`, `20:1` 가중치별 최적 후보입니다. |
+| `figure1_best_so_far.png` | 알고리즘별 fixed-budget 비교 그림입니다. |
+| `figure2_bo_surrogate.png` | BO surrogate 그림입니다. |
+| `figure3_pareto.png` | Pareto/knee 후보 그림입니다. |
+| `noise_check_5repeat.csv` | 실제 5회 noise check 결과입니다. |
+| `experiment_summary.json` | 입력, 예산, seed, 산출물 manifest입니다. |
 
-```bash
-.venv/bin/python "09 Compact Corridor Baseline/run_b4_fixed_param_sensitivity.py" \
-  --run-id b4_fixed_param_001 \
-  --only-variable tau \
-  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml" \
-  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml" \
-  --stage1-dir "data_prepared/compact_v9/b4_stage1_u130_toegye15" \
-  --hard-max-sim-time 4000
-```
+## 9. Pareto 가중치 Sweep
 
-고정 구조 민감도의 `--only-variable`에는 `tau`, `tau_scale`, `tau_numerator_gamma`, `hold_max`, `d_up` 중 하나를 넣습니다. `--require-target15-baseline`을 켜면 B04 no-control EV 정지포함 평균속도가 target 범위를 벗어날 때 실행을 실패로 처리합니다.
+민감도 분석의 정본은 가중치를 바꿔가며 응급차 지연과 일반차 지연의 맞교환을 보여주는 Pareto sweep입니다. 이 결과는 가중치를 정하기 위한 자동 결론이 아니라 정책 결정자가 선택할 수 있는 후보 목록입니다.
 
-## Provenance 원칙
+| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| --- | --- | --- | --- |
+| 1:1 | `table3_pareto.csv` | 결과값 | 결과값 |
+| 5:1 | `table3_pareto.csv` | 결과값 | 결과값 |
+| 10:1 | `table3_pareto.csv` | 결과값 | 결과값 |
+| 15:1 | `table3_pareto.csv` | 결과값 | 결과값 |
+| 20:1 | `table3_pareto.csv` | 결과값 | 결과값 |
 
-B4 결과를 비교할 때 `--net-file`, `--background-route`, `--stage1-dir`은 같은 B04 실행 산출물에서 나온 조합이어야 합니다. 서로 다른 B04 run에서 나온 net/demand/Stage1을 섞으면 Stage2 merge B0 값, Case B 후보, queue proxy가 현재 실행 조건을 설명하지 못할 수 있습니다.
+각 가중치에서 net, demand, Stage1, 사고 위치, 출동 조건은 모두 동일해야 합니다. 하나의 가중치에는 BO 탐색 1회를 수행하고, SPC 기반으로 개선 변동이 잦아드는 지점에서 중단할 수 있습니다. 값이 튀는 경우에만 반복 탐색을 추가합니다.
 
-결과 파일은 기본적으로 `results/metrics/...`에 요약 CSV/JSON으로, `runs/...`에 SUMO 원본 산출물로 저장됩니다.
+`figure3_pareto.png`의 붉은 점은 knee point 보조 표시입니다. 이 표시는 10:1이 정답이라는 뜻도, knee point를 반드시 채택해야 한다는 뜻도 아닙니다.
+
+## 10. Provenance 원칙
+
+B4 결과를 비교할 때 `--net-file`, `--background-route`, `--stage1-dir`은 같은 B04 실행 산출물에서 나온 조합이어야 합니다. 서로 다른 B04 run에서 나온 net/demand/Stage1을 섞으면 Stage2 merge B0 값, Case B 후보, queue proxy가 현재 실행 조건을 설명하지 못합니다.

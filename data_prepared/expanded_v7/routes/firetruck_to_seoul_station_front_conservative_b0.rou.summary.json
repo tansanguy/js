@@ -1,6 +1,6 @@
 {
   "schema": "expanded_v7_conservative_firetruck_route_xml.v1",
-  "generated_at": "2026-06-04T16:29:34.708362+00:00",
+  "generated_at": "2026-06-07T13:26:51.761801+00:00",
   "route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
   "accepted_routes_csv": "data_prepared/expanded_v7/routes/firetruck_accepted_routes.csv",
   "emergency_behavior_profile": "conservative_firetruck_b0",

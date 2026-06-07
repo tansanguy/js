@@ -1,7 +1,11 @@
 {
   "schema": "compact_v9_B04_demand_sweep.v1",
-  "generated_at": "2026-06-06T07:28:17.868796+00:00",
-  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "generated_at": "2026-06-07T13:26:09.649444+00:00",
+  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml",
+  "template_net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "candidate_net_files": {
+    "B04_ac_main_through_rebalanced": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
+  },
   "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
   "template_summary": {
     "upbound_route_edge_count": 73,
@@ -17,15 +21,14 @@
     "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml",
     "already_exists": true
   },
-  "candidate_count": 2,
+  "candidate_count": 1,
   "candidate_names": [
-    "B04_ac_main_through_rebalanced",
-    "B04_ad_variance_smoothed"
+    "B04_ac_main_through_rebalanced"
   ],
   "candidates": [
     {
       "schema": "compact_v9_B04_demand_candidate.v1",
-      "generated_at": "2026-06-06T07:28:17.840555+00:00",
+      "generated_at": "2026-06-07T13:26:09.642765+00:00",
       "candidate": "B04_ac_main_through_rebalanced",
       "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ac_main_through_rebalanced.rou.xml",
       "settings": {
@@ -169,204 +172,6 @@
         "begin": 600.0,
         "mid": "",
         "end": 900.0
-      },
-      "main_through_rebalance": {
-        "target_vehicle_count": "1300-1500",
-        "target_main_through_flow": "650-800",
-        "target_main_through_share_min": 0.5,
-        "adjustment_policy": "Only feeder_share_downbound is adjusted in 0.02 steps, capped at 0.44, to keep total demand in range.",
-        "adjustment_history": [
-          {
-            "feeder_share_downbound": 0.4,
-            "status": "FAIL",
-            "vehicle_count": 1284,
-            "main_through_flow": 657,
-            "main_through_share": 0.511682,
-            "vehicle_count_ok": false,
-            "main_through_ok": true,
-            "main_through_share_ok": true,
-            "off_main_share_ok": true,
-            "terminal_sink_ok": true,
-            "top_source_ok": true,
-            "top_sink_ok": true
-          },
-          {
-            "feeder_share_downbound": 0.42,
-            "status": "PASS",
-            "vehicle_count": 1302,
-            "main_through_flow": 657,
-            "main_through_share": 0.504608,
-            "vehicle_count_ok": true,
-            "main_through_ok": true,
-            "main_through_share_ok": true,
-            "off_main_share_ok": true,
-            "terminal_sink_ok": true,
-            "top_source_ok": true,
-            "top_sink_ok": true
-          }
-        ],
-        "final_acceptance": {
-          "feeder_share_downbound": 0.42,
-          "status": "PASS",
-          "vehicle_count": 1302,
-          "main_through_flow": 657,
-          "main_through_share": 0.504608,
-          "vehicle_count_ok": true,
-          "main_through_ok": true,
-          "main_through_share_ok": true,
-          "off_main_share_ok": true,
-          "terminal_sink_ok": true,
-          "top_source_ok": true,
-          "top_sink_ok": true
-        }
-      }
-    },
-    {
-      "schema": "compact_v9_B04_demand_candidate.v1",
-      "generated_at": "2026-06-06T07:28:17.864298+00:00",
-      "candidate": "B04_ad_variance_smoothed",
-      "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
-      "settings": {
-        "through_scale_upbound": 0.33,
-        "through_scale_downbound": 0.42,
-        "feeder_share_upbound": 0.015,
-        "feeder_share_downbound": 0.42,
-        "midcorridor_share": 0.07,
-        "sideflow_share": 0.11,
-        "od_repair_share": 0.22,
-        "od_queue_tuned_share": 0.12,
-        "pulse_share": 0.4,
-        "pulse_begin": 360.0,
-        "pulse_end": 1320.0,
-        "target_pulse_mode": "compressed",
-        "target_pulse_begin": 480.0,
-        "target_pulse_end": 1120.0,
-        "net_profile": "speed50_sanity",
-        "avoid_terminal_sources": 1.0,
-        "avoid_terminal_sinks": 1.0,
-        "use_balanced_main_through": 1.0,
-        "balanced_main_through_only": 1.0,
-        "segment_factor_mode": "free_under_volume_boost",
-        "free_under_volume_boost": 1.18,
-        "free_boost": 1.08,
-        "stop_cut": 0.82,
-        "template_cap": 760,
-        "source_cap": 840,
-        "speed_factor": 0.8,
-        "speed_dev": 0.03,
-        "calibration_note": "Variance-smoothed main-through rebalance: wider target pulse and lower speed deviation while preserving AC total/main-through targets."
-      },
-      "vehicle_count": 1302,
-      "route_count": 118,
-      "unique_source_count": 68,
-      "top_sources": [
-        [
-          "-174870621#0",
-          145
-        ],
-        [
-          "619147740",
-          144
-        ],
-        [
-          "219696191#1",
-          140
-        ],
-        [
-          "619147739#0",
-          119
-        ],
-        [
-          "-381802847#0",
-          83
-        ],
-        [
-          "578313748#0",
-          72
-        ],
-        [
-          "218915133#2",
-          62
-        ],
-        [
-          "619147739#1",
-          46
-        ],
-        [
-          "781985786#7",
-          34
-        ],
-        [
-          "-180368918#6",
-          25
-        ]
-      ],
-      "top_templates": [
-        [
-          "midcorridor_local_downbound",
-          61
-        ],
-        [
-          "midcorridor_local_upbound",
-          61
-        ],
-        [
-          "mainline_through_downbound_balanced00",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced01",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced02",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced03",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced04",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced05",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced06",
-          46
-        ],
-        [
-          "mainline_through_downbound_balanced07",
-          46
-        ]
-      ],
-      "vehicle_type_attrs": {
-        "id": "b04_passenger",
-        "vClass": "passenger",
-        "length": "5.0",
-        "accel": "2.000",
-        "decel": "4.500",
-        "sigma": "0.500",
-        "departLane": "best",
-        "speedFactor": "0.800",
-        "speedDev": "0.030"
-      },
-      "depart_window_sec": [
-        0,
-        3600
-      ],
-      "pulse_window_sec": [
-        360.0,
-        1320.0
-      ],
-      "target_pulse": {
-        "mode": "compressed",
-        "begin": 480.0,
-        "mid": "",
-        "end": 1120.0
       },
       "main_through_rebalance": {
         "target_vehicle_count": "1300-1500",

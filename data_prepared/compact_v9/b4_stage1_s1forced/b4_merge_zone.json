@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_merge_zone.v1",
-  "generated_at": "2026-06-07T03:06:18.466877+00:00",
+  "generated_at": "2026-06-07T13:24:15.325886+00:00",
   "merge_zone_id": "B4_MERGE_ZONE_00",
   "start_edge": "420331801#1",
   "merge_edge": "-174870621#8",
@@ -10,11 +10,12 @@
   ],
   "merge_zone_lanes": [
     "420331801#1_0",
+    "420331801#1_1",
     "-174870621#8_0",
     "-174870621#8_1",
     "-174870621#8_2"
   ],
-  "merge_zone_length_m": 138.9,
+  "merge_zone_length_m": 146.56,
   "merge_control_tls_id": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
   "merge_control_background_link_indices": [
     0,

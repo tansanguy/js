@@ -516,9 +516,9 @@ def fallback_timing_family(row: dict[str, Any], index: int, averages: dict[str, 
     family_index = int(route_order + index) % 5
     cycle = clamp_int(int(averages["cycle_sec"]) + [-5, 0, 5, 10, -10][family_index], 80, 105)
     main_green = clamp_int(
-        int(averages["main_green_sec"]) + [-8, -3, 3, 8, 0][family_index],
-        45,
-        cycle - 2 * yellow - 10,
+        int(averages["main_green_sec"]) + [-12, -7, -2, 3, -5][family_index],
+        28,
+        cycle - 2 * yellow - 14,
     )
     return {
         "cycle_sec": cycle,
@@ -550,20 +550,15 @@ def profile_from_match(
     else:
         dominant = timing_record.dominant_remaining_sec
         median = timing_record.median_remaining_sec
-        cycle = clamp_int(round_to_5(max(85.0, dominant + 12.0, median * 1.18)), 80, 130)
-        if route_order >= 45:
-            cycle = min(cycle, 100)
-        corridor_floor = 0.66 * cycle
-        if route_order >= 45:
-            corridor_floor = max(corridor_floor, 0.76 * cycle, 74.0)
-        main_green = clamp_int(round_to_5(max(corridor_floor, min(cycle - 12.0, dominant * 0.54 + 16.0))), 24, cycle - 12)
+        cycle = clamp_int(round_to_5(max(60.0, median * 2.0, dominant + 6.0)), 60, 140)
+        main_green = clamp_int(round_to_5(median), 18, cycle - 2 * 3 - 12)
         source = "A008_location_matched_TData_SPAT"
         api_field = timing_record.dominant_field
         eqmn_id = timing_record.eqmn_id
         confidence = min(0.92, safe_float(row.get("match_confidence"), 0.5) * 0.55 + timing_record.vehicle_field_count * 0.045)
         timing_count = timing_record.vehicle_field_count
         yellow = 3
-    side_green = max(6, cycle - main_green - 2 * yellow)
+    side_green = max(10, cycle - main_green - 2 * yellow)
     offset = int((route_order * 4.8 + dominant * 0.25) % cycle)
     state_fields = [
         key for key, value in (state_record or {}).items()
@@ -573,6 +568,8 @@ def profile_from_match(
         f"location matched by A008 distance/name; timing_fields={timing_count}; "
         f"state_fields={len(state_fields)}; match_status={row.get('match_status', '')}"
     )
+    if timing_record is not None:
+        reason += "; G/Y/R inferred from RmdrCs remaining-time statistics, not direct API color durations"
     if timing_record is None:
         reason += "; fallback_policy=measured_average_route_family"
     return tdp.SignalProfile(

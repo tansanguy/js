@@ -1,6 +1,6 @@
 # 1.3 신호체계 알고리즘 현재 구현 상황 보고서
 
-작성 기준: 2026-06-05, Compact V9 / B4 런타임 MVP 재실행 결과(`codex_caseb_spillback`)
+작성 기준: 2026-06-07, Compact V9 / B4 S1-forced canonical 실행 결과(`B04_ad_stage23_trigger`)
 
 ## 한 줄 요약
 
@@ -12,7 +12,7 @@
 
 | 구분 | 현재 파일 |
 | --- | --- |
-| Stage 1 정적 산출물 | `data_prepared/compact_v9/b4_stage1/` |
+| Stage 1 정적 산출물 | `data_prepared/compact_v9/b4_stage1_s1forced/` |
 | 실제 제어 런타임 | `09 Compact Corridor Baseline/b4_runtime.py` |
 | B0/B4 비교 실행기 | `09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py` |
 | 실행 결과 | `results/metrics/compact_v9_B4/experiment_results.csv` |

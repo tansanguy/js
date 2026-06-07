@@ -40,14 +40,17 @@ B04_FIRETRUCK_ROUTE_CSV = DATA_ROOT / "routes/firetruck_route.csv"
 ENTRY_TLS_SUMMARY = DATA_ROOT / "net/entry_tls_summary.json"
 B04_TRAFFIC_DEMAND_REVIEW = QUEUE_AUDIT_DIR / "b04_traffic_demand_review.json"
 B04_QUEUE_DEFINITION_AUDIT = QUEUE_AUDIT_DIR / "b04_queue_definition_audit.json"
+B04_MAIN_VS_OFFMAIN_DEMAND_AUDIT = QUEUE_AUDIT_DIR / "b04_main_vs_offmain_demand_audit.csv"
 B04_QUEUE_PROXY_BY_SEGMENT = QUEUE_AUDIT_DIR / "b04_queue_proxy_by_segment.csv"
 B04_MEASUREMENT_DIAGNOSTICS = QUEUE_AUDIT_DIR / "b4_queue_measurement_diagnostics.csv"
 B04_SEGMENT_EDGE_MAPPING = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B04_CSV_SIGNAL_CANDIDATES = DATA_ROOT / "net/B04_csv_signal_candidates.csv"
 B4_PRIMARY_CANDIDATE = "B04_ad_stage23_trigger"
-B4_MEASUREMENT_SOURCE_CANDIDATE = "B04_ad_variance_smoothed"
+B4_MEASUREMENT_SOURCE_CANDIDATE = B4_PRIMARY_CANDIDATE
 B4_PRIMARY_RUN_SUMMARY = METRICS_ROOT / B4_MEASUREMENT_SOURCE_CANDIDATE / "b0_run_summary.json"
 B4_PRIMARY_SPEED_RECALL = METRICS_ROOT / B4_MEASUREMENT_SOURCE_CANDIDATE / "B04_segment_speed_recall.csv"
+B4_PRIMARY_VALIDATION_SUMMARY = METRICS_ROOT / B4_MEASUREMENT_SOURCE_CANDIDATE / "B04_validation_summary.json"
+B4_PRIMARY_DEMAND_XML = DATA_ROOT / f"demand/background_routes_compact_v9_{B4_MEASUREMENT_SOURCE_CANDIDATE}.rou.xml"
 
 B4_ROUTE_MOVEMENT_PLAN = STAGE1_DIR / "b4_route_movement_plan.json"
 B4_INTERSECTIONS_CSV = STAGE1_DIR / "b4_intersections.csv"
@@ -346,6 +349,14 @@ def read_json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise B4Stage1Error(f"json_root_not_object:{rel(path)}")
     return payload
+
+
+def read_json_optional(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    with path.open("r", encoding="utf-8") as file:
+        payload = json.load(file)
+    return payload if isinstance(payload, dict) else {}
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -1907,6 +1918,20 @@ def build_case_b_candidates(
             "mapping_note": mapping_status if mapped else "no route-span controllable movement pair for this CSV segment",
         }
         rows.append(row)
+    duplicate_pairs: dict[str, list[str]] = defaultdict(list)
+    for row in rows:
+        key = f"{row['bottleneck_movement_id']}|{row['upstream_movement_id']}"
+        if row["bottleneck_movement_id"] and row["upstream_movement_id"]:
+            duplicate_pairs[key].append(str(row["segment_id"]))
+    duplicate_movement_pairs = [
+        {
+            "movement_pair_key": key,
+            "segments": segments,
+            "runtime_policy": "choose active duplicate with largest live segment fill; fall back to B0 segment fill",
+        }
+        for key, segments in sorted(duplicate_pairs.items())
+        if len(segments) > 1
+    ]
     payload = {
         "schema": "compact_v9_B4_case_b_candidates.v1",
         "generated_at": utc_now(),
@@ -1914,6 +1939,9 @@ def build_case_b_candidates(
         "tau_default": CASE_B_DEFAULT_TAU,
         "measurement_source": "SUMO B04 no-control B0 measured proxy",
         "mapping_policy": "Exact mapped controllable SUMO movements are preferred; otherwise S7/S10/S11 use conservative route-span proxy mapping to existing controllable movements.",
+        "duplicate_movement_pair_count": len(duplicate_movement_pairs),
+        "duplicate_movement_pairs": duplicate_movement_pairs,
+        "runtime_duplicate_policy": "When multiple Case B segments map to the same bottleneck/upstream movement pair, the runtime evaluates all active duplicates and selects the one with the largest live segment fill, falling back to B0 segment fill.",
         "source_policy": b0_source_policy_rows(),
         "mapped_count": sum(1 for row in rows if str(row["mapping_status"]).startswith("mapped")),
         "runtime_enabled_count": sum(1 for row in rows if truthy(row["case_b_runtime_enabled"])),
@@ -1923,26 +1951,55 @@ def build_case_b_candidates(
 
 
 def primary_candidate_metrics(traffic_review: dict[str, Any]) -> dict[str, Any]:
+    def first_nonempty(*values: Any) -> Any:
+        for value in values:
+            if value is not None and value != "":
+                return value
+        return ""
+
     candidate_summary = next(
         (row for row in traffic_review.get("candidate_summaries", []) if row.get("candidate") == B4_MEASUREMENT_SOURCE_CANDIDATE),
         {},
     )
+    validation_summary = read_json_optional(B4_PRIMARY_VALIDATION_SUMMARY)
+    validation_run = validation_summary.get("run_summary", {}) if isinstance(validation_summary.get("run_summary"), dict) else {}
     growth_summary = next(
         (row for row in traffic_review.get("demand_growth_candidate_summary", []) if row.get("candidate") == B4_MEASUREMENT_SOURCE_CANDIDATE),
         {},
     )
+    demand_summary = {}
+    if B04_MAIN_VS_OFFMAIN_DEMAND_AUDIT.is_file():
+        demand_summary = next(
+            (row for row in read_csv(B04_MAIN_VS_OFFMAIN_DEMAND_AUDIT) if row.get("candidate") == B4_MEASUREMENT_SOURCE_CANDIDATE),
+            {},
+        )
+    vehicle_count = 0
+    vehicle_count_source = ""
+    if B4_PRIMARY_DEMAND_XML.is_file():
+        root = ET.parse(B4_PRIMARY_DEMAND_XML).getroot()
+        vehicle_count = sum(1 for child in root if child.tag == "vehicle")
+        vehicle_count_source = rel(B4_PRIMARY_DEMAND_XML)
+    if vehicle_count <= 0:
+        vehicle_count = safe_int(growth_summary.get("vehicle_count") or demand_summary.get("vehicle_count"))
+        vehicle_count_source = "demand_growth_candidate_summary" if growth_summary.get("vehicle_count") else "main_vs_offmain_demand_audit"
+    free_flow_audit = validation_summary.get("free_flow_od_audit", {}) if isinstance(validation_summary.get("free_flow_od_audit"), dict) else {}
     return {
         "candidate": B4_MEASUREMENT_SOURCE_CANDIDATE,
-        "vehicles": safe_int(growth_summary.get("vehicle_count")),
-        "main_through_flow": safe_int(growth_summary.get("main_through_flow")),
-        "terminal_sink_flow": safe_int(growth_summary.get("terminal_sink_flow")),
-        "top_sink_share": safe_float(growth_summary.get("top_sink_share")),
-        "speed_mae_kmh": safe_float(candidate_summary.get("speed_mae_kmh")),
-        "free_count": safe_int(candidate_summary.get("free_count")),
-        "od_undercovered": safe_int(candidate_summary.get("od_undercovered_free_count")),
-        "queue_not_forming": safe_int(candidate_summary.get("queue_not_forming_free_count")),
-        "teleport": safe_int(candidate_summary.get("background_teleported")),
-        "arrived_ratio": safe_float(candidate_summary.get("background_arrived_ratio")),
+        "vehicles": vehicle_count,
+        "vehicles_source": vehicle_count_source,
+        "main_through_flow": safe_int(growth_summary.get("main_through_flow") or demand_summary.get("main_through_flow")),
+        "terminal_sink_flow": safe_int(growth_summary.get("terminal_sink_flow") or demand_summary.get("terminal_sink_flow")),
+        "top_sink_share": safe_float(growth_summary.get("top_sink_share") or demand_summary.get("top_sink_share")),
+        "speed_mae_kmh": safe_float(first_nonempty(validation_summary.get("speed_mae_kmh"), candidate_summary.get("speed_mae_kmh"))),
+        "free_count": safe_int(first_nonempty(validation_summary.get("free_count"), candidate_summary.get("free_count"))),
+        "od_undercovered": safe_int(first_nonempty(free_flow_audit.get("od_undercovered_count"), candidate_summary.get("od_undercovered_free_count"))),
+        "queue_not_forming": safe_int(first_nonempty(free_flow_audit.get("queue_not_forming_count"), candidate_summary.get("queue_not_forming_free_count"))),
+        "teleport": safe_int(first_nonempty(validation_run.get("background_teleported"), candidate_summary.get("background_teleported"))),
+        "arrived_ratio": safe_float(first_nonempty(validation_summary.get("background_arrived_ratio"), candidate_summary.get("background_arrived_ratio"))),
+        "emergency_arrived": truthy(validation_run.get("emergency_arrived")),
+        "emergency_teleport": truthy(validation_run.get("emergency_teleport")),
+        "stage23_teleported": safe_int(validation_run.get("stage23_teleported")),
+        "base_background_teleported": safe_int(validation_run.get("base_background_teleported")),
     }
 
 
@@ -2218,6 +2275,7 @@ def build_b4_stage1(
         "algorithm": "B4",
         "status": validation["overall"],
         "primary_candidate": primary_candidate,
+        "measurement_source_candidate": B4_MEASUREMENT_SOURCE_CANDIDATE,
         "manifest_selected_candidate": manifest.get("selected_candidate", ""),
         "manifest_selected_candidate_role": "active_runtime_override" if input_override_active else "primary_selected",
         "stage1_audit": stage1_audit,
@@ -2227,7 +2285,7 @@ def build_b4_stage1(
             "measurement_source_candidate": B4_MEASUREMENT_SOURCE_CANDIDATE,
             "manifest_selected_candidate": manifest.get("selected_candidate", ""),
             "manifest_selected_candidate_role": "active_runtime_override" if input_override_active else "primary_selected",
-            "reason": "Stage1 CLI net/background override is active." if input_override_active else "Stage23 trigger demand is the manifest-selected B04/B4 runtime input; existing variance-smoothed B0 artifacts remain the static Stage1 measurement source until Stage23 B0 metrics are regenerated.",
+            "reason": "Stage1 CLI net/background override is active." if input_override_active else "Stage23 trigger demand is the manifest-selected B04/B4 runtime input and the Stage1 B0 measurement source.",
             "metrics": primary_metrics,
         },
         "mode": "Stage1 static preparation only",
@@ -2292,7 +2350,7 @@ def build_b4_stage1(
             "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
             "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
             "linkIndex is a SUMO TLS movement index, not physical storage length.",
-            "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.",
+            "B4 runtime consumes this Stage1 directory; use matching net/background route inputs for every B04/B4 comparison.",
         ],
     }
     if runtime_input_provenance:
@@ -2301,6 +2359,10 @@ def build_b4_stage1(
         summary["provenance_status"] = "PASS"
         summary["provenance_note"] = "Stage1 was generated with explicit --net-file/--background-route inputs; use matching runtime inputs."
         summary["policy_notes"].append("This Stage1 directory is bound to explicit CLI net/background-route overrides.")
+    else:
+        summary["allow_runtime_input_override"] = False
+        summary["provenance_status"] = "PASS"
+        summary["provenance_note"] = f"Stage1 uses manifest-selected {B4_PRIMARY_CANDIDATE} inputs and matching B0 measurement artifacts."
     write_json(B4_ROUTE_MOVEMENT_PLAN, route_movement_plan)
     write_csv(B4_INTERSECTIONS_CSV, intersection_rows, [
         "tls_id", "route_order_min", "route_order_max", "movement_ids", "mapped_S_segments",

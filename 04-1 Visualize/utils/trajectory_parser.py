@@ -17,6 +17,8 @@ class TrajectoryPoint:
         speed_kmh: float,
         angle: float = 0.0,
         dist_m: float = 0.0,
+        lane_id: str = "",
+        lane_pos_m: float = 0.0,
     ):
         self.time = time
         self.edge_id = edge_id
@@ -25,6 +27,8 @@ class TrajectoryPoint:
         self.speed_kmh = speed_kmh
         self.angle = angle      # heading in degrees (0=north, clockwise)
         self.dist_m = dist_m    # cumulative odometer distance along route
+        self.lane_id = lane_id
+        self.lane_pos_m = lane_pos_m
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -36,6 +40,8 @@ class TrajectoryPoint:
             "speed_kmh": self.speed_kmh,
             "angle": self.angle,
             "dist_m": self.dist_m,
+            "lane_id": self.lane_id,
+            "lane_pos_m": self.lane_pos_m,
         }
 
 

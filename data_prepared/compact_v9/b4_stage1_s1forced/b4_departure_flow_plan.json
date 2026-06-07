@@ -1,12 +1,12 @@
 {
   "schema": "compact_v9_B4_departure_flow_plan.v1",
-  "generated_at": "2026-06-07T03:06:18.466857+00:00",
+  "generated_at": "2026-06-07T13:24:15.325866+00:00",
   "fire_station_start_edge": "420331801#1",
-  "fire_station_start_lane": "420331801#1_0",
+  "fire_station_start_lane": "420331801#1_0 420331801#1_1",
   "departure_edge": "420331801#1",
-  "departure_lane": "420331801#1_0",
+  "departure_lane": "420331801#1_0 420331801#1_1",
   "merge_approach_edge": "420331801#1",
-  "merge_approach_lane": "420331801#1_0",
+  "merge_approach_lane": "420331801#1_0 420331801#1_1",
   "mainline_target_edge": "-174870621#8",
   "mainline_target_lane": "-174870621#8_0 -174870621#8_1 -174870621#8_2",
   "ev_turn_movement": {
@@ -38,11 +38,12 @@
   ],
   "merge_zone_lanes": [
     "420331801#1_0",
+    "420331801#1_1",
     "-174870621#8_0",
     "-174870621#8_1",
     "-174870621#8_2"
   ],
-  "merge_zone_length_m": 138.9,
+  "merge_zone_length_m": 146.56,
   "dispatch_lead_time_sec": 45.0,
   "dispatch_lead_time_range_sec": [
     45.0,

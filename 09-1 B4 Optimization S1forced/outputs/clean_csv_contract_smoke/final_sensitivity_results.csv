@@ -1,0 +1,6 @@
+input_method,input_seed,input_round,input_parameter_id,input_t_lead,input_delta_T_thr,input_G_ext,input_Q_ratio,input_tau,output_delay_A_sec,output_delay_N_sec,weight_A,weight_N,weight_ratio,score,measured_T_free_EMV_sec,measured_T_actual_EMV_sec,measured_d_EMV_sec,measured_d_veh_sec,measured_general_mean_travel_time_sec,stage2_on_count,stage3_on_count
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,1.00,1.00,1:1,88.70,218.00,278.00,60.00,117.41,181.74,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,5.00,1.00,5:1,69.57,218.00,278.00,60.00,117.41,181.74,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,10.00,1.00,10:1,65.22,218.00,278.00,60.00,117.41,181.74,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,15.00,1.00,15:1,63.59,218.00,278.00,60.00,117.41,181.74,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,20.00,1.00,20:1,62.73,218.00,278.00,60.00,117.41,181.74,,

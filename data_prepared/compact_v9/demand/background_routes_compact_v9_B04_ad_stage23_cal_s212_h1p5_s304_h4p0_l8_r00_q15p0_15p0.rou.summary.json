@@ -1,0 +1,148 @@
+{
+  "schema": "compact_v9_B04_stage23_trigger_demand.v1",
+  "generated_at": "2026-06-07T06:38:23.145012+00:00",
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
+  "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_cal_s212_h1p5_s304_h4p0_l8_r00_q15p0_15p0.rou.xml",
+  "net_file": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "route_selection_policy": "natural_base_route_template_only",
+  "stage2_route_id": "segment_feeder_upbound_S1",
+  "stage2_edges": [
+    "-218684411#1",
+    "-218684411#0",
+    "-174870621#10",
+    "-174870621#9",
+    "-174870621#8",
+    "-174870621#7",
+    "-174870621#6",
+    "-174870621#5",
+    "-174870621#4",
+    "-174870621#2",
+    "-174870621#0",
+    "578313748#0",
+    "578313748#2",
+    "800229255",
+    "180368918#0",
+    "180368918#3",
+    "180368918#5",
+    "180368918#6"
+  ],
+  "stage2_target_edge": "-174870621#8",
+  "stage2_route_rank": 0,
+  "stage2_target_index": 4,
+  "stage2_base_vehicle_count": 1,
+  "stage2_route_candidate_count": 4,
+  "stage2_vehicle_count": 12,
+  "stage2_headway_sec": 1.5,
+  "stage2_ev_target_arrival_sec": 610.861,
+  "stage2_trigger_time_to_target_sec": 2.066,
+  "stage2_queue_prebuild_sec": 15.0,
+  "stage2_depart_base_sec": 593.795,
+  "stage2_depart_lane": "best",
+  "stage2_depart_pos": "random_free",
+  "stage2_depart_speed": "max",
+  "stage2_depart_window_sec": [
+    593.795,
+    610.295
+  ],
+  "stage3_route_id": "midcorridor_local_upbound",
+  "stage3_edges": [
+    "218915133#2",
+    "218915133#3",
+    "347237859#0",
+    "347237859#1",
+    "347237859#2",
+    "347237859#3",
+    "347237859#4",
+    "347237859#5",
+    "781985787#0",
+    "218915135#3",
+    "218915135#4",
+    "781983104#0",
+    "781983104#1",
+    "333557072#1",
+    "333557072#2",
+    "333557072#3",
+    "333557072#5",
+    "619147738#0",
+    "619147738#1",
+    "1206223939"
+  ],
+  "stage3_target_edge": "347237859#1",
+  "stage3_route_rank": 0,
+  "stage3_target_index": 3,
+  "stage3_base_vehicle_count": 61,
+  "stage3_route_candidate_count": 9,
+  "stage3_vehicle_count": 4,
+  "stage3_headway_sec": 4.0,
+  "stage3_route_length": 8,
+  "stage3_ev_target_arrival_sec": 678.681,
+  "stage3_trigger_time_to_target_sec": 4.013,
+  "stage3_queue_prebuild_sec": 15.0,
+  "stage3_depart_base_sec": 659.668,
+  "stage3_depart_lane": "best",
+  "stage3_depart_pos": "random_free",
+  "stage3_depart_speed": "max",
+  "stage3_depart_window_sec": [
+    659.668,
+    671.668
+  ],
+  "stage2_route_candidates_top": [
+    {
+      "route_id": "segment_feeder_upbound_S1",
+      "target_index": 4,
+      "downstream_count": 13,
+      "base_vehicle_count": 1
+    },
+    {
+      "route_id": "mainline_through_upbound",
+      "target_index": 4,
+      "downstream_count": 68,
+      "base_vehicle_count": 0
+    },
+    {
+      "route_id": "mainline_through_upbound_alt00",
+      "target_index": 3,
+      "downstream_count": 68,
+      "base_vehicle_count": 0
+    },
+    {
+      "route_id": "mainline_through_upbound_alt01",
+      "target_index": 2,
+      "downstream_count": 68,
+      "base_vehicle_count": 0
+    }
+  ],
+  "stage3_route_candidates_top": [
+    {
+      "route_id": "midcorridor_local_upbound",
+      "target_index": 3,
+      "downstream_count": 16,
+      "base_vehicle_count": 61
+    },
+    {
+      "route_id": "mainline_through_upbound_balanced06",
+      "target_index": 45,
+      "downstream_count": 13,
+      "base_vehicle_count": 36
+    },
+    {
+      "route_id": "segment_feeder_upbound_S13",
+      "target_index": 4,
+      "downstream_count": 9,
+      "base_vehicle_count": 1
+    },
+    {
+      "route_id": "segment_feeder_upbound_S14",
+      "target_index": 3,
+      "downstream_count": 11,
+      "base_vehicle_count": 1
+    },
+    {
+      "route_id": "segment_feeder_upbound_S12",
+      "target_index": 9,
+      "downstream_count": 7,
+      "base_vehicle_count": 1
+    }
+  ],
+  "notes": "Original demand is not modified; Stage2/Stage3 trigger vehicles reuse natural base route templates and computed depart windows."
+}

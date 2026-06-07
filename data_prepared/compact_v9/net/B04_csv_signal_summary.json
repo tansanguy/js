@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_csv_boundary_signals.v1",
-  "generated_at": "2026-06-06T17:10:26.011909+00:00",
+  "generated_at": "2026-06-07T06:33:03.091262+00:00",
   "source_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml",
   "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "reference_csv": "toegye_ro_mainstream_segments_english.csv",

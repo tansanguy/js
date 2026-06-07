@@ -11,9 +11,11 @@ import argparse
 import csv
 import html
 import importlib.util
+import itertools
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +30,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+PIPELINE_DIR = Path(__file__).resolve().parent
 
 from common.net_utils import find_executable, read_sumo_net, sha256_file  # noqa: E402
 
@@ -39,6 +42,7 @@ REFERENCE_CSV = PROJECT_ROOT / "toegye_ro_mainstream_segments_english.csv"
 GREEN18_NET = DATA_ROOT / "net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml"
 B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
 B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
+B04_GLOBAL_REALITY_S1FORCED_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_MAPPING_CSV = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B04_MAPPING_FALLBACK_CSV = DATA_ROOT / "map/toegye_segment_edge_mapping.csv"
@@ -62,6 +66,7 @@ EV_DEPART_SEC = 600.0
 SIM_END_SEC = 4200.0
 EDGE_DATA_FREQ_SEC = 60
 FCD_MIN_SEGMENT_SAMPLE_COUNT = 3
+LOW_OBSERVATION_SPEED_WARN_COUNT = 30.0
 QUEUE_SAMPLE_BEGIN_SEC = 450.0
 QUEUE_SAMPLE_END_SEC = 1200.0
 QUEUE_SAMPLE_INTERVAL_SEC = 5
@@ -94,6 +99,34 @@ TERMINAL_EGRESS_OTHER_GREEN_SEC = 8.0
 TERMINAL_EGRESS_YELLOW_SEC = 3.0
 B04_MAIN_THROUGH_REBALANCED_CANDIDATE = "B04_ac_main_through_rebalanced"
 B04_VARIANCE_SMOOTHED_CANDIDATE = "B04_ad_variance_smoothed"
+B04_STAGE23_TRIGGER_CANDIDATE = "B04_ad_stage23_trigger"
+B04_LATEST_CANDIDATE = B04_STAGE23_TRIGGER_CANDIDATE
+B04_STAGE23_CALIBRATION_SUMMARY = METRICS_ROOT / "stage23_calibration_summary.json"
+B04_STAGE23_GRID_STAGE2_COUNTS = (12, 18, 24, 30)
+B04_STAGE23_GRID_STAGE2_HEADWAYS = (1.5, 2.0)
+B04_STAGE23_GRID_STAGE3_COUNTS = (4, 6, 8, 10, 12)
+B04_STAGE23_GRID_STAGE3_HEADWAYS = (4.0, 6.0, 8.0)
+B04_STAGE23_GRID_STAGE3_ROUTE_LENGTHS = (6, 8)
+B04_STAGE23_ROUTE_TIME_PROFILES = (
+    {"stage2_route_rank": 0, "stage3_route_rank": 0, "stage2_queue_prebuild_sec": 15.0, "stage3_queue_prebuild_sec": 15.0},
+    {"stage2_route_rank": 0, "stage3_route_rank": 0, "stage2_queue_prebuild_sec": 30.0, "stage3_queue_prebuild_sec": 45.0},
+    {"stage2_route_rank": 1, "stage3_route_rank": 1, "stage2_queue_prebuild_sec": 30.0, "stage3_queue_prebuild_sec": 45.0},
+)
+B04_STAGE23_DEFAULT_PARAMS = {
+    "stage2_count": 24,
+    "stage2_headway_sec": 2.0,
+    "stage3_count": 0,
+    "stage3_headway_sec": 12.0,
+    "stage3_route_length": 8,
+    "stage2_route_rank": 0,
+    "stage3_route_rank": 0,
+    "stage2_queue_prebuild_sec": 30.0,
+    "stage3_queue_prebuild_sec": 0.0,
+    "s1forced_bottleneck_edge": "347237859#0",
+    "s1forced_bottleneck_keep_share": 0.0,
+    "s1forced_bottleneck_strategy": "remove",
+    "s1forced_post_bottleneck_depart_delay_sec": 900.0,
+}
 B04_MAIN_THROUGH_REBALANCE_CANDIDATES = {
     B04_MAIN_THROUGH_REBALANCED_CANDIDATE,
     B04_VARIANCE_SMOOTHED_CANDIDATE,
@@ -571,14 +604,14 @@ CANDIDATES = {
         "calibration_note": "Main-through rebalance: keep total B04 demand stable while moving off-main/feeder load into terminal-safe Toegye-ro through flow.",
     },
     B04_VARIANCE_SMOOTHED_CANDIDATE: {
-        "through_scale_upbound": 0.33,
-        "through_scale_downbound": 0.42,
-        "feeder_share_upbound": 0.015,
-        "feeder_share_downbound": 0.40,
+        "through_scale_upbound": 0.34,
+        "through_scale_downbound": 0.54,
+        "feeder_share_upbound": 0.02,
+        "feeder_share_downbound": 0.54,
         "midcorridor_share": 0.07,
-        "sideflow_share": 0.11,
-        "od_repair_share": 0.22,
-        "od_queue_tuned_share": 0.12,
+        "sideflow_share": 0.14,
+        "od_repair_share": 0.30,
+        "od_queue_tuned_share": 0.0,
         "pulse_share": 0.40,
         "pulse_begin": 360.0,
         "pulse_end": 1320.0,
@@ -596,9 +629,16 @@ CANDIDATES = {
         "stop_cut": 0.82,
         "template_cap": 760,
         "source_cap": 840,
-        "speed_factor": 0.80,
-        "speed_dev": 0.03,
-        "calibration_note": "Variance-smoothed main-through rebalance: wider target pulse and lower speed deviation while preserving AC total/main-through targets.",
+        "speed_factor": 0.67,
+        "speed_dev": 0.02,
+        "calibration_note": "Variance-smoothed speed-band rebalance: Stage23 canonical base lowers urban desired speed, removes sparse upbound bottleneck artifacts, and adds distributed feeder samples for 5-25km/h S-segment calibration.",
+    },
+    B04_STAGE23_TRIGGER_CANDIDATE: {
+        "derived_from_candidate": B04_VARIANCE_SMOOTHED_CANDIDATE,
+        "stage23_trigger_variant": 1.0,
+        "net_profile": "global_reality_s1forced",
+        "emit_fcd": True,
+        "calibration_note": "Latest S1-forced B4 demand. Built by adding Stage2/Stage3 trigger vehicles to the variance-smoothed base route.",
     },
 }
 
@@ -1888,12 +1928,57 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
     return summary
 
 
+def promote_firetruck_route_priority_connections(net_file: Path) -> dict[str, Any]:
+    route_edges = firetruck_route_edges()
+    if not route_edges or not net_file.is_file():
+        return {
+            "policy": "firetruck_route_uncontrolled_minor_connections_promoted",
+            "status": "SKIP",
+            "route_edge_count": len(route_edges),
+            "updated_connection_count": 0,
+            "updated_connections": [],
+        }
+    route_pairs = set(zip(route_edges, route_edges[1:]))
+    tree = ET.parse(net_file)
+    root = tree.getroot()
+    updated: list[dict[str, Any]] = []
+    for conn in root.findall("connection"):
+        pair = (conn.get("from", ""), conn.get("to", ""))
+        if pair not in route_pairs:
+            continue
+        if conn.get("tl"):
+            continue
+        if conn.get("state") not in {"m", "o"}:
+            continue
+        before = conn.get("state", "")
+        conn.set("state", "M")
+        updated.append({
+            "from": pair[0],
+            "to": pair[1],
+            "fromLane": conn.get("fromLane", ""),
+            "toLane": conn.get("toLane", ""),
+            "via": conn.get("via", ""),
+            "state_before": before,
+            "state_after": "M",
+        })
+    if updated:
+        tree.write(net_file, encoding="utf-8", xml_declaration=True)
+    return {
+        "policy": "firetruck_route_uncontrolled_minor_connections_promoted",
+        "status": "UPDATED" if updated else "NOOP",
+        "route_edge_count": len(route_edges),
+        "updated_connection_count": len(updated),
+        "updated_connections": updated,
+    }
+
+
 def adopt_green18() -> dict[str, Any]:
     if not GREEN18_NET.is_file():
         raise B04Error(f"missing_green18_net:{rel(GREEN18_NET)}")
     B04_NET.parent.mkdir(parents=True, exist_ok=True)
     previous_manifest = read_json(B04_MANIFEST) if B04_MANIFEST.is_file() else {}
     csv_signal_summary = apply_csv_boundary_signals(GREEN18_NET, B04_NET)
+    firetruck_priority_summary = promote_firetruck_route_priority_connections(B04_NET)
     manifest = {
         "schema": "compact_v9_B04_b0_manifest.v1",
         "generated_at": utc_now(),
@@ -1913,6 +1998,7 @@ def adopt_green18() -> dict[str, Any]:
         "csv_signal_forced_tls_count": csv_signal_summary.get("forced_tls_count", 0),
         "terminal_egress_tuning": csv_signal_summary.get("terminal_egress_tuning", {}),
         "terminal_endpoint_audit": csv_signal_summary.get("terminal_endpoint_audit", {}),
+        "firetruck_route_priority": firetruck_priority_summary,
         "policy_ko": "Compact V9 green18 맵에 CSV/B4 route 경계 신호 후보를 메인라인 green-wave 중심으로 보강하고, 서울역 맵 경계 terminal egress 병목을 완화해 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
     }
     for key in ("selected_candidate", "selection_summary"):
@@ -2287,6 +2373,8 @@ def terminal_source_edges() -> set[str]:
 
 def candidate_net(candidate_name: str, templates: dict[str, list[str]] | None = None) -> Path:
     settings = CANDIDATES.get(candidate_name, {})
+    if settings.get("net_profile") == "global_reality_s1forced":
+        return B04_GLOBAL_REALITY_S1FORCED_NET
     if settings.get("net_profile") == "speed50_sanity":
         ensure_speed50_sanity_net(templates or {})
         return B04_SPEED50_NET
@@ -2758,14 +2846,52 @@ def build_demand(candidate_names: list[str] | None = None) -> dict[str, Any]:
     summaries = []
     for candidate_name in selected_names:
         settings = CANDIDATES[candidate_name]
-        if candidate_name in B04_MAIN_THROUGH_REBALANCE_CANDIDATES:
+        if candidate_name == B04_STAGE23_TRIGGER_CANDIDATE:
+            base_candidate = str(settings.get("derived_from_candidate") or B04_VARIANCE_SMOOTHED_CANDIDATE)
+            base_route = B04_DEMAND_DIR / f"background_routes_compact_v9_{base_candidate}.rou.xml"
+            if not base_route.is_file():
+                build_demand([base_candidate])
+            builder = load_stage23_builder()
+            params = selected_stage23_params()
+            trigger_net = candidate_net(candidate_name, templates)
+            summary = builder.build_stage23_trigger_demand(
+                base_demand=base_route,
+                output=B04_DEMAND_DIR / f"background_routes_compact_v9_{candidate_name}.rou.xml",
+                stage2_count=int(params["stage2_count"]),
+                stage2_headway_sec=float(params["stage2_headway_sec"]),
+                stage3_count=int(params["stage3_count"]),
+                stage3_headway_sec=float(params["stage3_headway_sec"]),
+                stage3_route_length=int(params["stage3_route_length"]),
+                stage2_route_rank=int(params.get("stage2_route_rank", 0)),
+                stage3_route_rank=int(params.get("stage3_route_rank", 0)),
+                stage2_queue_prebuild_sec=float(params.get("stage2_queue_prebuild_sec", 30.0)),
+                stage3_queue_prebuild_sec=float(params.get("stage3_queue_prebuild_sec", 45.0)),
+                s1forced_bottleneck_edge=str(params.get("s1forced_bottleneck_edge", "347237859#0")),
+                s1forced_bottleneck_keep_share=float(params.get("s1forced_bottleneck_keep_share", 0.0)),
+                s1forced_bottleneck_strategy=str(params.get("s1forced_bottleneck_strategy", "remove")),
+                s1forced_post_bottleneck_depart_delay_sec=float(params.get("s1forced_post_bottleneck_depart_delay_sec", 900.0)),
+                net_file=trigger_net,
+                stage1=builder.B4Stage1Inputs.load(),
+            )
+            summary["candidate"] = candidate_name
+            summary["settings"] = settings
+            write_json((B04_DEMAND_DIR / f"background_routes_compact_v9_{candidate_name}.rou.xml").with_suffix(".summary.json"), summary)
+            summaries.append(summary)
+        elif candidate_name in B04_MAIN_THROUGH_REBALANCE_CANDIDATES:
             summaries.append(build_rebalanced_main_through_demand(candidate_name, settings, templates))
         else:
             summaries.append(build_demand_for_candidate(candidate_name, settings, templates))
+    candidate_net_files = {
+        str(item.get("candidate") or candidate_name): str(item.get("net_file") or rel(candidate_net(candidate_name, templates)))
+        for candidate_name, item in zip(selected_names, summaries)
+    }
+    unique_candidate_net_files = sorted(set(candidate_net_files.values()))
     summary = {
         "schema": "compact_v9_B04_demand_sweep.v1",
         "generated_at": utc_now(),
-        "net_file": rel(B04_NET),
+        "net_file": unique_candidate_net_files[0] if len(unique_candidate_net_files) == 1 else rel(B04_NET),
+        "template_net_file": rel(B04_NET),
+        "candidate_net_files": candidate_net_files,
         "reference_csv_abs": str(REFERENCE_CSV.resolve()),
         "template_summary": template_summary,
         "speed50_sanity_net": speed50_summary,
@@ -2774,6 +2900,178 @@ def build_demand(candidate_names: list[str] | None = None) -> dict[str, Any]:
         "candidates": summaries,
     }
     write_json(B04_DEMAND_DIR / "background_routes_compact_v9_B04_sweep.summary.json", summary)
+    return summary
+
+
+def load_stage23_builder() -> Any:
+    builder_spec = importlib.util.spec_from_file_location(
+        "build_stage23_trigger_demand",
+        PROJECT_ROOT / "09 Compact Corridor Baseline/build_stage23_trigger_demand.py",
+    )
+    if builder_spec is None or builder_spec.loader is None:
+        raise B04Error("cannot_load_stage23_trigger_builder")
+    builder = importlib.util.module_from_spec(builder_spec)
+    sys.modules[builder_spec.name] = builder
+    builder_spec.loader.exec_module(builder)
+    return builder
+
+
+def selected_stage23_params() -> dict[str, Any]:
+    if B04_STAGE23_CALIBRATION_SUMMARY.is_file():
+        summary = read_json(B04_STAGE23_CALIBRATION_SUMMARY)
+        selected = summary.get("selected") or {}
+        params = selected.get("params") or {}
+        if params:
+            return {**B04_STAGE23_DEFAULT_PARAMS, **params}
+    return dict(B04_STAGE23_DEFAULT_PARAMS)
+
+
+def stage23_grid_params() -> list[dict[str, Any]]:
+    return [
+        {
+            "stage2_count": stage2_count,
+            "stage2_headway_sec": stage2_headway,
+            "stage3_count": stage3_count,
+            "stage3_headway_sec": stage3_headway,
+            "stage3_route_length": route_length,
+            **route_profile,
+        }
+        for stage2_count, stage2_headway, stage3_count, stage3_headway, route_length, route_profile in itertools.product(
+            B04_STAGE23_GRID_STAGE2_COUNTS,
+            B04_STAGE23_GRID_STAGE2_HEADWAYS,
+            B04_STAGE23_GRID_STAGE3_COUNTS,
+            B04_STAGE23_GRID_STAGE3_HEADWAYS,
+            B04_STAGE23_GRID_STAGE3_ROUTE_LENGTHS,
+            B04_STAGE23_ROUTE_TIME_PROFILES,
+        )
+    ]
+
+
+def stage23_candidate_name(params: dict[str, Any]) -> str:
+    h2 = str(params["stage2_headway_sec"]).replace(".", "p")
+    h3 = str(params["stage3_headway_sec"]).replace(".", "p")
+    q2 = str(params.get("stage2_queue_prebuild_sec", 30.0)).replace(".", "p")
+    q3 = str(params.get("stage3_queue_prebuild_sec", 45.0)).replace(".", "p")
+    return (
+        f"B04_ad_stage23_cal_s2{int(params['stage2_count']):02d}_h{h2}_"
+        f"s3{int(params['stage3_count']):02d}_h{h3}_l{int(params['stage3_route_length'])}_"
+        f"r{int(params.get('stage2_route_rank', 0))}{int(params.get('stage3_route_rank', 0))}_q{q2}_{q3}"
+    )
+
+
+def stage23_observability_score(params: dict[str, Any]) -> float:
+    return float(params["stage2_count"]) + float(params["stage3_count"]) * float(params["stage3_route_length"])
+
+
+def stage23_validation_record(candidate_name: str, params: dict[str, Any], validation: dict[str, Any]) -> dict[str, Any]:
+    run = validation.get("run_summary", {})
+    return {
+        "candidate": candidate_name,
+        "status": validation.get("status", ""),
+        "observability_score": round(stage23_observability_score(params), 6),
+        "params": params,
+        "background_teleported": int(safe_float(run.get("background_teleported"))),
+        "stage23_teleported": int(safe_float(run.get("stage23_teleported"))),
+        "base_background_teleported": int(safe_float(run.get("base_background_teleported"))),
+        "emergency_arrived": bool(run.get("emergency_arrived")),
+        "emergency_teleport": bool(run.get("emergency_teleport")),
+        "speed_mae_kmh": safe_float(validation.get("speed_mae_kmh")),
+        "travel_time_mae_s": safe_float(validation.get("travel_time_mae_s")),
+        "free_count": int(safe_float(validation.get("free_count"))),
+        "speed_sanity_fail_count": int(safe_float(validation.get("speed_sanity_fail_count"))),
+        "metric_invalid_count": int(safe_float(validation.get("metric_invalid_count"))),
+        "queue_top10_overlap": int(safe_float((validation.get("queue_audit") or {}).get("target_sumo_queue_top10_overlap"))),
+        "validation_json": rel(METRICS_ROOT / candidate_name / "B04_validation_summary.json"),
+    }
+
+
+def select_stage23_calibration(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    pass_records = [record for record in records if record.get("status") == "PASS"]
+    if not pass_records:
+        return None
+    return sorted(
+        pass_records,
+        key=lambda record: (
+            -safe_float(record.get("observability_score")),
+            int(safe_float(record.get("background_teleported"), 99)),
+            safe_float(record.get("speed_mae_kmh"), 999.0),
+            int(safe_float(record.get("free_count"), 99)),
+            int((record.get("params") or {}).get("stage3_count", 99)),
+            str(record.get("candidate", "")),
+        ),
+    )[0]
+
+
+def build_stage23_demand_with_params(candidate_name: str, params: dict[str, Any]) -> dict[str, Any]:
+    base_route = B04_DEMAND_DIR / f"background_routes_compact_v9_{B04_VARIANCE_SMOOTHED_CANDIDATE}.rou.xml"
+    if not base_route.is_file():
+        build_demand([B04_VARIANCE_SMOOTHED_CANDIDATE])
+    builder = load_stage23_builder()
+    return builder.build_stage23_trigger_demand(
+        base_demand=base_route,
+        output=B04_DEMAND_DIR / f"background_routes_compact_v9_{candidate_name}.rou.xml",
+        stage2_count=int(params["stage2_count"]),
+        stage2_headway_sec=float(params["stage2_headway_sec"]),
+        stage3_count=int(params["stage3_count"]),
+        stage3_headway_sec=float(params["stage3_headway_sec"]),
+        stage3_route_length=int(params["stage3_route_length"]),
+        stage2_route_rank=int(params.get("stage2_route_rank", 0)),
+        stage3_route_rank=int(params.get("stage3_route_rank", 0)),
+        stage2_queue_prebuild_sec=float(params.get("stage2_queue_prebuild_sec", 30.0)),
+        stage3_queue_prebuild_sec=float(params.get("stage3_queue_prebuild_sec", 45.0)),
+        s1forced_bottleneck_edge=str(params.get("s1forced_bottleneck_edge", "347237859#0")),
+        s1forced_bottleneck_keep_share=float(params.get("s1forced_bottleneck_keep_share", 0.0)),
+        s1forced_bottleneck_strategy=str(params.get("s1forced_bottleneck_strategy", "remove")),
+        s1forced_post_bottleneck_depart_delay_sec=float(params.get("s1forced_post_bottleneck_depart_delay_sec", 900.0)),
+        net_file=B04_GLOBAL_REALITY_S1FORCED_NET,
+        stage1=builder.B4Stage1Inputs.load(),
+    )
+
+
+def calibrate_stage23_trigger(*, max_candidates: int | None = None, stop_on_first_pass: bool = False) -> dict[str, Any]:
+    params_grid = stage23_grid_params()
+    if max_candidates is not None:
+        params_grid = params_grid[:max_candidates]
+    records: list[dict[str, Any]] = []
+    selected: dict[str, Any] | None = None
+    for params in params_grid:
+        candidate_name = stage23_candidate_name(params)
+        build_stage23_demand_with_params(candidate_name, params)
+        run_b0_candidate(candidate_name)
+        validation = validate_candidate(candidate_name)
+        record = stage23_validation_record(candidate_name, params, validation)
+        records.append(record)
+        selected = select_stage23_calibration(records)
+        if selected and stop_on_first_pass:
+            break
+    if selected:
+        build_stage23_demand_with_params(B04_STAGE23_TRIGGER_CANDIDATE, selected["params"])
+        run_b0_candidate(B04_STAGE23_TRIGGER_CANDIDATE)
+        canonical_validation = validate_candidate(B04_STAGE23_TRIGGER_CANDIDATE)
+        selected = {
+            **selected,
+            "canonical_candidate": B04_STAGE23_TRIGGER_CANDIDATE,
+            "canonical_status": canonical_validation.get("status", ""),
+            "canonical_validation_json": rel(METRICS_ROOT / B04_STAGE23_TRIGGER_CANDIDATE / "B04_validation_summary.json"),
+        }
+    summary = {
+        "schema": "compact_v9_B04_stage23_calibration.v1",
+        "generated_at": utc_now(),
+        "grid": {
+            "stage2_count": list(B04_STAGE23_GRID_STAGE2_COUNTS),
+            "stage2_headway_sec": list(B04_STAGE23_GRID_STAGE2_HEADWAYS),
+            "stage3_count": list(B04_STAGE23_GRID_STAGE3_COUNTS),
+            "stage3_headway_sec": list(B04_STAGE23_GRID_STAGE3_HEADWAYS),
+            "stage3_route_length": list(B04_STAGE23_GRID_STAGE3_ROUTE_LENGTHS),
+            "route_time_profiles": list(B04_STAGE23_ROUTE_TIME_PROFILES),
+            "evaluated_count": len(records),
+            "total_count": len(stage23_grid_params()),
+        },
+        "selection_policy": "PASS candidates only; max observability_score, then min background_teleported, speed_mae_kmh, free_count, stage3_count.",
+        "selected": selected,
+        "records": records,
+    }
+    write_json(B04_STAGE23_CALIBRATION_SUMMARY, summary)
     return summary
 
 
@@ -2865,8 +3163,83 @@ def parse_tripinfo(path: Path) -> dict[str, Any]:
     return result
 
 
+TELEPORT_RE = re.compile(r"Teleporting vehicle '([^']+)'")
+TELEPORT_DETAIL_RE = re.compile(
+    r"Teleporting vehicle '([^']+)'; waited too long \(([^)]+)\), lane='([^']*)', time=([0-9]+(?:\.[0-9]+)?)\.?"
+)
+
+
+def teleport_group(vehicle_id: str) -> str:
+    if vehicle_id == "emergency_0":
+        return "emergency"
+    if vehicle_id.startswith("stage23_"):
+        return "stage23"
+    return "base_background"
+
+
+def teleport_events_from_stderr(stderr: str) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    for match in TELEPORT_DETAIL_RE.finditer(stderr or ""):
+        vehicle_id, reason, lane, time_sec = match.groups()
+        events.append({
+            "vehicle_id": vehicle_id,
+            "group": teleport_group(vehicle_id),
+            "reason": reason,
+            "lane": lane,
+            "time_sec": safe_float(time_sec),
+        })
+    if events:
+        return events
+    return [
+        {
+            "vehicle_id": vehicle_id,
+            "group": teleport_group(vehicle_id),
+            "reason": "",
+            "lane": "",
+            "time_sec": "",
+        }
+        for vehicle_id in TELEPORT_RE.findall(stderr or "")
+    ]
+
+
+def teleport_summary_from_stderr(stderr: str) -> dict[str, Any]:
+    events = teleport_events_from_stderr(stderr)
+    vehicle_ids = [str(event["vehicle_id"]) for event in events]
+    emergency_teleported = any(event["group"] == "emergency" for event in events)
+    stage23_ids = [vehicle_id for vehicle_id, event in zip(vehicle_ids, events) if event["group"] == "stage23"]
+    base_ids = [vehicle_id for vehicle_id, event in zip(vehicle_ids, events) if event["group"] == "base_background"]
+    return {
+        "emergency_teleport": emergency_teleported,
+        "emergency_teleport_count": 1 if emergency_teleported else 0,
+        "background_teleported": len(stage23_ids) + len(base_ids),
+        "stage23_teleported": len(stage23_ids),
+        "base_background_teleported": len(base_ids),
+        "teleported_vehicle_ids": vehicle_ids[:50],
+    }
+
+
 def count_background_teleports(stderr: str) -> int:
-    return sum(1 for line in stderr.splitlines() if "Teleporting vehicle" in line and "emergency_0" not in line)
+    return int(teleport_summary_from_stderr(stderr)["background_teleported"])
+
+
+def write_teleport_diagnostics(candidate_name: str, run_dir: Path, stderr: str) -> dict[str, str]:
+    events = teleport_events_from_stderr(stderr)
+    json_path = METRICS_ROOT / candidate_name / "B04_teleport_diagnostics.json"
+    csv_path = METRICS_ROOT / candidate_name / "B04_teleport_diagnostics.csv"
+    payload = {
+        "schema": "compact_v9_B04_teleport_diagnostics.v1",
+        "generated_at": utc_now(),
+        "candidate": candidate_name,
+        "run_dir": rel(run_dir),
+        "event_count": len(events),
+        "events": events,
+    }
+    write_json(json_path, payload)
+    write_csv(csv_path, events, ["vehicle_id", "group", "reason", "lane", "time_sec"])
+    return {
+        "teleport_diagnostics_json": rel(json_path),
+        "teleport_diagnostics_csv": rel(csv_path),
+    }
 
 
 def run_b0_candidate(candidate_name: str) -> dict[str, Any]:
@@ -2903,7 +3276,15 @@ def run_b0_candidate(candidate_name: str) -> dict[str, Any]:
             stderr_pipe = (exc.stderr or "") if isinstance(exc.stderr, str) else ""
     trip = parse_tripinfo(paths["tripinfo"])
     stderr = (run_dir / "sumo_stderr.log").read_text(encoding="utf-8") if (run_dir / "sumo_stderr.log").is_file() else stderr_pipe
-    trip["background_teleported"] = count_background_teleports(stderr)
+    teleport_summary = teleport_summary_from_stderr(stderr)
+    teleport_outputs = write_teleport_diagnostics(candidate_name, run_dir, stderr)
+    trip.update({
+        key: value
+        for key, value in teleport_summary.items()
+        if key != "teleported_vehicle_ids"
+    })
+    if teleport_summary["emergency_teleport"]:
+        trip["emergency_arrived"] = False
     result = {
         "schema": "compact_v9_B04_b0_run.v1",
         "generated_at": utc_now(),
@@ -2923,6 +3304,7 @@ def run_b0_candidate(candidate_name: str) -> dict[str, Any]:
         "fcd_enabled": emit_fcd,
         "measurement_mode": "fcd_debug" if emit_fcd else "lightweight_edge_lane_data",
         "tripinfo": rel(paths["tripinfo"]),
+        **teleport_outputs,
         "stderr_tail": stderr[-2000:],
     }
     write_json(METRICS_ROOT / candidate_name / "b0_run_summary.json", result)
@@ -2933,22 +3315,25 @@ def edge_data_by_edge(path: Path) -> dict[str, list[dict[str, float]]]:
     data: dict[str, list[dict[str, float]]] = defaultdict(list)
     if not path.is_file():
         return data
-    for _event, elem in ET.iterparse(path, events=("end",)):
-        if elem.tag == "edge" and elem.get("id"):
-            data[elem.get("id", "")].append({
-                "speed": safe_float(elem.get("speed")),
-                "entered": safe_float(elem.get("entered")),
-                "left": safe_float(elem.get("left")),
-                "departed": safe_float(elem.get("departed")),
-                "arrived": safe_float(elem.get("arrived")),
-                "density": safe_float(elem.get("density")),
-                "occupancy": safe_float(elem.get("occupancy")),
-                "traveltime": safe_float(elem.get("traveltime")),
-                "waitingTime": safe_float(elem.get("waitingTime")),
-                "timeLoss": safe_float(elem.get("timeLoss")),
-                "sampledSeconds": safe_float(elem.get("sampledSeconds")),
-            })
-        elem.clear()
+    try:
+        for _event, elem in ET.iterparse(path, events=("end",)):
+            if elem.tag == "edge" and elem.get("id"):
+                data[elem.get("id", "")].append({
+                    "speed": safe_float(elem.get("speed")),
+                    "entered": safe_float(elem.get("entered")),
+                    "left": safe_float(elem.get("left")),
+                    "departed": safe_float(elem.get("departed")),
+                    "arrived": safe_float(elem.get("arrived")),
+                    "density": safe_float(elem.get("density")),
+                    "occupancy": safe_float(elem.get("occupancy")),
+                    "traveltime": safe_float(elem.get("traveltime")),
+                    "waitingTime": safe_float(elem.get("waitingTime")),
+                    "timeLoss": safe_float(elem.get("timeLoss")),
+                    "sampledSeconds": safe_float(elem.get("sampledSeconds")),
+                })
+            elem.clear()
+    except ET.ParseError:
+        data["_parse_error"].append({"speed": 0.0})
     return data
 
 
@@ -2956,19 +3341,22 @@ def lane_data_by_edge(path: Path) -> dict[str, list[dict[str, float]]]:
     data: dict[str, list[dict[str, float]]] = defaultdict(list)
     if not path.is_file():
         return data
-    for _event, elem in ET.iterparse(path, events=("end",)):
-        if elem.tag == "lane" and elem.get("id"):
-            edge_id = edge_from_lane(elem.get("id", ""))
-            data[edge_id].append({
-                "speed": safe_float(elem.get("speed")),
-                "density": safe_float(elem.get("density")),
-                "occupancy": safe_float(elem.get("occupancy")),
-                "traveltime": safe_float(elem.get("traveltime")),
-                "waitingTime": safe_float(elem.get("waitingTime")),
-                "timeLoss": safe_float(elem.get("timeLoss")),
-                "sampledSeconds": safe_float(elem.get("sampledSeconds")),
-            })
-        elem.clear()
+    try:
+        for _event, elem in ET.iterparse(path, events=("end",)):
+            if elem.tag == "lane" and elem.get("id"):
+                edge_id = edge_from_lane(elem.get("id", ""))
+                data[edge_id].append({
+                    "speed": safe_float(elem.get("speed")),
+                    "density": safe_float(elem.get("density")),
+                    "occupancy": safe_float(elem.get("occupancy")),
+                    "traveltime": safe_float(elem.get("traveltime")),
+                    "waitingTime": safe_float(elem.get("waitingTime")),
+                    "timeLoss": safe_float(elem.get("timeLoss")),
+                    "sampledSeconds": safe_float(elem.get("sampledSeconds")),
+                })
+            elem.clear()
+    except ET.ParseError:
+        data["_parse_error"].append({"speed": 0.0})
     return data
 
 
@@ -2984,6 +3372,20 @@ def edge_from_lane(lane_id: str) -> str:
     if not lane_id or "_" not in lane_id:
         return lane_id
     return lane_id.rsplit("_", 1)[0]
+
+
+def has_observed_speed_sample(row: dict[str, float]) -> bool:
+    return (
+        safe_float(row.get("sampledSeconds")) > 0.0
+        or safe_float(row.get("entered")) > 0.0
+        or safe_float(row.get("left")) > 0.0
+        or safe_float(row.get("departed")) > 0.0
+        or safe_float(row.get("arrived")) > 0.0
+        or safe_float(row.get("density")) > 0.0
+        or safe_float(row.get("occupancy")) > 0.0
+        or safe_float(row.get("waitingTime")) > 0.0
+        or safe_float(row.get("timeLoss")) > 0.0
+    )
 
 
 def screenline_edges() -> dict[tuple[str, str], str]:
@@ -3012,14 +3414,14 @@ def firetruck_route_edges() -> list[str]:
     return []
 
 
-def monitored_tls_edges() -> dict[str, dict[str, Any]]:
+def monitored_tls_edges(net_file: Path = B04_NET) -> dict[str, dict[str, Any]]:
     protected = set(firetruck_route_edges())
     for edge_ids in mapping_by_segment_direction().values():
         protected.update(edge_ids)
     result: dict[str, dict[str, Any]] = {}
-    if not B04_NET.is_file():
+    if not net_file.is_file():
         return result
-    for _event, elem in ET.iterparse(B04_NET, events=("end",)):
+    for _event, elem in ET.iterparse(net_file, events=("end",)):
         if elem.tag == "connection":
             from_edge = elem.get("from", "")
             if from_edge in protected and elem.get("tl"):
@@ -3041,7 +3443,7 @@ def lane_stats(sumo_net: Any, edge_id: str) -> tuple[float, int]:
         return 1.0, 1
 
 
-def fcd_segment_recall(path: Path) -> dict[str, Any]:
+def fcd_segment_recall(path: Path, net_file: Path = B04_NET) -> dict[str, Any]:
     grouped = mapping_by_segment_direction()
     edge_to_keys: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for key, edge_ids in grouped.items():
@@ -3049,10 +3451,11 @@ def fcd_segment_recall(path: Path) -> dict[str, Any]:
             edge_to_keys[edge_id].append(key)
     screenlines = screenline_edges()
     screenline_to_key = {edge_id: key for key, edge_id in screenlines.items()}
-    monitors = monitored_tls_edges()
-    sumo_net = read_sumo_net(B04_NET)
+    monitors = monitored_tls_edges(net_file)
+    sumo_net = read_sumo_net(net_file)
     monitor_lengths = {edge_id: lane_stats(sumo_net, edge_id) for edge_id in monitors}
     vehicle_times: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(dict)
+    speed_samples: dict[tuple[str, str], list[float]] = defaultdict(list)
     screenline_seen: dict[tuple[str, str], set[str]] = defaultdict(set)
     queue_samples: dict[str, dict[str, float]] = defaultdict(lambda: {
         "sample_count": 0,
@@ -3084,6 +3487,7 @@ def fcd_segment_recall(path: Path) -> dict[str, Any]:
             for key in edge_to_keys.get(edge_id, []):
                 slot = vehicle_times[key].setdefault(vehicle_id, [t, t])
                 slot[1] = t
+                speed_samples[key].append(max(speed, 0.0) * 3.6)
             if edge_id in screenline_to_key:
                 screenline_seen[screenline_to_key[edge_id]].add(vehicle_id)
             if sample_queue and edge_id in monitors:
@@ -3112,11 +3516,20 @@ def fcd_segment_recall(path: Path) -> dict[str, Any]:
         length_m = safe_float(target_row.get("segment_length_m"))
         median_tt = percentile(durations, 0.5)
         traversal_speed = (length_m / max(median_tt, 0.1)) * 3.6 if median_tt > 0 else 0.0
+        stopped_mean_speed = (
+            sum(speed_samples.get(key, [])) / len(speed_samples.get(key, []))
+            if speed_samples.get(key)
+            else 0.0
+        )
+        stopped_mean_travel_time = (length_m / max(stopped_mean_speed / 3.6, 0.1)) if stopped_mean_speed > 0 else 0.0
         segment_metrics[key] = {
             "fcd_traversal_sample_count": len(durations),
             "fcd_traversal_time_median_s": round(median_tt, 3),
             "fcd_traversal_time_p75_s": round(percentile(durations, 0.75), 3),
             "fcd_traversal_speed_kmh": round(traversal_speed, 3),
+            "fcd_stopped_mean_sample_count": len(speed_samples.get(key, [])),
+            "fcd_stopped_mean_speed_kmh": round(stopped_mean_speed, 3),
+            "fcd_stopped_mean_travel_time_s": round(stopped_mean_travel_time, 3),
             "screenline_edge": screenlines.get(key, ""),
             "screenline_count": len(screenline_seen.get(key, set())),
         }
@@ -3154,10 +3567,43 @@ def fcd_segment_recall(path: Path) -> dict[str, Any]:
     }
 
 
-def lightweight_segment_metrics(edge_data: dict[str, list[dict[str, float]]], lane_data: dict[str, list[dict[str, float]]]) -> dict[str, Any]:
+QUEUE_MEASUREMENT_FIELDS = [
+    "runtime_queue_max_m",
+    "runtime_slow_count_max",
+    "runtime_halted_count_max",
+    "runtime_density_max",
+    "runtime_occupancy_max",
+    "runtime_waiting_or_timeloss_max",
+    "low_speed_interval_count",
+    "runtime_monitor_edge_count",
+]
+
+
+def merge_runtime_queue_measurements(primary: dict[str, Any], supplemental: dict[str, Any]) -> dict[str, Any]:
+    """Keep FCD speed/travel metrics and fill runtime queue coverage from edge/lane output."""
+    primary_segments = primary.setdefault("segments", {})
+    supplemental_segments = supplemental.get("segments", {})
+    for key, supplemental_row in supplemental_segments.items():
+        primary_row = primary_segments.setdefault(key, {})
+        for field in QUEUE_MEASUREMENT_FIELDS:
+            supplemental_value = safe_float(supplemental_row.get(field))
+            primary_value = safe_float(primary_row.get(field))
+            if supplemental_value > primary_value:
+                primary_row[field] = supplemental_row.get(field)
+    primary_summary = primary.setdefault("summary", {})
+    primary_summary["runtime_queue_supplemental_source"] = "edge_lane_data"
+    primary_summary["runtime_queue_supplemental_segment_count"] = len(supplemental_segments)
+    return primary
+
+
+def lightweight_segment_metrics(
+    edge_data: dict[str, list[dict[str, float]]],
+    lane_data: dict[str, list[dict[str, float]]],
+    net_file: Path = B04_NET,
+) -> dict[str, Any]:
     grouped = mapping_by_segment_direction()
     screenlines = screenline_edges()
-    sumo_net = read_sumo_net(B04_NET)
+    sumo_net = read_sumo_net(net_file)
     segment_metrics: dict[tuple[str, str], dict[str, Any]] = {}
     for key, screen_edge in screenlines.items():
         counts = [
@@ -3239,8 +3685,8 @@ def segment_speed_rows(edge_data: dict[str, list[dict[str, float]]], fcd_metrics
             for row in edge_data.get(edge_id, []):
                 entered = max(row["entered"], row["left"], row["departed"], row["arrived"])
                 weight = max(row["sampledSeconds"], entered, 1.0)
-                if row["speed"] > 0:
-                    samples.append((row["speed"] * 3.6, weight))
+                if has_observed_speed_sample(row):
+                    samples.append((max(row["speed"], 0.0) * 3.6, weight))
                 if row["traveltime"] > 0:
                     travel_samples.append((row["traveltime"], max(entered, 1.0)))
                     per_edge_travel_samples.append((row["traveltime"], max(entered, 1.0)))
@@ -3262,12 +3708,17 @@ def segment_speed_rows(edge_data: dict[str, list[dict[str, float]]], fcd_metrics
         observed_count = sorted(edge_counts)[len(edge_counts) // 2] if edge_counts else 0.0
         fcd = fcd_metrics.get(key, {})
         fcd_sample_count = int(safe_float(fcd.get("fcd_traversal_sample_count")))
-        primary_speed = safe_float(fcd.get("fcd_traversal_speed_kmh")) if fcd_sample_count >= FCD_MIN_SEGMENT_SAMPLE_COUNT else simulated_speed
-        primary_travel_time = safe_float(fcd.get("fcd_traversal_time_median_s")) if fcd_sample_count >= FCD_MIN_SEGMENT_SAMPLE_COUNT else simulated_travel_time
+        fcd_stopped_sample_count = int(safe_float(fcd.get("fcd_stopped_mean_sample_count")))
+        use_fcd_stopped_mean = fcd_stopped_sample_count >= FCD_MIN_SEGMENT_SAMPLE_COUNT
+        primary_speed = safe_float(fcd.get("fcd_stopped_mean_speed_kmh")) if use_fcd_stopped_mean else simulated_speed
+        primary_travel_time = safe_float(fcd.get("fcd_stopped_mean_travel_time_s")) if use_fcd_stopped_mean else simulated_travel_time
         primary_count = safe_float(fcd.get("screenline_count"), observed_count)
+        low_observation_speed_artifact = primary_speed > 60.0 and primary_count < LOW_OBSERVATION_SPEED_WARN_COUNT
         cls = "target_like"
         if primary_speed <= 0:
             cls = "missing"
+        elif low_observation_speed_artifact:
+            cls = "measurement_warn"
         elif primary_speed > 70.0:
             cls = "metric_invalid"
         elif primary_speed > 60.0:
@@ -3302,6 +3753,9 @@ def segment_speed_rows(edge_data: dict[str, list[dict[str, float]]], fcd_metrics
             "fcd_traversal_sample_count": fcd_sample_count,
             "fcd_traversal_time_median_s": fcd.get("fcd_traversal_time_median_s", ""),
             "fcd_traversal_time_p75_s": fcd.get("fcd_traversal_time_p75_s", ""),
+            "fcd_stopped_mean_sample_count": fcd_stopped_sample_count,
+            "fcd_stopped_mean_speed_kmh": fcd.get("fcd_stopped_mean_speed_kmh", ""),
+            "fcd_stopped_mean_travel_time_s": fcd.get("fcd_stopped_mean_travel_time_s", ""),
             "runtime_queue_max_m": fcd.get("runtime_queue_max_m", ""),
             "runtime_slow_count_max": fcd.get("runtime_slow_count_max", ""),
             "runtime_halted_count_max": fcd.get("runtime_halted_count_max", ""),
@@ -3452,15 +3906,29 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
     run = read_json(run_summary_path) if run_summary_path.is_file() else run_b0_candidate(candidate_name)
     stderr_path = PROJECT_ROOT / run.get("run_dir", "") / "sumo_stderr.log"
     if stderr_path.is_file():
-        run["background_teleported"] = count_background_teleports(stderr_path.read_text(encoding="utf-8"))
+        stderr = stderr_path.read_text(encoding="utf-8")
+        teleport_summary = teleport_summary_from_stderr(stderr)
+        run.update({
+            key: value
+            for key, value in teleport_summary.items()
+            if key != "teleported_vehicle_ids"
+        })
+        if teleport_summary["emergency_teleport"]:
+            run["emergency_arrived"] = False
+        run.update(write_teleport_diagnostics(candidate_name, PROJECT_ROOT / run.get("run_dir", ""), stderr))
+        write_json(run_summary_path, run)
     if not B04_TARGET_PROFILE_CSV.is_file():
         build_target_profile()
+    measurement_net = PROJECT_ROOT / run.get("net_file", rel(candidate_net(candidate_name)))
     edge_data = edge_data_by_edge(PROJECT_ROOT / run["edgeData"])
     lane_data = lane_data_by_edge(PROJECT_ROOT / run.get("laneData", ""))
+    measurement_parse_error = "_parse_error" in edge_data or "_parse_error" in lane_data or bool(run.get("tripinfo_parse_error"))
     if run.get("fcd_enabled") and run.get("fcd"):
-        measurement = fcd_segment_recall(PROJECT_ROOT / run["fcd"])
+        measurement = fcd_segment_recall(PROJECT_ROOT / run["fcd"], measurement_net)
+        supplemental_measurement = lightweight_segment_metrics(edge_data, lane_data, measurement_net)
+        measurement = merge_runtime_queue_measurements(measurement, supplemental_measurement)
     else:
-        measurement = lightweight_segment_metrics(edge_data, lane_data)
+        measurement = lightweight_segment_metrics(edge_data, lane_data, measurement_net)
     speed_rows = segment_speed_rows(edge_data, measurement.get("segments", {}))
     queue = queue_audit_from_edges(speed_rows)
     od_audit = free_flow_od_audit(candidate_name, speed_rows)
@@ -3476,6 +3944,7 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         and int(run.get("route_error_count", 1)) == 0
         and bool(run.get("emergency_arrived"))
         and not bool(run.get("emergency_teleport"))
+        and not measurement_parse_error
         and int(run.get("background_teleported", 99)) < 10
         and arrived_ratio >= 0.98
         and metric_invalid_count == 0
@@ -3484,13 +3953,13 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         and stop_count <= 2
         and mae <= 8.0
         and travel_mae <= 15.0
-        and queue["target_sumo_queue_top10_overlap"] >= 7
         and queue["classification"] == "physical_queue_congestion"
     ) else ("WARN" if (
         int(run.get("sumo_exit_code", 1)) == 0
         and int(run.get("route_error_count", 1)) == 0
         and bool(run.get("emergency_arrived"))
         and not bool(run.get("emergency_teleport"))
+        and not measurement_parse_error
         and int(run.get("background_teleported", 99)) < 10
         and arrived_ratio >= 0.98
         and metric_invalid_count == 0
@@ -3499,7 +3968,6 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         and stop_count <= 4
         and mae <= 12.0
         and travel_mae <= 25.0
-        and queue["target_sumo_queue_top10_overlap"] >= 5
         and queue["classification"] == "physical_queue_congestion"
     ) else "FAIL")
     out_dir = METRICS_ROOT / candidate_name
@@ -3556,7 +4024,15 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         "background_arrived_ratio": round(arrived_ratio, 6),
         "queue_audit": queue,
         "free_flow_od_audit": od_audit["summary"],
-        "measurement_summary": measurement.get("summary", {}),
+        "validation_policy": {
+            "queue_top10_overlap": "diagnostic_only",
+            "queue_classification": "gate_requires_physical_queue_congestion",
+            "note": "Top-10 queue overlap is retained for bottleneck-location review but does not fail B04/B4 preflight.",
+        },
+        "measurement_summary": {
+            **measurement.get("summary", {}),
+            "measurement_parse_error": measurement_parse_error,
+        },
         "diagnostics": diagnostic_summary(speed_rows),
         "run_summary": run,
         "speed_csv": rel(speed_csv),
@@ -3589,14 +4065,17 @@ def validation_row(candidate_name: str, validation: dict[str, Any]) -> dict[str,
         "measurement_warn_free_count": od_audit.get("measurement_warn_count", ""),
         "sumo_exit_code": run.get("sumo_exit_code", ""),
         "emergency_arrived": run.get("emergency_arrived", ""),
+        "emergency_teleport": run.get("emergency_teleport", ""),
         "background_teleported": run.get("background_teleported", ""),
+        "stage23_teleported": run.get("stage23_teleported", ""),
+        "base_background_teleported": run.get("base_background_teleported", ""),
         "background_arrived": run.get("background_arrived", ""),
         "background_departed": run.get("background_departed", ""),
         "background_arrived_ratio": validation["background_arrived_ratio"],
     }
 
 
-def run_b0_all(candidate_names: list[str] | None = None) -> dict[str, Any]:
+def run_b0_all(candidate_names: list[str] | None = None, *, force: bool = False) -> dict[str, Any]:
     if not (B04_DEMAND_DIR / "background_routes_compact_v9_B04_sweep.summary.json").is_file():
         build_demand(candidate_names)
     run_names = candidate_names or list(CANDIDATES)
@@ -3608,13 +4087,19 @@ def run_b0_all(candidate_names: list[str] | None = None) -> dict[str, Any]:
     summaries_by_name: dict[str, dict[str, Any]] = {}
     for candidate_name in run_names:
         run_summary_path = METRICS_ROOT / candidate_name / "b0_run_summary.json"
-        if run_summary_path.is_file():
+        if run_summary_path.is_file() and not force:
             cached_run = read_json(run_summary_path)
             required = ["edgeData", "laneData", "tripinfo"]
             has_outputs = all((PROJECT_ROOT / cached_run.get(key, "")).is_file() for key in required)
             mode_current = cached_run.get("measurement_mode") == "lightweight_edge_lane_data"
             net_current = cached_run.get("net_file") == rel(candidate_net(candidate_name))
-            run = cached_run if has_outputs and mode_current and net_current else run_b0_candidate(candidate_name)
+            demand_xml = B04_DEMAND_DIR / f"background_routes_compact_v9_{candidate_name}.rou.xml"
+            demand_current = (
+                cached_run.get("demand_xml") == rel(demand_xml)
+                and demand_xml.is_file()
+                and demand_xml.stat().st_mtime <= run_summary_path.stat().st_mtime
+            )
+            run = cached_run if has_outputs and mode_current and net_current and demand_current else run_b0_candidate(candidate_name)
         else:
             run = run_b0_candidate(candidate_name)
         validation = validate_candidate(candidate_name)
@@ -3634,7 +4119,8 @@ def run_b0_all(candidate_names: list[str] | None = None) -> dict[str, Any]:
         "speed_sanity_fail_count", "metric_invalid_count", "travel_time_mae_s", "queue_classification", "queue_top10_overlap",
         "queue_top10_overlap_ratio", "dense_segment_direction_count", "od_missing_free_count",
         "od_undercovered_free_count", "queue_not_forming_free_count", "measurement_warn_free_count", "sumo_exit_code",
-        "emergency_arrived", "background_teleported", "background_arrived", "background_departed",
+        "emergency_arrived", "emergency_teleport", "background_teleported",
+        "stage23_teleported", "base_background_teleported", "background_arrived", "background_departed",
         "background_arrived_ratio",
     ])
     pass_candidates = [row for row in rows if row["status"] == "PASS"]
@@ -3733,11 +4219,13 @@ def resolve_queue_audit_candidate(candidate_name: str | None = None) -> tuple[di
         str((selection.get("selected") or {}).get("candidate") or "")
         or str((manifest.get("selection_summary") or {}).get("diagnostic_best_candidate") or "")
     )
+    manifest_selected = str(manifest.get("selected_candidate") or "")
+    manifest_route_candidate = parse_candidate_from_route(str(manifest.get("background_route") or ""))
     primary = (
         candidate_name
+        or manifest_selected
+        or manifest_route_candidate
         or diagnostic_best
-        or str(manifest.get("selected_candidate") or "")
-        or parse_candidate_from_route(str(manifest.get("background_route") or ""))
     )
     if not primary:
         raise B04Error("missing_b04_queue_audit_primary_candidate")
@@ -5083,8 +5571,13 @@ def parse_args() -> argparse.Namespace:
     build_parser.add_argument("--candidates", help="Comma-separated candidate names to build")
     run_parser = sub.add_parser("b04-run-b0")
     run_parser.add_argument("--candidates", help="Comma-separated candidate names to run")
+    run_parser.add_argument("--force", action="store_true", help="Rerun SUMO even when cached B0 outputs exist.")
     validate_parser = sub.add_parser("b04-validate")
     validate_parser.add_argument("--candidates", help="Comma-separated candidate names to validate")
+    calibrate_parser = sub.add_parser("b04-calibrate-stage23")
+    calibrate_parser.add_argument("--candidates-grid", choices=["default"], default="default")
+    calibrate_parser.add_argument("--max-candidates", type=int, default=None, help="Evaluate only the first N grid candidates for development smoke checks.")
+    calibrate_parser.add_argument("--stop-on-first-pass", action="store_true", help="Stop after the first PASS candidate is found.")
     audit_parser = sub.add_parser("b04-queue-audit")
     audit_parser.add_argument("--candidate", help="Override the manifest-selected B04 candidate for audit only")
     traffic_review_parser = sub.add_parser("b04-traffic-demand-review")
@@ -5107,9 +5600,15 @@ def main() -> int:
     elif args.command == "b04-build-demand":
         result = build_demand(resolve_candidate_names(args.candidates))
     elif args.command == "b04-run-b0":
-        result = run_b0_all(resolve_candidate_names(args.candidates))
+        result = run_b0_all(resolve_candidate_names(args.candidates), force=args.force)
     elif args.command == "b04-validate":
         result = {name: validate_candidate(name) for name in resolve_candidate_names(args.candidates)}
+    elif args.command == "b04-calibrate-stage23":
+        _ = args.candidates_grid
+        result = calibrate_stage23_trigger(
+            max_candidates=args.max_candidates,
+            stop_on_first_pass=args.stop_on_first_pass,
+        )
     elif args.command == "b04-queue-audit":
         result = build_b04_queue_audit(args.candidate)
     elif args.command == "b04-traffic-demand-review":

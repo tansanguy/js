@@ -1,0 +1,11 @@
+weight_ratio,round,essi_max,essi_log_max,essi_log_max_ewma,spc_status,spc_stop_recommended
+1:1,3,0.14,-1.98431258,-1.98431258,warmup,False
+1:1,4,0.08,-2.46598644,-2.12881474,warmup,False
+5:1,3,0.04,-3.29337158,-3.29337158,warmup,False
+5:1,4,10.64,2.36460072,-1.59597989,warmup,False
+10:1,3,0.02,-3.89190278,-3.89190278,warmup,False
+10:1,4,11.73,2.46251662,-1.98557696,warmup,False
+15:1,3,0.02,-4.13652440,-4.13652440,warmup,False
+15:1,4,10.58,2.35871403,-2.18795287,warmup,False
+20:1,3,0.01,-4.53098274,-4.53098274,warmup,False
+20:1,4,12.36,2.51451759,-2.41733264,warmup,False

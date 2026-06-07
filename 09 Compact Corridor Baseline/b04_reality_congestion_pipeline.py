@@ -38,7 +38,7 @@ OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired_
 ACTIVE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
 ACTIVE_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_reality_repaired.net.xml"
 
-BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml"
+BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 OUTPUT_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml"
 SKELETON_CSV = PROJECT_ROOT / "mainstream_segment_skeleton.csv"
 TLS_MAPPING_CSV = TDATA_ROOT / "a008_tls_itst_mapping.csv"
@@ -132,7 +132,7 @@ def fallback_timing_family(row: dict[str, Any], averages: dict[str, int]) -> dic
     family_index = int(route_order) % 5
     cycle = max(80, min(105, int(averages["cycle_sec"]) + [-5, 0, 5, 10, -10][family_index]))
     main_green = clamp_main_green(
-        int(averages["main_green_sec"]) + [-8, -3, 3, 8, 0][family_index],
+        int(averages["main_green_sec"]) + [-14, -9, -4, 1, -6][family_index],
         cycle,
         yellow,
     )
@@ -170,7 +170,7 @@ def load_signal_profiles() -> list[dict[str, Any]]:
 
 
 def clamp_main_green(value: int, cycle: int, yellow: int) -> int:
-    return max(24, min(cycle - 2 * yellow - 6, value))
+    return max(24, min(cycle - 2 * yellow - 16, value))
 
 
 def profile_object(row: dict[str, Any]) -> Any:

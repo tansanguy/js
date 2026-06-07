@@ -5,6 +5,7 @@ import csv
 import importlib.util
 import json
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -13,6 +14,8 @@ SCRIPT = PROJECT_ROOT / "09 Compact Corridor Baseline/b4_stage1_pipeline.py"
 STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 CSV_SIGNAL_CANDIDATES = PROJECT_ROOT / "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv"
+B04_PRIMARY_VALIDATION = PROJECT_ROOT / "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/B04_validation_summary.json"
+B04_PRIMARY_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 
 
 def load_pipeline():
@@ -49,17 +52,28 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(self.summary["primary_candidate"], "B04_ad_stage23_trigger")
         self.assertEqual(self.summary["manifest_selected_candidate"], "B04_ad_stage23_trigger")
         self.assertEqual(self.summary["manifest_selected_candidate_role"], "primary_selected")
+        self.assertEqual(self.summary["provenance_status"], "PASS")
+        self.assertFalse(self.summary["allow_runtime_input_override"])
         metrics = self.summary["primary_candidate_lock"]["metrics"]
-        self.assertEqual(metrics["vehicles"], 1302)
-        self.assertEqual(metrics["main_through_flow"], 657)
-        self.assertEqual(metrics["terminal_sink_flow"], 0)
-        self.assertAlmostEqual(metrics["top_sink_share"], 0.141321)
-        self.assertAlmostEqual(metrics["speed_mae_kmh"], 11.533)
-        self.assertEqual(metrics["free_count"], 10)
-        self.assertEqual(metrics["od_undercovered"], 10)
-        self.assertEqual(metrics["queue_not_forming"], 0)
-        self.assertEqual(metrics["teleport"], 0)
-        self.assertEqual(metrics["arrived_ratio"], 1.0)
+        validation = json.loads(B04_PRIMARY_VALIDATION.read_text(encoding="utf-8"))
+        run = validation["run_summary"]
+        vehicle_count = sum(1 for child in ET.parse(B04_PRIMARY_DEMAND).getroot() if child.tag == "vehicle")
+        self.assertEqual(self.summary["primary_candidate_lock"]["measurement_source_candidate"], "B04_ad_stage23_trigger")
+        self.assertEqual(metrics["candidate"], "B04_ad_stage23_trigger")
+        self.assertEqual(metrics["vehicles"], vehicle_count)
+        self.assertEqual(metrics["main_through_flow"], 473)
+        self.assertEqual(metrics["terminal_sink_flow"], 140)
+        self.assertGreater(metrics["top_sink_share"], 0.0)
+        self.assertAlmostEqual(metrics["speed_mae_kmh"], validation["speed_mae_kmh"])
+        self.assertEqual(metrics["free_count"], validation["free_count"])
+        self.assertEqual(metrics["od_undercovered"], validation["free_flow_od_audit"]["od_undercovered_count"])
+        self.assertEqual(metrics["queue_not_forming"], validation["free_flow_od_audit"]["queue_not_forming_count"])
+        self.assertEqual(metrics["teleport"], run["background_teleported"])
+        self.assertEqual(metrics["emergency_arrived"], run["emergency_arrived"])
+        self.assertEqual(metrics["emergency_teleport"], run["emergency_teleport"])
+        self.assertEqual(metrics["stage23_teleported"], run["stage23_teleported"])
+        self.assertEqual(metrics["base_background_teleported"], run["base_background_teleported"])
+        self.assertEqual(metrics["arrived_ratio"], validation["background_arrived_ratio"])
         expected = {
             "b4_route_movement_plan_json",
             "b4_intersections_csv",
@@ -83,6 +97,17 @@ class B4Stage1ContractTest(unittest.TestCase):
             path = PROJECT_ROOT / rel_path
             self.assertTrue(path.is_file(), rel_path)
             self.assertNotIn("b3_", path.name.lower())
+
+    def assert_phase_has_green(self, tls_id: str, phase_value: str, link_index_text: str) -> None:
+        self.assertNotEqual(phase_value, "")
+        self.assertNotEqual(link_index_text, "")
+        phases = self.pipeline.tl_logic_details(self.pipeline.B04_NET)[tls_id]
+        phase_index = int(phase_value)
+        self.assertLess(phase_index, len(phases), tls_id)
+        state = str(phases[phase_index]["state"])
+        for link_index in [int(value) for value in link_index_text.split()]:
+            self.assertLess(link_index, len(state), tls_id)
+            self.assertIn(state[link_index], {"G", "g"}, (tls_id, phase_index, link_index, state))
 
     def test_approach_storage_plan_separates_local_and_corridor_storage(self):
         path = STAGE1_DIR / "b4_approach_storage_link_plan.csv"
@@ -154,11 +179,12 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(movement["parallel_through_linkIndex"], "14 15 16 18")
         self.assertEqual(movement["same_lane_blocking_linkIndex"], "15 16 17")
         self.assertEqual(movement["flush_linkIndex"], "15 16 17")
-        self.assertEqual(movement["selected_green_phase"], "0")
-        self.assertEqual(movement["selected_flush_phase"], "")
+        self.assert_phase_has_green(movement["tls_id"], movement["selected_green_phase"], movement["ev_route_linkIndex"])
+        self.assert_phase_has_green(movement["tls_id"], movement["selected_flush_phase"], movement["flush_linkIndex"])
+        self.assertNotEqual(movement["selected_green_phase"], movement["selected_flush_phase"])
         self.assertEqual(movement["full_through_phase_available"], "False")
-        self.assertEqual(movement["same_lane_blocker_flush_available"], "False")
-        self.assertEqual(movement["control_strategy"], "route_green_only_no_full_through_phase")
+        self.assertEqual(movement["same_lane_blocker_flush_available"], "True")
+        self.assertEqual(movement["control_strategy"], "route_green_with_same_lane_blocker_flush")
 
     def test_readiness_keeps_80_100_120_fill_and_uses_100m_trigger(self):
         path = STAGE1_DIR / "b4_bottleneck_queue_readiness.csv"
@@ -304,7 +330,7 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertTrue(required.issubset(rows[0].keys()))
         expected = {
             "S7": ("B4_MOVEMENT_05", "B4_MOVEMENT_04", "mapped_exact"),
-            "S10": ("B4_MOVEMENT_07", "B4_MOVEMENT_06", "mapped_route_span_proxy"),
+            "S10": ("B4_MOVEMENT_08", "B4_MOVEMENT_07", "mapped_route_span_proxy"),
             "S11": ("B4_MOVEMENT_08", "B4_MOVEMENT_07", "mapped_exact"),
         }
         for row in rows:
@@ -320,6 +346,9 @@ class B4Stage1ContractTest(unittest.TestCase):
         payload = json.loads((STAGE1_DIR / "b4_case_b_candidates.json").read_text(encoding="utf-8"))
         self.assertEqual(payload["measurement_source"], "SUMO B04 no-control B0 measured proxy")
         self.assertIn("source_policy", payload)
+        self.assertEqual(payload["duplicate_movement_pair_count"], 1)
+        self.assertEqual(payload["duplicate_movement_pairs"][0]["segments"], ["S10", "S11"])
+        self.assertIn("largest live segment fill", payload["runtime_duplicate_policy"])
         self.assertEqual(payload["mapped_count"], 3)
         self.assertEqual(payload["runtime_enabled_count"], 3)
 

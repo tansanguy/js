@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_a008_location_matched_signal.v1",
-  "generated_at": "2026-06-07T01:53:43.491200+00:00",
+  "generated_at": "2026-06-07T08:04:45.437033+00:00",
   "claim_scope": "A008 location-matched T-Data plausible signal network, not exact field reproduction",
   "a008_csv": "A008_P.csv",
   "skeleton_csv": "mainstream_segment_skeleton.csv",
@@ -12,45 +12,17 @@
   "timing_snapshot": {
     "files": [
       {
-        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210137.jsonl",
-        "line_count": 0,
-        "record_count": 0,
-        "first_page": "",
-        "last_page": ""
-      },
-      {
-        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210517.jsonl",
+        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260607_165235.jsonl",
         "line_count": 120,
-        "record_count": 11900,
+        "record_count": 12000,
         "first_page": 1,
         "last_page": 120
-      },
-      {
-        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210751.jsonl",
-        "line_count": 180,
-        "record_count": 18000,
-        "first_page": 121,
-        "last_page": 300
-      },
-      {
-        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210833.jsonl",
-        "line_count": 220,
-        "record_count": 22000,
-        "first_page": 301,
-        "last_page": 520
-      },
-      {
-        "path": "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260607_013939.jsonl",
-        "line_count": 520,
-        "record_count": 52000,
-        "first_page": 1,
-        "last_page": 520
       }
     ],
-    "file_count": 5,
-    "record_count": 103900,
+    "file_count": 1,
+    "record_count": 12000,
     "first_page": 1,
-    "last_page": 520
+    "last_page": 120
   },
   "state_snapshot": {},
   "endpoint_count": 23,
@@ -78,8 +50,8 @@
   ],
   "fallback_average_policy": "measured_TData_profiles_average_with_route_family_timing",
   "fallback_average": {
-    "cycle_sec": 90,
-    "main_green_sec": 62,
+    "cycle_sec": 113,
+    "main_green_sec": 53,
     "yellow_sec": 3
   },
   "state_hit_count": 0,

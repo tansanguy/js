@@ -1,0 +1,6 @@
+weight_ratio,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,rounds_completed,essi_max,essi_log_max,essi_log_max_ewma,spc_status,spc_stop_recommended,spc_stop_round,is_knee
+1:1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,88.70,4,0.06,-2.85079163,-2.24425630,warmup,False,,True
+5:1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,69.57,4,3.99,1.38435625,-1.90928462,warmup,False,,False
+10:1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,65.22,4,17.27,2.84911493,-2.01761718,warmup,False,,False
+15:1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,63.59,4,4.66,1.53936692,-2.55114535,warmup,False,,False
+20:1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,60.00,117.41,62.73,4,18.20,2.90136909,-2.44929691,warmup,False,,False

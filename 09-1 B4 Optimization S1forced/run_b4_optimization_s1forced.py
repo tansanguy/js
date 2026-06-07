@@ -46,7 +46,31 @@ DEFAULT_BO_INITIAL = 10
 DEFAULT_WORKERS = 1
 FAILURE_PENALTY_SEC = 1_000_000.0
 METHODS = ["Random Search", "CMA-ES", "BO"]
+METHOD_ALIASES = {
+    "random": "Random Search",
+    "random-search": "Random Search",
+    "random_search": "Random Search",
+    "rs": "Random Search",
+    "cma": "CMA-ES",
+    "cma-es": "CMA-ES",
+    "cma_es": "CMA-ES",
+    "bo": "BO",
+}
 THETA_FIELDS = ["parameter_id", "t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
+ESSI_FIELDS = [
+    "essi_acquisition",
+    "essi_1",
+    "essi_2",
+    "essi_3",
+    "essi_4",
+    "essi_5",
+    "essi_6",
+    "essi_max",
+    "essi_mean",
+    "essi_log_max",
+    "dominant_essi_subspace",
+    "spatial_activation_score",
+]
 EVALUATION_FIELDS = [
     "method",
     "seed",
@@ -58,13 +82,19 @@ EVALUATION_FIELDS = [
     "best_so_far",
     "penalty",
     "final_status",
+    "failure_reason",
+    "termination_reason",
+    "emergency_arrived",
+    "emergency_teleport",
+    "background_teleported",
+    "signal_event_count",
+    "stage2_hold_count",
+    "stage3_preemption_count",
     "surrogate_mean",
     "surrogate_ci_low",
     "surrogate_ci_high",
     "acquisition",
-    "essi_max",
-    "essi_log_max_ewma",
-    "essi_spc_status",
+    *ESSI_FIELDS,
 ]
 BO_SURROGATE_FIELDS = [
     "method",
@@ -77,12 +107,57 @@ BO_SURROGATE_FIELDS = [
     "surrogate_ci_low",
     "surrogate_ci_high",
     "acquisition",
-    "essi_max",
-    "essi_log_max_ewma",
-    "essi_spc_status",
+    *ESSI_FIELDS,
 ]
-PARETO_FIELDS = ["weight_ratio", *THETA_FIELDS, "delay_A", "delay_N", "score", "is_knee"]
+PARETO_FIELDS = [
+    "weight_ratio",
+    *THETA_FIELDS,
+    "delay_A",
+    "delay_N",
+    "score",
+    "rounds_completed",
+    "essi_max",
+    "essi_log_max",
+    "essi_log_max_ewma",
+    "spc_status",
+    "spc_stop_recommended",
+    "spc_stop_round",
+    "is_knee",
+]
+SENSITIVITY_SPC_FIELDS = [
+    "weight_ratio",
+    "round",
+    "essi_max",
+    "essi_log_max",
+    "essi_log_max_ewma",
+    "spc_status",
+    "spc_stop_recommended",
+]
 NOISE_FIELDS = ["repeat", *THETA_FIELDS, "delay_A", "delay_N", "score", "final_status"]
+FINAL_RESULT_FIELDS = [
+    "input_method",
+    "input_seed",
+    "input_round",
+    "input_parameter_id",
+    "input_t_lead",
+    "input_delta_T_thr",
+    "input_G_ext",
+    "input_Q_ratio",
+    "input_tau",
+    "output_delay_A_sec",
+    "output_delay_N_sec",
+    "weight_A",
+    "weight_N",
+    "weight_ratio",
+    "score",
+    "measured_T_free_EMV_sec",
+    "measured_T_actual_EMV_sec",
+    "measured_d_EMV_sec",
+    "measured_d_veh_sec",
+    "measured_general_mean_travel_time_sec",
+    "stage2_on_count",
+    "stage3_on_count",
+]
 
 
 class B4OptimizationError(RuntimeError):
@@ -95,6 +170,28 @@ def utc_now() -> str:
 
 def default_run_id() -> str:
     return "b4_optimization_s1forced_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def normalize_method_name(value: str) -> str:
+    cleaned = value.strip()
+    if cleaned in METHODS:
+        return cleaned
+    key = cleaned.lower()
+    if key in METHOD_ALIASES:
+        return METHOD_ALIASES[key]
+    raise B4OptimizationError(f"unknown_method_option:{value}")
+
+
+def selected_methods(args: argparse.Namespace) -> list[str]:
+    raw_methods = args.methods if args.methods else list(METHODS)
+    methods: list[str] = []
+    for value in raw_methods:
+        method = normalize_method_name(value)
+        if method not in methods:
+            methods.append(method)
+    if args.bo_first and "BO" in methods:
+        methods = ["BO", *[method for method in methods if method != "BO"]]
+    return methods
 
 
 def rel(path: Path) -> str:
@@ -158,10 +255,133 @@ def theta_from_vector(vector: list[float], bounds: dict[str, Any], parameter_id:
     return theta_bo.clamp_theta(raw, bounds, parameter_id=parameter_id)
 
 
+def normalized_theta_value(theta: dict[str, Any], bounds: dict[str, Any], field: str) -> float:
+    lower = safe_float(bounds[field]["lower"])
+    upper = safe_float(bounds[field]["upper"])
+    return max(0.0, min(1.0, (safe_float(theta.get(field), lower) - lower) / max(upper - lower, 1.0e-9)))
+
+
+def bo_spatial_subspaces(stage1: B4Stage1Inputs) -> list[dict[str, Any]]:
+    subspaces = theta_bo.default_route_subspaces(stage1)
+    normalized: list[dict[str, Any]] = []
+    max_weight = max((safe_float(row.get("weight"), 0.0) for row in subspaces), default=1.0)
+    for index, row in enumerate(subspaces[: theta_bo.DEFAULT_SUBSPACE_COUNT], start=1):
+        weight = safe_float(row.get("weight"), 0.0) / max(max_weight, 1.0e-9)
+        movement_count = int(safe_float(row.get("movement_count"), 0.0))
+        case_b_count = int(safe_float(row.get("case_b_count"), 0.0))
+        normalized.append({
+            "subspace": index,
+            "route_order_min": row.get("route_order_min", ""),
+            "route_order_max": row.get("route_order_max", ""),
+            "movement_count": movement_count,
+            "case_b_count": case_b_count,
+            "has_control_candidate": movement_count > 0,
+            "has_bottleneck_candidate": case_b_count > 0,
+            "weight": round(max(0.0, min(1.0, weight)), 6),
+        })
+    while len(normalized) < theta_bo.DEFAULT_SUBSPACE_COUNT:
+        index = len(normalized) + 1
+        normalized.append({
+            "subspace": index,
+            "route_order_min": "",
+            "route_order_max": "",
+            "movement_count": 0,
+            "case_b_count": 0,
+            "has_control_candidate": False,
+            "has_bottleneck_candidate": False,
+            "weight": 0.0,
+        })
+    return normalized
+
+
+def essi_activation_values(theta: dict[str, Any], bounds: dict[str, Any], subspaces: list[dict[str, Any]]) -> list[float]:
+    lead = normalized_theta_value(theta, bounds, "t_lead")
+    green = normalized_theta_value(theta, bounds, "G_ext")
+    queue = normalized_theta_value(theta, bounds, "Q_ratio")
+    tau = normalized_theta_value(theta, bounds, "tau")
+    delta_urgency = 1.0 - normalized_theta_value(theta, bounds, "delta_T_thr")
+    control_intensity = max(0.0, min(1.0, 0.25 * lead + 0.25 * green + 0.20 * queue + 0.20 * tau + 0.10 * delta_urgency))
+    bottleneck_pressure = max(0.0, min(1.0, 0.55 * queue + 0.45 * tau))
+    values: list[float] = []
+    denom = max(len(subspaces) - 1, 1)
+    for index, subspace in enumerate(subspaces):
+        route_position = index / denom
+        route_bias = (1.0 - route_position) * lead + route_position * bottleneck_pressure
+        candidate_bonus = 0.10 if subspace.get("has_control_candidate") else 0.0
+        bottleneck_bonus = 0.15 if subspace.get("has_bottleneck_candidate") else 0.0
+        activation = safe_float(subspace.get("weight")) * (0.65 * control_intensity + 0.25 * route_bias + candidate_bonus + bottleneck_bonus)
+        values.append(max(0.0, min(1.0, activation)))
+    return values[: theta_bo.DEFAULT_SUBSPACE_COUNT]
+
+
+def essi_fields_for_candidate(
+    theta: dict[str, Any],
+    bounds: dict[str, Any],
+    subspaces: list[dict[str, Any]],
+    gp_improvement: float,
+) -> dict[str, Any]:
+    activations = essi_activation_values(theta, bounds, subspaces)
+    while len(activations) < theta_bo.DEFAULT_SUBSPACE_COUNT:
+        activations.append(0.0)
+    essi_values = [max(0.0, gp_improvement) * value for value in activations[: theta_bo.DEFAULT_SUBSPACE_COUNT]]
+    spatial_activation = max(activations) if activations else 0.0
+    dominant_index = (max(range(len(activations)), key=lambda idx: activations[idx]) + 1) if activations else ""
+    essi_max = max(essi_values) if essi_values else 0.0
+    essi_mean = sum(essi_values) / len(essi_values) if essi_values else 0.0
+    fields: dict[str, Any] = {
+        "essi_acquisition": sec(essi_max),
+        "essi_max": sec(essi_max),
+        "essi_mean": sec(essi_mean),
+        "essi_log_max": f"{math.log(essi_max + theta_bo.ESSI_EPS):.8f}",
+        "dominant_essi_subspace": dominant_index,
+        "spatial_activation_score": f"{spatial_activation:.6f}",
+    }
+    for index, value in enumerate(essi_values[: theta_bo.DEFAULT_SUBSPACE_COUNT], start=1):
+        fields[f"essi_{index}"] = sec(value)
+    return fields
+
+
+def essi_improvement_candidates(
+    observations: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    stage1: B4Stage1Inputs,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]],
+    candidate_count: int,
+) -> list[dict[str, Any]]:
+    ranked = theta_bo.expected_improvement_candidates(observations, bounds, seed, existing, candidate_count)
+    if not ranked:
+        raise B4OptimizationError("gp_essi_unavailable:no_candidates")
+    subspaces = bo_spatial_subspaces(stage1)
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[float, float, float, float, float]] = set(existing)
+    for item in ranked:
+        theta = theta_bo.clamp_theta(item, bounds)
+        key = theta_key(theta)
+        if key in seen:
+            continue
+        seen.add(key)
+        gp_improvement = safe_float(item.get("acquisition"), 0.0)
+        essi = essi_fields_for_candidate(theta, bounds, subspaces, gp_improvement)
+        out.append({**theta, **essi, "acquisition": essi["essi_acquisition"]})
+    if not out:
+        raise B4OptimizationError("gp_essi_unavailable:no_unique_candidates")
+    out.sort(key=lambda row: (-safe_float(row.get("essi_acquisition")), theta_key(row)))
+    return out
+
+
+def normalize_objective_weights(w_emv: float, w_veh: float) -> tuple[float, float]:
+    total = float(w_emv) + float(w_veh)
+    if total <= 0.0:
+        raise B4OptimizationError("objective_weight_sum_must_be_positive")
+    return float(w_emv) / total, float(w_veh) / total
+
+
 def score_delay_row(row: dict[str, Any], w_emv: float, w_veh: float) -> tuple[float, float, float, float, float]:
     delay_a = safe_float(row.get("d_EMV_sec"), safe_float(row.get("T_actual_EMV_sec"), 0.0))
     delay_n = safe_float(row.get("d_veh_sec"), safe_float(row.get("general_mean_travel_time_sec"), 0.0))
-    score = w_emv * delay_a + w_veh * delay_n
+    w_a, w_n = normalize_objective_weights(w_emv, w_veh)
+    score = w_a * delay_a + w_n * delay_n
     failed = (
         row.get("final_status") not in {"PASS", "WARNING"}
         or not bool_cell(row.get("emergency_arrived"))
@@ -170,6 +390,64 @@ def score_delay_row(row: dict[str, Any], w_emv: float, w_veh: float) -> tuple[fl
     )
     penalty = FAILURE_PENALTY_SEC if failed else 0.0
     return round(delay_a, 6), round(delay_n, 6), round(score, 6), penalty, round(score + penalty, 6)
+
+
+def weight_ratio_label(w_emv: float, w_veh: float) -> str:
+    return f"{w_emv:g}:{w_veh:g}"
+
+
+def clean_final_result_row(row: dict[str, Any], w_emv: float, w_veh: float, weight_ratio: str | None = None) -> dict[str, Any]:
+    raw = row.get("raw") if isinstance(row.get("raw"), dict) else {}
+    source = raw if raw else row
+    label = weight_ratio or weight_ratio_label(w_emv, w_veh)
+    return {
+        "input_method": row.get("method", ""),
+        "input_seed": row.get("seed", ""),
+        "input_round": row.get("round", ""),
+        "input_parameter_id": row.get("parameter_id", ""),
+        "input_t_lead": row.get("t_lead", ""),
+        "input_delta_T_thr": row.get("delta_T_thr", ""),
+        "input_G_ext": row.get("G_ext", ""),
+        "input_Q_ratio": row.get("Q_ratio", ""),
+        "input_tau": row.get("tau", ""),
+        "output_delay_A_sec": row.get("delay_A", ""),
+        "output_delay_N_sec": row.get("delay_N", ""),
+        "weight_A": sec(w_emv),
+        "weight_N": sec(w_veh),
+        "weight_ratio": label,
+        "score": row.get("raw_score", row.get("score", "")),
+        "measured_T_free_EMV_sec": source.get("T_free_EMV_sec", ""),
+        "measured_T_actual_EMV_sec": source.get("T_actual_EMV_sec", ""),
+        "measured_d_EMV_sec": source.get("d_EMV_sec", row.get("delay_A", "")),
+        "measured_d_veh_sec": source.get("d_veh_sec", row.get("delay_N", "")),
+        "measured_general_mean_travel_time_sec": source.get("general_mean_travel_time_sec", ""),
+        "stage2_on_count": source.get("stage2_hold_count", row.get("stage2_hold_count", "")),
+        "stage3_on_count": source.get("stage3_preemption_count", row.get("stage3_preemption_count", "")),
+    }
+
+
+def existing_method_rows(
+    output_dir: Path,
+    methods_to_run: list[str],
+    append_existing: bool,
+    w_emv: float,
+    w_veh: float,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not append_existing:
+        return [], []
+    evaluations_path = output_dir / "all_evaluations.csv"
+    if not evaluations_path.is_file():
+        raise B4OptimizationError(f"append_existing_missing_all_evaluations:{rel(evaluations_path)}")
+    existing_rows: list[dict[str, Any]] = [dict(row) for row in read_csv_rows(evaluations_path)]
+    existing_methods = {str(row.get("method", "")) for row in existing_rows}
+    duplicate_methods = sorted(existing_methods & set(methods_to_run))
+    if duplicate_methods:
+        raise B4OptimizationError(f"append_existing_method_already_present:{','.join(duplicate_methods)}")
+    final_path = output_dir / "final_method_comparison_results.csv"
+    final_rows: list[dict[str, Any]] = [dict(row) for row in read_csv_rows(final_path)] if final_path.is_file() else []
+    if not final_rows:
+        final_rows = [clean_final_result_row(row, w_emv, w_veh) for row in existing_rows]
+    return existing_rows, final_rows
 
 
 def preflight(args: argparse.Namespace) -> dict[str, Any]:
@@ -241,6 +519,43 @@ def build_eval_args(args: argparse.Namespace, seed: int, run_dir: Path, metrics_
     )
 
 
+def update_spc_row(row: dict[str, Any], round_rows: list[dict[str, Any]], args: argparse.Namespace) -> None:
+    if row.get("essi_log_max") in {"", None}:
+        row["essi_log_max_ewma"] = ""
+        row["essi_spc_status"] = ""
+        row["essi_stop_recommended"] = "False"
+        return
+    essi_log_max = safe_float(row.get("essi_log_max"))
+    previous_ewma = next(
+        (
+            safe_float(item.get("essi_log_max_ewma"))
+            for item in reversed(round_rows)
+            if item.get("essi_log_max_ewma") not in {"", None}
+        ),
+        essi_log_max,
+    )
+    ewma = args.spc_alpha * essi_log_max + (1.0 - args.spc_alpha) * previous_ewma
+    prior_logs = [
+        safe_float(item.get("essi_log_max"))
+        for item in round_rows
+        if item.get("essi_log_max") not in {"", None}
+    ]
+    window_logs = (prior_logs + [essi_log_max])[-args.spc_window :]
+    bo_round_count = len(prior_logs) + 1
+    if len(window_logs) < args.spc_window or bo_round_count < args.spc_min_rounds:
+        status = "warmup"
+        stop_recommended = False
+    else:
+        center = sum(window_logs) / len(window_logs)
+        variance = sum((value - center) ** 2 for value in window_logs) / max(len(window_logs) - 1, 1)
+        sigma = math.sqrt(max(variance, 0.0))
+        status = "stable" if center - 3.0 * sigma <= ewma <= center + 3.0 * sigma else "active"
+        stop_recommended = status == "stable"
+    row["essi_log_max_ewma"] = f"{ewma:.8f}"
+    row["essi_spc_status"] = status
+    row["essi_stop_recommended"] = str(stop_recommended)
+
+
 def prepare_real_context_once(run_id: str, eval_args: argparse.Namespace) -> dict[str, Any] | None:
     if eval_args.mock_eval:
         return None
@@ -286,6 +601,14 @@ def evaluate_theta(
         "best_so_far": "",
         "penalty": sec(penalty),
         "final_status": raw.get("final_status", ""),
+        "failure_reason": raw.get("failure_reason", ""),
+        "termination_reason": raw.get("termination_reason", ""),
+        "emergency_arrived": raw.get("emergency_arrived", ""),
+        "emergency_teleport": raw.get("emergency_teleport", ""),
+        "background_teleported": raw.get("background_teleported", ""),
+        "signal_event_count": raw.get("signal_event_count", ""),
+        "stage2_hold_count": raw.get("stage2_hold_count", ""),
+        "stage3_preemption_count": raw.get("stage3_preemption_count", ""),
         "raw": raw,
     }
 
@@ -338,40 +661,44 @@ def cma_es_thetas(
     seed: int,
     evaluate: Any,
 ) -> list[dict[str, Any]]:
-    rng = random.Random(seed)
+    try:
+        import cma  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise B4OptimizationError("cma_package_required_for_cma_es_method") from exc
+
     dim = 5
-    mean = [0.5] * dim
-    sigma = [0.32] * dim
+    rng = random.Random(seed)
+    options = {
+        "bounds": [0.0, 1.0],
+        "seed": seed,
+        "popsize": min(8, max(4, dim + 1)),
+        "verbose": -9,
+    }
+    strategy = cma.CMAEvolutionStrategy([0.5] * dim, 0.32, options)
     selected: set[tuple[float, float, float, float, float]] = set()
-    history: list[tuple[float, list[float]]] = []
     rows: list[dict[str, Any]] = []
-    for round_index in range(1, m + 1):
-        vector: list[float] = []
-        theta: dict[str, Any] = {}
-        for attempt in range(500):
-            vector = [max(0.0, min(1.0, mean[i] + rng.gauss(0.0, sigma[i]))) for i in range(dim)]
+    round_index = 1
+    while round_index <= m:
+        vectors_to_tell: list[list[float]] = []
+        scores_to_tell: list[float] = []
+        generation_vectors = strategy.ask()
+        for raw_vector in generation_vectors:
+            if round_index > m:
+                break
+            vector = [max(0.0, min(1.0, float(value))) for value in raw_vector]
             theta = theta_from_vector(vector, bounds, theta_bo.theta_id(f"cma_r{round_index:02d}", 1, {"t_lead": 0, "delta_T_thr": 0, "G_ext": 0, "Q_ratio": 0, "tau": 0.75}))
             theta["parameter_id"] = theta_bo.theta_id(f"cma_r{round_index:02d}", 1, theta)
-            if theta_key(theta) not in selected:
-                break
-            if attempt == 499:
-                theta = theta_bo.random_theta_samples(bounds, 1, seed + round_index * 1009, "cma_fill", selected)[0]
+            if theta_key(theta) in selected:
+                theta = theta_bo.random_theta_samples(bounds, 1, seed + round_index * 1009 + rng.randint(0, 999), "cma_fill", selected)[0]
                 vector = vector_from_theta(theta, bounds)
-        selected.add(theta_key(theta))
-        score = safe_float(evaluate(theta, round_index).get("score"), float("inf"))
-        history.append((score, vector))
-        rows.append(theta)
-        if round_index >= 5:
-            elite = sorted(history, key=lambda item: item[0])[: max(2, min(5, len(history) // 3))]
-            weights = [len(elite) - index for index in range(len(elite))]
-            weight_sum = float(sum(weights))
-            mean = [
-                sum(weights[j] * elite[j][1][i] for j in range(len(elite))) / weight_sum
-                for i in range(dim)
-            ]
-            for i in range(dim):
-                variance = sum(weights[j] * (elite[j][1][i] - mean[i]) ** 2 for j in range(len(elite))) / weight_sum
-                sigma[i] = max(0.035, min(0.45, 0.82 * sigma[i] + 0.18 * math.sqrt(max(variance, 1.0e-6))))
+            selected.add(theta_key(theta))
+            score = safe_float(evaluate(theta, round_index).get("score"), float("inf"))
+            vectors_to_tell.append(vector)
+            scores_to_tell.append(score)
+            rows.append(theta)
+            round_index += 1
+        if len(vectors_to_tell) == len(generation_vectors):
+            strategy.tell(vectors_to_tell, scores_to_tell)
     return rows
 
 
@@ -386,17 +713,22 @@ def run_method(
     w_emv: float,
     w_veh: float,
     stage1: B4Stage1Inputs,
+    stop_on_spc: bool = False,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     observations: list[dict[str, Any]] = []
     round_rows: list[dict[str, Any]] = []
     existing: set[tuple[float, float, float, float, float]] = set()
 
-    def evaluate_and_record(theta: dict[str, Any], round_index: int, acquisition: Any = "") -> dict[str, Any]:
+    def evaluate_and_record(theta: dict[str, Any], round_index: int, bo_fields: dict[str, Any] | None = None) -> dict[str, Any]:
         prediction = surrogate_prediction(observations, theta, bounds) if method == "BO" else {"surrogate_mean": "", "surrogate_ci_low": "", "surrogate_ci_high": ""}
         row = evaluate_theta(run_id, method, seed, round_index, theta, args, eval_args, real_context, w_emv, w_veh)
         row.update(prediction)
-        row["acquisition"] = sec(acquisition) if acquisition not in {"", None} else ""
+        if bo_fields:
+            row.update(bo_fields)
+            row["acquisition"] = bo_fields.get("essi_acquisition", bo_fields.get("acquisition", ""))
+        else:
+            row["acquisition"] = ""
         observations.append({
             "mode": B4_MODE,
             **{field: row.get(field, "") for field in THETA_FIELDS},
@@ -406,19 +738,17 @@ def run_method(
         })
         if method == "BO":
             best = min(observations, key=lambda item: safe_float(item.get("bo_score_sec"), float("inf")))
-            try:
-                essi = theta_bo.essi_round_fields(observations, bounds, stage1, seed + round_index, round_rows, best, eval_args)
-            except Exception:
-                essi = {}
-            row["essi_max"] = essi.get("essi_max", "")
-            row["essi_log_max_ewma"] = essi.get("essi_log_max_ewma", "")
-            row["essi_spc_status"] = essi.get("essi_spc_status", "")
+            if stop_on_spc:
+                update_spc_row(row, round_rows, args)
             round_rows.append({
                 "round": round_index,
                 "phase": "bo" if round_index > args.bo_initial else "initial",
                 "best_bo_score_sec": best.get("bo_score_sec", ""),
-                "essi_log_max": essi.get("essi_log_max", ""),
-                "essi_log_max_ewma": essi.get("essi_log_max_ewma", ""),
+                "essi_max": row.get("essi_max", ""),
+                "essi_log_max": row.get("essi_log_max", ""),
+                "essi_log_max_ewma": row.get("essi_log_max_ewma", ""),
+                "essi_spc_status": row.get("essi_spc_status", ""),
+                "essi_stop_recommended": row.get("essi_stop_recommended", ""),
             })
         rows.append(row)
         return row
@@ -439,14 +769,16 @@ def run_method(
         for round_index in range(1, args.m + 1):
             if round_index <= args.bo_initial or len(observations) < 2:
                 theta = theta_bo.random_theta_samples(bounds, 1, seed + round_index * 31, "bo_init", existing)[0]
-                acquisition = ""
+                bo_fields: dict[str, Any] = {}
             else:
-                ranked = theta_bo.expected_improvement_candidates(observations, bounds, seed + round_index, existing, args.ei_candidate_count)
-                theta = theta_bo.clamp_theta(ranked[0], bounds) if ranked else theta_bo.random_theta_samples(bounds, 1, seed + round_index * 37, "bo_fill", existing)[0]
+                ranked = essi_improvement_candidates(observations, bounds, stage1, seed + round_index, existing, args.ei_candidate_count)
+                theta = theta_bo.clamp_theta(ranked[0], bounds)
                 theta["parameter_id"] = theta_bo.theta_id(f"bo_r{round_index:02d}", 1, theta)
-                acquisition = ranked[0].get("acquisition", "") if ranked else ""
+                bo_fields = {field: ranked[0].get(field, "") for field in ESSI_FIELDS}
             existing.add(theta_key(theta))
-            evaluate_and_record(theta, round_index, acquisition)
+            row = evaluate_and_record(theta, round_index, bo_fields)
+            if stop_on_spc and str(row.get("essi_stop_recommended", "")).lower() == "true":
+                break
     else:
         raise B4OptimizationError(f"unknown_method:{method}")
 
@@ -484,16 +816,18 @@ def build_bo_surrogate_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
             "surrogate_ci_low": row.get("surrogate_ci_low", ""),
             "surrogate_ci_high": row.get("surrogate_ci_high", ""),
             "acquisition": row.get("acquisition", ""),
-            "essi_max": row.get("essi_max", ""),
-            "essi_log_max_ewma": row.get("essi_log_max_ewma", ""),
-            "essi_spc_status": row.get("essi_spc_status", ""),
+            **{field: row.get(field, "") for field in ESSI_FIELDS},
         })
     return out
 
 
-def normalize_pareto_weights(weight_ratio: str) -> tuple[float, float]:
+def parse_weight_ratio(weight_ratio: str) -> tuple[float, float]:
     left, right = weight_ratio.split(":")
     return float(left), float(right)
+
+
+def normalize_pareto_weights(weight_ratio: str) -> tuple[float, float]:
+    return normalize_objective_weights(*parse_weight_ratio(weight_ratio))
 
 
 def knee_index(rows: list[dict[str, Any]]) -> int:
@@ -524,24 +858,49 @@ def run_pareto(
     eval_args: argparse.Namespace,
     real_context: dict[str, Any] | None,
     stage1: B4Stage1Inputs,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     pareto_rows: list[dict[str, Any]] = []
+    spc_trace_rows: list[dict[str, Any]] = []
+    final_rows: list[dict[str, Any]] = []
     for weight_ratio in ["1:1", "5:1", "10:1", "15:1", "20:1"]:
         w_emv, w_veh = normalize_pareto_weights(weight_ratio)
-        rows = run_method("BO", args.seed_base, f"{run_id}_pareto_{weight_ratio.replace(':', '_')}", bounds, args, eval_args, real_context, w_emv, w_veh, stage1)
+        raw_w_emv, raw_w_veh = parse_weight_ratio(weight_ratio)
+        rows = run_method("BO", args.seed_base, f"{run_id}_pareto_{weight_ratio.replace(':', '_')}", bounds, args, eval_args, real_context, w_emv, w_veh, stage1, stop_on_spc=args.pareto_spc_stop)
         best = min(rows, key=lambda row: safe_float(row.get("score"), float("inf")))
+        final_rows.append(clean_final_result_row(best, raw_w_emv, raw_w_veh, weight_ratio))
+        stop_rows = [row for row in rows if str(row.get("essi_stop_recommended", "")).lower() == "true"]
+        for row in rows:
+            if row.get("essi_log_max") in {"", None}:
+                continue
+            spc_trace_rows.append({
+                "weight_ratio": weight_ratio,
+                "round": row.get("round", ""),
+                "essi_max": row.get("essi_max", ""),
+                "essi_log_max": row.get("essi_log_max", ""),
+                "essi_log_max_ewma": row.get("essi_log_max_ewma", ""),
+                "spc_status": row.get("essi_spc_status", ""),
+                "spc_stop_recommended": row.get("essi_stop_recommended", ""),
+            })
+        spc_source = stop_rows[0] if stop_rows else next((row for row in reversed(rows) if row.get("essi_log_max") not in {"", None}), {})
         pareto_rows.append({
             "weight_ratio": weight_ratio,
             **{field: best.get(field, "") for field in THETA_FIELDS},
             "delay_A": best.get("delay_A", ""),
             "delay_N": best.get("delay_N", ""),
             "score": best.get("score", ""),
+            "rounds_completed": len(rows),
+            "essi_max": spc_source.get("essi_max", ""),
+            "essi_log_max": spc_source.get("essi_log_max", ""),
+            "essi_log_max_ewma": spc_source.get("essi_log_max_ewma", ""),
+            "spc_status": spc_source.get("essi_spc_status", ""),
+            "spc_stop_recommended": "True" if stop_rows else "False",
+            "spc_stop_round": stop_rows[0].get("round", "") if stop_rows else "",
             "is_knee": "False",
         })
     pareto_rows.sort(key=lambda row: safe_float(row["delay_N"]))
     if pareto_rows:
         pareto_rows[knee_index(pareto_rows)]["is_knee"] = "True"
-    return pareto_rows
+    return pareto_rows, spc_trace_rows, final_rows
 
 
 def run_noise_check(
@@ -668,6 +1027,31 @@ def plot_pareto(rows: list[dict[str, Any]], output: Path) -> None:
     plt.close()
 
 
+def plot_sensitivity_spc(rows: list[dict[str, Any]], output: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt  # type: ignore
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    plt.figure(figsize=(9, 5.2))
+    for weight_ratio in ["1:1", "5:1", "10:1", "15:1", "20:1"]:
+        group = [row for row in rows if row.get("weight_ratio") == weight_ratio]
+        if not group:
+            continue
+        x = [int(safe_float(row.get("round"), 0.0)) for row in group]
+        y = [safe_float(row.get("essi_log_max_ewma"), float("nan")) for row in group]
+        plt.plot(x, y, marker="o", linewidth=1.6, label=weight_ratio)
+    plt.xlabel("BO Round")
+    plt.ylabel("ESSI log-max EWMA")
+    plt.title("Sensitivity Sweep ESSI/SPC Trace")
+    plt.grid(True, alpha=0.25)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output, dpi=180)
+    plt.close()
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run S1-forced B4 fixed-budget optimizer comparison.")
     parser.add_argument("--run-id", default=None)
@@ -687,15 +1071,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--w-emv", "--w1", dest="w_emv", type=float, default=10.0)
     parser.add_argument("--w-veh", "--w2", dest="w_veh", type=float, default=1.0)
-    parser.add_argument("--ei-candidate-count", type=int, default=theta_bo.DEFAULT_EI_CANDIDATE_COUNT)
+    parser.add_argument("--ei-candidate-count", "--essi-candidate-count", dest="ei_candidate_count", type=int, default=theta_bo.DEFAULT_EI_CANDIDATE_COUNT)
     parser.add_argument("--spc-window", type=int, default=theta_bo.DEFAULT_SPC_WINDOW)
     parser.add_argument("--spc-alpha", type=float, default=theta_bo.DEFAULT_SPC_ALPHA)
     parser.add_argument("--spc-min-rounds", type=int, default=theta_bo.DEFAULT_SPC_MIN_ROUNDS)
     parser.add_argument("--spc-min-improvement-sec", type=float, default=theta_bo.DEFAULT_SPC_MIN_IMPROVEMENT_SEC)
+    parser.add_argument("--methods", nargs="+", default=None, help="Run only selected methods. Accepts BO, CMA-ES/cma, Random Search/random/rs.")
+    parser.add_argument("--bo-first", action="store_true", help="Run BO before the other selected methods in a single invocation.")
+    parser.add_argument("--append-existing", action="store_true", help="Merge selected method results into an existing run-id instead of starting from an empty comparison.")
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true")
     parser.add_argument("--skip-pareto", action="store_true")
     parser.add_argument("--skip-noise-check", action="store_true")
+    parser.add_argument("--no-pareto-spc-stop", dest="pareto_spc_stop", action="store_false", help="Disable SPC-based early stop for one-search-per-weight Pareto BO sweeps.")
+    parser.set_defaults(pareto_spc_stop=True)
     return parser.parse_args(argv)
 
 
@@ -710,8 +1099,14 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("workers_must_be_positive")
     if args.w_emv < 0.0 or args.w_veh < 0.0:
         raise B4OptimizationError("weights_must_be_nonnegative")
+    if args.w_emv + args.w_veh <= 0.0:
+        raise B4OptimizationError("weight_sum_must_be_positive")
     if args.ei_candidate_count < 2:
         raise B4OptimizationError("ei_candidate_count_must_be_at_least_2")
+    methods = selected_methods(args)
+    if not methods:
+        raise B4OptimizationError("at_least_one_method_required")
+    args.methods = methods
     args.output_dir = args.output_dir.resolve()
     args.run_root = args.run_root.resolve()
     args.active_inputs = args.active_inputs.resolve()
@@ -724,6 +1119,7 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     run_id = args.run_id or default_run_id()
     output_dir = args.output_dir / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
+    methods_to_run = selected_methods(args)
     preflight_payload = preflight(args)
     stage1: B4Stage1Inputs = preflight_payload["stage1"]
     bounds = preflight_payload["bounds"]
@@ -741,27 +1137,43 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "decision_variables": bounds["decision_variables"],
         "active_inputs": preflight_payload["active_inputs"],
     })
+    spatial_subspaces = bo_spatial_subspaces(stage1)
+    write_json(output_dir / "bo_spatial_subspaces.json", {
+        "schema": "compact_v9_B4_bo_essi_spatial_subspaces.v1",
+        "generated_at": utc_now(),
+        "definition": "Stage1 route movements split by route_order; weights combine controllable movement density and Case B/bottleneck presence.",
+        "subspace_count": len(spatial_subspaces),
+        "subspaces": spatial_subspaces,
+    })
 
     eval_args = build_eval_args(args, args.seed_base, args.run_root, output_dir)
     real_context = prepare_real_context_once(run_id, eval_args)
-    all_rows: list[dict[str, Any]] = []
+    existing_rows, existing_final_rows = existing_method_rows(output_dir, methods_to_run, args.append_existing, args.w_emv, args.w_veh)
+    new_rows: list[dict[str, Any]] = []
     seeds = [args.seed_base + index for index in range(args.n)]
-    for method in METHODS:
+    for method in methods_to_run:
         for seed in seeds:
             method_rows = run_method(method, seed, f"{run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}", bounds, args, build_eval_args(args, seed, args.run_root, output_dir), real_context, args.w_emv, args.w_veh, stage1)
-            all_rows.extend(method_rows)
+            new_rows.extend(method_rows)
+    all_rows: list[dict[str, Any]] = [*existing_rows, *new_rows]
 
     best_table = build_best_so_far_table(all_rows, args.m)
     bo_table = build_bo_surrogate_table(all_rows)
     all_rows_public = [{field: row.get(field, "") for field in EVALUATION_FIELDS} for row in all_rows]
+    final_method_rows = [*existing_final_rows, *[clean_final_result_row(row, args.w_emv, args.w_veh) for row in new_rows]]
     write_csv(output_dir / "all_evaluations.csv", all_rows_public, EVALUATION_FIELDS)
+    write_csv(output_dir / "final_method_comparison_results.csv", final_method_rows, FINAL_RESULT_FIELDS)
     write_csv(output_dir / "table1_best_so_far.csv", best_table, ["method", "seed", *[f"R{index}" for index in range(1, args.m + 1)]])
     write_csv(output_dir / "table2_bo_surrogate.csv", bo_table, BO_SURROGATE_FIELDS)
 
     pareto_rows: list[dict[str, Any]] = []
+    sensitivity_spc_rows: list[dict[str, Any]] = []
+    final_sensitivity_rows: list[dict[str, Any]] = []
     if not args.skip_pareto:
-        pareto_rows = run_pareto(run_id, bounds, args, eval_args, real_context, stage1)
+        pareto_rows, sensitivity_spc_rows, final_sensitivity_rows = run_pareto(run_id, bounds, args, eval_args, real_context, stage1)
         write_csv(output_dir / "table3_pareto.csv", pareto_rows, PARETO_FIELDS)
+        write_csv(output_dir / "table4_sensitivity_spc.csv", sensitivity_spc_rows, SENSITIVITY_SPC_FIELDS)
+        write_csv(output_dir / "final_sensitivity_results.csv", final_sensitivity_rows, FINAL_RESULT_FIELDS)
 
     noise_rows: list[dict[str, Any]] = []
     noise_summary: dict[str, Any] = {}
@@ -774,16 +1186,23 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     plot_bo_surrogate(bo_table, output_dir / "figure2_bo_surrogate.png")
     if pareto_rows:
         plot_pareto(pareto_rows, output_dir / "figure3_pareto.png")
+    if sensitivity_spc_rows:
+        plot_sensitivity_spc(sensitivity_spc_rows, output_dir / "figure4_sensitivity_spc.png")
 
     outputs = {
         "all_evaluations_csv": rel(output_dir / "all_evaluations.csv"),
+        "final_method_comparison_results_csv": rel(output_dir / "final_method_comparison_results.csv"),
         "table1_best_so_far_csv": rel(output_dir / "table1_best_so_far.csv"),
         "table2_bo_surrogate_csv": rel(output_dir / "table2_bo_surrogate.csv"),
         "table3_pareto_csv": rel(output_dir / "table3_pareto.csv") if pareto_rows else "",
+        "table4_sensitivity_spc_csv": rel(output_dir / "table4_sensitivity_spc.csv") if sensitivity_spc_rows else "",
+        "final_sensitivity_results_csv": rel(output_dir / "final_sensitivity_results.csv") if final_sensitivity_rows else "",
+        "bo_spatial_subspaces_json": rel(output_dir / "bo_spatial_subspaces.json"),
         "noise_check_csv": rel(output_dir / "noise_check_5repeat.csv") if noise_rows else "",
         "figure1_png": rel(output_dir / "figure1_best_so_far.png"),
         "figure2_png": rel(output_dir / "figure2_bo_surrogate.png"),
         "figure3_png": rel(output_dir / "figure3_pareto.png") if pareto_rows else "",
+        "figure4_png": rel(output_dir / "figure4_sensitivity_spc.png") if sensitivity_spc_rows else "",
     }
     summary = {
         "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
@@ -792,9 +1211,12 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "mock_eval": args.mock_eval,
         "n": args.n,
         "m": args.m,
-        "methods": METHODS,
+        "methods": sorted({str(row.get("method", "")) for row in all_rows if row.get("method")}, key=METHODS.index),
+        "methods_run_this_invocation": methods_to_run,
+        "append_existing": args.append_existing,
         "seeds": seeds,
-        "objective": {"score": "w_emv * delay_A + w_veh * delay_N", "w_emv": args.w_emv, "w_veh": args.w_veh},
+        "bo_algorithm": "GP+ESSI",
+        "objective": {"score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N", "w_emv": args.w_emv, "w_veh": args.w_veh},
         "fixed_budget_policy": "Each round is one evaluated theta; best-so-far records cumulative minimum score.",
         "outputs": outputs,
         "noise_check": noise_summary,

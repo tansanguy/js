@@ -36,11 +36,16 @@ from common.net_utils import read_sumo_net  # noqa: E402
 from b4_runtime import (  # noqa: E402
     B004_MODE,
     B04_MODE,
+    B04_AA_BACKGROUND_ROUTE,
+    B04_NET,
     B4_MODE,
     B4ThetaParams,
     B4RuntimePhaseConfig,
     B4Stage1Inputs,
     EXPERIMENT_RESULT_FIELDS,
+    STAGE1_DIR,
+    W_EMV,
+    W_VEH,
     safe_float,
 )
 from run_b0_b4_signal_pipeline import (  # noqa: E402
@@ -53,10 +58,8 @@ from run_b0_b4_signal_pipeline import (  # noqa: E402
 
 
 DEFAULT_ROUTES_CSV = PROJECT_ROOT / "05_theta_check_simulation/routes/b0_valid_18_routes.csv"
-DEFAULT_NET = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-DEFAULT_BACKGROUND_ROUTE = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml"
-DEFAULT_BASE_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_u130_toegye15"
-DEFAULT_STRUCTURE_LOCK = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/u130_toegye15_fixed_param_sensitivity/structure_param_lock_summary.json"
+DEFAULT_ACTIVE_INPUTS = PROJECT_ROOT / "configs/compact_v9_B04_B4_active_inputs.json"
+DEFAULT_THETA_LATEST = PROJECT_ROOT / "09-1 B4 Optimization S1forced/outputs/latest.json"
 DEFAULT_MAINROAD_MAPPING = PROJECT_ROOT / "data_prepared/compact_v9/map/B04_toegye_segment_edge_mapping.csv"
 DEFAULT_OUTPUT_PREFIX = "compact_v9_final_destination_validation"
 DEFAULT_RUN_ROOT = PROJECT_ROOT / "runs" / DEFAULT_OUTPUT_PREFIX
@@ -65,10 +68,33 @@ DEFAULT_SEED = 20260606
 DEFAULT_DEPART_MIN = 550.0
 DEFAULT_DEPART_MAX = 650.0
 DEFAULT_REPEATS = 30
-DEFAULT_CANDIDATE_LIMIT = 10
+DEFAULT_SCREENING_REPEATS = 1
+DEFAULT_CANDIDATE_LIMIT = 18
+DEFAULT_FINAL_SELECTION_COUNT = 3
 DEFAULT_START_EDGE = "420331801#1"
 DEFAULT_HARD_MAX_SIM_TIME = 4000.0
 EV_ID = "emergency_0"
+THETA_FIELDS = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
+PHASE_SCREENING = "screening"
+PHASE_FINAL = "final"
+PHASE_ALL = "all"
+
+
+def _manifest_path(key: str, fallback: Path) -> Path:
+    if not DEFAULT_ACTIVE_INPUTS.is_file():
+        return fallback
+    with DEFAULT_ACTIVE_INPUTS.open("r", encoding="utf-8") as file:
+        payload = json.load(file)
+    value = payload.get(key)
+    if not value:
+        return fallback
+    path = Path(str(value))
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+DEFAULT_NET = _manifest_path("net_file", B04_NET)
+DEFAULT_BACKGROUND_ROUTE = _manifest_path("background_route", B04_AA_BACKGROUND_ROUTE)
+DEFAULT_BASE_STAGE1_DIR = _manifest_path("stage1_dir", STAGE1_DIR)
 
 RUN_FIELDS = list(dict.fromkeys([
     "candidate_rank",
@@ -83,6 +109,7 @@ RUN_FIELDS = list(dict.fromkeys([
 ]))
 
 AVERAGE_FIELDS = [
+    "route_id",
     "mode",
     "run_count",
     "T_EMV_mean_sec",
@@ -95,6 +122,21 @@ AVERAGE_FIELDS = [
     "fail_count",
     "stage3_preemption_mean",
     "stage2_hold_mean",
+]
+
+SPC_REPEAT_FIELDS = [
+    "route_id",
+    "metric",
+    "repeat_count",
+    "mean",
+    "std",
+    "latest_value",
+    "ewma",
+    "center",
+    "lcl",
+    "ucl",
+    "spc_status",
+    "stable_round",
 ]
 
 CANDIDATE_FIELDS = [
@@ -113,15 +155,45 @@ CANDIDATE_FIELDS = [
     "B4_vs_B04_improvement_sec",
     "B4_stage3_preemption_mean",
     "B4_stage2_hold_mean",
+    "intervention_mean",
     "arrival_rate_min",
     "teleport_count",
     "fail_count",
     "presentation_fit_score",
+    "selection_rank",
     "selection_status",
     "selection_reason",
 ]
 
+FINAL_SIMULATION_FIELDS = [
+    "input_phase",
+    "input_route_id",
+    "input_source_route_id",
+    "input_target_edge_id",
+    "input_repeat_id",
+    "input_parameter_id",
+    "input_t_lead",
+    "input_delta_T_thr",
+    "input_G_ext",
+    "input_Q_ratio",
+    "input_tau",
+    "output_delay_A_sec",
+    "output_delay_N_sec",
+    "weight_A",
+    "weight_N",
+    "weight_ratio",
+    "score",
+    "measured_T_free_EMV_sec",
+    "measured_T_actual_EMV_sec",
+    "measured_d_EMV_sec",
+    "measured_d_veh_sec",
+    "measured_general_mean_travel_time_sec",
+    "stage2_on_count",
+    "stage3_on_count",
+]
+
 TASK_FIELDS = [
+    "phase",
     "candidate_rank",
     "route_id",
     "mode",
@@ -202,6 +274,59 @@ def sample_std(values: list[float]) -> float:
     return math.sqrt(sum((value - avg) ** 2 for value in values) / (len(values) - 1))
 
 
+def spc_metric_row(route_id: str, metric: str, values: list[float], *, window: int = 5, alpha: float = 0.30) -> dict[str, Any]:
+    if len(values) < window:
+        return {
+            "route_id": route_id,
+            "metric": metric,
+            "repeat_count": len(values),
+            "mean": sec(mean(values)),
+            "std": sec(sample_std(values)) if values else "",
+            "latest_value": sec(values[-1] if values else None),
+            "ewma": "",
+            "center": "",
+            "lcl": "",
+            "ucl": "",
+            "spc_status": "insufficient",
+            "stable_round": "",
+        }
+    ewma = values[0]
+    stable_round = ""
+    status = "active"
+    center = values[0]
+    sigma = 0.0
+    for index, value in enumerate(values, start=1):
+        ewma = alpha * value + (1.0 - alpha) * ewma
+        if index < window:
+            continue
+        slice_values = values[index - window:index]
+        center = sum(slice_values) / len(slice_values)
+        sigma = sample_std(slice_values)
+        lower = center - 3.0 * sigma
+        upper = center + 3.0 * sigma
+        if lower <= ewma <= upper:
+            status = "stable"
+            if not stable_round:
+                stable_round = index
+        else:
+            status = "active"
+            stable_round = ""
+    return {
+        "route_id": route_id,
+        "metric": metric,
+        "repeat_count": len(values),
+        "mean": sec(mean(values)),
+        "std": sec(sample_std(values)),
+        "latest_value": sec(values[-1]),
+        "ewma": sec(ewma),
+        "center": sec(center),
+        "lcl": sec(center - 3.0 * sigma),
+        "ucl": sec(center + 3.0 * sigma),
+        "spc_status": status,
+        "stable_round": stable_round,
+    }
+
+
 def sec(value: float | None) -> str:
     return "" if value is None else f"{value:.6f}"
 
@@ -223,13 +348,20 @@ def deterministic_departures(
     return departures
 
 
-def planned_task_rows(candidates: list[dict[str, Any]], departures_by_route: dict[str, list[float]], run_root: Path) -> list[dict[str, Any]]:
+def planned_task_rows(
+    candidates: list[dict[str, Any]],
+    departures_by_route: dict[str, list[float]],
+    run_root: Path,
+    *,
+    phase: str = "",
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
         route_id = str(candidate["route_id"])
         stage1_dir = rel(Path(candidate["stage1_dir"])) if candidate.get("stage1_dir") else ""
         route_xml = rel(Path(candidate["route_xml"])) if candidate.get("route_xml") else ""
         rows.append({
+            "phase": phase,
             "candidate_rank": candidate.get("candidate_rank", ""),
             "route_id": route_id,
             "mode": B004_MODE,
@@ -243,6 +375,7 @@ def planned_task_rows(candidates: list[dict[str, Any]], departures_by_route: dic
             repeat_text = f"repeat_{repeat_idx:03d}"
             for mode in [B04_MODE, B4_MODE]:
                 rows.append({
+                    "phase": phase,
                     "candidate_rank": candidate.get("candidate_rank", ""),
                     "route_id": route_id,
                     "mode": mode,
@@ -255,31 +388,74 @@ def planned_task_rows(candidates: list[dict[str, Any]], departures_by_route: dic
     return rows
 
 
-def load_locked_b4_params(structure_lock: Path, parameter_id: str = "final_validation_locked_bo_result") -> tuple[B4ThetaParams, dict[str, Any]]:
-    payload = read_json(structure_lock)
-    decision = payload.get("decision_variables_fixed")
-    structure = payload.get("selected_structure")
-    if not isinstance(decision, dict):
-        raise FinalDestinationValidationError(f"missing_decision_variables_fixed:{rel(structure_lock)}")
-    if not isinstance(structure, dict):
-        raise FinalDestinationValidationError(f"missing_selected_structure:{rel(structure_lock)}")
-    required_decision = {"alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"}
-    required_structure = {"tau", "hold_max", "d_up", "tau_scale", "tau_numerator_gamma"}
-    missing = sorted(required_decision - set(decision))
-    if missing:
-        raise FinalDestinationValidationError(f"locked_decision_variables_missing:{','.join(missing)}")
-    missing_structure = sorted(required_structure - set(structure))
-    if missing_structure:
-        raise FinalDestinationValidationError(f"locked_structure_variables_missing:{','.join(missing_structure)}")
-    params = B4ThetaParams.from_row({"parameter_id": parameter_id, **decision, **structure})
-    provenance = {
-        "structure_lock_json": rel(structure_lock),
-        "lock_status": payload.get("lock_status", ""),
-        "decision_variables_fixed": decision,
-        "selected_structure": structure,
+def resolve_theta_evaluations_csv(theta_latest: Path, theta_all_evaluations: Path | None = None) -> tuple[Path, dict[str, Any]]:
+    if theta_all_evaluations is not None:
+        path = theta_all_evaluations.resolve()
+        if not path.is_file():
+            raise FinalDestinationValidationError(f"missing_theta_all_evaluations:{rel(path)}")
+        return path, {"theta_all_evaluations_csv": rel(path), "theta_latest_json": ""}
+    latest = read_json(theta_latest)
+    csv_value = latest.get("all_evaluations_csv")
+    if not csv_value:
+        raise FinalDestinationValidationError(f"theta_latest_missing_all_evaluations_csv:{rel(theta_latest)}")
+    path = project_path(str(csv_value)).resolve()
+    if not path.is_file():
+        raise FinalDestinationValidationError(f"missing_theta_all_evaluations:{rel(path)}")
+    return path, {
+        "theta_latest_json": rel(theta_latest),
+        "theta_output_dir": str(latest.get("output_dir", "")),
+        "theta_run_id": str(latest.get("run_id", "")),
+        "theta_all_evaluations_csv": rel(path),
+    }
+
+
+def is_smoke_theta_source(provenance: dict[str, Any], rows: list[dict[str, str]]) -> bool:
+    run_id = str(provenance.get("theta_run_id", "")).lower()
+    if "smoke" in run_id:
+        return True
+    methods = {(row.get("method", ""), row.get("seed", "")) for row in rows}
+    max_round = max([safe_float(row.get("round"), 0.0) for row in rows] or [0.0])
+    return len(methods) < 6 or max_round < 50
+
+
+def load_final_b4_params(
+    *,
+    theta_latest: Path,
+    theta_all_evaluations: Path | None = None,
+    theta_method: str = "ALL",
+    parameter_id: str = "final_validation_locked_theta",
+) -> tuple[B4ThetaParams, dict[str, Any]]:
+    csv_path, provenance = resolve_theta_evaluations_csv(theta_latest, theta_all_evaluations)
+    rows = read_csv(csv_path)
+    method_filter = theta_method.strip()
+    candidates: list[dict[str, str]] = []
+    for row in rows:
+        if row.get("final_status") != "PASS":
+            continue
+        if method_filter != "ALL" and row.get("method") != method_filter:
+            continue
+        if any(row.get(field) in {"", None} for field in THETA_FIELDS):
+            continue
+        candidates.append(row)
+    if not candidates:
+        raise FinalDestinationValidationError(f"no_passing_theta_for_method:{theta_method}")
+    selected = sorted(candidates, key=lambda row: (safe_float(row.get("score"), float("inf")), row.get("method", ""), row.get("seed", ""), safe_float(row.get("round"), 0.0)))[0]
+    theta = {field: selected[field] for field in THETA_FIELDS}
+    params = B4ThetaParams.from_row({"parameter_id": parameter_id, **theta})
+    provenance.update({
+        "schema": "compact_v9_final_destination_theta_lock.v1",
+        "theta_selection_policy": "minimum_score_among_final_status_PASS_rows",
+        "theta_method_filter": method_filter,
+        "selected_method": selected.get("method", ""),
+        "selected_seed": selected.get("seed", ""),
+        "selected_round": selected.get("round", ""),
+        "selected_score": selected.get("score", ""),
+        "decision_variables_fixed": {field: params.as_result_fields()[field] for field in THETA_FIELDS},
+        "legacy_alpha_q_trig_used_as_decision_variables": False,
         "bo_enabled": False,
         "bayesian_optimization_executed_by_final_validation": False,
-    }
+        "theta_source_smoke_warning": is_smoke_theta_source(provenance, rows),
+    })
     return params, provenance
 
 
@@ -326,6 +502,16 @@ def connected_route(sumo_net: Any, edge_ids: list[str]) -> bool:
     return True
 
 
+def assign_candidate_artifact_paths(candidates: list[dict[str, Any]], input_root: Path) -> list[dict[str, Any]]:
+    for rank, candidate in enumerate(candidates, start=1):
+        candidate["candidate_rank"] = rank
+        route_root = input_root / candidate["route_id"]
+        candidate["route_csv"] = route_root / "firetruck_route.csv"
+        candidate["route_xml"] = route_root / "firetruck_route_depart_600.rou.xml"
+        candidate["stage1_dir"] = input_root / "stage1" / candidate["route_id"]
+    return candidates
+
+
 def build_candidate_routes(args: argparse.Namespace, input_root: Path) -> list[dict[str, Any]]:
     sumo_net = read_sumo_net(args.net)
     try:
@@ -342,21 +528,72 @@ def build_candidate_routes(args: argparse.Namespace, input_root: Path) -> list[d
         if not source_route_id or not target_edge or target_edge in seen_targets:
             continue
         seen_targets.add(target_edge)
+        route_id = f"FINAL_DEST_{source_route_id}"
         try:
             sumo_net.getEdge(target_edge)
         except Exception:
+            candidates.append({
+                "route_id": route_id,
+                "source_route_id": source_route_id,
+                "target_edge_id": target_edge,
+                "selected_policy": "compact_v9_shortest_from_fire_station_existing18_target",
+                "route_edges": [],
+                "route_edge_count": 0,
+                "route_length_m": "",
+                "start_edge_id": args.start_edge,
+                "merge_edge_id": "",
+                "mainroad_length_ratio": 0.0,
+                "legacy_spine_length_ratio": round(safe_float(row.get("spine_length_ratio"), 0.0), 6),
+                "review_status": row.get("review_status", ""),
+                "route_priority_score": -1.0,
+                "precheck_status": "EXCLUDED",
+                "precheck_reason": "target_edge_missing_in_s1forced_net",
+            })
             continue
         try:
             edges = shortest_route(sumo_net, args.start_edge, target_edge)
         except Exception:
+            candidates.append({
+                "route_id": route_id,
+                "source_route_id": source_route_id,
+                "target_edge_id": target_edge,
+                "selected_policy": "compact_v9_shortest_from_fire_station_existing18_target",
+                "route_edges": [],
+                "route_edge_count": 0,
+                "route_length_m": "",
+                "start_edge_id": args.start_edge,
+                "merge_edge_id": "",
+                "mainroad_length_ratio": 0.0,
+                "legacy_spine_length_ratio": round(safe_float(row.get("spine_length_ratio"), 0.0), 6),
+                "review_status": row.get("review_status", ""),
+                "route_priority_score": -1.0,
+                "precheck_status": "EXCLUDED",
+                "precheck_reason": "shortest_route_failed",
+            })
             continue
         if not connected_route(sumo_net, edges):
+            candidates.append({
+                "route_id": route_id,
+                "source_route_id": source_route_id,
+                "target_edge_id": target_edge,
+                "selected_policy": "compact_v9_shortest_from_fire_station_existing18_target",
+                "route_edges": edges,
+                "route_edge_count": len(edges),
+                "route_length_m": "",
+                "start_edge_id": args.start_edge,
+                "merge_edge_id": "",
+                "mainroad_length_ratio": 0.0,
+                "legacy_spine_length_ratio": round(safe_float(row.get("spine_length_ratio"), 0.0), 6),
+                "review_status": row.get("review_status", ""),
+                "route_priority_score": -1.0,
+                "precheck_status": "EXCLUDED",
+                "precheck_reason": "shortest_route_not_connected",
+            })
             continue
         total_len = route_length(sumo_net, edges)
         main_len = route_length(sumo_net, [edge for edge in edges if edge in main_edges]) if main_edges else 0.0
         legacy_spine = safe_float(row.get("spine_length_ratio"), 0.0)
         compact_ratio = main_len / total_len if total_len > 0 else 0.0
-        route_id = f"FINAL_DEST_{source_route_id}"
         candidates.append({
             "route_id": route_id,
             "source_route_id": source_route_id,
@@ -371,9 +608,12 @@ def build_candidate_routes(args: argparse.Namespace, input_root: Path) -> list[d
             "legacy_spine_length_ratio": round(legacy_spine, 6),
             "review_status": row.get("review_status", ""),
             "route_priority_score": round(0.55 * legacy_spine + 0.45 * compact_ratio, 6),
+            "precheck_status": "PASS",
+            "precheck_reason": "",
         })
     candidates.sort(
         key=lambda item: (
+            item.get("precheck_status") != "PASS",
             item.get("review_status") not in {"PASS", "WARNING"},
             -safe_float(item.get("route_priority_score")),
             -safe_float(item.get("mainroad_length_ratio")),
@@ -381,16 +621,24 @@ def build_candidate_routes(args: argparse.Namespace, input_root: Path) -> list[d
             str(item.get("source_route_id")),
         )
     )
-    selected = candidates[: args.candidate_limit]
-    for rank, candidate in enumerate(selected, start=1):
-        candidate["candidate_rank"] = rank
-        route_root = input_root / candidate["route_id"]
-        candidate["route_csv"] = route_root / "firetruck_route.csv"
-        candidate["route_xml"] = route_root / "firetruck_route_depart_600.rou.xml"
-        candidate["stage1_dir"] = input_root / "stage1" / candidate["route_id"]
+    selected = assign_candidate_artifact_paths(candidates[: args.candidate_limit], input_root)
     if not selected:
         raise FinalDestinationValidationError("no_compact_v9_reachable_candidates")
     return selected
+
+
+def clone_candidates_for_phase(candidates: list[dict[str, Any]], route_ids: list[str], input_root: Path) -> list[dict[str, Any]]:
+    wanted = set(route_ids)
+    selected = [
+        {key: value for key, value in candidate.items() if key not in {"route_csv", "route_xml", "stage1_dir"}}
+        for candidate in candidates
+        if candidate.get("route_id") in wanted or candidate.get("source_route_id") in wanted
+    ]
+    if len(selected) != len(wanted):
+        found = {str(candidate.get("route_id")) for candidate in selected} | {str(candidate.get("source_route_id")) for candidate in selected}
+        missing = sorted(wanted - found)
+        raise FinalDestinationValidationError(f"missing_selected_final_candidates:{','.join(missing)}")
+    return assign_candidate_artifact_paths(selected, input_root)
 
 
 def write_firetruck_route_artifacts(candidate: dict[str, Any], route_xml: Path, route_csv: Path, depart: float) -> None:
@@ -639,7 +887,7 @@ def t_emv(row: dict[str, Any]) -> float | None:
     return safe_float(value)
 
 
-def average_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def average_rows(rows: list[dict[str, Any]], route_id: str = "") -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for mode in [B004_MODE, B04_MODE, B4_MODE]:
         group = [row for row in rows if row.get("mode") == mode]
@@ -650,6 +898,7 @@ def average_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         stage3_values = [safe_float(row.get("stage3_preemption_count")) for row in group if row.get("stage3_preemption_count") not in {"", None}]
         stage2_values = [safe_float(row.get("stage2_hold_count")) for row in group if row.get("stage2_hold_count") not in {"", None}]
         result.append({
+            "route_id": route_id,
             "mode": mode,
             "run_count": len(group),
             "T_EMV_mean_sec": sec(mean(t_values)),
@@ -666,6 +915,89 @@ def average_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def repeat_stability_rows(route_id: str, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    b04_by_repeat = {
+        int(safe_float(row.get("repeat_id"), 0.0)): row
+        for row in rows
+        if row.get("mode") == B04_MODE and safe_float(row.get("repeat_id"), 0.0) > 0
+    }
+    b4_by_repeat = {
+        int(safe_float(row.get("repeat_id"), 0.0)): row
+        for row in rows
+        if row.get("mode") == B4_MODE and safe_float(row.get("repeat_id"), 0.0) > 0
+    }
+    improvements: list[float] = []
+    b4_delays: list[float] = []
+    general_times: list[float] = []
+    interventions: list[float] = []
+    for repeat in sorted(set(b04_by_repeat) & set(b4_by_repeat)):
+        b04 = b04_by_repeat[repeat]
+        b4 = b4_by_repeat[repeat]
+        b04_time = t_emv(b04)
+        b4_time = t_emv(b4)
+        if b04_time is not None and b4_time is not None:
+            improvements.append(b04_time - b4_time)
+        if b4.get("d_EMV_sec") not in {"", None}:
+            b4_delays.append(safe_float(b4.get("d_EMV_sec")))
+        if b4.get("general_mean_travel_time_sec") not in {"", None}:
+            general_times.append(safe_float(b4.get("general_mean_travel_time_sec")))
+        interventions.append(safe_float(b4.get("stage2_hold_count")) + safe_float(b4.get("stage3_preemption_count")))
+    return [
+        spc_metric_row(route_id, "B4_vs_B04_improvement_sec", improvements),
+        spc_metric_row(route_id, "B4_d_EMV_sec", b4_delays),
+        spc_metric_row(route_id, "B4_general_mean_travel_time_sec", general_times),
+        spc_metric_row(route_id, "B4_intervention_count", interventions),
+    ]
+
+
+def objective_score_from_row(row: dict[str, Any], w_emv: float, w_veh: float) -> str:
+    if row.get("objective_score") not in {"", None}:
+        return row.get("objective_score", "")
+    total = w_emv + w_veh
+    if total <= 0.0:
+        return ""
+    delay_a = safe_float(row.get("d_EMV_sec"))
+    delay_n = safe_float(row.get("d_veh_sec"), safe_float(row.get("general_mean_travel_time_sec")))
+    return sec((w_emv / total) * delay_a + (w_veh / total) * delay_n)
+
+
+def final_simulation_result_rows(rows: list[dict[str, Any]], params: B4ThetaParams) -> list[dict[str, Any]]:
+    final_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if row.get("mode") != B4_MODE:
+            continue
+        w_emv = safe_float(row.get("w_EMV"), W_EMV)
+        w_veh = safe_float(row.get("w_veh"), W_VEH)
+        delay_n = row.get("d_veh_sec", "") if row.get("d_veh_sec") not in {"", None} else row.get("general_mean_travel_time_sec", "")
+        final_rows.append({
+            "input_phase": row.get("phase", PHASE_FINAL),
+            "input_route_id": row.get("route_id", ""),
+            "input_source_route_id": row.get("source_route_id", ""),
+            "input_target_edge_id": row.get("target_edge_id", ""),
+            "input_repeat_id": row.get("repeat_id", ""),
+            "input_parameter_id": row.get("parameter_id", params.parameter_id),
+            "input_t_lead": params.t_lead,
+            "input_delta_T_thr": params.delta_T_thr,
+            "input_G_ext": params.G_ext,
+            "input_Q_ratio": params.Q_ratio,
+            "input_tau": params.tau,
+            "output_delay_A_sec": row.get("d_EMV_sec", ""),
+            "output_delay_N_sec": delay_n,
+            "weight_A": sec(w_emv),
+            "weight_N": sec(w_veh),
+            "weight_ratio": f"{w_emv:g}:{w_veh:g}",
+            "score": objective_score_from_row(row, w_emv, w_veh),
+            "measured_T_free_EMV_sec": row.get("T_free_EMV_sec", ""),
+            "measured_T_actual_EMV_sec": row.get("T_actual_EMV_sec", ""),
+            "measured_d_EMV_sec": row.get("d_EMV_sec", ""),
+            "measured_d_veh_sec": delay_n,
+            "measured_general_mean_travel_time_sec": row.get("general_mean_travel_time_sec", ""),
+            "stage2_on_count": row.get("stage2_hold_count", ""),
+            "stage3_on_count": row.get("stage3_preemption_count", ""),
+        })
+    return final_rows
+
+
 def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
     averages = {row["mode"]: row for row in average_rows(rows)}
     b004_time = safe_float(averages.get(B004_MODE, {}).get("T_EMV_mean_sec"))
@@ -675,18 +1007,32 @@ def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -
     improvement = b04_time - b4_time if b04_time and b4_time else 0.0
     b4_stage3 = safe_float(averages.get(B4_MODE, {}).get("stage3_preemption_mean"))
     b4_stage2 = safe_float(averages.get(B4_MODE, {}).get("stage2_hold_mean"))
+    intervention = b4_stage3 + b4_stage2
     arrival_rates = [safe_float(row.get("emergency_arrival_rate"), 0.0) for row in averages.values() if row.get("emergency_arrival_rate") not in {"", None}]
     teleport_count = sum(int(safe_float(row.get("teleport_count"))) for row in averages.values())
     fail_count = sum(int(safe_float(row.get("fail_count"))) for row in averages.values())
-    invalid = teleport_count > 0 or fail_count > 0 or (arrival_rates and min(arrival_rates) < 1.0)
-    score = (
-        0.45 * max(b04_delay, 0.0)
-        + 0.35 * max(improvement, 0.0)
-        + 8.0 * b4_stage3
-        + 4.0 * b4_stage2
-        + 120.0 * safe_float(candidate.get("mainroad_length_ratio"))
-    )
+    comparable = bool(b004_time and b04_time and b4_time)
+    invalid = teleport_count > 0 or fail_count > 0 or (arrival_rates and min(arrival_rates) < 1.0) or not comparable
     if invalid:
+        selection_status = "EXCLUDED"
+        selection_reason = "excluded_due_to_failure_teleport_arrival_or_comparison_gap"
+    elif improvement <= 0.0:
+        selection_status = "EXCLUDED"
+        selection_reason = "excluded_due_to_no_b4_improvement_over_b04"
+    elif intervention <= 0.0:
+        selection_status = "EXCLUDED"
+        selection_reason = "excluded_due_to_no_b4_stage2_or_stage3_intervention"
+    else:
+        selection_status = "CANDIDATE"
+        selection_reason = "valid_b4_improvement_with_actual_intervention"
+    score = (
+        10_000.0 * max(improvement, 0.0)
+        + 1_000.0 * max(b04_delay, 0.0)
+        + 100.0 * intervention
+        + 10.0 * safe_float(candidate.get("mainroad_length_ratio"))
+        + 10.0 * safe_float(candidate.get("legacy_spine_length_ratio"))
+    )
+    if selection_status != "CANDIDATE":
         score -= 1_000_000.0
     return {
         "candidate_rank": candidate.get("candidate_rank", ""),
@@ -704,75 +1050,277 @@ def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -
         "B4_vs_B04_improvement_sec": sec(improvement),
         "B4_stage3_preemption_mean": sec(b4_stage3),
         "B4_stage2_hold_mean": sec(b4_stage2),
+        "intervention_mean": sec(intervention),
         "arrival_rate_min": sec(min(arrival_rates) if arrival_rates else None),
         "teleport_count": teleport_count,
         "fail_count": fail_count,
         "presentation_fit_score": sec(score),
-        "selection_status": "EXCLUDED" if invalid else "CANDIDATE",
-        "selection_reason": "excluded_due_to_failure_or_teleport" if invalid else "congestion_scene_with_b4_intervention_score",
+        "selection_rank": "",
+        "selection_status": selection_status,
+        "selection_reason": selection_reason,
     }
 
 
-def select_final_candidate(candidate_rows: list[dict[str, Any]]) -> dict[str, Any]:
+def candidate_selection_sort_key(row: dict[str, Any]) -> tuple[float, float, float, float, float, int]:
+    representativeness = (
+        safe_float(row.get("mainroad_length_ratio"))
+        + safe_float(row.get("legacy_spine_length_ratio"))
+    )
+    return (
+        -safe_float(row.get("B4_vs_B04_improvement_sec")),
+        -safe_float(row.get("B04_delay_mean_sec")),
+        -safe_float(row.get("intervention_mean")),
+        -safe_float(row.get("mainroad_length_ratio")),
+        -representativeness,
+        int(safe_float(row.get("candidate_rank"), 9999)),
+    )
+
+
+def select_final_candidates(candidate_rows: list[dict[str, Any]], limit: int = DEFAULT_FINAL_SELECTION_COUNT) -> list[dict[str, Any]]:
     eligible = [row for row in candidate_rows if row.get("selection_status") == "CANDIDATE"]
     if eligible:
-        return sorted(eligible, key=lambda row: (-safe_float(row.get("presentation_fit_score")), int(safe_float(row.get("candidate_rank"), 9999))))[0]
+        selected = [dict(row) for row in sorted(eligible, key=candidate_selection_sort_key)[:limit]]
+        for index, row in enumerate(selected, start=1):
+            row["selection_rank"] = index
+        return selected
     if not candidate_rows:
         raise FinalDestinationValidationError("no_candidate_rows_after_validation")
-    fallback = dict(sorted(candidate_rows, key=lambda row: (-safe_float(row.get("presentation_fit_score")), int(safe_float(row.get("candidate_rank"), 9999))))[0])
-    fallback["selection_status"] = "FALLBACK_NO_ELIGIBLE"
-    fallback["selection_reason"] = "all_candidates_failed_or_teleported; selected_best_available_for_diagnostics"
+    fallback = [
+        dict(row)
+        for row in sorted(candidate_rows, key=lambda row: (-safe_float(row.get("presentation_fit_score")), int(safe_float(row.get("candidate_rank"), 9999))))[:limit]
+    ]
+    for index, row in enumerate(fallback, start=1):
+        row["selection_rank"] = index
+        row["selection_status"] = "FALLBACK_NO_ELIGIBLE"
+        row["selection_reason"] = "all_candidates_failed_or_excluded; selected_best_available_for_diagnostics"
     return fallback
 
 
+def select_final_candidate(candidate_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return select_final_candidates(candidate_rows, limit=1)[0]
+
+
 def validate_args(args: argparse.Namespace) -> None:
-    for attr in ["routes_csv", "net", "background_route", "base_stage1_dir", "structure_lock", "mainroad_mapping"]:
+    for attr in ["routes_csv", "net", "background_route", "base_stage1_dir", "mainroad_mapping"]:
         value = Path(getattr(args, attr)).resolve()
         setattr(args, attr, value)
         if attr != "mainroad_mapping" and not value.exists():
             raise FinalDestinationValidationError(f"missing_required_input:{rel(value)}")
+    if args.theta_all_evaluations is not None:
+        args.theta_all_evaluations = Path(args.theta_all_evaluations).resolve()
+        if not args.theta_all_evaluations.exists():
+            raise FinalDestinationValidationError(f"missing_required_input:{rel(args.theta_all_evaluations)}")
+    else:
+        args.theta_latest = Path(args.theta_latest).resolve()
+        if not args.theta_latest.exists():
+            raise FinalDestinationValidationError(f"missing_required_input:{rel(args.theta_latest)}")
     args.run_root = Path(args.run_root).resolve()
     args.metrics_root = Path(args.metrics_root).resolve()
     if args.repeats < 1:
         raise FinalDestinationValidationError("repeats_must_be_positive")
+    if args.screening_repeats != 1:
+        raise FinalDestinationValidationError("screening_repeats_must_be_1_for_final_protocol")
     if args.candidate_limit < 1:
         raise FinalDestinationValidationError("candidate_limit_must_be_positive")
+    if args.final_selection_count < 1:
+        raise FinalDestinationValidationError("final_selection_count_must_be_positive")
     if args.depart_min > args.depart_max:
         raise FinalDestinationValidationError("depart_min_must_be_lte_depart_max")
     if args.workers != 1:
         raise FinalDestinationValidationError("workers_other_than_1_not_supported_for_traci_final_validation")
-    if shutil.which(args.sumo_binary or "sumo") is None:
+    if not args.dry_run and shutil.which(args.sumo_binary or "sumo") is None:
         raise FinalDestinationValidationError("missing_executable:sumo")
     args.run_id = args.run_id or default_run_id()
 
 
-def run_validation(args: argparse.Namespace) -> dict[str, Any]:
-    validate_args(args)
-    params, params_provenance = load_locked_b4_params(args.structure_lock)
-    output_root = args.metrics_root / args.run_id
-    run_root = args.run_root / args.run_id
-    input_root = run_root / "inputs"
-    candidates = build_candidate_routes(args, input_root)
-    departures_by_route = {
+def departures_for_candidates(args: argparse.Namespace, candidates: list[dict[str, Any]], repeats: int) -> dict[str, list[float]]:
+    return {
         candidate["route_id"]: deterministic_departures(
             seed=args.seed,
             route_id=candidate["route_id"],
-            repeats=args.repeats,
+            repeats=repeats,
             depart_min=args.depart_min,
             depart_max=args.depart_max,
         )
         for candidate in candidates
     }
-    task_manifest_rows = planned_task_rows(candidates, departures_by_route, run_root)
+
+
+def dry_run_candidate_rows(candidates: list[dict[str, Any]], phase: str) -> list[dict[str, Any]]:
+    rows = []
+    for candidate in candidates:
+        precheck_ok = candidate.get("precheck_status", "PASS") == "PASS"
+        rows.append({
+            "candidate_rank": candidate["candidate_rank"],
+            "route_id": candidate["route_id"],
+            "source_route_id": candidate["source_route_id"],
+            "target_edge_id": candidate["target_edge_id"],
+            "route_edge_count": candidate["route_edge_count"],
+            "route_length_m": candidate["route_length_m"],
+            "mainroad_length_ratio": candidate["mainroad_length_ratio"],
+            "legacy_spine_length_ratio": candidate["legacy_spine_length_ratio"],
+            "selection_rank": "",
+            "selection_status": f"DRY_RUN_{phase.upper()}" if precheck_ok else "EXCLUDED_PRECHECK",
+            "selection_reason": "dry_run_no_sumo_execution" if precheck_ok else candidate.get("precheck_reason", "precheck_failed"),
+        })
+    return rows
+
+
+def precheck_excluded_candidate_rows(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "candidate_rank": candidate["candidate_rank"],
+            "route_id": candidate["route_id"],
+            "source_route_id": candidate["source_route_id"],
+            "target_edge_id": candidate["target_edge_id"],
+            "route_edge_count": candidate["route_edge_count"],
+            "route_length_m": candidate["route_length_m"],
+            "mainroad_length_ratio": candidate["mainroad_length_ratio"],
+            "legacy_spine_length_ratio": candidate["legacy_spine_length_ratio"],
+            "selection_rank": "",
+            "selection_status": "EXCLUDED_PRECHECK",
+            "selection_reason": candidate.get("precheck_reason", "precheck_failed"),
+        }
+        for candidate in candidates
+        if candidate.get("precheck_status", "PASS") != "PASS"
+    ]
+
+
+def dry_run_selected_rows(candidate_rows: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    selected = [dict(row) for row in candidate_rows[:limit]]
+    for index, row in enumerate(selected, start=1):
+        row["selection_rank"] = index
+        row["selection_status"] = "PRELIMINARY_DRY_RUN"
+        row["selection_reason"] = "preliminary_route_priority_only; final_selection_requires_screening_results"
+    return selected
+
+
+def mark_selected_candidate_rows(candidate_rows: list[dict[str, Any]], selected_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rank_by_route = {str(row.get("route_id")): row.get("selection_rank", "") for row in selected_rows}
+    selected_ids = set(rank_by_route)
+    updated = []
+    for row in candidate_rows:
+        out = dict(row)
+        if out.get("route_id") in selected_ids:
+            out["selection_rank"] = rank_by_route[str(out.get("route_id"))]
+            out["selection_status"] = "SELECTED"
+        updated.append(out)
+    return updated
+
+
+def markdown_table(rows: list[dict[str, Any]], fields: list[str]) -> str:
+    if not rows:
+        return "_No rows._"
+    header = "| " + " | ".join(fields) + " |"
+    divider = "| " + " | ".join("---" for _ in fields) + " |"
+    body = [
+        "| " + " | ".join(str(row.get(field, "")) for field in fields) + " |"
+        for row in rows
+    ]
+    return "\n".join([header, divider, *body])
+
+
+def write_final_report(
+    output_root: Path,
+    *,
+    phase: str,
+    selected_rows: list[dict[str, Any]],
+    candidate_rows: list[dict[str, Any]],
+    params: B4ThetaParams,
+    params_provenance: dict[str, Any],
+    spc_rows: list[dict[str, Any]] | None = None,
+) -> Path:
+    report = [
+        "# 10 Final Destination Validation Report",
+        "",
+        f"- phase: `{phase}`",
+        "- purpose: selected theta is locked; no BO/CMA-ES/random search is executed here.",
+        f"- theta method filter: `{params_provenance.get('theta_method_filter', '')}`",
+        f"- theta source: `{params_provenance.get('theta_all_evaluations_csv', '')}`",
+        f"- theta smoke warning: `{params_provenance.get('theta_source_smoke_warning', False)}`",
+        f"- theta: `{json.dumps(params.as_result_fields(), ensure_ascii=False, sort_keys=True)}`",
+        "",
+        "## Selected Destinations",
+        "",
+        "Selection requires valid arrival, no emergency teleport, comparable B004/B04/B4 rows, positive B4 improvement over B04, and at least one B4 Stage2/Stage3 intervention.",
+        "",
+        markdown_table(
+            selected_rows,
+            [
+                "selection_rank",
+                "route_id",
+                "source_route_id",
+                "target_edge_id",
+                "B4_vs_B04_improvement_sec",
+                "B04_delay_mean_sec",
+                "intervention_mean",
+                "mainroad_length_ratio",
+                "legacy_spine_length_ratio",
+                "selection_reason",
+            ],
+        ),
+        "",
+        "## Candidate Screening",
+        "",
+        markdown_table(
+            candidate_rows,
+            [
+                "candidate_rank",
+                "route_id",
+                "target_edge_id",
+                "selection_status",
+                "selection_reason",
+                "B4_vs_B04_improvement_sec",
+                "intervention_mean",
+                "teleport_count",
+                "fail_count",
+            ],
+        ),
+        "",
+        "## Repeat SPC Stability",
+        "",
+        markdown_table(
+            spc_rows or [],
+            ["route_id", "metric", "repeat_count", "spc_status", "stable_round", "latest_value", "ewma", "lcl", "ucl"],
+        ),
+        "",
+    ]
+    path = output_root / "final_destination_validation_report.md"
+    path.write_text("\n".join(report), encoding="utf-8")
+    return path
+
+
+def write_task_manifest(
+    output_root: Path,
+    *,
+    args: argparse.Namespace,
+    phase: str,
+    candidates: list[dict[str, Any]],
+    departures_by_route: dict[str, list[float]],
+    task_manifest_rows: list[dict[str, Any]],
+    params: B4ThetaParams,
+    params_provenance: dict[str, Any],
+) -> None:
     write_csv(output_root / "task_manifest.csv", task_manifest_rows, TASK_FIELDS)
     write_json(
         output_root / "task_manifest.json",
         {
-            "schema": "compact_v9_final_destination_validation_task_manifest.v1",
+            "schema": "compact_v9_final_destination_validation_task_manifest.v3",
             "generated_at": utc_now(),
             "run_id": args.run_id,
+            "phase": phase,
+            "inputs": {
+                "active_inputs": rel(DEFAULT_ACTIVE_INPUTS),
+                "net_file": rel(args.net),
+                "background_route": rel(args.background_route),
+                "base_stage1_dir": rel(args.base_stage1_dir),
+                "mainroad_mapping": rel(args.mainroad_mapping),
+            },
+            "candidate_count": len(candidates),
+            "runnable_candidate_count": sum(candidate.get("precheck_status", "PASS") == "PASS" for candidate in candidates),
             "candidate_limit": args.candidate_limit,
-            "repeats": args.repeats,
+            "final_selection_count": args.final_selection_count,
+            "repeats": max((len(values) for values in departures_by_route.values()), default=0),
             "task_count": len(task_manifest_rows),
             "depart_min": args.depart_min,
             "depart_max": args.depart_max,
@@ -783,117 +1331,279 @@ def run_validation(args: argparse.Namespace) -> dict[str, Any]:
             "tasks": task_manifest_rows,
         },
     )
+
+
+def run_validation_phase(
+    args: argparse.Namespace,
+    *,
+    phase: str,
+    candidates: list[dict[str, Any]],
+    repeats: int,
+    params: B4ThetaParams,
+    params_provenance: dict[str, Any],
+    selected_rows_for_report: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    output_root = args.metrics_root / args.run_id / phase
+    run_root = args.run_root / args.run_id / phase
+    runnable_candidates = [candidate for candidate in candidates if candidate.get("precheck_status", "PASS") == "PASS"]
+    departures_by_route = {
+        candidate["route_id"]: deterministic_departures(
+            seed=args.seed,
+            route_id=candidate["route_id"],
+            repeats=repeats,
+            depart_min=args.depart_min,
+            depart_max=args.depart_max,
+        )
+        for candidate in runnable_candidates
+    }
+    task_manifest_rows = planned_task_rows(runnable_candidates, departures_by_route, run_root, phase=phase)
+    write_task_manifest(
+        output_root,
+        args=args,
+        phase=phase,
+        candidates=candidates,
+        departures_by_route=departures_by_route,
+        task_manifest_rows=task_manifest_rows,
+        params=params,
+        params_provenance=params_provenance,
+    )
     if args.dry_run:
         for candidate in candidates:
-            write_firetruck_route_artifacts(candidate, Path(candidate["route_xml"]), Path(candidate["route_csv"]), 600.0)
-            Path(candidate["stage1_dir"]).mkdir(parents=True, exist_ok=True)
-        candidate_rows = [
-            {
-                "candidate_rank": candidate["candidate_rank"],
-                "route_id": candidate["route_id"],
-                "source_route_id": candidate["source_route_id"],
-                "target_edge_id": candidate["target_edge_id"],
-                "route_edge_count": candidate["route_edge_count"],
-                "route_length_m": candidate["route_length_m"],
-                "mainroad_length_ratio": candidate["mainroad_length_ratio"],
-                "legacy_spine_length_ratio": candidate["legacy_spine_length_ratio"],
-                "selection_status": "DRY_RUN",
-                "selection_reason": "dry_run_no_sumo_execution",
-            }
-            for candidate in candidates
-        ]
+            if candidate.get("precheck_status", "PASS") == "PASS":
+                write_firetruck_route_artifacts(candidate, Path(candidate["route_xml"]), Path(candidate["route_csv"]), 600.0)
+                Path(candidate["stage1_dir"]).mkdir(parents=True, exist_ok=True)
+        candidate_rows = dry_run_candidate_rows(candidates, phase)
+        report_selected = selected_rows_for_report or dry_run_selected_rows(candidate_rows, min(args.final_selection_count, len(candidate_rows)))
         write_csv(output_root / "candidate_selection.csv", candidate_rows, CANDIDATE_FIELDS)
+        report_path = write_final_report(
+            output_root,
+            phase=phase,
+            selected_rows=report_selected,
+            candidate_rows=candidate_rows,
+            params=params,
+            params_provenance=params_provenance,
+        )
         result = {
-            "schema": "compact_v9_final_destination_validation_dry_run.v1",
+            "schema": "compact_v9_final_destination_validation_phase_dry_run.v2",
             "run_id": args.run_id,
+            "phase": phase,
+            "candidate_count": len(candidates),
+            "runnable_candidate_count": len(runnable_candidates),
+            "rows_total": 0,
             "outputs": {
                 "task_manifest_csv": rel(output_root / "task_manifest.csv"),
                 "task_manifest_json": rel(output_root / "task_manifest.json"),
                 "candidate_selection_csv": rel(output_root / "candidate_selection.csv"),
+                "final_destination_validation_report_md": rel(report_path),
             },
         }
-        write_json(args.metrics_root / "latest.json", result)
         return result
 
     all_rows: list[dict[str, Any]] = []
-    candidate_rows: list[dict[str, Any]] = []
+    candidate_rows: list[dict[str, Any]] = precheck_excluded_candidate_rows(candidates)
     rows_by_route: dict[str, list[dict[str, Any]]] = {}
-    for candidate in candidates:
+    for candidate in runnable_candidates:
         route_rows = run_candidate(args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root)
         rows_by_route[candidate["route_id"]] = route_rows
         all_rows.extend(route_rows)
         candidate_rows.append(summarize_candidate(candidate, route_rows))
         write_csv(output_root / candidate["route_id"] / "route_runs.csv", route_rows, RUN_FIELDS)
-        write_csv(output_root / candidate["route_id"] / "mode_averages.csv", average_rows(route_rows), AVERAGE_FIELDS)
+        write_csv(output_root / candidate["route_id"] / "mode_averages.csv", average_rows(route_rows, candidate["route_id"]), AVERAGE_FIELDS)
         write_csv(output_root / "all_route_runs.partial.csv", all_rows, RUN_FIELDS)
         write_csv(output_root / "candidate_selection.partial.csv", candidate_rows, CANDIDATE_FIELDS)
-    selected = select_final_candidate(candidate_rows)
-    selected_route_id = str(selected["route_id"])
-    selected_rows = rows_by_route[selected_route_id]
-    selected_averages = average_rows(selected_rows)
+    selected_candidates = select_final_candidates(candidate_rows, args.final_selection_count)
+    candidate_rows = mark_selected_candidate_rows(candidate_rows, selected_candidates)
+    selected_route_ids = [str(row["route_id"]) for row in selected_candidates]
+    selected_rows = [row for route_id in selected_route_ids for row in rows_by_route.get(route_id, [])]
+    final_simulation_rows = final_simulation_result_rows(selected_rows, params)
+    selected_averages = [
+        row
+        for route_id in selected_route_ids
+        for row in average_rows(rows_by_route.get(route_id, []), route_id)
+    ]
+    spc_rows = [
+        row
+        for route_id in selected_route_ids
+        for row in repeat_stability_rows(route_id, rows_by_route.get(route_id, []))
+    ]
     write_csv(output_root / "all_route_runs.csv", all_rows, RUN_FIELDS)
     write_csv(output_root / "candidate_selection.csv", candidate_rows, CANDIDATE_FIELDS)
+    write_csv(output_root / "final_simulation_results.csv", final_simulation_rows, FINAL_SIMULATION_FIELDS)
     write_csv(output_root / "selected_route_runs.csv", selected_rows, RUN_FIELDS)
     write_csv(output_root / "selected_mode_averages.csv", selected_averages, AVERAGE_FIELDS)
-    selected_candidate = next(candidate for candidate in candidates if candidate["route_id"] == selected_route_id)
+    write_csv(output_root / "spc_repeat_stability.csv", spc_rows, SPC_REPEAT_FIELDS)
+    selected_candidate_payload = [
+        next(candidate for candidate in candidates if candidate["route_id"] == route_id)
+        for route_id in selected_route_ids
+    ]
     selected_payload = {
-        "schema": "compact_v9_final_destination_validation_selected_destination.v1",
+        "schema": "compact_v9_final_destination_validation_selected_destinations.v2",
         "generated_at": utc_now(),
         "run_id": args.run_id,
-        "selection": selected,
-        "route": {
-            key: selected_candidate[key]
-            for key in [
-                "route_id",
-                "source_route_id",
-                "target_edge_id",
-                "selected_policy",
-                "route_edge_count",
-                "route_length_m",
-                "start_edge_id",
-                "merge_edge_id",
-                "mainroad_length_ratio",
-                "legacy_spine_length_ratio",
-            ]
-        } | {"route_edges": selected_candidate["route_edges"]},
-        "departures": departures_by_route[selected_route_id],
+        "phase": phase,
+        "selection": selected_candidates,
+        "routes": [
+            {
+                key: candidate[key]
+                for key in [
+                    "route_id",
+                    "source_route_id",
+                    "target_edge_id",
+                    "selected_policy",
+                    "route_edge_count",
+                    "route_length_m",
+                    "start_edge_id",
+                    "merge_edge_id",
+                    "mainroad_length_ratio",
+                    "legacy_spine_length_ratio",
+                ]
+            } | {"route_edges": candidate["route_edges"]}
+            for candidate in selected_candidate_payload
+        ],
+        "departures": {route_id: departures_by_route[route_id] for route_id in selected_route_ids},
         "b4_params": params.as_result_fields(),
         "b4_params_provenance": params_provenance,
         "outputs": {
             "all_route_runs_csv": rel(output_root / "all_route_runs.csv"),
             "candidate_selection_csv": rel(output_root / "candidate_selection.csv"),
+            "final_simulation_results_csv": rel(output_root / "final_simulation_results.csv"),
             "selected_route_runs_csv": rel(output_root / "selected_route_runs.csv"),
             "selected_mode_averages_csv": rel(output_root / "selected_mode_averages.csv"),
+            "spc_repeat_stability_csv": rel(output_root / "spc_repeat_stability.csv"),
         },
     }
-    write_json(output_root / "selected_destination.json", selected_payload)
+    write_json(output_root / "selected_destinations.json", selected_payload)
+    report_path = write_final_report(
+        output_root,
+        phase=phase,
+        selected_rows=selected_candidates,
+        candidate_rows=candidate_rows,
+        params=params,
+        params_provenance=params_provenance,
+        spc_rows=spc_rows,
+    )
     result = {
-        "schema": "compact_v9_final_destination_validation_run.v1",
+        "schema": "compact_v9_final_destination_validation_phase_run.v2",
         "generated_at": utc_now(),
         "run_id": args.run_id,
+        "phase": phase,
         "candidate_count": len(candidates),
+        "runnable_candidate_count": len(runnable_candidates),
         "rows_total": len(all_rows),
-        "selected_route_id": selected_route_id,
+        "selected_route_ids": selected_route_ids,
         "outputs": selected_payload["outputs"] | {
-            "selected_destination_json": rel(output_root / "selected_destination.json"),
+            "selected_destinations_json": rel(output_root / "selected_destinations.json"),
             "task_manifest_json": rel(output_root / "task_manifest.json"),
+            "final_destination_validation_report_md": rel(report_path),
+            "spc_repeat_stability_csv": rel(output_root / "spc_repeat_stability.csv"),
         },
     }
     write_json(output_root / "experiment_summary.json", result)
-    write_json(args.metrics_root / "latest.json", result)
     return result
+
+
+def selected_route_ids_from_args_or_screening(args: argparse.Namespace) -> list[str]:
+    if args.selected_routes:
+        return list(args.selected_routes)
+    selection_csv = args.screening_selection_csv or (args.metrics_root / args.run_id / PHASE_SCREENING / "candidate_selection.csv")
+    selection_csv = Path(selection_csv).resolve()
+    if not selection_csv.is_file():
+        raise FinalDestinationValidationError(f"missing_screening_selection_csv:{rel(selection_csv)}")
+    selected = select_final_candidates(read_csv(selection_csv), args.final_selection_count)
+    return [str(row["route_id"]) for row in selected]
+
+
+def run_validation(args: argparse.Namespace) -> dict[str, Any]:
+    validate_args(args)
+    params, params_provenance = load_final_b4_params(
+        theta_latest=args.theta_latest,
+        theta_all_evaluations=args.theta_all_evaluations,
+        theta_method=args.theta_method,
+    )
+    base_run_root = args.run_root / args.run_id
+    base_candidates = build_candidate_routes(args, base_run_root / "inputs" / "candidate_catalog")
+    results: dict[str, Any] = {
+        "schema": "compact_v9_final_destination_validation_run.v2",
+        "generated_at": utc_now(),
+        "run_id": args.run_id,
+        "phase": args.phase,
+        "inputs": {
+            "active_inputs": rel(DEFAULT_ACTIVE_INPUTS),
+            "net_file": rel(args.net),
+            "background_route": rel(args.background_route),
+            "base_stage1_dir": rel(args.base_stage1_dir),
+            "mainroad_mapping": rel(args.mainroad_mapping),
+        },
+        "bo_enabled": False,
+        "bayesian_optimization_executed_by_final_validation": False,
+        "b4_params": params.as_result_fields(),
+        "b4_params_provenance": params_provenance,
+        "phases": {},
+    }
+    if args.phase in {PHASE_SCREENING, PHASE_ALL}:
+        screening_candidates = clone_candidates_for_phase(
+            base_candidates,
+            [str(candidate["route_id"]) for candidate in base_candidates],
+            base_run_root / "inputs" / PHASE_SCREENING,
+        )
+        screening_result = run_validation_phase(
+            args,
+            phase=PHASE_SCREENING,
+            candidates=screening_candidates,
+            repeats=args.screening_repeats,
+            params=params,
+            params_provenance=params_provenance,
+        )
+        results["phases"][PHASE_SCREENING] = screening_result
+    if args.phase in {PHASE_FINAL, PHASE_ALL}:
+        if args.phase == PHASE_ALL:
+            screening_csv = args.metrics_root / args.run_id / PHASE_SCREENING / "candidate_selection.csv"
+            if args.dry_run:
+                selected_rows = dry_run_selected_rows(read_csv(screening_csv), args.final_selection_count)
+                selected_route_ids = [str(row["route_id"]) for row in selected_rows]
+            else:
+                selected_rows = select_final_candidates(read_csv(screening_csv), args.final_selection_count)
+                selected_route_ids = [str(row["route_id"]) for row in selected_rows]
+        else:
+            selected_route_ids = selected_route_ids_from_args_or_screening(args)
+            selected_rows = []
+        final_candidates = clone_candidates_for_phase(
+            base_candidates,
+            selected_route_ids,
+            base_run_root / "inputs" / PHASE_FINAL,
+        )
+        final_result = run_validation_phase(
+            args,
+            phase=PHASE_FINAL,
+            candidates=final_candidates,
+            repeats=args.repeats,
+            params=params,
+            params_provenance=params_provenance,
+            selected_rows_for_report=selected_rows or None,
+        )
+        results["phases"][PHASE_FINAL] = final_result
+    write_json(args.metrics_root / "latest.json", results)
+    write_json(args.metrics_root / args.run_id / "experiment_summary.json", results)
+    return results
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Compact V9 final destination validation.")
+    parser.add_argument("--phase", choices=[PHASE_SCREENING, PHASE_FINAL, PHASE_ALL], default=PHASE_ALL)
     parser.add_argument("--routes-csv", type=Path, default=DEFAULT_ROUTES_CSV)
     parser.add_argument("--net", type=Path, default=DEFAULT_NET)
     parser.add_argument("--background-route", type=Path, default=DEFAULT_BACKGROUND_ROUTE)
     parser.add_argument("--base-stage1-dir", type=Path, default=DEFAULT_BASE_STAGE1_DIR)
-    parser.add_argument("--structure-lock", type=Path, default=DEFAULT_STRUCTURE_LOCK)
+    parser.add_argument("--theta-latest", type=Path, default=DEFAULT_THETA_LATEST)
+    parser.add_argument("--theta-all-evaluations", type=Path, default=None)
+    parser.add_argument("--theta-method", default="ALL", choices=["ALL", "BO", "CMA-ES", "Random Search"])
     parser.add_argument("--mainroad-mapping", type=Path, default=DEFAULT_MAINROAD_MAPPING)
     parser.add_argument("--start-edge", default=DEFAULT_START_EDGE)
     parser.add_argument("--candidate-limit", type=int, default=DEFAULT_CANDIDATE_LIMIT)
+    parser.add_argument("--screening-repeats", type=int, default=DEFAULT_SCREENING_REPEATS)
+    parser.add_argument("--final-selection-count", type=int, default=DEFAULT_FINAL_SELECTION_COUNT)
+    parser.add_argument("--selected-routes", nargs="*", default=None)
+    parser.add_argument("--screening-selection-csv", type=Path, default=None)
     parser.add_argument("--repeats", type=int, default=DEFAULT_REPEATS)
     parser.add_argument("--depart-min", type=float, default=DEFAULT_DEPART_MIN)
     parser.add_argument("--depart-max", type=float, default=DEFAULT_DEPART_MAX)

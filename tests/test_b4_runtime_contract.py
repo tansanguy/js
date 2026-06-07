@@ -413,15 +413,19 @@ class B4RuntimeContractTest(unittest.TestCase):
         traci.simulation.time = self.stage1.ev_depart_sec - 0.25
         hold_events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
         self.assertEqual(len(hold_events), 1)
-        self.assertIn(hold_events[0]["action_type"], {"entry_hold", "entry_hold_clearance"})
+        self.assertEqual(hold_events[0]["action_type"], "entry_hold_clearance")
         self.assertEqual(hold_events[0]["tls_id"], "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
-        self.assertIn(hold_events[0]["target_phase"], {1, 2})
-        self.assertIn(hold_events[0]["safety_status"], {"ALLOW", "REQUIRE_CLEARANCE"})
+        self.assertEqual(hold_events[0]["target_phase"], 1)
+        self.assertEqual(hold_events[0]["safety_status"], "REQUIRE_CLEARANCE")
         self.assertEqual(hold_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
         self.assertEqual(float(hold_events[0]["L_merge_m"]), 50.0)
         self.assertIn("T_hold_proxy_sec", hold_events[0])
         self.assertIn("n_occ_runtime_veh", hold_events[0])
-        self.assertEqual(hold_events[0]["action"], "RED_HOLD")
+        self.assertEqual(hold_events[0]["action"], "RED_HOLD_REQUEST")
+        self.assertEqual(hold_events[0]["stage2_hold_status"], "hold_clearance_pending")
+        self.assertFalse(controller.stage2_hold_active)
+        self.assertTrue(controller.stage2_hold_clearance_pending)
+        self.assertEqual(controller.stats.stage2_hold_count, 0)
         self.assertEqual(hold_events[0]["SafetyGate_result"], hold_events[0]["safety_status"])
         self.assertEqual(hold_events[0]["EV_NotDeparted"], True)
         self.assertEqual(hold_events[0]["EV_Departed"], False)
@@ -434,7 +438,19 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(float(hold_events[0]["Q_th_merge_m"]), 25.0)
         self.assertEqual(hold_events[0]["runtime_or_b0_fallback"], "runtime")
         self.assertLessEqual(float(hold_events[0]["T_hold_proxy_sec"]), 0.0)
-        self.assertIn(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], {1, 2})
+        self.assertEqual(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], 1)
+
+        traci.simulation.time += 10
+        applied_hold_events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
+        self.assertEqual(len(applied_hold_events), 1)
+        self.assertEqual(applied_hold_events[0]["action_type"], "entry_hold")
+        self.assertEqual(applied_hold_events[0]["action"], "RED_HOLD")
+        self.assertEqual(applied_hold_events[0]["target_phase"], 2)
+        self.assertEqual(applied_hold_events[0]["safety_status"], "ALLOW")
+        self.assertEqual(applied_hold_events[0]["stage2_hold_status"], "hold_active")
+        self.assertTrue(controller.stage2_hold_active)
+        self.assertFalse(controller.stage2_hold_clearance_pending)
+        self.assertEqual(controller.stats.stage2_hold_count, 1)
 
         traci.vehicle.vehicles[self.stage1.ev_id] = {
             "edge": "-174870621#8",
@@ -446,12 +462,29 @@ class B4RuntimeContractTest(unittest.TestCase):
         traci.simulation.time += 10
         release_events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
         self.assertEqual(len(release_events), 1)
-        self.assertEqual(release_events[0]["action_type"], "entry_hold_release")
-        self.assertEqual(release_events[0]["action"], "RELEASE")
-        self.assertIn(release_events[0]["target_phase"], {0, 1})
-        self.assertIn(release_events[0]["safety_status"], {"ALLOW", "REQUIRE_CLEARANCE"})
+        self.assertEqual(release_events[0]["action_type"], "entry_hold_release_clearance")
+        self.assertEqual(release_events[0]["action"], "RELEASE_REQUEST")
+        self.assertEqual(release_events[0]["target_phase"], 1)
+        self.assertEqual(release_events[0]["safety_status"], "REQUIRE_CLEARANCE")
+        self.assertEqual(release_events[0]["stage2_hold_status"], "release_clearance_pending")
+        self.assertTrue(controller.stage2_hold_active)
+        self.assertTrue(controller.stage2_release_clearance_pending)
+        self.assertEqual(controller.stats.stage2_release_count, 0)
         self.assertEqual(release_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
-        self.assertIn(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], {0, 1})
+        self.assertEqual(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], 1)
+
+        traci.simulation.time += 10
+        applied_release_events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
+        self.assertEqual(len(applied_release_events), 1)
+        self.assertEqual(applied_release_events[0]["action_type"], "entry_hold_release")
+        self.assertEqual(applied_release_events[0]["action"], "RELEASE")
+        self.assertEqual(applied_release_events[0]["target_phase"], 0)
+        self.assertEqual(applied_release_events[0]["safety_status"], "ALLOW")
+        self.assertEqual(applied_release_events[0]["stage2_hold_status"], "released")
+        self.assertFalse(controller.stage2_hold_active)
+        self.assertFalse(controller.stage2_release_clearance_pending)
+        self.assertTrue(controller.stage2_completed)
+        self.assertEqual(controller.stats.stage2_release_count, 1)
 
         traci.vehicle.vehicles.clear()
         traci.simulation.time += 500
@@ -479,7 +512,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(events, [])
         self.assertEqual(traci.trafficlight.actions, [])
 
-    def test_stage3_skips_i_merge_owner(self):
+    def test_stage3_skips_i_merge_owner_for_core_stage3_but_route_release_can_open_it(self):
         merge_movement = next(movement for movement in self.stage1.movements if movement.is_merge)
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
@@ -508,7 +541,91 @@ class B4RuntimeContractTest(unittest.TestCase):
             events = controller.handle_stage3(self.stage1.ev_depart_sec + 1.0, ev_state)
         finally:
             self.runtime.movement_runtime_metrics = original
-        self.assertNotIn(merge_movement.movement_id, [event["movement_id"] for event in events])
+        core_stage3 = [event for event in events if event["control_mode"] in {"case_a_preemption", "case_b_downstream_first"}]
+        self.assertNotIn(merge_movement.movement_id, [event["movement_id"] for event in core_stage3])
+
+    def test_ev_route_green_phase_is_recovered_from_tllogic_for_noncontrollable_link(self):
+        base_movement = self.first_stage3_movement()
+        movement = replace(
+            base_movement,
+            movement_id="EV_ROUTE_NONCONTROLLABLE",
+            tls_id="TLS_ROUTE",
+            link_indices=(2, 3),
+            ev_route_link_indices=(2, 3),
+            selected_green_phase=1,
+            ev_route_phase=None,
+            full_through_phase=None,
+            controllable=False,
+        )
+        controller = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=replace(self.stage1, movements=(movement,)),
+            phases_by_tls={
+                "TLS_ROUTE": [
+                    {"phase_index": 0, "state": "rrGG", "duration": 30},
+                    {"phase_index": 1, "state": "GGrr", "duration": 30},
+                ]
+            },
+        )
+
+        phase, source = controller.ev_route_green_phase_for_movement(movement)
+
+        self.assertEqual(phase, 0)
+        self.assertEqual(source, "runtime_tlLogic_ev_link_green")
+
+    def test_ev_route_green_release_opens_noncontrollable_route_link(self):
+        base_movement = self.first_stage3_movement()
+        movement = replace(
+            base_movement,
+            movement_id="EV_ROUTE_NONCONTROLLABLE",
+            tls_id="TLS_ROUTE",
+            link_indices=(2, 3),
+            ev_route_link_indices=(2, 3),
+            selected_green_phase=1,
+            ev_route_phase=None,
+            full_through_phase=None,
+            controllable=False,
+        )
+        stage1 = replace(self.stage1, movements=(movement,), max_active_movements=1)
+        traci = FakeTraci()
+        traci.trafficlight.phases["TLS_ROUTE"] = 0
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=stage1,
+            phases_by_tls={
+                "TLS_ROUTE": [
+                    {"phase_index": 0, "state": "rrGG", "duration": 30},
+                    {"phase_index": 1, "state": "GGrr", "duration": 30},
+                ]
+            },
+            pedestrian_min_green_by_tls={},
+        )
+        ev_state = self.runtime.EVState(
+            present=True,
+            departed=True,
+            arrived=False,
+            vehicle_id=stage1.ev_id,
+            edge_id=movement.from_edge,
+            lane_id=f"{movement.from_edge}_0",
+            route_index=movement.route_order_index,
+            speed_mps=0.0,
+            speed_kmh=0.0,
+        )
+        metric = self.metric(movement, candidate=False, queue_m_proxy=0.0)
+
+        events = controller.ensure_ev_route_green_release(
+            self.stage1.ev_depart_sec + 1.0,
+            ev_state,
+            [metric],
+            {movement.movement_id: metric},
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["action_type"], "ev_route_green_release")
+        self.assertEqual(events[0]["movement_id"], movement.movement_id)
+        self.assertEqual(events[0]["control_mode"], "ev_route_green_release")
+        self.assertEqual(events[0]["target_phase"], 0)
+        self.assertIn(movement.movement_id, controller.active_controls)
 
     def test_stage3_scans_ahead_even_without_local_fill_or_speed_candidate(self):
         movement = self.first_stage3_movement()
@@ -973,12 +1090,13 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(case_b.case_b_source, "not_case_b")
 
     def test_case_b_conflicting_green_uses_clearance_before_target_green(self):
-        upstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_06")
-        downstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_07")
+        upstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_05")
+        downstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_06")
         self.assertEqual(downstream.route_intersection_index, upstream.route_intersection_index + 1)
         self.assertNotEqual(downstream.selected_green_phase, 0)
         traci = FakeTraci()
-        traci.trafficlight.phases[downstream.tls_id] = 0
+        traci.trafficlight.phases[upstream.tls_id] = upstream.selected_green_phase
+        traci.trafficlight.phases[downstream.tls_id] = downstream.selected_red_phase
         traci.vehicle.vehicles[self.stage1.ev_id] = {
             "edge": upstream.from_edge,
             "lane": f"{upstream.from_edge}_0",
@@ -993,11 +1111,17 @@ class B4RuntimeContractTest(unittest.TestCase):
             run_id="contract",
         )
         controller.pedestrian_min_green_by_tls = {}
-        controller.ev_distance_to_movement = lambda _ev_state, _movement: 0.0
+        controller.ev_distance_to_movement = lambda _ev_state, candidate_movement: (
+            0.0 if candidate_movement in {upstream, downstream} else 9999.0
+        )
         original = self.runtime.movement_runtime_metrics
 
         def fake_metrics(_traci, candidate_movement, _thresholds):
-            metric = self.metric(candidate_movement, candidate=False, queue_m_proxy=upstream.L_m if candidate_movement == upstream else 0.0)
+            metric = self.metric(
+                candidate_movement,
+                candidate=(candidate_movement == upstream),
+                queue_m_proxy=upstream.L_m if candidate_movement == upstream else 0.0,
+            )
             return replace(metric, queue_confidence=self.runtime.QUEUE_PROXY_CONFIDENCE)
 
         self.runtime.movement_runtime_metrics = fake_metrics
@@ -1011,7 +1135,10 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(downstream_event["safety_status"], "REQUIRE_CLEARANCE")
         self.assertEqual(downstream_event["case_b_source"], "runtime_tau_adjacency")
         self.assertEqual(downstream_event["case_type"], "caseB")
-        self.assertEqual(downstream_event["processing_order"], f"{downstream.route_intersection_index},{upstream.route_intersection_index}")
+        self.assertEqual(
+            downstream_event["processing_order"],
+            f"{downstream.route_intersection_index},{upstream.route_intersection_index}",
+        )
         self.assertNotEqual(downstream_event["target_phase"], downstream.selected_green_phase)
 
     def test_safety_gate_denies_pedestrian_min_green_and_incomplete_clearance(self):
@@ -1092,10 +1219,11 @@ class B4RuntimeContractTest(unittest.TestCase):
             movement
             for movement in self.stage1.movements
             if movement.tls_id == "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more"
+            and movement.controllable
         ]
-        self.assertGreaterEqual(len(same_tls_pair), 2)
+        self.assertGreaterEqual(len(same_tls_pair), 1)
         same_tls_pair.sort(key=lambda movement: movement.route_order_index)
-        current, downstream = same_tls_pair[0], same_tls_pair[1]
+        current = same_tls_pair[0]
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -1125,18 +1253,18 @@ class B4RuntimeContractTest(unittest.TestCase):
         )
         events = controller.restore_passed_or_expired_controls(20.0, ev_state)
         self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["action_type"], "downstream_flush_same_tls")
-        self.assertEqual(events[0]["movement_id"], downstream.movement_id)
-        self.assertEqual(events[0]["target_phase"], downstream.selected_green_phase)
+        self.assertEqual(events[0]["action_type"], "extend_target_green")
+        self.assertEqual(events[0]["movement_id"], current.movement_id)
+        self.assertEqual(events[0]["target_phase"], current.selected_green_phase)
 
     def test_stage3_same_lane_blocker_flush_cycles_before_extending_ev_only_green(self):
         movement = next(item for item in self.stage1.movements if item.from_edge == "781985787#0")
         self.assertEqual(movement.ev_route_link_indices, (18,))
         self.assertEqual(movement.parallel_through_link_indices, (14, 15, 16, 18))
         self.assertEqual(movement.same_lane_blocking_link_indices, (15, 16, 17))
-        self.assertEqual(movement.selected_green_phase, 0)
-        self.assertIsNone(movement.selected_flush_phase)
-        self.assertFalse(movement.same_lane_blocker_flush_available)
+        self.assertEqual(movement.selected_green_phase, 2)
+        self.assertEqual(movement.selected_flush_phase, 0)
+        self.assertTrue(movement.same_lane_blocker_flush_available)
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -1165,10 +1293,14 @@ class B4RuntimeContractTest(unittest.TestCase):
             speed_kmh=0.0,
         )
         flush_events = controller.restore_passed_or_expired_controls(130.0, ev_state)
-        self.assertFalse(any(event["action_type"] == "same_lane_blocker_flush" for event in flush_events))
+        self.assertEqual(len(flush_events), 1)
+        self.assertEqual(flush_events[0]["action_type"], "same_lane_blocker_flush")
+        self.assertEqual(flush_events[0]["target_phase"], movement.selected_flush_phase)
 
         return_events = controller.restore_passed_or_expired_controls(140.0, ev_state)
-        self.assertEqual(return_events, [])
+        self.assertEqual(len(return_events), 1)
+        self.assertEqual(return_events[0]["action_type"], "return_to_target_green")
+        self.assertEqual(return_events[0]["target_phase"], movement.selected_green_phase)
 
     def test_stage3_evaluates_after_ev_departure_even_before_merge_pass(self):
         traci = FakeTraci()
@@ -1454,10 +1586,18 @@ class B4RuntimeContractTest(unittest.TestCase):
         finally:
             self.runtime.movement_runtime_metrics = original
         self.assertIn("trigger_evaluation", [event["action_type"] for event in events])
-        self.assertNotIn("phase_change_target_green", [event["action_type"] for event in events])
-        eval_event = next(event for event in events if event["action_type"] == "trigger_evaluation")
+        eval_event = next(event for event in events if event["action_type"] == "trigger_evaluation" and event["movement_id"] == movement.movement_id)
         self.assertEqual(eval_event["ta_triggered"], False)
         self.assertGreater(float(eval_event["TA_proxy_sec"]), 0.0)
+        eval_by_movement = {
+            event["movement_id"]: event
+            for event in events
+            if event["action_type"] == "trigger_evaluation"
+        }
+        for phase_event in [event for event in events if event["action_type"] == "phase_change_target_green"]:
+            trigger_event = eval_by_movement[phase_event["movement_id"]]
+            self.assertEqual(trigger_event["gate_result"], "PASS")
+            self.assertEqual(trigger_event["ta_triggered"], True)
 
     def test_stage3_ta_gate_allows_candidate_when_ta_nonpositive(self):
         movement = self.first_stage3_movement()
@@ -1622,8 +1762,8 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.runner.build_b004_free_reference(stage1)
             rows = [
                 {"run_id": "contract", "mode": "B004", "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front", "parameter_id": "free_emv_analytic_50kmh", "T_actual_EMV_sec": 10.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 0.0, "objective_score": 0.0},
-                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 90.0, "d_veh_sec": 1.0, "objective_score": 1801.0},
-                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 80.0, "d_veh_sec": 2.0, "objective_score": 1602.0},
+                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 90.0, "d_veh_sec": 1.0, "objective_score": 81.909091},
+                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 80.0, "d_veh_sec": 2.0, "objective_score": 72.909091},
             ]
             outputs = self.runner.write_metric_outputs(rows, tasks, stage1, Path(metrics_tmp))
             self.assertEqual(
@@ -1659,7 +1799,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertGreaterEqual(reference["veh_eval_count"], 1)
 
     def test_objective_score_formula(self):
-        self.assertAlmostEqual(self.runner.objective_score(10.0, 2.5), 202.5)
+        self.assertAlmostEqual(self.runner.objective_score(10.0, 2.5), (10.0 / 11.0) * 10.0 + (1.0 / 11.0) * 2.5, places=6)
 
 
 if __name__ == "__main__":

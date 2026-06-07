@@ -1,0 +1,5 @@
+method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,best_so_far,surrogate_mean,surrogate_ci_low,surrogate_ci_high,acquisition,essi_max,essi_log_max_ewma,essi_spc_status
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,434.46,434.46,,,,,0.00,-27.63102112,warmup
+BO,20260607,2,bo_init_001_tl120_dt59_ge19_qr20_tau87,120,59,19,0.2,0.87,280.21,280.21,,,,,11.41,-18.61129951,warmup
+BO,20260607,3,bo_r03_001_tl110_dt39_ge14_qr28_tau81,110,39,14,0.28,0.81,205.00,205.00,336.89,191.13,482.65,9.38,6.91,-12.44812927,warmup
+BO,20260607,4,bo_r04_001_tl0_dt20_ge12_qr70_tau77,0,20,12,0.7,0.77,167.12,167.12,306.56,119.35,493.76,6.91,8.04,-8.08846293,warmup

@@ -1,0 +1,18 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_latest.v1",
+  "run_id": "essi_only_contract_smoke",
+  "output_dir": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke",
+  "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/all_evaluations.csv",
+  "final_method_comparison_results_csv": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/final_method_comparison_results.csv",
+  "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/table1_best_so_far.csv",
+  "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/table2_bo_surrogate.csv",
+  "table3_pareto_csv": "",
+  "table4_sensitivity_spc_csv": "",
+  "final_sensitivity_results_csv": "",
+  "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/bo_spatial_subspaces.json",
+  "noise_check_csv": "",
+  "figure1_png": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/figure1_best_so_far.png",
+  "figure2_png": "09-1 B4 Optimization S1forced/outputs/essi_only_contract_smoke/figure2_bo_surrogate.png",
+  "figure3_png": "",
+  "figure4_png": ""
+}

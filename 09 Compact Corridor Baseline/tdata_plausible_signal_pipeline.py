@@ -37,18 +37,32 @@ NET_DIR = TDATA_ROOT / "nets"
 SUMMARY_DIR = TDATA_ROOT / "summaries"
 
 BASE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
-MAINROAD_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1/b4_intersections.csv"
+MAINROAD_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_intersections.csv"
 OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_tdata_plausible.net.xml"
 ACTIVE_NET_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_tdata_plausible.net.xml"
 MAINROAD_PROFILES_CSV = TDATA_ROOT / "mainroad_signal_profiles.csv"
 INFERRED_PROFILES_CSV = TDATA_ROOT / "inferred_signal_profiles.csv"
 GLOBAL_PROFILES_CSV = TDATA_ROOT / "global_signal_profiles.csv"
 SUMMARY_JSON = SUMMARY_DIR / "tdata_plausible_signal_summary.json"
+REMAINING_SUMMARY_JSON = SUMMARY_DIR / "tdata_spat_remaining_time_summary.json"
 API_ENDPOINT = "https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0"
 
-VEHICLE_SUFFIXES = ("BssgRmdrCs", "LtsgRmdrCs", "StsgRmdrCs", "UtsgRmdrCs")
+MOVEMENT_SUFFIXES = ("Bssg", "Bcsg", "Ltsg", "Pdsg", "Stsg", "Utsg")
+VEHICLE_MOVEMENT_SUFFIXES = ("Bssg", "Ltsg", "Stsg", "Utsg")
 DIRECTION_PREFIXES = ("nt", "et", "st", "wt", "ne", "se", "sw", "nw")
-UNAVAILABLE_REMAINING_CS = 36000
+REMAINING_FIELD_SUFFIX = "RmdrCs"
+REMAINING_TIME_UNIT_SEC = 0.1
+UNAVAILABLE_REMAINING_SENTINELS = {36000, 36001}
+UNAVAILABLE_REMAINING_THRESHOLD_CS = 36000
+
+MOVEMENT_LABELS_KO = {
+    "Bssg": "버스",
+    "Bcsg": "자전거",
+    "Ltsg": "좌회전",
+    "Pdsg": "보행",
+    "Stsg": "직진",
+    "Utsg": "유턴",
+}
 
 
 class TDataSignalError(RuntimeError):
@@ -161,7 +175,195 @@ def clamp_int(value: float, low: int, high: int) -> int:
 
 
 def signal_fields() -> tuple[str, ...]:
-    return tuple(f"{prefix}{suffix}" for prefix in DIRECTION_PREFIXES for suffix in VEHICLE_SUFFIXES)
+    return tuple(f"{prefix}{suffix}{REMAINING_FIELD_SUFFIX}" for prefix in DIRECTION_PREFIXES for suffix in VEHICLE_MOVEMENT_SUFFIXES)
+
+
+def remaining_signal_fields(row: dict[str, Any]) -> list[str]:
+    return [
+        key for key in row
+        if key.endswith(REMAINING_FIELD_SUFFIX)
+        and len(key) > len(REMAINING_FIELD_SUFFIX) + 2
+        and key[:2] in DIRECTION_PREFIXES
+        and key[2:-len(REMAINING_FIELD_SUFFIX)] in MOVEMENT_SUFFIXES
+    ]
+
+
+def parse_remaining_field(field: str) -> tuple[str, str] | None:
+    if not field.endswith(REMAINING_FIELD_SUFFIX) or len(field) <= len(REMAINING_FIELD_SUFFIX) + 2:
+        return None
+    direction = field[:2]
+    movement = field[2:-len(REMAINING_FIELD_SUFFIX)]
+    if direction not in DIRECTION_PREFIXES or movement not in MOVEMENT_SUFFIXES:
+        return None
+    return direction, movement
+
+
+def remaining_cs_to_sec(value: Any) -> float | None:
+    raw = safe_float(value, math.nan)
+    if math.isnan(raw):
+        return None
+    if raw in UNAVAILABLE_REMAINING_SENTINELS or raw >= UNAVAILABLE_REMAINING_THRESHOLD_CS:
+        return None
+    if raw <= 0:
+        return None
+    return raw * REMAINING_TIME_UNIT_SEC
+
+
+def valid_remaining_values(row: dict[str, Any]) -> list[dict[str, Any]]:
+    values: list[dict[str, Any]] = []
+    for field in remaining_signal_fields(row):
+        parsed = parse_remaining_field(field)
+        remaining_sec = remaining_cs_to_sec(row.get(field))
+        if parsed is None or remaining_sec is None:
+            continue
+        direction, movement = parsed
+        values.append({
+            "field": field,
+            "direction": direction,
+            "movement": movement,
+            "movement_label_ko": MOVEMENT_LABELS_KO.get(movement, movement),
+            "remaining_sec": remaining_sec,
+        })
+    return values
+
+
+def median(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2.0
+
+
+def percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * pct))))
+    return ordered[index]
+
+
+def remaining_time_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    all_values: list[float] = []
+    by_movement: dict[str, list[float]] = defaultdict(list)
+    snapshot_rows: list[dict[str, Any]] = []
+    non_positive_count = 0
+    sentinel_count = 0
+    null_count = 0
+    for record in records:
+        snapshot_values: list[float] = []
+        for field in remaining_signal_fields(record):
+            raw = record.get(field)
+            if raw in (None, ""):
+                null_count += 1
+                continue
+            raw_float = safe_float(raw, math.nan)
+            if math.isnan(raw_float):
+                null_count += 1
+                continue
+            if raw_float in UNAVAILABLE_REMAINING_SENTINELS or raw_float >= UNAVAILABLE_REMAINING_THRESHOLD_CS:
+                sentinel_count += 1
+                continue
+            if raw_float <= 0:
+                non_positive_count += 1
+                continue
+            parsed = parse_remaining_field(field)
+            if parsed is None:
+                continue
+            _direction, movement = parsed
+            remaining_sec = raw_float * REMAINING_TIME_UNIT_SEC
+            all_values.append(remaining_sec)
+            by_movement[movement].append(remaining_sec)
+            snapshot_values.append(remaining_sec)
+        if snapshot_values:
+            snapshot_rows.append({
+                "itst_id": str(record.get("itstId", "")),
+                "eqmn_id": str(record.get("eqmnId", "")),
+                "valid_field_count": len(snapshot_values),
+                "mean_remaining_sec": sum(snapshot_values) / len(snapshot_values),
+            })
+    movement_summary = {
+        movement: {
+            "label_ko": MOVEMENT_LABELS_KO.get(movement, movement),
+            "count": len(values),
+            "mean_sec": round(sum(values) / len(values), 3) if values else 0.0,
+            "median_sec": round(median(values), 3) if values else 0.0,
+            "min_sec": round(min(values), 3) if values else 0.0,
+            "max_sec": round(max(values), 3) if values else 0.0,
+        }
+        for movement, values in sorted(by_movement.items())
+    }
+    snapshot_means = [row["mean_remaining_sec"] for row in snapshot_rows]
+    snapshot_counts = [float(row["valid_field_count"]) for row in snapshot_rows]
+    return {
+        "schema": "seoul_spat_remaining_time_summary.v1",
+        "record_count": len(records),
+        "valid_remaining_count": len(all_values),
+        "excluded_null_count": null_count,
+        "excluded_non_positive_count": non_positive_count,
+        "excluded_sentinel_count": sentinel_count,
+        "remaining_time_unit_sec": REMAINING_TIME_UNIT_SEC,
+        "overall": {
+            "mean_sec": round(sum(all_values) / len(all_values), 3) if all_values else 0.0,
+            "median_sec": round(median(all_values), 3) if all_values else 0.0,
+            "min_sec": round(min(all_values), 3) if all_values else 0.0,
+            "max_sec": round(max(all_values), 3) if all_values else 0.0,
+        },
+        "by_movement": movement_summary,
+        "snapshot": {
+            "snapshot_count": len(snapshot_rows),
+            "mean_valid_field_count": round(sum(snapshot_counts) / len(snapshot_counts), 3) if snapshot_counts else 0.0,
+            "mean_of_snapshot_mean_remaining_sec": round(sum(snapshot_means) / len(snapshot_means), 3) if snapshot_means else 0.0,
+            "median_of_snapshot_mean_remaining_sec": round(median(snapshot_means), 3) if snapshot_means else 0.0,
+        },
+        "interpretation_ko": (
+            "서울 SPaT API 값은 방향·이동류별 잔여시간이다. "
+            "이 요약은 G/Y/R 평균이 아니라 현재 시점의 유효 잔여시간 통계다."
+        ),
+    }
+
+
+def inferred_vehicle_service_duration_sec(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    # If samples are uniformly distributed within an active signal group, mean remaining is about half service duration.
+    # The p90 cap prevents one stale high remaining value from dominating the inferred simulation profile.
+    return min(2.0 * (sum(values) / len(values)), percentile(values, 0.9))
+
+
+def inferred_service_by_movement(records: list[dict[str, Any]]) -> dict[str, float]:
+    grouped: dict[str, list[float]] = defaultdict(list)
+    for record in records:
+        for item in valid_remaining_values(record):
+            grouped[str(item["movement"])].append(float(item["remaining_sec"]))
+    return {
+        movement: round(inferred_vehicle_service_duration_sec(values), 3)
+        for movement, values in grouped.items()
+        if movement in VEHICLE_MOVEMENT_SUFFIXES and values
+    }
+
+
+def inferred_gyr_from_remaining_summary(summary: dict[str, Any], yellow_sec: float = 3.0) -> dict[str, Any]:
+    overall_mean = safe_float(summary.get("overall", {}).get("mean_sec"))
+    by_movement = summary.get("by_movement", {})
+    straight_mean = safe_float(by_movement.get("Stsg", {}).get("mean_sec"), overall_mean)
+    cycle = clamp_int(round_to_5(max(60.0, 2.0 * overall_mean)), 60, 140)
+    green = clamp_int(round_to_5(straight_mean), 18, max(19, cycle - 2 * int(yellow_sec) - 12))
+    red = max(6, cycle - green - int(yellow_sec))
+    return {
+        "schema": "seoul_spat_inferred_gyr_profile.v1",
+        "cycle_sec": cycle,
+        "green_sec": green,
+        "yellow_sec": int(yellow_sec),
+        "red_sec": red,
+        "method": (
+            "RmdrCs는 G/Y/R 직접값이 아니므로 전체 평균 잔여시간의 2배를 cycle proxy로 두고, "
+            "직진(Stsg) 평균 잔여시간을 대표 green proxy로 사용한 뒤 red=cycle-green-yellow로 역산한다."
+        ),
+        "not_direct_api_fields": True,
+    }
 
 
 def fetch_page(api_key: str, *, page_no: int, num_rows: int, timeout_sec: int = 60) -> list[dict[str, Any]]:
@@ -240,7 +442,7 @@ def api_record_from_row(row: dict[str, Any]) -> ApiSignalRecord | None:
     values_by_field: dict[str, float] = {}
     for field in signal_fields():
         value = safe_float(row.get(field), math.nan)
-        if math.isnan(value) or value <= 0 or value >= UNAVAILABLE_REMAINING_CS:
+        if value in UNAVAILABLE_REMAINING_SENTINELS or math.isnan(value) or value <= 0 or value >= UNAVAILABLE_REMAINING_THRESHOLD_CS:
             continue
         values_by_field[field] = value / 10.0
     if not values_by_field:
@@ -341,14 +543,9 @@ def profile_from_api(row: dict[str, str], api_record: ApiSignalRecord, index: in
     dominant = api_record.dominant_remaining_sec
     median = api_record.median_remaining_sec
     route_order = safe_float(row.get("route_order_min"), index)
-    cycle = clamp_int(round_to_5(max(90.0, dominant + 15.0, median * 1.25)), 80, 130)
-    if route_order >= 45:
-        cycle = min(cycle, 100)
+    cycle = clamp_int(round_to_5(max(60.0, median * 2.0, dominant + 6.0)), 60, 140)
     yellow = 3
-    corridor_floor = 0.68 * cycle
-    if route_order >= 45:
-        corridor_floor = max(corridor_floor, 0.78 * cycle, 78.0)
-    main_green = clamp_int(round_to_5(max(corridor_floor, min(cycle - 12.0, dominant * 0.58 + 16.0))), 24, cycle - 12)
+    main_green = clamp_int(round_to_5(median), 18, cycle - 2 * yellow - 12)
     side_green = max(6, cycle - main_green - 2 * yellow)
     offset = int((route_order * 4.7 + dominant) % cycle)
     confidence = min(0.9, 0.52 + api_record.vehicle_field_count * 0.035)
@@ -370,16 +567,16 @@ def profile_from_api(row: dict[str, str], api_record: ApiSignalRecord, index: in
         confidence=confidence,
         dominant_api_field=api_record.dominant_field,
         dominant_remaining_sec=dominant,
-        inference_reason="mainroad TLS receives an API-derived profile by route-order assignment",
+        inference_reason="G/Y/R is inferred from RmdrCs remaining-time statistics; API does not directly provide color durations.",
     )
 
 
 def global_profile_from_api(tls_id: str, api_record: ApiSignalRecord, index: int) -> SignalProfile:
     dominant = api_record.dominant_remaining_sec
     median = api_record.median_remaining_sec
-    cycle = clamp_int(round_to_5(max(80.0, dominant + 20.0, median * 1.35)), 70, 160)
+    cycle = clamp_int(round_to_5(max(60.0, median * 2.0, dominant + 6.0)), 60, 140)
     yellow = 3
-    main_green = clamp_int(round_to_5(max(18.0, min(cycle - 14.0, dominant * 0.55 + 10.0))), 14, cycle - 10)
+    main_green = clamp_int(round_to_5(median), 18, cycle - 2 * yellow - 12)
     side_green = max(5, cycle - main_green - 2 * yellow)
     offset = int((index * 5.3 + dominant) % cycle)
     confidence = min(0.82, 0.46 + api_record.vehicle_field_count * 0.03)
@@ -401,7 +598,7 @@ def global_profile_from_api(tls_id: str, api_record: ApiSignalRecord, index: int
         confidence=confidence,
         dominant_api_field=api_record.dominant_field,
         dominant_remaining_sec=dominant,
-        inference_reason="global TLS receives a direct API-derived profile by net tlLogic order",
+        inference_reason="G/Y/R is inferred from RmdrCs remaining-time statistics; API does not directly provide color durations.",
     )
 
 
@@ -619,6 +816,11 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             interval_sec=args.interval_sec,
         )
     records = load_sample_records(sample_path)
+    if args.remaining_summary_only:
+        summary = remaining_time_summary(records)
+        summary["inferred_gyr_profile"] = inferred_gyr_from_remaining_summary(summary)
+        write_json(REMAINING_SUMMARY_JSON, summary)
+        return summary
     main_rows = mainroad_rows()
     main_api_records = select_api_records(records, len(main_rows))
     main_profiles = [profile_from_api(row, main_api_records[index], index) for index, row in enumerate(main_rows)]
@@ -670,6 +872,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
     parser.add_argument("--overwrite-active-net", action="store_true", help="Copy generated net over the active B04 green18 net.")
     parser.add_argument("--global-api-direct", action="store_true", help="Assign API-derived profiles to all non-mainroad TLS instead of inferred profiles.")
+    parser.add_argument("--remaining-summary-only", action="store_true", help="Only summarize direction/movement remaining times; does not build a SUMO signal net.")
     args = parser.parse_args(argv)
     try:
         summary = run_pipeline(args)

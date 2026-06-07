@@ -36,6 +36,7 @@ from b4_runtime import (  # noqa: E402
     EVTSP_TAU_LOWER,
     EVTSP_TAU_UPPER,
     EXPERIMENT_RESULT_FIELDS,
+    STAGE1_DIR,
     theta_bounds_from_stage1,
     write_csv,
     safe_float,
@@ -104,8 +105,6 @@ TOP20_FIELDS = [
     "background_arrived_ratio",
     "general_mean_delay_sec",
     "signal_burden_sec",
-    "original_tau_fill_max",
-    "original_tau_fill_p95",
     "signal_events_csv",
 ]
 ALL_VALUE_FIELDS = list(dict.fromkeys([
@@ -307,9 +306,12 @@ ROUND_FIELDS = [
 
 
 def score_for_row(row: dict[str, Any], w_emv: float = W_EMV_THETA, w_veh: float = W_VEH_THETA) -> tuple[float, float, float]:
-    emergency_time = safe_float(row.get("T_actual_EMV_sec"), safe_float(row.get("d_EMV_sec"), 0.0))
-    general_time = safe_float(row.get("general_mean_travel_time_sec"), safe_float(row.get("d_veh_sec"), 0.0))
-    score = w_emv * emergency_time + w_veh * general_time
+    delay_a = safe_float(row.get("d_EMV_sec"), safe_float(row.get("T_actual_EMV_sec"), 0.0))
+    delay_n = safe_float(row.get("d_veh_sec"), safe_float(row.get("general_mean_travel_time_sec"), 0.0))
+    total_weight = float(w_emv) + float(w_veh)
+    if total_weight <= 0.0:
+        raise B4ThetaBoError("objective_weight_sum_must_be_positive")
+    score = (float(w_emv) / total_weight) * delay_a + (float(w_veh) / total_weight) * delay_n
     failed = (
         row.get("final_status") not in {"PASS", "WARNING"}
         or not bool_cell(row.get("emergency_arrived"))
@@ -386,8 +388,6 @@ def top20_ranked_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "background_arrived_ratio": row.get("background_arrived_ratio", ""),
             "general_mean_delay_sec": row.get("general_mean_delay_sec", ""),
             "signal_burden_sec": row.get("signal_burden_sec", ""),
-            "original_tau_fill_max": row.get("original_tau_fill_max", ""),
-            "original_tau_fill_p95": row.get("original_tau_fill_p95", ""),
             "signal_events_csv": row.get("signal_events_csv", ""),
         })
     return output
@@ -1098,7 +1098,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--spc-stop", action="store_true")
     parser.add_argument("--net-file", type=Path, default=B04_NET)
     parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE)
-    parser.add_argument("--stage1-dir", type=Path, default=None)
+    parser.add_argument("--stage1-dir", type=Path, default=STAGE1_DIR)
     parser.add_argument("--hard-max-sim-time", type=float, default=None)
     parser.add_argument("--require-target15-baseline", action="store_true")
     parser.add_argument("--structure-lock-json", type=Path, default=None)
@@ -1151,6 +1151,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4ThetaBoError("workers_must_be_at_least_1")
     if args.w_emv < 0.0 or args.w_veh < 0.0:
         raise B4ThetaBoError("objective_weights_must_be_nonnegative")
+    if args.w_emv + args.w_veh <= 0.0:
+        raise B4ThetaBoError("objective_weight_sum_must_be_positive")
     if args.ei_candidate_count < args.bo_batch_size:
         raise B4ThetaBoError("ei_candidate_count_must_cover_bo_batch_size")
     if args.spc_window < 2:

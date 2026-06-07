@@ -14,7 +14,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_PATH = PROJECT_ROOT / "09 Compact Corridor Baseline/b4_runtime.py"
 BO_RUNNER_PATH = PROJECT_ROOT / "09 Compact Corridor Baseline/run_b4_theta_bo.py"
-FIXED_RUNNER_PATH = PROJECT_ROOT / "09 Compact Corridor Baseline/run_b4_fixed_param_sensitivity.py"
 
 
 def load_script(name: str, path: Path):
@@ -148,26 +147,33 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.bo = load_script("b4_theta_bo_module", BO_RUNNER_PATH)
-        cls.fixed = load_script("b4_fixed_param_sensitivity_module", FIXED_RUNNER_PATH)
 
-    def test_objective_score_uses_10_to_1_delay_weights(self):
+    def test_default_inputs_use_s1forced_canonical_profile(self):
+        args = self.bo.parse_args(["--mock-eval"])
+        self.bo.validate_args(args)
+
+        self.assertEqual(args.net_file, self.bo.B04_NET.resolve())
+        self.assertEqual(args.background_route, self.bo.B04_AA_BACKGROUND_ROUTE.resolve())
+        self.assertEqual(args.stage1_dir, self.bo.STAGE1_DIR.resolve())
+
+    def test_objective_score_uses_normalized_10_to_1_delay_weights(self):
         row = {"d_EMV_sec": "10", "d_veh_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
 
         score, penalty, bo_score = self.bo.score_for_row(row)
 
-        self.assertAlmostEqual(score, 102.5)
+        self.assertAlmostEqual(score, (10.0 / 11.0) * 10.0 + (1.0 / 11.0) * 2.5, places=6)
         self.assertEqual(penalty, 0.0)
-        self.assertAlmostEqual(bo_score, 102.5)
+        self.assertAlmostEqual(bo_score, score)
 
     def test_objective_score_accepts_external_weights(self):
         row = {"d_EMV_sec": "10", "d_veh_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
 
         score, _penalty, bo_score = self.bo.score_for_row(row, w_emv=20.0, w_veh=1.0)
 
-        self.assertAlmostEqual(score, 202.5)
-        self.assertAlmostEqual(bo_score, 202.5)
+        self.assertAlmostEqual(score, (20.0 / 21.0) * 10.0 + (1.0 / 21.0) * 2.5, places=6)
+        self.assertAlmostEqual(bo_score, score)
 
-    def test_objective_score_prefers_actual_travel_time_fields(self):
+    def test_objective_score_prefers_delay_fields_over_actual_travel_time(self):
         row = {
             "T_actual_EMV_sec": "100",
             "d_EMV_sec": "10",
@@ -181,8 +187,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
 
         score, _penalty, bo_score = self.bo.score_for_row(row, w_emv=10.0, w_veh=1.0)
 
-        self.assertAlmostEqual(score, 1030.0)
-        self.assertAlmostEqual(bo_score, 1030.0)
+        self.assertAlmostEqual(score, (10.0 / 11.0) * 10.0 + (1.0 / 11.0) * 2.5, places=6)
+        self.assertAlmostEqual(bo_score, score)
 
     def test_g_ext_zero_is_preserved_by_theta_clamp(self):
         runtime = load_script("b4_theta_runtime_for_ext_zero", RUNTIME_PATH)
@@ -347,8 +353,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
             self.assertEqual(latest["run_id"], "resume_contract")
 
     def test_input_override_args_are_validated_and_resolved(self):
-        net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-        background_route = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
+        net_file = self.bo.B04_NET
+        background_route = self.bo.B04_AA_BACKGROUND_ROUTE
         args = self.bo.parse_args([
             "--mock-eval",
             "--net-file",
@@ -373,8 +379,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(args.tau, 0.80)
 
     def test_target15_baseline_can_be_required_explicitly(self):
-        net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-        background_route = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
+        net_file = self.bo.B04_NET
+        background_route = self.bo.B04_AA_BACKGROUND_ROUTE
         args = self.bo.parse_args([
             "--mock-eval",
             "--net-file",
@@ -389,8 +395,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertFalse(args.allow_baseline_speed_out_of_target)
 
     def test_structure_lock_json_is_loaded_but_cli_overrides_win(self):
-        net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-        background_route = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
+        net_file = self.bo.B04_NET
+        background_route = self.bo.B04_AA_BACKGROUND_ROUTE
         with tempfile.TemporaryDirectory() as tmp:
             lock_json = Path(tmp) / "structure_param_lock_summary.json"
             self.bo.write_json(lock_json, {
@@ -423,112 +429,9 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
             self.assertEqual(args.d_up, 2)
             self.assertEqual(args.structure_lock_info["lock_status"], "LOCKED")
 
-    def test_fixed_param_candidates_do_not_vary_screened_decision_variables(self):
-        candidates = self.fixed.build_candidates()
-        changed = {row["changed_variable"] for row in candidates}
-
-        self.assertNotIn("alpha", changed)
-        self.assertNotIn("t_lead", changed)
-        self.assertNotIn("delta_T_thr", changed)
-        self.assertNotIn("G_ext", changed)
-        self.assertNotIn("Q_trig", changed)
-        self.assertEqual(changed - {"baseline"}, set(self.fixed.OFAT_VALUES))
-
-    def test_structure_lock_policy_uses_pass_candidate_when_baseline_fails(self):
-        baseline = {
-            "parameter_id": "base",
-            "changed_variable": "baseline",
-            "final_status": "FAIL",
-            "emergency_arrived": "False",
-            "emergency_teleport": "False",
-            "failure_penalty_sec": "1000000",
-            "T_actual_EMV_sec": "1500",
-            "bo_score_sec": "1015000",
-            "signal_burden_sec": "100",
-            **self.fixed.BASE_DECISION,
-            **self.fixed.BASE_STRUCTURE,
-        }
-        tau_candidate = {
-            **baseline,
-            "parameter_id": "tau065",
-            "changed_variable": "tau",
-            "changed_value": "0.65",
-            "tau": 0.65,
-            "final_status": "PASS",
-            "emergency_arrived": "True",
-            "failure_penalty_sec": "0",
-            "T_actual_EMV_sec": "1100",
-            "bo_score_sec": "11200",
-            "signal_burden_sec": "110",
-        }
-        combined = {
-            **tau_candidate,
-            "parameter_id": "combined",
-            "changed_variable": "combined_lock",
-        }
-
-        pending = self.fixed.structure_lock_summary([baseline, tau_candidate])
-        locked = self.fixed.structure_lock_summary([baseline, tau_candidate, combined], combined)
-
-        self.assertEqual(pending["variables"]["tau"]["status"], "provisional")
-        self.assertEqual(pending["candidate_structure"]["tau"], 0.65)
-        self.assertEqual(pending["lock_status"], "PENDING_COMBINED_CONFIRMATION")
-        self.assertEqual(locked["lock_status"], "LOCKED")
-        self.assertEqual(locked["selected_structure"]["tau"], 0.65)
-
-    def test_structure_lock_policy_inductively_selects_tau_activation_boundary(self):
-        baseline = {
-            "parameter_id": "base",
-            "changed_variable": "baseline",
-            "final_status": "FAIL",
-            "emergency_arrived": "False",
-            "emergency_teleport": "False",
-            "failure_penalty_sec": "1000000",
-            "T_actual_EMV_sec": "",
-            "bo_score_sec": "1000000",
-            "signal_burden_sec": "100",
-            "case_b_original_tau_count": "60",
-            "original_tau_trigger_count": "60",
-            **self.fixed.BASE_DECISION,
-            **self.fixed.BASE_STRUCTURE,
-        }
-        tau085 = {
-            **baseline,
-            "parameter_id": "tau085",
-            "changed_variable": "tau",
-            "changed_value": "0.85",
-            "tau": 0.85,
-            "case_b_original_tau_count": "60",
-            "original_tau_trigger_count": "60",
-        }
-        tau090 = {
-            **baseline,
-            "parameter_id": "tau090",
-            "changed_variable": "tau",
-            "changed_value": "0.90",
-            "tau": 0.90,
-            "case_b_original_tau_count": "0",
-            "original_tau_trigger_count": "0",
-        }
-        combined = {
-            **tau085,
-            "parameter_id": "combined",
-            "changed_variable": "combined_lock",
-            "final_status": "FAIL",
-        }
-
-        pending = self.fixed.structure_lock_summary([baseline, tau085, tau090])
-        locked = self.fixed.structure_lock_summary([baseline, tau085, tau090, combined], combined)
-
-        self.assertEqual(pending["variables"]["tau"]["status"], "provisional_diagnostic")
-        self.assertEqual(pending["candidate_structure"]["tau"], 0.85)
-        self.assertEqual(pending["lock_status"], "PENDING_COMBINED_CONFIRMATION")
-        self.assertEqual(locked["lock_status"], "DIAGNOSTIC_LOCKED_BASELINE_FAIL")
-        self.assertEqual(locked["selected_structure"]["tau"], 0.85)
-
     def test_q_ratio_validation_rejects_out_of_bounds_values(self):
-        net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
-        background_route = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
+        net_file = self.bo.B04_NET
+        background_route = self.bo.B04_AA_BACKGROUND_ROUTE
         args = self.bo.parse_args([
             "--mock-eval",
             "--net-file",

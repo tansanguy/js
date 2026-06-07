@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b04_reality_congestion.v1",
-  "generated_at": "2026-06-07T01:53:49.666223+00:00",
+  "generated_at": "2026-06-07T08:04:45.844937+00:00",
   "signal": {
     "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml",
     "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml",
@@ -13,7 +13,7 @@
     "applied_profiles_csv": "09 Compact Corridor Baseline/tdata_signal/reality_repaired_applied_signal_profiles.csv"
   },
   "demand": {
-    "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
+    "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
     "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml",
     "begin_sec": 180.0,
     "end_sec": 3900.0,

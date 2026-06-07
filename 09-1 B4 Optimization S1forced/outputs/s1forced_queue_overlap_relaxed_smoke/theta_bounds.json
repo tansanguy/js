@@ -1,0 +1,48 @@
+{
+  "schema": "compact_v9_B4_evtsp_theta_bounds.v1",
+  "source": "B4Stage1Inputs+B04_signal_program_proxy",
+  "decision_variables": [
+    "t_lead",
+    "delta_T_thr",
+    "G_ext",
+    "Q_ratio",
+    "tau"
+  ],
+  "screening_policy": "EVTSP optimizes t_lead, delta_T_thr, G_ext, Q_ratio, and tau. Legacy alpha/Q_trig are accepted only as input aliases and are not runtime decision variables.",
+  "fixed_structure_params": {
+    "hold_max": 14.0,
+    "d_up": 1
+  },
+  "t_lead": {
+    "type": "continuous_quantized_1s",
+    "lower": 0,
+    "upper": 117
+  },
+  "delta_T_thr": {
+    "type": "continuous_quantized_1s",
+    "lower": 0,
+    "upper": 234
+  },
+  "G_ext": {
+    "type": "continuous_quantized_1s",
+    "lower": 0,
+    "upper": 50
+  },
+  "Q_ratio": {
+    "type": "continuous_quantized_0p01",
+    "lower": 0.0,
+    "upper": 1.0,
+    "step": 0.01
+  },
+  "tau": {
+    "type": "continuous_quantized_0p01",
+    "lower": 0.7,
+    "upper": 0.9,
+    "step": 0.01
+  },
+  "constraints": [
+    "delta_T_thr is the Stage 3 ETA gate; 0 disables the gate for legacy smoke runs.",
+    "Q_ratio is converted to absolute thresholds as Q_th = Q_ratio * L for movement links and merge zone.",
+    "tau is bounded to [0.70, 0.90] for Case B spillback classification."
+  ]
+}

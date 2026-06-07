@@ -1,0 +1,13 @@
+method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,best_so_far,penalty,final_status,failure_reason,termination_reason,emergency_arrived,emergency_teleport,background_teleported,signal_event_count,stage2_hold_count,stage3_preemption_count,surrogate_mean,surrogate_ci_low,surrogate_ci_high,acquisition,ei_acquisition,essi_adjusted_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score
+Random Search,20260607,1,rs_r01_001_tl48_dt220_ge9_qr22_tau77,48,220,9,0.22,0.77,347.92,101.40,325.51,325.51,0.00,PASS,,recovery_detected,True,False,0,591,1,79,,,,,,,,,,,,,,,,,
+Random Search,20260607,2,rs_r02_001_tl30_dt8_ge26_qr51_tau79,30,8,26,0.51,0.79,170.92,83.30,162.95,162.95,0.00,PASS,,recovery_detected,True,False,0,3626,0,19,,,,,,,,,,,,,,,,,
+Random Search,20260607,3,rs_r03_001_tl91_dt34_ge11_qr77_tau83,91,34,11,0.77,0.83,113.92,73.61,110.26,110.26,0.00,PASS,,recovery_detected,True,False,0,1592,0,37,,,,,,,,,,,,,,,,,
+Random Search,20260607,4,rs_r04_001_tl118_dt71_ge29_qr60_tau90,118,71,29,0.6,0.9,179.92,78.88,170.73,110.26,0.00,PASS,,recovery_detected,True,False,0,743,0,31,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,1,cma_r01_001_tl34_dt25_ge1_qr76_tau84,34,25,1,0.76,0.84,158.92,73.97,151.20,151.20,0.00,PASS,,recovery_detected,True,False,0,2599,0,46,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,2,cma_r02_001_tl62_dt161_ge20_qr0_tau90,62,161,20,0.0,0.9,313.92,88.30,293.41,151.20,0.00,PASS,,recovery_detected,True,False,0,426,1,52,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,3,cma_r03_001_tl37_dt202_ge8_qr64_tau71,37,202,8,0.64,0.71,258.92,97.94,244.29,151.20,0.00,PASS,,recovery_detected,True,False,0,658,0,67,,,,,,,,,,,,,,,,,
+CMA-ES,20260607,4,cma_r04_001_tl46_dt177_ge39_qr53_tau72,46,177,39,0.53,0.72,274.92,81.03,257.29,151.20,0.00,PASS,,recovery_detected,True,False,0,245,0,32,,,,,,,,,,,,,,,,,
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,362.92,83.43,337.51,337.51,0.00,PASS,,recovery_detected,True,False,0,267,0,40,,,,,,,,,,,,,,,,,
+BO,20260607,2,bo_init_001_tl120_dt59_ge19_qr20_tau87,120,59,19,0.2,0.87,126.92,86.56,123.25,123.25,0.00,PASS,,recovery_detected,True,False,0,581,1,37,,,,,,,,,,,,,,,,,
+BO,20260607,3,bo_r03_001_tl110_dt39_ge14_qr28_tau81,110,39,14,0.28,0.81,168.92,85.68,161.35,123.25,0.00,PASS,,recovery_detected,True,False,0,1823,1,38,201.98,-0.48,404.45,16.36,13.03,16.36,3.32,2.13,2.54,1.97,9.51,4.52,9.51,4.00,2.25232087,5,0.729909
+BO,20260607,4,bo_r04_001_tl90_dt108_ge39_qr93_tau89,90,108,39,0.93,0.89,290.92,83.49,272.06,123.25,0.00,PASS,,recovery_detected,True,False,0,404,0,34,207.37,24.45,390.29,12.39,9.18,12.39,2.79,1.89,2.25,1.93,9.18,4.95,9.18,3.83,2.21701964,5,1.000000

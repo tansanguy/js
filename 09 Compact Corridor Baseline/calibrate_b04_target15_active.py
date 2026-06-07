@@ -33,8 +33,8 @@ from run_b0_b4_signal_pipeline import (  # noqa: E402
 
 
 DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
-DEFAULT_BASE_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
-DEFAULT_FINAL_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_active15.rou.xml"
+DEFAULT_BASE_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
+DEFAULT_FINAL_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_active15.rou.xml"
 DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced"
 DEFAULT_OUTPUT_DIR = PIPELINE_DIR / "tdata_signal/active_target15_recalibration"
 DEFAULT_METRICS_ROOT = PROJECT_ROOT / "results/metrics/compact_v9_B4_active_target15_recalibration"

@@ -27,6 +27,8 @@ HTML_OUTPUT_DIR = PROJECT_ROOT / "results/html"
 DEFAULT_RUN_ID = "b4_thold_seed1_fcd_viz"
 DEFAULT_OUTPUT_JSON = HTML_OUTPUT_DIR / "compact_v9_b04_b4_destination_animation.json"
 DEFAULT_OUTPUT_HTML = HTML_OUTPUT_DIR / "compact_v9_b04_b4_destination_animation.html"
+DEFAULT_NET_FILE = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+DEFAULT_ROUTE_XML = PROJECT_ROOT / "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml"
 EV_ID = "emergency_0"
 TARGET_LABEL = "Seoul Station Front"
 MAP_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -62,6 +64,113 @@ def meters_between(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dlat = (lat2 - lat1) * 111_320.0
     dlon = (lon2 - lon1) * 111_320.0 * math.cos(math.radians((lat1 + lat2) / 2.0))
     return math.hypot(dlat, dlon)
+
+
+def route_edges_from_xml(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    route = ET.parse(path).getroot().find(".//route")
+    return str(route.get("edges") if route is not None else "").split()
+
+
+def polyline_length_m(coords: list[list[float]]) -> float:
+    return sum(
+        meters_between(a[0], a[1], b[0], b[1])
+        for a, b in zip(coords, coords[1:])
+    )
+
+
+def route_path_from_polyline(coords: list[list[float]]) -> list[dict[str, float]]:
+    path: list[dict[str, float]] = []
+    total = 0.0
+    previous: list[float] | None = None
+    for point in coords:
+        if previous is not None:
+            total += meters_between(previous[0], previous[1], point[0], point[1])
+        path.append({"lat": point[0], "lon": point[1], "dist_m": round(total, 6)})
+        previous = point
+    return path
+
+
+def route_position_at_distance(route_path: list[dict[str, float]], distance_m: float) -> dict[str, float]:
+    if not route_path:
+        return {"lat": 0.0, "lon": 0.0, "angle": 0.0}
+    if distance_m <= route_path[0]["dist_m"]:
+        return {"lat": route_path[0]["lat"], "lon": route_path[0]["lon"], "angle": 0.0}
+    for prev_point, next_point in zip(route_path, route_path[1:]):
+        if distance_m <= next_point["dist_m"]:
+            span = max(next_point["dist_m"] - prev_point["dist_m"], 1.0e-9)
+            ratio = (distance_m - prev_point["dist_m"]) / span
+            lat = prev_point["lat"] + (next_point["lat"] - prev_point["lat"]) * ratio
+            lon = prev_point["lon"] + (next_point["lon"] - prev_point["lon"]) * ratio
+            angle = math.degrees(math.atan2(next_point["lon"] - prev_point["lon"], next_point["lat"] - prev_point["lat"]))
+            return {"lat": round(lat, 6), "lon": round(lon, 6), "angle": round((angle + 360.0) % 360.0, 1)}
+    last = route_path[-1]
+    return {"lat": last["lat"], "lon": last["lon"], "angle": 0.0}
+
+
+def route_geometry_from_net(net_file: Path, route_xml: Path) -> dict[str, Any]:
+    edges = route_edges_from_xml(route_xml)
+    if not edges or not net_file.is_file():
+        return {"coords": [], "path": [], "edge_measures": {}, "length_m": 0.0}
+    try:
+        import sumolib  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        raise B04B4AnimationError("sumolib_required_for_route_geometry_animation") from exc
+
+    net = sumolib.net.readNet(str(net_file))
+    coords: list[list[float]] = []
+    edge_measures: dict[str, dict[str, Any]] = {}
+    route_distance = 0.0
+    for edge_id in edges:
+        try:
+            edge = net.getEdge(edge_id)
+        except Exception:
+            continue
+        points: list[list[float]] = []
+        for x, y in edge.getShape():
+            lon, lat = net.convertXY2LonLat(float(x), float(y))
+            points.append([round(float(lat), 6), round(float(lon), 6)])
+        if not points:
+            continue
+        shape_length = polyline_length_m(points)
+        edge_measures[edge_id] = {
+            "start_m": route_distance,
+            "shape_length_m": shape_length,
+            "sumo_length_m": float(edge.getLength()),
+        }
+        route_distance += shape_length
+        if coords and coords[-1] == points[0]:
+            coords.extend(points[1:])
+        else:
+            coords.extend(points)
+    route_path = route_path_from_polyline(coords)
+    return {
+        "coords": coords,
+        "path": route_path,
+        "edge_measures": edge_measures,
+        "length_m": round(route_path[-1]["dist_m"], 6) if route_path else 0.0,
+    }
+
+
+def route_polyline_from_net(net_file: Path, route_xml: Path) -> list[list[float]]:
+    return route_geometry_from_net(net_file, route_xml)["coords"]
+
+
+def projected_route_distance(point: Any, route_geometry: dict[str, Any], previous_distance_m: float) -> float:
+    edge_info = route_geometry.get("edge_measures", {}).get(point.edge_id)
+    if edge_info:
+        sumo_length = max(safe_float(edge_info.get("sumo_length_m")), 1.0e-9)
+        shape_length = max(safe_float(edge_info.get("shape_length_m")), 0.0)
+        ratio = max(0.0, min(1.0, safe_float(getattr(point, "lane_pos_m", 0.0)) / sumo_length))
+        distance = safe_float(edge_info.get("start_m")) + ratio * shape_length
+    else:
+        # Internal junction lanes and skipped short edges should not pull the marker
+        # away from the confirmed route. Keep monotonic progress on the route.
+        step_distance = max(0.0, safe_float(getattr(point, "speed_kmh", 0.0)) / 3.6)
+        distance = previous_distance_m + step_distance
+    route_length = safe_float(route_geometry.get("length_m"))
+    return max(previous_distance_m, min(distance, route_length if route_length else distance))
 
 
 def parse_tripinfo(path: Path) -> dict[str, str]:
@@ -142,38 +251,79 @@ def build_mode_payload(
     fcd: FcdResult,
     tripinfo: dict[str, str],
     bg_radius_m: float,
+    route_geometry: dict[str, Any],
+    planned_edges: list[str],
 ) -> dict[str, Any]:
     points = fcd.emergency.points
     if not points:
         raise B04B4AnimationError(f"empty_emergency_fcd:{mode}")
 
     anchor = fcd.emergency.start_time
-    cumulative: list[float] = []
-    total = 0.0
-    previous = None
+    route_path = route_geometry.get("path", [])
+    route_geometry_length_m = safe_float(route_geometry.get("length_m"))
+    route_length_m = safe_float(tripinfo.get("routeLength"), route_geometry_length_m)
+
+    series: list[dict[str, Any]] = []
+    previous_route_distance = 0.0
+    previous_raw_point: Any | None = None
     for point in points:
-        if previous is not None:
-            total += meters_between(previous.lat, previous.lon, point.lat, point.lon)
-        cumulative.append(total)
-        previous = point
-
-    route_length_m = safe_float(tripinfo.get("routeLength"), total)
-
-    def normalized_distance(distance_m: float) -> float:
-        return round(distance_m / total * route_length_m, 2) if total else 0.0
-
-    series = [
-        {
+        if previous_raw_point is not None:
+            previous_route_distance += meters_between(previous_raw_point.lat, previous_raw_point.lon, point.lat, point.lon)
+        route_distance = min(previous_route_distance, route_length_m or route_geometry_length_m or previous_route_distance)
+        previous_route_distance = route_distance
+        series.append({
             "t_rel": round(point.time - anchor, 2),
             "lat": round(point.lat, 6),
             "lon": round(point.lon, 6),
+            "raw_lat": round(point.lat, 6),
+            "raw_lon": round(point.lon, 6),
             "speed_kmh": round(point.speed_kmh, 2),
             "angle": round(point.angle, 1),
-            "dist_m": normalized_distance(cumulative[index]),
+            "raw_angle": round(point.angle, 1),
+            "dist_m": round(route_distance, 2),
             "edge": point.edge_id,
-        }
-        for index, point in enumerate(points)
-    ]
+            "lane": getattr(point, "lane_id", ""),
+            "lane_pos_m": round(safe_float(getattr(point, "lane_pos_m", 0.0)), 2),
+            "position_source": "fcd_raw_geo",
+        })
+        previous_raw_point = point
+
+    arrival_lane = tripinfo.get("arrivalLane", "")
+    arrival_edge = lane_to_edge(arrival_lane)
+    travel_time_sec = safe_float(tripinfo.get("duration"), points[-1].time - anchor)
+    arrival_speed_kmh = round(safe_float(tripinfo.get("arrivalSpeed")) * 3.6, 2)
+    if (
+        route_path
+        and arrival_edge
+        and travel_time_sec > series[-1]["t_rel"]
+        and safe_float(tripinfo.get("arrival"), -1.0) >= 0.0
+    ):
+        route_position = route_position_at_distance(route_path, route_geometry_length_m)
+        arrival_gap_m = meters_between(series[-1]["lat"], series[-1]["lon"], route_position["lat"], route_position["lon"])
+        position_source = "route_end_arrival"
+        if arrival_gap_m > 50.0:
+            route_position = {
+                "lat": series[-1]["lat"],
+                "lon": series[-1]["lon"],
+                "angle": series[-1]["angle"],
+            }
+            position_source = "fcd_raw_last_arrival_fallback"
+        series.append({
+            "t_rel": round(travel_time_sec, 2),
+            "lat": route_position["lat"],
+            "lon": route_position["lon"],
+            "raw_lat": route_position["lat"],
+            "raw_lon": route_position["lon"],
+            "speed_kmh": arrival_speed_kmh,
+            "angle": route_position["angle"],
+            "raw_angle": route_position["angle"],
+            "dist_m": round(max(series[-1]["dist_m"], route_length_m or route_geometry_length_m), 2),
+            "edge": arrival_edge,
+            "lane": arrival_lane,
+            "lane_pos_m": safe_float(tripinfo.get("arrivalPos")),
+            "position_source": position_source,
+            "synthetic_arrival": True,
+        })
 
     emergency_positions = emergency_pos_by_time(fcd)
     background = []
@@ -195,13 +345,28 @@ def build_mode_payload(
         if nearby:
             background.append({"t_rel": round(safe_float(snap.get("time")) - anchor, 2), "vehicles": nearby})
 
-    arrival_lane = tripinfo.get("arrivalLane", "")
-    arrival_edge = lane_to_edge(arrival_lane)
-    final_edge = series[-1]["edge"]
-    if arrival_edge and final_edge != arrival_edge:
-        raise B04B4AnimationError(f"final_edge_mismatch:{mode}:fcd={final_edge}:tripinfo={arrival_edge}")
+    observed_edges: list[str] = []
+    for point in points:
+        if point.edge_id and not point.edge_id.startswith(":") and (not observed_edges or observed_edges[-1] != point.edge_id):
+            observed_edges.append(point.edge_id)
+    planned_set = set(planned_edges)
+    missing_edges = [edge for edge in planned_edges if edge not in observed_edges]
+    extra_edges = [edge for edge in observed_edges if edge not in planned_set]
 
-    travel_time_sec = safe_float(tripinfo.get("duration"), points[-1].time - anchor)
+    final_edge = series[-1]["edge"]
+    route_integrity = {
+        "tripinfo_reroute_no": safe_float(tripinfo.get("rerouteNo"), 0.0),
+        "arrival_edge": arrival_edge,
+        "final_animation_edge": final_edge,
+        "planned_edge_count": len(planned_edges),
+        "observed_edge_count": len(observed_edges),
+        "missing_sampled_planned_edge_count": len(missing_edges),
+        "extra_non_planned_edge_count": len(extra_edges),
+        "missing_sampled_planned_edges": missing_edges,
+        "extra_non_planned_edges": extra_edges,
+        "note": "FCD samples can skip short edges; tripinfo rerouteNo=0 and extra_non_planned_edge_count=0 are the route-integrity gate.",
+    }
+
     speeds = [point.speed_kmh for point in points]
     return {
         "mode": mode,
@@ -210,6 +375,7 @@ def build_mode_payload(
         "travel_time_sec": round(travel_time_sec, 2),
         "arrival_time_sec": safe_float(tripinfo.get("arrival")),
         "route_length_m": round(route_length_m, 2),
+        "route_geometry_length_m": round(route_geometry_length_m, 2),
         "avg_speed_kmh": round(route_length_m / travel_time_sec * 3.6, 2) if travel_time_sec else 0.0,
         "max_speed_kmh": round(max(speeds), 2) if speeds else 0.0,
         "waiting_time_sec": safe_float(tripinfo.get("waitingTime")),
@@ -218,12 +384,14 @@ def build_mode_payload(
         "arrival_edge": arrival_edge,
         "arrival_lane": arrival_lane,
         "arrival_pos": safe_float(tripinfo.get("arrivalPos")),
-        "arrival_speed_kmh": round(safe_float(tripinfo.get("arrivalSpeed")) * 3.6, 2),
+        "arrival_speed_kmh": arrival_speed_kmh,
         "emergency_arrived": bool_from_tripinfo(tripinfo.get("arrival")),
         "emergency_teleport": bool(tripinfo.get("vaporized")),
+        "route_integrity": route_integrity,
         "emergency": series,
         "background": background,
-        "route_polyline": [[point["lat"], point["lon"]] for point in series],
+        "route_polyline": route_geometry.get("coords") or [[point["lat"], point["lon"]] for point in series],
+        "route_path": route_path,
         "destination": {"lat": series[-1]["lat"], "lon": series[-1]["lon"], "label": TARGET_LABEL},
     }
 
@@ -273,8 +441,24 @@ def bounds_for(modes: list[dict[str, Any]]) -> dict[str, float]:
     }
 
 
-def run_paths(run_id: str, run_root: Path) -> dict[str, dict[str, Path]]:
+def resolve_b4_repeat_dir(root: Path, b4_parameter_id: str | None) -> Path:
+    if b4_parameter_id:
+        return root / "B4" / b4_parameter_id / "repeat_001"
+    default_dir = root / "B4/B4_MVP_DEFAULT/repeat_001"
+    if default_dir.is_dir():
+        return default_dir
+    candidates = sorted((root / "B4").glob("*/repeat_001"))
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        raise B04B4AnimationError(f"missing_b4_repeat_dir:{rel(root / 'B4')}")
+    names = ",".join(candidate.parent.name for candidate in candidates[:8])
+    raise B04B4AnimationError(f"ambiguous_b4_repeat_dir:{names}")
+
+
+def run_paths(run_id: str, run_root: Path, b4_parameter_id: str | None) -> dict[str, dict[str, Path]]:
     root = run_root / run_id
+    b4_repeat_dir = resolve_b4_repeat_dir(root, b4_parameter_id)
     return {
         "B04": {
             "run_dir": root / "B04/no_control/repeat_001",
@@ -282,16 +466,16 @@ def run_paths(run_id: str, run_root: Path) -> dict[str, dict[str, Path]]:
             "tripinfo": root / "B04/no_control/repeat_001/tripinfo.xml",
         },
         "B4": {
-            "run_dir": root / "B4/B4_MVP_DEFAULT/repeat_001",
-            "fcd": root / "B4/B4_MVP_DEFAULT/repeat_001/fcd.xml",
-            "tripinfo": root / "B4/B4_MVP_DEFAULT/repeat_001/tripinfo.xml",
-            "signal_events": root / "B4/B4_MVP_DEFAULT/repeat_001/signal_events.csv",
+            "run_dir": b4_repeat_dir,
+            "fcd": b4_repeat_dir / "fcd.xml",
+            "tripinfo": b4_repeat_dir / "tripinfo.xml",
+            "signal_events": b4_repeat_dir / "signal_events.csv",
         },
     }
 
 
 def build_doc(args: argparse.Namespace) -> dict[str, Any]:
-    paths = run_paths(args.run_id, args.run_root)
+    paths = run_paths(args.run_id, args.run_root, args.b4_parameter_id)
     for mode in ("B04", "B4"):
         if not paths[mode]["fcd"].is_file():
             raise B04B4AnimationError(f"missing_fcd:{rel(paths[mode]['fcd'])}")
@@ -300,8 +484,24 @@ def build_doc(args: argparse.Namespace) -> dict[str, Any]:
     b4_fcd = parse_fcd(paths["B4"]["fcd"], mode="B4")
     b04_tripinfo = tripinfo_or_fcd_fallback(paths["B04"]["tripinfo"], b04_fcd, "B04")
     b4_tripinfo = tripinfo_or_fcd_fallback(paths["B4"]["tripinfo"], b4_fcd, "B4")
-    b04_payload = build_mode_payload(mode="B04", fcd=b04_fcd, tripinfo=b04_tripinfo, bg_radius_m=args.bg_radius_m)
-    b4_payload = build_mode_payload(mode="B4", fcd=b4_fcd, tripinfo=b4_tripinfo, bg_radius_m=args.bg_radius_m)
+    planned_edges = route_edges_from_xml(args.route_xml)
+    route_geometry = route_geometry_from_net(args.net_file, args.route_xml)
+    b04_payload = build_mode_payload(
+        mode="B04",
+        fcd=b04_fcd,
+        tripinfo=b04_tripinfo,
+        bg_radius_m=args.bg_radius_m,
+        route_geometry=route_geometry,
+        planned_edges=planned_edges,
+    )
+    b4_payload = build_mode_payload(
+        mode="B4",
+        fcd=b4_fcd,
+        tripinfo=b4_tripinfo,
+        bg_radius_m=args.bg_radius_m,
+        route_geometry=route_geometry,
+        planned_edges=planned_edges,
+    )
     b4_payload["signal_events"] = load_signal_events(paths["B4"]["signal_events"], b4_fcd)
 
     return {
@@ -310,8 +510,13 @@ def build_doc(args: argparse.Namespace) -> dict[str, Any]:
         "run_id": args.run_id,
         "meta": {
             "bg_radius_m": args.bg_radius_m,
+            "b4_parameter_id": args.b4_parameter_label or paths["B4"]["run_dir"].parent.name,
+            "b4_run_folder": paths["B4"]["run_dir"].parent.name,
             "target_edge": b4_payload["arrival_edge"],
             "target_label": TARGET_LABEL,
+            "net_file": rel(args.net_file),
+            "route_xml": rel(args.route_xml),
+            "route_geometry_source": "corrected SUMO net + EV route XML",
             "source": {
                 "B04": {key: rel(value) for key, value in paths["B04"].items()},
                 "B4": {key: rel(value) for key, value in paths["B4"].items()},
@@ -355,7 +560,8 @@ HTML_TEMPLATE = r"""<!doctype html>
   .grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;}
   .metric{border:1px solid #263244;border-radius:8px;padding:8px;background:#111827;}
   .metric small{display:block;color:#94a3b8;font-size:11px;margin-bottom:2px;}
-  .metric strong{font-size:18px;font-variant-numeric:tabular-nums;}
+  .metric strong{display:block;font-size:18px;font-variant-numeric:tabular-nums;line-height:1.15;overflow-wrap:anywhere;}
+  .metric strong.small{font-size:13px;line-height:1.25;}
   .leaflet-container{background:#1e293b;}
   @media (max-width:900px){.maps{grid-template-columns:1fr;}.wrap{grid-template-rows:auto 1fr 240px;}.bottom{grid-template-columns:1fr;}.overview{display:none}.grid{grid-template-columns:repeat(2,minmax(120px,1fr));}}
 </style>
@@ -408,13 +614,38 @@ function indexAt(points,t){
   return result;
 }
 function lerp(a,b,f){return a+(b-a)*f;}
-function stateAt(points,t){
+function pointAtRouteDistance(routePath, distM){
+  if(!routePath || !routePath.length) return null;
+  if(distM <= routePath[0].dist_m) return routePath[0];
+  for(let i=1;i<routePath.length;i++){
+    const a=routePath[i-1], b=routePath[i];
+    if(distM <= b.dist_m){
+      const span=Math.max(b.dist_m-a.dist_m, 1e-9);
+      const f=(distM-a.dist_m)/span;
+      return {lat:lerp(a.lat,b.lat,f), lon:lerp(a.lon,b.lon,f), dist_m:distM};
+    }
+  }
+  return routePath[routePath.length-1];
+}
+function stateAt(data,t){
+  const points=data.emergency;
   if(!points.length) return null;
   if(t<=points[0].t_rel) return points[0];
-  if(t>=points[points.length-1].t_rel) return {...points[points.length-1], arrived:true};
+  if(t>=points[points.length-1].t_rel) {
+    const last=points[points.length-1];
+    return {...last, arrived:true};
+  }
   const index=indexAt(points,t), a=points[index], b=points[Math.min(index+1,points.length-1)];
   const span=b.t_rel-a.t_rel, f=span ? (t-a.t_rel)/span : 0;
-  return {t_rel:t, lat:lerp(a.lat,b.lat,f), lon:lerp(a.lon,b.lon,f), speed_kmh:lerp(a.speed_kmh,b.speed_kmh,f), dist_m:lerp(a.dist_m,b.dist_m,f), edge:a.edge};
+  const distM=lerp(a.dist_m,b.dist_m,f);
+  return {
+    t_rel:t,
+    lat:lerp(a.lat,b.lat,f),
+    lon:lerp(a.lon,b.lon,f),
+    speed_kmh:lerp(a.speed_kmh,b.speed_kmh,f),
+    dist_m:distM,
+    edge:a.edge
+  };
 }
 function makeMap(id){
   const map=L.map(id,{zoomControl:false,attributionControl:false,preferCanvas:true});
@@ -449,7 +680,7 @@ const ovDots=Object.fromEntries(MODES.map(mode => [mode, L.circleMarker(DATA.mod
 
 function renderPanel(panel){
   const mode=panel.mode, data=panel.data, capped=Math.min(now,data.travel_time_sec);
-  const st=stateAt(data.emergency,capped);
+  const st=stateAt(data,capped);
   if(!st) return;
   const point=[st.lat,st.lon], arrived=now>=data.travel_time_sec;
   panel.marker.setLatLng(point).setStyle({fillColor:arrived ? "#16a34a" : speedColor(st.speed_kmh)});
@@ -458,7 +689,8 @@ function renderPanel(panel){
   panel.bg.clearLayers();
   const nearby=panel.bgByT[Math.round(capped)] || [];
   nearby.forEach(v => L.circleMarker([v.lat,v.lon],{radius:3.5,color:"#cbd5e1",weight:1,fillColor:"#94a3b8",fillOpacity:.75}).addTo(panel.bg));
-  const progress=Math.min(100,Math.round(st.dist_m / data.route_length_m * 100));
+  const routeLen=data.route_geometry_length_m || data.route_length_m;
+  const progress=Math.min(100,Math.round(st.dist_m / routeLen * 100));
   document.getElementById("tag"+mode).innerHTML =
     `<b style="color:${COLORS[mode]}">${mode} ${arrived ? "arrived" : "en route"}</b>` +
     `time <span>${capped.toFixed(1)}</span> / <span>${data.travel_time_sec.toFixed(0)}</span>s<br>` +
@@ -471,6 +703,9 @@ function renderStats(){
   const b04=DATA.modes.B04, b4=DATA.modes.B4;
   const delta=b4.travel_time_sec-b04.travel_time_sec;
   const improvement=b04.travel_time_sec-b4.travel_time_sec;
+  const thetaLabel = DATA.meta.b4_parameter_id.replace(/^bo_best_s1forced_n3m12_seed\d+_r\d+_/, "").replaceAll("_", " ");
+  const b04ri = b04.route_integrity || {};
+  const b4ri = b4.route_integrity || {};
   const rows=[
     ["B04 travel", `${b04.travel_time_sec.toFixed(0)}s`],
     ["B4 travel", `${b4.travel_time_sec.toFixed(0)}s`],
@@ -479,9 +714,12 @@ function renderStats(){
     ["B04 waiting", `${b04.waiting_time_sec.toFixed(0)}s`],
     ["B4 waiting", `${b4.waiting_time_sec.toFixed(0)}s`],
     ["B4 signal events", `${(b4.signal_events||[]).length}`],
-    ["Arrival edge", DATA.meta.target_edge],
+    ["B04 reroute / extra", `${b04ri.tripinfo_reroute_no ?? ""} / ${b04ri.extra_non_planned_edge_count ?? ""}`],
+    ["B4 reroute / extra", `${b4ri.tripinfo_reroute_no ?? ""} / ${b4ri.extra_non_planned_edge_count ?? ""}`],
+    ["Route geometry", DATA.meta.route_geometry_source || "FCD samples"],
+    ["B4 theta", thetaLabel],
   ];
-  grid.innerHTML=rows.map(([label,value])=>`<div class="metric"><small>${label}</small><strong>${value}</strong></div>`).join("");
+  grid.innerHTML=rows.map(([label,value])=>`<div class="metric"><small>${label}</small><strong class="${String(value).length > 18 ? "small" : ""}">${value}</strong></div>`).join("");
 }
 function render(){
   MODES.forEach(mode => renderPanel(panels[mode]));
@@ -536,7 +774,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build B04/B4 destination animation from FCD.")
     parser.add_argument("--run-id", default=DEFAULT_RUN_ID)
     parser.add_argument("--run-root", type=Path, default=RUN_ROOT)
+    parser.add_argument("--b4-parameter-id", default=None)
+    parser.add_argument("--b4-parameter-label", default=None)
     parser.add_argument("--bg-radius-m", type=float, default=250.0)
+    parser.add_argument("--net-file", type=Path, default=DEFAULT_NET_FILE)
+    parser.add_argument("--route-xml", type=Path, default=DEFAULT_ROUTE_XML)
     parser.add_argument("--output-json", type=Path, default=DEFAULT_OUTPUT_JSON)
     parser.add_argument("--output-html", type=Path, default=DEFAULT_OUTPUT_HTML)
     args = parser.parse_args(argv)

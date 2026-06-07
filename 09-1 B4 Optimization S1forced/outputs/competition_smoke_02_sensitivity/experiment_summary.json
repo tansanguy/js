@@ -1,0 +1,38 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
+  "generated_at": "2026-06-07T12:17:53.256746+00:00",
+  "run_id": "competition_smoke_02_sensitivity",
+  "mock_eval": true,
+  "n": 1,
+  "m": 4,
+  "methods": [
+    "Random Search",
+    "CMA-ES",
+    "BO"
+  ],
+  "seeds": [
+    20260607
+  ],
+  "bo_algorithm": "GP+EI+ESSI",
+  "essi_lambda": 0.35,
+  "objective": {
+    "score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N",
+    "w_emv": 10.0,
+    "w_veh": 1.0
+  },
+  "fixed_budget_policy": "Each round is one evaluated theta; best-so-far records cumulative minimum score.",
+  "outputs": {
+    "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/all_evaluations.csv",
+    "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/table1_best_so_far.csv",
+    "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/table2_bo_surrogate.csv",
+    "table3_pareto_csv": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/table3_pareto.csv",
+    "table4_sensitivity_spc_csv": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/table4_sensitivity_spc.csv",
+    "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/bo_spatial_subspaces.json",
+    "noise_check_csv": "",
+    "figure1_png": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/figure1_best_so_far.png",
+    "figure2_png": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/figure2_bo_surrogate.png",
+    "figure3_png": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/figure3_pareto.png",
+    "figure4_png": "09-1 B4 Optimization S1forced/outputs/competition_smoke_02_sensitivity/figure4_sensitivity_spc.png"
+  },
+  "noise_check": {}
+}

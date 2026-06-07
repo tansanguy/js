@@ -56,7 +56,7 @@ REQUIRED_CONFIG_FILES = [
 ]
 
 REQUIRED_COMMANDS = ["sumo", "sumo-gui", "netconvert"]
-REQUIRED_IMPORTS = ["traci", "sumolib", "yaml"]
+REQUIRED_IMPORTS = ["traci", "sumolib", "yaml", "numpy", "sklearn", "cma", "matplotlib"]
 
 
 @dataclass(frozen=True)

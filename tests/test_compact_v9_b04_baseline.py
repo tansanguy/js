@@ -5,12 +5,14 @@ import csv
 import importlib.util
 import json
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = PROJECT_ROOT / "09 Compact Corridor Baseline/b04_baseline_pipeline.py"
+STAGE23_BUILDER = PROJECT_ROOT / "09 Compact Corridor Baseline/build_stage23_trigger_demand.py"
 MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 TARGET_PROFILE = PROJECT_ROOT / "data_prepared/compact_v9/map/B04_target_profile.csv"
 SELECTION = PROJECT_ROOT / "results/metrics/compact_v9_B04/selected/selection_summary.json"
@@ -18,7 +20,11 @@ REVIEW_HTML = PROJECT_ROOT / "results/html/compact_v9_B04_demand_validation_revi
 
 
 def load_pipeline():
-    spec = importlib.util.spec_from_file_location("b04_baseline_pipeline_test", SCRIPT)
+    return load_script("b04_baseline_pipeline_test", SCRIPT)
+
+
+def load_script(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -29,15 +35,278 @@ class CompactV9B04BaselineTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pipeline = load_pipeline()
+        cls.stage23_builder = load_script("stage23_builder_test", STAGE23_BUILDER)
 
-    def test_manifest_uses_b04_green18_net(self):
+    def test_teleport_summary_marks_emergency_teleport_separately(self):
+        stderr = "\n".join([
+            "Warning: Teleporting vehicle 'emergency_0'; waited too long (jam), lane='x_0', time=2400.00.",
+            "Warning: Teleporting vehicle 'stage23_caseb_m09_trigger_001'; waited too long (jam), lane='y_0', time=2500.00.",
+            "Warning: Teleporting vehicle 'B04_ad_variance_smoothed_00001'; waited too long (jam), lane='z_0', time=2600.00.",
+        ])
+
+        summary = self.pipeline.teleport_summary_from_stderr(stderr)
+
+        self.assertTrue(summary["emergency_teleport"])
+        self.assertEqual(summary["background_teleported"], 2)
+        self.assertEqual(summary["stage23_teleported"], 1)
+        self.assertEqual(summary["base_background_teleported"], 1)
+
+    def test_firetruck_route_priority_promotes_uncontrolled_minor_connections_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            net_file = Path(tmp) / "net.xml"
+            net_file.write_text(
+                "<net>"
+                "<connection from=\"a\" to=\"b\" fromLane=\"0\" toLane=\"0\" state=\"m\"/>"
+                "<connection from=\"b\" to=\"c\" fromLane=\"0\" toLane=\"0\" state=\"o\"/>"
+                "<connection from=\"a\" to=\"x\" fromLane=\"0\" toLane=\"0\" state=\"m\"/>"
+                "<connection from=\"b\" to=\"c\" fromLane=\"1\" toLane=\"1\" state=\"m\" tl=\"tls0\"/>"
+                "<connection from=\"c\" to=\"d\" fromLane=\"0\" toLane=\"0\" state=\"M\"/>"
+                "</net>",
+                encoding="utf-8",
+            )
+            original = self.pipeline.firetruck_route_edges
+            self.pipeline.firetruck_route_edges = lambda: ["a", "b", "c"]
+            try:
+                summary = self.pipeline.promote_firetruck_route_priority_connections(net_file)
+            finally:
+                self.pipeline.firetruck_route_edges = original
+
+            root = self.pipeline.ET.parse(net_file).getroot()
+            states = [
+                (conn.get("from"), conn.get("to"), conn.get("fromLane"), conn.get("tl", ""), conn.get("state"))
+                for conn in root.findall("connection")
+            ]
+
+        self.assertEqual(summary["updated_connection_count"], 2)
+        self.assertIn(("a", "b", "0", "", "M"), states)
+        self.assertIn(("b", "c", "0", "", "M"), states)
+        self.assertIn(("a", "x", "0", "", "m"), states)
+        self.assertIn(("b", "c", "1", "tls0", "m"), states)
+
+    def test_stage23_builder_records_explicit_trigger_options(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "base.rou.xml"
+            output = Path(tmp) / "out.rou.xml"
+            base.write_text(
+                "<routes>"
+                "<vType id=\"b04_passenger\"/>"
+                "<route id=\"stage2_natural\" edges=\"x y a b c d\"/>"
+                "<route id=\"stage3_direct_bad\" edges=\"c d e f\"/>"
+                "<route id=\"stage3_natural\" edges=\"w x y c d e f\"/>"
+                "<vehicle id=\"base0\" route=\"stage3_natural\" depart=\"1\"/>"
+                "</routes>",
+                encoding="utf-8",
+            )
+            stage1 = types.SimpleNamespace(
+                route_edges=("ev0", "a", "b", "c", "d", "e", "f", "g", "h"),
+                ev_depart_sec=100.0,
+                departure=types.SimpleNamespace(mainline_target_edge="a"),
+                movements=[types.SimpleNamespace(movement_id="B4_MOVEMENT_09", from_edge="c")],
+            )
+
+            summary = self.stage23_builder.build_stage23_trigger_demand(
+                base_demand=base,
+                output=output,
+                stage2_count=3,
+                stage2_headway_sec=1.5,
+                stage3_count=2,
+                stage3_headway_sec=4.0,
+                stage3_route_length=4,
+                stage2_queue_prebuild_sec=10.0,
+                stage3_queue_prebuild_sec=20.0,
+                stage1=stage1,
+            )
+
+        self.assertEqual(summary["stage2_vehicle_count"], 3)
+        self.assertEqual(summary["stage2_headway_sec"], 1.5)
+        self.assertEqual(summary["stage2_route_id"], "stage2_natural")
+        self.assertEqual(summary["stage2_target_index"], 2)
+        self.assertEqual(summary["vehicle_count"], 6)
+        self.assertEqual(summary["stage23_added_count"], 5)
+        self.assertEqual(summary["stage3_vehicle_count"], 2)
+        self.assertEqual(summary["stage3_headway_sec"], 4.0)
+        self.assertEqual(summary["stage3_route_length"], 4)
+        self.assertEqual(summary["stage3_route_id"], "stage3_natural")
+        self.assertEqual(summary["stage3_edges"], ["w", "x", "y", "c", "d", "e", "f"])
+        self.assertEqual(summary["stage3_base_vehicle_count"], 1)
+        self.assertGreaterEqual(summary["stage3_depart_window_sec"][0], 0.0)
+        self.assertEqual(summary["s1forced_bottleneck_cap"]["final_bottleneck_vehicle_count"], 0)
+
+    def test_stage23_route_candidates_exclude_direct_target_start(self):
+        root = self.stage23_builder.ET.fromstring(
+            "<routes>"
+            "<route id=\"direct_bad\" edges=\"c d e f\"/>"
+            "<route id=\"natural_ok\" edges=\"u v w c d e\"/>"
+            "</routes>"
+        )
+        candidates = self.stage23_builder.natural_route_candidates(
+            root,
+            target_edge="c",
+            min_upstream_edges=3,
+            min_downstream_edges=2,
+            excluded_start_edges={"c"},
+        )
+
+        self.assertEqual([candidate["route_id"] for candidate in candidates], ["natural_ok"])
+
+    def test_s1forced_bottleneck_cap_keeps_stage23_and_samples_background(self):
+        root = self.stage23_builder.ET.fromstring(
+            "<routes>"
+            "<route id=\"bn\" edges=\"a 347237859#0 b\"/>"
+            "<route id=\"other\" edges=\"x y z\"/>"
+            "<vehicle id=\"base_0\" route=\"bn\" depart=\"0\"/>"
+            "<vehicle id=\"base_1\" route=\"bn\" depart=\"1\"/>"
+            "<vehicle id=\"stage23_caseb_m09_trigger_000\" route=\"bn\" depart=\"2\"/>"
+            "<vehicle id=\"other_0\" route=\"other\" depart=\"3\"/>"
+            "</routes>"
+        )
+
+        summary = self.stage23_builder.cap_non_stage23_bottleneck_demand(
+            root,
+            bottleneck_edge="347237859#0",
+            keep_share=0.0,
+        )
+        remaining_ids = [vehicle.get("id") for vehicle in root.findall("vehicle")]
+
+        self.assertEqual(summary["total_bottleneck_vehicle_count"], 3)
+        self.assertEqual(summary["stage23_bottleneck_vehicle_count"], 1)
+        self.assertEqual(summary["removed_non_stage23_bottleneck_vehicle_count"], 2)
+        self.assertEqual(remaining_ids, ["stage23_caseb_m09_trigger_000", "other_0"])
+        final_counts = self.stage23_builder.bottleneck_vehicle_counts(root, bottleneck_edge="347237859#0")
+        self.assertEqual(final_counts["final_bottleneck_vehicle_count"], 1)
+        self.assertEqual(final_counts["final_stage23_bottleneck_vehicle_count"], 1)
+        self.assertEqual(final_counts["final_non_stage23_bottleneck_vehicle_count"], 0)
+
+    def test_s1forced_bottleneck_split_preserves_upstream_and_delays_downstream(self):
+        root = self.stage23_builder.ET.fromstring(
+            "<routes>"
+            "<route id=\"bn\" edges=\"a b 347237859#0 c d\"/>"
+            "<vehicle id=\"base_0\" route=\"bn\" depart=\"10\" departLane=\"best\"/>"
+            "</routes>"
+        )
+
+        summary = self.stage23_builder.cap_non_stage23_bottleneck_demand(
+            root,
+            bottleneck_edge="347237859#0",
+            keep_share=0.0,
+            strategy="split",
+            post_depart_delay_sec=900.0,
+        )
+        routes = {route.get("id"): route.get("edges") for route in root.findall("route")}
+        vehicles = {vehicle.get("id"): vehicle.attrib for vehicle in root.findall("vehicle")}
+
+        self.assertEqual(summary["split_pre_bottleneck_vehicle_count"], 1)
+        self.assertEqual(summary["split_post_bottleneck_vehicle_count"], 1)
+        self.assertEqual(routes["bn__s1pre_bn"], "a b")
+        self.assertEqual(routes["bn__s1post_bn"], "c d")
+        self.assertEqual(vehicles["base_0"]["route"], "bn__s1pre_bn")
+        self.assertEqual(vehicles["base_0__post_bn"]["route"], "bn__s1post_bn")
+        self.assertEqual(vehicles["base_0__post_bn"]["depart"], "910.00")
+
+    def test_stage23_depart_time_is_computed_from_target_arrival(self):
+        depart = self.stage23_builder.trigger_depart_base(
+            net=None,
+            ev_route_edges=("ev0", "target", "after"),
+            ev_depart_sec=100.0,
+            target_edge="target",
+            trigger_route_edges=["a", "b", "target", "out"],
+            queue_prebuild_sec=10.0,
+        )
+
+        self.assertAlmostEqual(depart["ev_target_arrival_sec"], 105.0)
+        self.assertAlmostEqual(depart["trigger_time_to_target_sec"], 10.0)
+        self.assertAlmostEqual(depart["depart_base_sec"], 85.0)
+
+    def test_stage23_selector_uses_pass_observability_then_tie_breaks(self):
+        records = [
+            {
+                "candidate": "fail_high",
+                "status": "FAIL",
+                "observability_score": 999,
+                "background_teleported": 0,
+                "speed_mae_kmh": 1,
+                "free_count": 0,
+                "params": {"stage3_count": 4},
+            },
+            {
+                "candidate": "pass_low",
+                "status": "PASS",
+                "observability_score": 30,
+                "background_teleported": 0,
+                "speed_mae_kmh": 2,
+                "free_count": 1,
+                "params": {"stage3_count": 4},
+            },
+            {
+                "candidate": "pass_high_more_teleport",
+                "status": "PASS",
+                "observability_score": 40,
+                "background_teleported": 3,
+                "speed_mae_kmh": 1,
+                "free_count": 0,
+                "params": {"stage3_count": 4},
+            },
+            {
+                "candidate": "pass_high",
+                "status": "PASS",
+                "observability_score": 40,
+                "background_teleported": 0,
+                "speed_mae_kmh": 3,
+                "free_count": 1,
+                "params": {"stage3_count": 6},
+            },
+        ]
+
+        selected = self.pipeline.select_stage23_calibration(records)
+
+        self.assertEqual(selected["candidate"], "pass_high")
+
+    def test_stage23_parameterized_build_uses_s1forced_global_net(self):
+        captured: dict[str, object] = {}
+
+        class FakeStage1Inputs:
+            @staticmethod
+            def load():
+                return types.SimpleNamespace(route_edges=("a", "b"))
+
+        class FakeStage23Builder:
+            B4Stage1Inputs = FakeStage1Inputs
+
+            @staticmethod
+            def build_stage23_trigger_demand(**kwargs):
+                captured.update(kwargs)
+                return {"schema": "fake"}
+
+        params = {
+            "stage2_count": 12,
+            "stage2_headway_sec": 2.0,
+            "stage3_count": 4,
+            "stage3_headway_sec": 6.0,
+            "stage3_route_length": 6,
+        }
+        original_dir = self.pipeline.B04_DEMAND_DIR
+        original_loader = self.pipeline.load_stage23_builder
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            base_route = tmp_dir / f"background_routes_compact_v9_{self.pipeline.B04_VARIANCE_SMOOTHED_CANDIDATE}.rou.xml"
+            base_route.write_text("<routes/>", encoding="utf-8")
+            self.pipeline.B04_DEMAND_DIR = tmp_dir
+            self.pipeline.load_stage23_builder = lambda: FakeStage23Builder
+            try:
+                self.pipeline.build_stage23_demand_with_params("B04_ad_stage23_cal_test", params)
+            finally:
+                self.pipeline.B04_DEMAND_DIR = original_dir
+                self.pipeline.load_stage23_builder = original_loader
+
+        self.assertEqual(captured["net_file"], self.pipeline.B04_GLOBAL_REALITY_S1FORCED_NET)
+
+    def test_manifest_uses_global_reality_net(self):
         payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(payload["baseline_name"], "B04")
         self.assertEqual(payload["mode"], "B0")
         self.assertEqual(payload["parameter_id"], "no_control")
-        self.assertEqual(payload["active_net"], "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml")
-        self.assertIn("green18", payload["green18_source_net"])
-        self.assertIn("background_routes_compact_v9_B04_", payload["background_route"])
+        self.assertEqual(payload["active_net"], "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml")
+        self.assertEqual(payload["background_route"], "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml")
 
     def test_target_profile_has_22_segments_both_directions(self):
         with TARGET_PROFILE.open(encoding="utf-8") as file:
@@ -65,13 +334,46 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         ]
         self.assertEqual(self.pipeline.queue_audit_from_edges(sparse)["classification"], "speed_only_delay")
 
+    def test_runtime_queue_measurement_merge_keeps_fcd_speed_metrics(self):
+        primary = {
+            "segments": {
+                ("S11", "downbound"): {
+                    "fcd_stopped_mean_speed_kmh": 15.0,
+                    "fcd_stopped_mean_sample_count": 120,
+                    "runtime_queue_max_m": 0.0,
+                    "runtime_density_max": 0.0,
+                }
+            },
+            "summary": {"measurement_mode": "fcd_debug"},
+        }
+        supplemental = {
+            "segments": {
+                ("S11", "downbound"): {
+                    "fcd_stopped_mean_speed_kmh": 4.0,
+                    "runtime_queue_max_m": 38.0,
+                    "runtime_density_max": 107.0,
+                }
+            }
+        }
+
+        merged = self.pipeline.merge_runtime_queue_measurements(primary, supplemental)
+        row = merged["segments"][("S11", "downbound")]
+
+        self.assertEqual(row["fcd_stopped_mean_speed_kmh"], 15.0)
+        self.assertEqual(row["fcd_stopped_mean_sample_count"], 120)
+        self.assertEqual(row["runtime_queue_max_m"], 38.0)
+        self.assertEqual(row["runtime_density_max"], 107.0)
+        self.assertEqual(merged["summary"]["runtime_queue_supplemental_source"], "edge_lane_data")
+
     def test_selection_prefers_stable_candidate_over_teleport_candidate(self):
         payload = json.loads(SELECTION.read_text(encoding="utf-8"))
         selected = payload["selected"]
         self.assertEqual(selected["sumo_exit_code"], 0)
         self.assertTrue(selected["emergency_arrived"])
         self.assertIn(selected["candidate"], {row["candidate"] for row in payload["candidates"]})
-        self.assertEqual(payload["manifest_selected_candidate"], "B04_ad_variance_smoothed")
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["selected_candidate"], "B04_ad_stage23_trigger")
+        self.assertEqual(payload["manifest_selected_candidate"], "B04_ad_stage23_trigger")
         self.assertIn(payload["manifest_selection_policy"], {
             "updated_to_pass_or_warn",
             "retained_previous_because_all_candidates_failed",
@@ -112,9 +414,11 @@ class CompactV9B04BaselineTest(unittest.TestCase):
             "B04_ab_queue_pressure",
             "B04_ac_main_through_rebalanced",
             "B04_ad_variance_smoothed",
+            "B04_ad_stage23_trigger",
         ]:
             self.assertIn(name, self.pipeline.CANDIDATES)
-            self.assertEqual(self.pipeline.CANDIDATES[name].get("net_profile"), "speed50_sanity")
+            if name != "B04_ad_stage23_trigger":
+                self.assertEqual(self.pipeline.CANDIDATES[name].get("net_profile"), "speed50_sanity")
         self.assertEqual(self.pipeline.CANDIDATES["B04_u_speedfactor_exit_relief"]["speed_factor"], 0.88)
         self.assertGreater(self.pipeline.CANDIDATES["B04_v_queue_overlap_tuned"]["midcorridor_share"], 0)
         self.assertGreater(self.pipeline.CANDIDATES["B04_w_od_coverage_repair"]["od_repair_share"], 0)
@@ -152,11 +456,57 @@ class CompactV9B04BaselineTest(unittest.TestCase):
     def test_lightweight_speed_sanity_classification(self):
         grouped = self.pipeline.mapping_by_segment_direction()
         first_edge = next(iter(next(iter(grouped.values()))))
-        row = self.pipeline.segment_speed_rows(
+        low_support_row = self.pipeline.segment_speed_rows(
             {first_edge: [{"speed": 65 / 3.6, "sampledSeconds": 1, "entered": 1, "left": 1, "departed": 0, "arrived": 0, "traveltime": 1, "density": 0, "occupancy": 0}]},
             {},
         )
-        self.assertIn("speed_sanity_fail", [item["class"] for item in row])
+        self.assertIn("measurement_warn", [item["class"] for item in low_support_row])
+        supported_row = self.pipeline.segment_speed_rows(
+            {first_edge: [{"speed": 65 / 3.6, "sampledSeconds": 60, "entered": 60, "left": 60, "departed": 0, "arrived": 0, "traveltime": 1, "density": 0, "occupancy": 0}]},
+            {},
+        )
+        self.assertIn("speed_sanity_fail", [item["class"] for item in supported_row])
+
+    def test_stopped_edge_data_sample_is_included_in_speed_average(self):
+        grouped = self.pipeline.mapping_by_segment_direction()
+        first_edge = next(iter(next(iter(grouped.values()))))
+
+        rows = self.pipeline.segment_speed_rows(
+            {
+                first_edge: [
+                    {
+                        "speed": 0.0,
+                        "sampledSeconds": 60,
+                        "entered": 10,
+                        "left": 0,
+                        "departed": 0,
+                        "arrived": 0,
+                        "traveltime": 60,
+                        "density": 30,
+                        "occupancy": 20,
+                        "waitingTime": 60,
+                        "timeLoss": 60,
+                    },
+                    {
+                        "speed": 30 / 3.6,
+                        "sampledSeconds": 60,
+                        "entered": 10,
+                        "left": 10,
+                        "departed": 0,
+                        "arrived": 0,
+                        "traveltime": 10,
+                        "density": 5,
+                        "occupancy": 2,
+                        "waitingTime": 0,
+                        "timeLoss": 0,
+                    },
+                ]
+            },
+            {},
+        )
+
+        first_row = next(row for row in rows if row["edgeData_observed_count"] > 0)
+        self.assertAlmostEqual(first_row["edgeData_speed_kmh"], 15.0, places=3)
 
     def test_free_flow_od_classification(self):
         self.assertEqual(self.pipeline.classify_free_flow_od(0, 10, 10, 5, 0, 3), "od_missing")
@@ -227,7 +577,8 @@ class CompactV9B04BaselineTest(unittest.TestCase):
             "control_queue_threshold_proposal_json",
         }
         self.assertTrue(expected.issubset(summary["outputs"]))
-        self.assertFalse(summary["fcd_enabled"])
+        self.assertTrue(summary["fcd_enabled"])
+        self.assertEqual(summary["measurement_mode"], "fcd_debug")
         for rel_path in summary["outputs"].values():
             self.assertTrue((PROJECT_ROOT / rel_path).is_file(), rel_path)
             self.assertNotIn("b3_", Path(rel_path).name)
@@ -288,12 +639,14 @@ class CompactV9B04BaselineTest(unittest.TestCase):
             summary = self.pipeline.build_b04_traffic_demand_review()
         finally:
             self.pipeline.run_b0_candidate = original
-        self.assertEqual(summary["primary_candidate"], "B04_ad_variance_smoothed")
+        self.assertEqual(summary["primary_candidate"], "B04_ad_stage23_trigger")
+        self.assertEqual(summary["diagnostic_best_candidate"], "B04_ad_stage23_trigger")
         self.assertIn("B04_j_balanced_recall", summary["review_candidates"])
         self.assertIn("B04_z_signal_queue_pulse", summary["review_candidates"])
         self.assertIn("B04_ab_queue_pressure", summary["review_candidates"])
         self.assertIn("B04_ac_main_through_rebalanced", summary["review_candidates"])
         self.assertIn("B04_ad_variance_smoothed", summary["review_candidates"])
+        self.assertIn("B04_ad_stage23_trigger", summary["review_candidates"])
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["traffic_demand_review_json"]).is_file())
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["free_flow_cause_by_segment_csv"]).is_file())
         self.assertTrue((PROJECT_ROOT / summary["outputs"]["main_vs_offmain_demand_audit_csv"]).is_file())
@@ -355,7 +708,7 @@ class CompactV9B04BaselineTest(unittest.TestCase):
 
     def test_main_through_rebalanced_demand_keeps_total_and_rebalances_main(self):
         original = self.pipeline.run_b0_candidate
-        candidates = ["B04_ac_main_through_rebalanced", "B04_ad_variance_smoothed"]
+        candidates = ["B04_ac_main_through_rebalanced"]
         self.pipeline.run_b0_candidate = lambda _candidate: self.fail("demand build must not run SUMO")
         try:
             self.pipeline.build_demand(candidates)

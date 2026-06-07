@@ -1,0 +1,81 @@
+{
+  "schema": "seoul_spat_remaining_time_summary.v1",
+  "record_count": 12000,
+  "valid_remaining_count": 66284,
+  "excluded_null_count": 504713,
+  "excluded_non_positive_count": 246,
+  "excluded_sentinel_count": 4757,
+  "remaining_time_unit_sec": 0.1,
+  "overall": {
+    "mean_sec": 47.9,
+    "median_sec": 39.5,
+    "min_sec": 0.1,
+    "max_sec": 240.8
+  },
+  "by_movement": {
+    "Bcsg": {
+      "label_ko": "자전거",
+      "count": 91,
+      "mean_sec": 64.856,
+      "median_sec": 49.0,
+      "min_sec": 5.2,
+      "max_sec": 178.3
+    },
+    "Bssg": {
+      "label_ko": "버스",
+      "count": 2125,
+      "mean_sec": 46.344,
+      "median_sec": 41.9,
+      "min_sec": 0.1,
+      "max_sec": 144.9
+    },
+    "Ltsg": {
+      "label_ko": "좌회전",
+      "count": 14850,
+      "mean_sec": 55.722,
+      "median_sec": 49.5,
+      "min_sec": 0.1,
+      "max_sec": 240.8
+    },
+    "Pdsg": {
+      "label_ko": "보행",
+      "count": 21390,
+      "mean_sec": 48.015,
+      "median_sec": 38.0,
+      "min_sec": 0.1,
+      "max_sec": 190.0
+    },
+    "Stsg": {
+      "label_ko": "직진",
+      "count": 27816,
+      "mean_sec": 43.688,
+      "median_sec": 36.9,
+      "min_sec": 0.1,
+      "max_sec": 190.0
+    },
+    "Utsg": {
+      "label_ko": "유턴",
+      "count": 12,
+      "mean_sec": 76.017,
+      "median_sec": 99.0,
+      "min_sec": 13.5,
+      "max_sec": 114.7
+    }
+  },
+  "snapshot": {
+    "snapshot_count": 11159,
+    "mean_valid_field_count": 5.94,
+    "mean_of_snapshot_mean_remaining_sec": 46.056,
+    "median_of_snapshot_mean_remaining_sec": 42.933
+  },
+  "interpretation_ko": "서울 SPaT API 값은 방향·이동류별 잔여시간이다. 이 요약은 G/Y/R 평균이 아니라 현재 시점의 유효 잔여시간 통계다.",
+  "inferred_gyr_profile": {
+    "schema": "seoul_spat_inferred_gyr_profile.v1",
+    "cycle_sec": 95,
+    "green_sec": 45,
+    "yellow_sec": 3,
+    "red_sec": 47,
+    "method": "RmdrCs는 G/Y/R 직접값이 아니므로 전체 평균 잔여시간의 2배를 cycle proxy로 두고, 직진(Stsg) 평균 잔여시간을 대표 green proxy로 사용한 뒤 red=cycle-green-yellow로 역산한다.",
+    "not_direct_api_fields": true
+  }
+}

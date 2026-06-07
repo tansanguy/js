@@ -83,7 +83,7 @@ DEFAULT_REPEAT_ID = 1
 VALID_MODES = {B004_MODE, B04_MODE, B4_MODE, "B0"}
 FREE_TIME_METHOD = "analytic_50kmh"
 VEHICLE_FREE_TIME_METHOD = "analytic_50kmh_vehicle_routes_route_overlap_proxy"
-SCORE_FORMULA = "20 * d_EMV_sec + 1 * d_veh_sec"
+SCORE_FORMULA = "(10/11) * d_EMV_sec + (1/11) * d_veh_sec"
 
 
 class B4RunnerError(RuntimeError):
@@ -238,13 +238,18 @@ def write_stage2_synthetic_demand_route(task: B4RunTask, stage1: B4Stage1Inputs)
         route_edges = list(stage1.route_edges[start : min(start + 4, len(stage1.route_edges))])
     elif stage1.route_edges:
         route_edges = list(stage1.route_edges[: min(4, len(stage1.route_edges))])
+    stop_lanes = [lane for lane in stage1.departure.merge_zone_lanes if lane.startswith(f"{target_edge}_")] or [f"{target_edge}_0"]
+    stop_slots = (10.0, 16.0, 22.0, 28.0, 34.0, 40.0)
     vehicles = []
-    for idx in range(24):
-        depart = 555 + idx * 1.5
+    for idx in range(48):
+        depart = 555 + idx * 0.5
+        stop_lane = stop_lanes[idx % len(stop_lanes)]
+        stop_pos = stop_slots[(idx // max(len(stop_lanes), 1)) % len(stop_slots)]
         vehicles.append(
             f'  <vehicle id="stage2_verify_{idx:03d}" type="stage2_verify_passenger" '
             f'route="stage2_verify_merge_route" depart="{depart:.1f}" departLane="best" '
-            'departPos="base" departSpeed="0"/>'
+            'departPos="base" departSpeed="0">'
+            f'<stop lane="{stop_lane}" endPos="{stop_pos:.1f}" until="625.0"/></vehicle>'
         )
     route_path.write_text(
         "\n".join([
@@ -641,7 +646,8 @@ def base_result_row(task: B4RunTask, stage1: B4Stage1Inputs, params: B4MvpParams
 
 
 def objective_score(d_emv_sec: float, d_veh_sec: float) -> float:
-    return round(W_EMV * d_emv_sec + W_VEH * d_veh_sec, 6)
+    total_weight = W_EMV + W_VEH
+    return round((W_EMV / total_weight) * d_emv_sec + (W_VEH / total_weight) * d_veh_sec, 6)
 
 
 def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_rows_by_id: dict[str, dict[str, Any]]) -> dict[str, Any]:

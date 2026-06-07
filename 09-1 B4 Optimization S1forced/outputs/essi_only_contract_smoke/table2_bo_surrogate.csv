@@ -1,0 +1,5 @@
+method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,best_so_far,surrogate_mean,surrogate_ci_low,surrogate_ci_high,acquisition,essi_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score
+BO,20260607,1,bo_init_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,65.22,65.22,,,,,,,,,,,,,,,,
+BO,20260607,2,bo_init_001_tl120_dt59_ge19_qr20_tau87,120,59,19,0.2,0.87,65.94,65.22,,,,,,,,,,,,,,,,
+BO,20260607,3,bo_r03_001_tl36_dt61_ge38_qr82_tau86,36,61,38,0.82,0.86,113.10,65.22,65.58,64.87,66.29,0.03,0.03,0.01,0.00,0.01,0.01,0.03,0.01,0.03,0.01,-3.67884213,5,0.857755
+BO,20260607,4,bo_r04_001_tl106_dt59_ge34_qr77_tau82,106,59,34,0.77,0.82,65.97,65.22,81.42,37.51,125.33,2.76,2.76,0.90,0.60,0.70,0.58,2.76,1.42,2.76,1.16,1.01401216,5,0.911214

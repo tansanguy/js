@@ -1,0 +1,46 @@
+{
+  "schema": "compact_v9_B04_stage23_trigger_demand.v1",
+  "generated_at": "2026-06-07T06:08:43.673255+00:00",
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
+  "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_cal_s212_h2p0_s304_h8p0_l6.rou.xml",
+  "stage2_route_id": "stage23_trigger_merge_upbound",
+  "stage2_edges": [
+    "-174870621#8",
+    "-174870621#7",
+    "-174870621#6",
+    "-174870621#5",
+    "-174870621#4",
+    "-174870621#2",
+    "-174870621#0",
+    "578313748#0"
+  ],
+  "stage2_vehicle_count": 12,
+  "stage2_headway_sec": 2.0,
+  "stage2_depart_lane": "best",
+  "stage2_depart_pos": "random_free",
+  "stage2_depart_speed": "max",
+  "stage2_depart_window_sec": [
+    555.0,
+    577.0
+  ],
+  "stage3_route_id": "stage23_trigger_caseb_m09",
+  "stage3_edges": [
+    "347237859#1",
+    "347237859#2",
+    "347237859#3",
+    "347237859#4",
+    "347237859#5",
+    "781985787#0"
+  ],
+  "stage3_vehicle_count": 4,
+  "stage3_headway_sec": 8.0,
+  "stage3_route_length": 6,
+  "stage3_depart_lane": "best",
+  "stage3_depart_pos": "random_free",
+  "stage3_depart_speed": "max",
+  "stage3_depart_window_sec": [
+    680.0,
+    704.0
+  ],
+  "notes": "Original demand is not modified; this is a selectable Stage2/Stage3 trigger demand variant."
+}

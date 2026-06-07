@@ -22,10 +22,10 @@ import b04_baseline_pipeline as b04  # noqa: E402
 import b4_stage1_pipeline as stage1  # noqa: E402
 
 
-DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_active_target15"
+DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced"
 DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
-DEFAULT_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
-DEFAULT_RUN_DIR = PROJECT_ROOT / "runs/compact_v9_B4_fixed_param_sensitivity/fixed_param_all_currentstress_20260606/B04/no_control/repeat_001"
+DEFAULT_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
+DEFAULT_RUN_DIR = PROJECT_ROOT / "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/run"
 
 SPEED_FIELDS = [
     "segment_id", "direction", "reference_speed_kmh", "simulated_speed_kmh",
