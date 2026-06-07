@@ -96,7 +96,7 @@ python -m pytest tests/test_b4_optimization_s1forced.py tests/test_final_destina
 
 ## 2. 방법론 3개 실행
 
-세 방법은 같은 `run-id`에 순서대로 누적합니다. 첫 번째 BO 실행이 결과 폴더를 만들고, Random Search와 CMA-ES는 `--append-existing`으로 같은 폴더에 추가합니다.
+권장 실행은 **BO, Random Search, CMA-ES를 한 명령으로 돌리는 방식**입니다. `--methods BO "Random Search" CMA-ES --bo-first`를 주면 같은 `run-id` 아래에 세 방법 결과가 한 번에 채워집니다.
 
 모든 방법론은 `--theta-per-round 6 --workers 6` 기준으로 실행합니다. 즉 BO, Random Search, CMA-ES 모두 1 round에 theta 6개를 병렬 평가하고, seed 1개당 50 round를 채워 총 300개 theta 후보를 평가합니다.
 
@@ -106,7 +106,99 @@ python -m pytest tests/test_b4_optimization_s1forced.py tests/test_final_destina
 09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/
 ```
 
-### 2-1. BO 실행
+### 2-1. 방법론 3개 한 번에 실행 (권장)
+
+먼저 같은 입력으로 작은 real smoke를 돌립니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_methods_all_smoke \
+  --methods BO "Random Search" CMA-ES \
+  --bo-first \
+  --n 1 \
+  --m 4 \
+  --theta-per-round 1 \
+  --bo-initial 2 \
+  --workers 6 \
+  --ei-candidate-count 50 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+Smoke가 끝나면 full run을 실행합니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --methods BO "Random Search" CMA-ES \
+  --bo-first \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+이 명령 하나가 BO, Random Search, CMA-ES를 모두 실행합니다. 세 방법 모두 같은 `n=1`, `m=50`, `theta-per-round=6`, `workers=6` 조건을 공유합니다.
+
+중간에 끊기면 같은 명령에 `--resume`만 붙여 다시 실행합니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --methods BO "Random Search" CMA-ES \
+  --bo-first \
+  --resume \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+### 2-2. 개별 실행이 필요할 때: BO
+
+아래 2-2~2-4는 방법별로 나눠 돌려야 할 때만 사용합니다. 이미 2-1을 실행했다면 다시 돌리지 않습니다.
+
+먼저 BO smoke를 돌립니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_bo_smoke \
+  --methods BO \
+  --n 1 \
+  --m 4 \
+  --theta-per-round 1 \
+  --bo-initial 2 \
+  --workers 6 \
+  --ei-candidate-count 50 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+Smoke가 끝나면 BO full run을 실행합니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -128,7 +220,29 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 BO는 초기 `bo_initial=10` round를 random observation으로 채운 뒤, GP surrogate와 ESSI acquisition으로 다음 round의 theta 6개를 고릅니다. `--skip-pareto`, `--skip-noise-check`는 여기서는 방법론 비교만 채우기 위해 민감도 분석과 5회 noise check를 빼는 옵션입니다.
 
-### 2-2. Random Search 실행
+### 2-3. 개별 실행이 필요할 때: Random Search
+
+먼저 Random Search smoke를 돌립니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_random_smoke \
+  --methods "Random Search" \
+  --n 1 \
+  --m 4 \
+  --theta-per-round 1 \
+  --bo-initial 2 \
+  --workers 6 \
+  --ei-candidate-count 50 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+Smoke가 끝나면 Random Search full run을 실행합니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -151,7 +265,29 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 Random Search는 theta 범위 안에서 50 round x 6개, 총 300개 후보를 무작위로 평가합니다. BO처럼 surrogate를 학습하지 않으므로 비교 기준 baseline 역할입니다.
 
-### 2-3. CMA-ES 실행
+### 2-4. 개별 실행이 필요할 때: CMA-ES
+
+먼저 CMA-ES smoke를 돌립니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_cma_smoke \
+  --methods CMA-ES \
+  --n 1 \
+  --m 4 \
+  --theta-per-round 1 \
+  --bo-initial 2 \
+  --workers 6 \
+  --ei-candidate-count 50 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-pareto \
+  --skip-noise-check
+```
+
+Smoke가 끝나면 CMA-ES full run을 실행합니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -174,9 +310,9 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 CMA-ES는 Python `cma` package의 `CMAEvolutionStrategy`를 사용합니다. 내부적으로 5개 결정변수 `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau`를 `[0, 1]` 정규화 공간에서 탐색한 뒤 실제 theta 범위로 되돌려 평가합니다.
 
-### 2-4. 방법론 비교 산출물 확인
+### 2-5. 방법론 비교 산출물 확인
 
-세 명령이 끝나면 아래 파일을 확인합니다.
+2-1 한 번 실행 또는 2-2~2-4 개별 실행이 끝나면 아래 파일을 확인합니다.
 
 | 파일 | 의미 |
 | --- | --- |
@@ -188,7 +324,7 @@ CMA-ES는 Python `cma` package의 `CMAEvolutionStrategy`를 사용합니다. 내
 | `figure2_bo_surrogate.png` | BO surrogate trace 그림입니다. |
 | `experiment_summary.json` | 실행 입력, seed, 방법 목록, 산출물 manifest입니다. |
 
-중간에 끊기면 같은 명령에 `--resume`을 붙여 다시 실행합니다. Random Search와 CMA-ES처럼 같은 run-id에 추가하는 단계는 기존처럼 `--append-existing`도 같이 둡니다.
+개별 실행 중간에 끊기면 같은 명령에 `--resume`을 붙여 다시 실행합니다. Random Search와 CMA-ES처럼 같은 run-id에 추가하는 단계는 기존처럼 `--append-existing`도 같이 둡니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -209,9 +345,23 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --skip-noise-check
 ```
 
-### 2-5. 시각화 정보 manifest 생성
+### 2-6. 시각화 정보 manifest 생성
 
 시각화 팀에 넘길 번들은 아래 명령으로 생성합니다. 이 명령은 새 최적화를 돌리지 않고 `all_evaluations.csv`에서 best theta를 고른 뒤, B04/B4를 한 번씩 `emit_fcd=True, emit_tls_states=True`로 재실행하고 로그 경로 manifest를 생성합니다.
+
+먼저 검증-only smoke를 돌립니다. 이미 FCD/TLS 로그가 있으면 manifest가 생성되고, 로그가 아직 없으면 `visualization_missing_required_logs`로 실패합니다. 그 경우 바로 아래 materialize 명령으로 로그를 만들면 됩니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
+  --collect-visualization-info \
+  --visualization-solution best \
+  --visualization-output "09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/visualization_info_smoke.json" \
+  --output-dir "09-1 B4 Optimization S1forced/outputs" \
+  --run-root "runs/compact_v9_B4_optimization_s1forced"
+```
+
+검증-only smoke 후 materialize를 실행합니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -245,7 +395,26 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 1:1, 5:1, 10:1, 15:1, 20:1
 ```
 
-실행 명령:
+먼저 민감도 smoke를 돌립니다.
+
+```bash
+python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
+  --run-id taehoon_sensitivity_smoke \
+  --methods BO \
+  --n 1 \
+  --m 4 \
+  --theta-per-round 1 \
+  --bo-initial 2 \
+  --workers 6 \
+  --ei-candidate-count 50 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000 \
+  --skip-noise-check
+```
+
+Smoke가 끝나면 민감도 full run을 실행합니다.
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
@@ -294,7 +463,29 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 7. final repeat 결과에 SPC를 적용해 안정성 판단
 ```
 
-실행 명령:
+먼저 최종 분석 smoke를 돌립니다. 목적지 후보와 repeat 수만 줄이고, theta 선택 입력과 S1-forced 입력은 full run과 동일하게 둡니다.
+
+```bash
+python "10 Final Destination Validation/final_destination_validation.py" \
+  --phase all \
+  --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/all_evaluations.csv" \
+  --theta-method ALL \
+  --candidate-limit 3 \
+  --screening-repeats 1 \
+  --final-selection-count 1 \
+  --repeats 2 \
+  --depart-min 550 \
+  --depart-max 650 \
+  --seed 20260606 \
+  --workers 6 \
+  --run-id taehoon_final_destination_smoke \
+  --net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --base-stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
+  --hard-max-sim-time 4000
+```
+
+Smoke가 끝나면 최종 분석 full run을 실행합니다.
 
 ```bash
 python "10 Final Destination Validation/final_destination_validation.py" \
@@ -341,6 +532,7 @@ runs/compact_v9_final_destination_validation/taehoon_final_destination_validatio
 | --- | --- | --- |
 | `--run-id` | 전체 | 결과 폴더 이름입니다. 같은 `run-id`를 쓰면 같은 output 디렉터리를 기준으로 읽고 씁니다. |
 | `--methods` | 방법론 비교, 민감도 | 실행할 최적화 방법입니다. `BO`, `Random Search`, `CMA-ES`를 받을 수 있습니다. alias로 `bo`, `random`, `rs`, `cma`도 됩니다. |
+| `--bo-first` | 방법론 비교 | 여러 방법을 한 번에 실행할 때 BO를 먼저 실행합니다. 이번 권장 명령은 `--methods BO "Random Search" CMA-ES --bo-first`입니다. |
 | `--append-existing` | 방법론 비교 | 같은 `run-id`에 이미 있는 다른 방법 결과를 유지하고 새 방법 결과를 추가합니다. 이미 같은 method가 있으면 중복 방지를 위해 실패합니다. |
 | `--resume` | 방법론 비교, 민감도 | 중간에 끊긴 run-id를 checkpoint와 기존 `all_evaluations.csv` 기준으로 이어서 실행합니다. |
 | `--n` | 방법론 비교 | 방법별 seed 개수입니다. 이번 기준은 `1`입니다. |
