@@ -5,6 +5,8 @@ import contextlib
 import io
 import importlib.util
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -59,6 +61,232 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
 
         self.assertEqual(self.runner.selected_methods(args), ["BO", "Random Search", "CMA-ES"])
 
+    def test_default_budget_is_single_seed_six_by_fifty(self):
+        args = self.runner.parse_args(["--mock-eval"])
+        self.runner.validate_args(args)
+
+        self.assertEqual(args.n, 1)
+        self.assertEqual(args.m, 50)
+        self.assertEqual(args.theta_per_round, 6)
+        self.assertEqual(args.workers, 6)
+
+    def test_theta_per_round_batches_all_methods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "outputs"
+            run_root = Path(tmp) / "runs"
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = self.runner.main([
+                    "--mock-eval",
+                    "--run-id",
+                    "batch_contract",
+                    "--n",
+                    "1",
+                    "--m",
+                    "3",
+                    "--theta-per-round",
+                    "2",
+                    "--bo-initial",
+                    "2",
+                    "--ei-candidate-count",
+                    "20",
+                    "--output-dir",
+                    str(output_dir),
+                    "--run-root",
+                    str(run_root),
+                    "--skip-pareto",
+                    "--skip-noise-check",
+                ])
+
+            self.assertEqual(code, 0)
+            run_dir = output_dir / "batch_contract"
+            with (run_dir / "all_evaluations.csv").open("r", encoding="utf-8", newline="") as file:
+                eval_rows = list(csv.DictReader(file))
+            self.assertEqual(len(eval_rows), 18)
+            for method in ["Random Search", "CMA-ES", "BO"]:
+                method_rows = [row for row in eval_rows if row["method"] == method]
+                self.assertEqual([row["round"] for row in method_rows], ["1", "1", "2", "2", "3", "3"])
+                self.assertEqual([row["round_theta_index"] for row in method_rows], ["1", "2", "1", "2", "1", "2"])
+                self.assertTrue(all(row["theta_per_round"] == "2" for row in method_rows))
+                self.assertEqual(len({row["parameter_id"] for row in method_rows}), 6)
+
+            with (run_dir / "table1_best_so_far.csv").open("r", encoding="utf-8", newline="") as file:
+                best_rows = list(csv.DictReader(file))
+            self.assertEqual(set(best_rows[0]), {"method", "seed", "R1", "R2", "R3"})
+
+            summary = self.runner.read_json(run_dir / "experiment_summary.json")
+            self.assertEqual(summary["m"], 3)
+            self.assertEqual(summary["theta_per_round"], 2)
+            self.assertEqual(summary["theta_evaluations_per_seed_method"], 6)
+
+    def test_workers_parallelize_round_theta_batch(self):
+        original_evaluate = self.runner.evaluate_theta
+        active = 0
+        max_active = 0
+        lock = threading.Lock()
+
+        def slow_evaluate(*args, **kwargs):
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            try:
+                time.sleep(0.10)
+                return original_evaluate(*args, **kwargs)
+            finally:
+                with lock:
+                    active -= 1
+
+        self.runner.evaluate_theta = slow_evaluate
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                output_dir = Path(tmp) / "outputs"
+                run_root = Path(tmp) / "runs"
+                with contextlib.redirect_stdout(io.StringIO()):
+                    code = self.runner.main([
+                        "--mock-eval",
+                        "--run-id",
+                        "workers_contract",
+                        "--methods",
+                        "bo",
+                        "--n",
+                        "1",
+                        "--m",
+                        "3",
+                        "--theta-per-round",
+                        "6",
+                        "--bo-initial",
+                        "2",
+                        "--workers",
+                        "6",
+                        "--output-dir",
+                        str(output_dir),
+                        "--run-root",
+                        str(run_root),
+                        "--skip-pareto",
+                        "--skip-noise-check",
+                    ])
+            self.assertEqual(code, 0)
+            self.assertGreaterEqual(max_active, 6)
+        finally:
+            self.runner.evaluate_theta = original_evaluate
+
+    def test_resume_continues_from_method_seed_checkpoint(self):
+        original_evaluate = self.runner.evaluate_theta
+        calls = 0
+
+        def interrupt_after_two(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls > 2:
+                raise RuntimeError("synthetic_interrupt")
+            return original_evaluate(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "outputs"
+            run_root = Path(tmp) / "runs"
+            common = [
+                "--mock-eval",
+                "--run-id",
+                "resume_contract",
+                "--methods",
+                "bo",
+                "--n",
+                "1",
+                "--m",
+                "4",
+                "--theta-per-round",
+                "1",
+                "--bo-initial",
+                "2",
+                "--ei-candidate-count",
+                "20",
+                "--output-dir",
+                str(output_dir),
+                "--run-root",
+                str(run_root),
+                "--skip-pareto",
+                "--skip-noise-check",
+            ]
+            args = self.runner.parse_args(common)
+            self.runner.validate_args(args)
+            self.runner.evaluate_theta = interrupt_after_two
+            try:
+                with self.assertRaises(RuntimeError):
+                    self.runner.run_experiment(args)
+            finally:
+                self.runner.evaluate_theta = original_evaluate
+
+            checkpoint = output_dir / "resume_contract" / "checkpoints" / f"bo_{self.runner.DEFAULT_SEED_BASE}.csv"
+            with checkpoint.open("r", encoding="utf-8", newline="") as file:
+                checkpoint_rows = list(csv.DictReader(file))
+            self.assertEqual(len(checkpoint_rows), 2)
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = self.runner.main([*common, "--resume"])
+            self.assertEqual(code, 0)
+            with (output_dir / "resume_contract" / "all_evaluations.csv").open("r", encoding="utf-8", newline="") as file:
+                eval_rows = list(csv.DictReader(file))
+            self.assertEqual(len(eval_rows), 4)
+            self.assertEqual([row["round"] for row in eval_rows], ["1", "2", "3", "4"])
+
+    def test_collect_visualization_info_requires_and_writes_fcd_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "outputs"
+            run_root = Path(tmp) / "runs"
+            run_id = "viz_contract"
+            parameter_id = "bo_r01_001_tl1_dt50_ge2_qr30_tau80"
+            run_dir = output_dir / run_id
+            run_dir.mkdir(parents=True)
+            with (run_dir / "all_evaluations.csv").open("w", encoding="utf-8", newline="") as file:
+                writer = csv.DictWriter(file, fieldnames=self.runner.EVALUATION_FIELDS)
+                writer.writeheader()
+                writer.writerow({
+                    "method": "BO",
+                    "seed": str(self.runner.DEFAULT_SEED_BASE),
+                    "round": "1",
+                    "round_theta_index": "1",
+                    "theta_per_round": "6",
+                    "parameter_id": parameter_id,
+                    "score": "100.00",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                })
+
+            b04_dir = run_root / run_id / "B04" / "no_control" / "repeat_001"
+            b4_dir = run_root / f"{run_id}_bo_{self.runner.DEFAULT_SEED_BASE}" / "B4" / parameter_id / "repeat_001"
+            b04_dir.mkdir(parents=True)
+            b4_dir.mkdir(parents=True)
+            for path in [
+                b04_dir / "fcd.xml",
+                b04_dir / "tripinfo.xml",
+                b4_dir / "fcd.xml",
+                b4_dir / "tripinfo.xml",
+                b4_dir / "signal_events.csv",
+            ]:
+                path.write_text("stub\n", encoding="utf-8")
+
+            manifest = run_dir / "viz_manifest.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = self.runner.main([
+                    "--run-id",
+                    run_id,
+                    "--collect-visualization-info",
+                    "--visualization-solution",
+                    parameter_id,
+                    "--visualization-output",
+                    str(manifest),
+                    "--output-dir",
+                    str(output_dir),
+                    "--run-root",
+                    str(run_root),
+                ])
+            self.assertEqual(code, 0)
+            payload = self.runner.read_json(manifest)
+            self.assertEqual(payload["solution"]["parameter_id"], parameter_id)
+            self.assertIn("b04_fcd", payload["paths"])
+            self.assertIn("b4_signal_events", payload["paths"])
+
     def test_mock_run_writes_best_so_far_and_surrogate_contracts(self):
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp) / "outputs"
@@ -72,6 +300,8 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                     "2",
                     "--m",
                     "5",
+                    "--theta-per-round",
+                    "1",
                     "--bo-initial",
                     "2",
                     "--ei-candidate-count",
@@ -181,6 +411,8 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                 "1",
                 "--m",
                 "4",
+                "--theta-per-round",
+                "1",
                 "--bo-initial",
                 "2",
                 "--ei-candidate-count",
@@ -287,6 +519,8 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                     "1",
                     "--m",
                     "4",
+                    "--theta-per-round",
+                    "1",
                     "--bo-initial",
                     "2",
                     "--ei-candidate-count",

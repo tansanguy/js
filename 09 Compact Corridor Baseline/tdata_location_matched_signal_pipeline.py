@@ -17,7 +17,6 @@ import json
 import math
 import os
 import re
-import shutil
 import ssl
 import sys
 import time
@@ -43,9 +42,9 @@ A008_CSV = PROJECT_ROOT / "A008_P.csv"
 SKELETON_CSV = PROJECT_ROOT / "mainstream_segment_skeleton.csv"
 CANDIDATES_CSV = PROJECT_ROOT / "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv"
 INTERSECTIONS_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_intersections.csv"
-ACTIVE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
-ORIGINAL_NET_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_tdata_plausible.net.xml"
-LOCATION_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_location_matched.net.xml"
+ACTIVE_NET = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+LEGACY_GREEN18_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
+LOCATION_BACKUP = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.before_location_matched.net.xml"
 OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_s1forced.net.xml"
 
 TIMING_ENDPOINT = "https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0"
@@ -615,15 +614,16 @@ def apply_location_profiles(input_net: Path, output_net: Path, profiles: list[An
     tree.write(output_net, encoding="UTF-8", xml_declaration=True)
     active_overwritten = False
     if overwrite_active_net:
-        if not LOCATION_BACKUP.is_file():
-            shutil.copy2(ACTIVE_NET, LOCATION_BACKUP)
-        shutil.copy2(output_net, ACTIVE_NET)
-        active_overwritten = True
+        raise LocationMatchedSignalError(
+            "overwrite_active_net_disabled: B04/B4 active net is fixed to the canonical S1-forced global-reality net; "
+            "write a separate --output-net and promote it through b04_global_reality_signal_pipeline.py."
+        )
     write_csv(APPLIED_CSV, applied_rows, list(applied_rows[0].keys()) if applied_rows else [])
     return {
         "input_net": rel(input_net),
         "output_net": rel(output_net),
         "active_net": rel(ACTIVE_NET),
+        "legacy_green18_net": rel(LEGACY_GREEN18_NET),
         "active_net_overwritten": active_overwritten,
         "active_backup": rel(LOCATION_BACKUP) if LOCATION_BACKUP.is_file() else "",
         "applied_tls_count": applied_count,
@@ -822,9 +822,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-pages", type=int, default=120)
     parser.add_argument("--start-page", type=int, default=1)
     parser.add_argument("--num-rows", type=int, default=100)
-    parser.add_argument("--input-net", default="auto", help="Input net path or 'auto' for the active B04 CSV-signal net.")
+    parser.add_argument("--input-net", default="auto", help="Input net path or 'auto' for the canonical B04/B4 S1-forced net.")
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
-    parser.add_argument("--overwrite-active-net", action="store_true")
+    parser.add_argument("--overwrite-active-net", action="store_true", help="Disabled guard: active B04/B4 uses the canonical S1-forced net.")
     parser.add_argument("--results-csv", type=Path, default=None, help="Optional experiment_results.csv to include B04/B4 rows in the validation document.")
     parser.add_argument("--results-run-id", default=None, help="Optional run_id filter for --results-csv.")
     args = parser.parse_args(argv)

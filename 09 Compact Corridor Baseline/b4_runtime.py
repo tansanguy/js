@@ -466,7 +466,7 @@ class B4RuntimePhaseConfig:
     ev_stuck_duration_sec: float = 120.0
     objective_includes_recovery: bool = False
     stage2_measurement_scale: float = 1.0
-    stage3_measurement_scale: float = 1.0
+    stage3_measurement_scale: float = 1.5
     stage2_synthetic_demand: bool = False
 
     @classmethod
@@ -1304,6 +1304,7 @@ class MovementRuntimeMetrics:
     tls_queue_m_est: float = 0.0
     tls_queue_veh_est: int = 0
     tls_queue_max_back_m: float = 0.0
+    case_b_queue_m_proxy: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -1905,6 +1906,34 @@ def edge_queue_proxy_from_snapshots(
     return round_float(max(queue_m_values) if queue_m_values else 0.0), len(edge_lanes), round_float(mean_speed_kmh)
 
 
+def route_span_queue_proxy_from_snapshots(
+    snapshots: dict[str, LaneSnapshot],
+    edge_ids: tuple[str, ...] | list[str],
+    storage_length_m: float,
+) -> tuple[float, int, int]:
+    """Estimate queue over an ordered route span by accumulating per-edge queues."""
+    total_queue_m = 0.0
+    observed_lane_count = 0
+    missing_edge_count = 0
+    for edge_id in edge_ids:
+        edge_lanes = [snapshot for lane_id, snapshot in snapshots.items() if lane_edge_id(lane_id) == edge_id]
+        if not edge_lanes:
+            missing_edge_count += 1
+            continue
+        observed_lane_count += len(edge_lanes)
+        edge_queue_m = 0.0
+        for snapshot in edge_lanes:
+            lane_queue_m, _lane_queue_veh, _slow = lane_queue_proxy_from_snapshot(snapshot, snapshot.length_m)
+            storage_fill_m = min(snapshot.length_m, snapshot.vehicle_count * HEADWAY_M)
+            edge_queue_m = max(edge_queue_m, lane_queue_m, storage_fill_m)
+        total_queue_m += edge_queue_m
+    return (
+        round_float(min(max(storage_length_m, 0.0), total_queue_m) if storage_length_m > 0.0 else total_queue_m),
+        observed_lane_count,
+        missing_edge_count,
+    )
+
+
 def estimate_movement_queue_from_snapshots(
     traci: Any,
     movement: B4Movement,
@@ -1919,6 +1948,12 @@ def estimate_movement_queue_from_snapshots(
     local = estimate_lane_set_queue_from_snapshots(snapshots, movement.local_storage_lanes, movement.stopline_local_storage_m, sample_t)
     corridor = estimate_lane_set_queue_from_snapshots(snapshots, movement.corridor_storage_lanes, movement.corridor_storage_length_m, sample_t)
     approach = estimate_lane_set_queue_from_snapshots(snapshots, movement.approach_lanes, movement.stopline_local_storage_m, sample_t)
+    case_b_edges = movement.corridor_storage_edges or movement.local_storage_edges or (movement.from_edge,)
+    case_b_queue_m, _case_b_observed_lanes, _case_b_missing_edges = route_span_queue_proxy_from_snapshots(
+        snapshots,
+        case_b_edges,
+        movement.L_m,
+    )
     factor = calibration_prior.calibration_factor if calibration_prior is not None else 1.0
     raw_proxy_m = local.queue_m_proxy
     calibrated_proxy_m = min(movement.stopline_local_storage_m, raw_proxy_m * factor)
@@ -1987,7 +2022,7 @@ def estimate_movement_queue_from_snapshots(
         data_age_sec=0.0,
         source_id=(calibration_prior.source if calibration_prior is not None and calibration_prior.source != "none" else QUEUE_RUNTIME_CALL_MODE),
     )
-    return estimate, local, corridor, approach
+    return estimate, local, corridor, approach, case_b_queue_m
 
 
 def tls_queue_estimates_from_snapshots(
@@ -2037,7 +2072,7 @@ def movement_runtime_metrics_from_snapshots(
     exact_cache: dict[str, dict[str, Any]] | None = None,
     tls_estimate: TlsQueueEstimate | None = None,
 ) -> MovementRuntimeMetrics:
-    queue, local, corridor, approach = estimate_movement_queue_from_snapshots(
+    queue, local, corridor, approach, case_b_queue_m = estimate_movement_queue_from_snapshots(
         traci,
         movement,
         snapshots,
@@ -2097,6 +2132,7 @@ def movement_runtime_metrics_from_snapshots(
         tls_queue_m_est=tls_estimate.queue_m_est,
         tls_queue_veh_est=tls_estimate.queue_veh_est,
         tls_queue_max_back_m=tls_estimate.queue_max_back_m,
+        case_b_queue_m_proxy=round_float(case_b_queue_m),
     )
 
 
@@ -2759,7 +2795,7 @@ class B4RuntimeController:
     run_id: str = ""
     repeat_id: int = 1
     stage2_measurement_scale: float = 1.0
-    stage3_measurement_scale: float = 1.0
+    stage3_measurement_scale: float = 1.5
     edge_lengths: dict[str, float] = field(default_factory=load_edge_lengths)
     events: list[dict[str, Any]] = field(default_factory=list)
     stats: B4ControllerStats = field(default_factory=B4ControllerStats)
@@ -2844,7 +2880,10 @@ class B4RuntimeController:
 
     def scaled_stage3_case_b_queue_m(self, metric: MovementRuntimeMetrics) -> float:
         scale = max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)
-        return metric.queue_m_proxy * scale
+        case_b_queue_m = safe_float(metric.case_b_queue_m_proxy, 0.0)
+        if case_b_queue_m <= 0.0:
+            case_b_queue_m = metric.queue_m_proxy
+        return max(case_b_queue_m, metric.queue_m_proxy) * scale
 
     def case_b_segment_metrics_from_snapshots(
         self,
@@ -2855,20 +2894,23 @@ class B4RuntimeController:
         for candidate in self.stage1.case_b_candidates:
             if not candidate.mapped:
                 continue
-            segment_queue = estimate_lane_set_queue_from_snapshots(
+            segment_queue = estimate_lane_set_queue_from_snapshots(lane_snapshots, candidate.segment_lanes, candidate.L_b0_m, now)
+            span_queue_m, span_observed_lanes, span_missing_edges = route_span_queue_proxy_from_snapshots(
                 lane_snapshots,
-                candidate.segment_lanes,
+                candidate.segment_edges,
                 candidate.L_b0_m,
-                now,
             )
-            confidence = QUEUE_PROXY_CONFIDENCE if segment_queue.observed_lane_count > 0 else QUEUE_STALE_CONFIDENCE
+            queue_m_proxy = max(span_queue_m, segment_queue.queue_m_proxy) if span_observed_lanes > 0 else segment_queue.queue_m_proxy
+            observed_count = span_observed_lanes if span_observed_lanes > 0 else segment_queue.observed_lane_count
+            missing_count = span_missing_edges if span_observed_lanes > 0 else segment_queue.missing_lane_count
+            confidence = QUEUE_PROXY_CONFIDENCE if observed_count > 0 else QUEUE_STALE_CONFIDENCE
             result[candidate.segment_id] = CaseBSegmentRuntimeMetrics(
                 segment_id=candidate.segment_id,
-                queue_m_proxy=segment_queue.queue_m_proxy,
-                fill=round_float(segment_queue.queue_m_proxy / max(candidate.L_b0_m, 0.001)),
+                queue_m_proxy=round_float(queue_m_proxy),
+                fill=round_float(queue_m_proxy / max(candidate.L_b0_m, 0.001)),
                 queue_confidence=confidence,
-                observed_lane_count=segment_queue.observed_lane_count,
-                missing_lane_count=segment_queue.missing_lane_count,
+                observed_lane_count=observed_count,
+                missing_lane_count=missing_count,
             )
         return result
 
@@ -2882,11 +2924,12 @@ class B4RuntimeController:
             return "not_case_b"
         if metric.movement.is_merge:
             return "not_case_b"
+        scale = max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)
         if segment_metric is not None and segment_metric.queue_confidence > QUEUE_STALE_CONFIDENCE and segment_metric.queue_m_proxy > 0.0:
-            return "runtime_tau_segment" if segment_metric.fill >= self.case_b_tau(candidate) else "not_case_b"
+            return "runtime_tau_segment" if segment_metric.fill * scale >= self.case_b_tau(candidate) else "not_case_b"
         runtime_queue_available = metric.queue_confidence > QUEUE_STALE_CONFIDENCE and metric.queue_m_proxy > 0.0
         if runtime_queue_available:
-            fill_ratio = metric.queue_m_proxy / max(candidate.L_b0_m, 0.001)
+            fill_ratio = max(safe_float(metric.case_b_queue_m_proxy, 0.0), metric.queue_m_proxy) * scale / max(candidate.L_b0_m, 0.001)
             return "runtime_tau_movement" if fill_ratio >= self.case_b_tau(candidate) else "not_case_b"
         return "not_case_b"
 
@@ -2897,9 +2940,10 @@ class B4RuntimeController:
         segment_metric: CaseBSegmentRuntimeMetrics | None = None,
     ) -> tuple[float, float, float, str]:
         if segment_metric is not None and segment_metric.queue_confidence > QUEUE_STALE_CONFIDENCE:
-            live_fill = segment_metric.fill
+            live_fill = segment_metric.fill * max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)
         elif bottleneck_metric.queue_confidence > QUEUE_STALE_CONFIDENCE and bottleneck_metric.queue_m_proxy > 0.0:
-            live_fill = bottleneck_metric.queue_m_proxy / max(candidate.L_b0_m, 0.001)
+            case_b_queue_m = max(safe_float(bottleneck_metric.case_b_queue_m_proxy, 0.0), bottleneck_metric.queue_m_proxy)
+            live_fill = case_b_queue_m * max(safe_float(self.stage3_measurement_scale, 1.0), 0.0) / max(candidate.L_b0_m, 0.001)
         else:
             live_fill = -1.0
         b0_fill = max(candidate.segment_fill_B0, candidate.fill_B0)

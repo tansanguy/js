@@ -17,8 +17,9 @@
 
 | 항목 | 값 | 설명 |
 | --- | --- | --- |
-| `N_SEEDS` | `15` | 방법별 seed 개수입니다. |
-| `M_ROUNDS` | `50` | seed 하나당 평가할 theta 개수입니다. |
+| `N_SEEDS` | `1` | 방법별 seed 개수입니다. |
+| `M_ROUNDS` | `50` | seed 하나당 평가 round 수입니다. |
+| `THETA_PER_ROUND` | `6` | 한 round에서 병렬 평가할 theta 개수입니다. |
 | `BO_INITIAL` | `10` | BO가 GP surrogate를 학습하기 전에 random observation으로 채우는 초기 평가 개수입니다. |
 | `WORKERS` | `6` | 최적화 runner의 SUMO 병렬 평가 worker 수입니다. |
 | `EI_CANDIDATES` | `600` | BO/ESSI가 다음 후보를 고를 때 sampling하는 후보 pool 크기입니다. |
@@ -35,14 +36,15 @@ export NET_FILE="09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v
 export BACKGROUND_ROUTE="data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 export STAGE1_DIR="data_prepared/compact_v9/b4_stage1_s1forced"
 
-export N_SEEDS=15
+export N_SEEDS=1
 export M_ROUNDS=50
+export THETA_PER_ROUND=6
 export BO_INITIAL=10
 export WORKERS=6
 export EI_CANDIDATES=600
 
-export METHOD_RUN_ID="taehoon_s1forced_methods_n15_m50"
-export SENS_RUN_ID="taehoon_s1forced_sensitivity_m50"
+export METHOD_RUN_ID="taehoon_s1forced_methods_n1_m50_t6"
+export SENS_RUN_ID="taehoon_s1forced_sensitivity_m50_t6"
 export FINAL_RUN_ID="taehoon_final_destination_validation_001"
 ```
 
@@ -99,67 +101,70 @@ python -m pytest tests/test_b4_optimization_s1forced.py tests/test_final_destina
 결과 폴더:
 
 ```text
-09-1 B4 Optimization S1forced/outputs/${METHOD_RUN_ID}/
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/
 ```
 
 ### 2-1. BO 실행
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id "$METHOD_RUN_ID" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
   --methods BO \
-  --n "$N_SEEDS" \
-  --m "$M_ROUNDS" \
-  --bo-initial "$BO_INITIAL" \
-  --workers "$WORKERS" \
-  --ei-candidate-count "$EI_CANDIDATES" \
-  --net-file "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --stage1-dir "$STAGE1_DIR" \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --skip-pareto \
   --skip-noise-check
 ```
 
-BO는 초기 `BO_INITIAL=10`개 theta를 random observation으로 평가한 뒤, GP surrogate와 ESSI acquisition으로 다음 theta를 고릅니다. `--skip-pareto`, `--skip-noise-check`는 여기서는 방법론 비교만 채우기 위해 민감도 분석과 5회 noise check를 빼는 옵션입니다.
+BO는 초기 `bo_initial=10` round를 random observation으로 채운 뒤, GP surrogate와 ESSI acquisition으로 다음 round의 theta 6개를 고릅니다. `--skip-pareto`, `--skip-noise-check`는 여기서는 방법론 비교만 채우기 위해 민감도 분석과 5회 noise check를 빼는 옵션입니다.
 
 ### 2-2. Random Search 실행
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id "$METHOD_RUN_ID" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
   --methods "Random Search" \
   --append-existing \
-  --n "$N_SEEDS" \
-  --m "$M_ROUNDS" \
-  --bo-initial "$BO_INITIAL" \
-  --workers "$WORKERS" \
-  --ei-candidate-count "$EI_CANDIDATES" \
-  --net-file "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --stage1-dir "$STAGE1_DIR" \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --skip-pareto \
   --skip-noise-check
 ```
 
-Random Search는 theta 범위 안에서 seed별로 `M_ROUNDS=50`개 후보를 무작위로 평가합니다. BO처럼 surrogate를 학습하지 않으므로 비교 기준 baseline 역할입니다.
+Random Search는 theta 범위 안에서 50 round x 6개, 총 300개 후보를 무작위로 평가합니다. BO처럼 surrogate를 학습하지 않으므로 비교 기준 baseline 역할입니다.
 
 ### 2-3. CMA-ES 실행
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id "$METHOD_RUN_ID" \
+  --run-id taehoon_s1forced_methods_n1_m50_t6 \
   --methods CMA-ES \
   --append-existing \
-  --n "$N_SEEDS" \
-  --m "$M_ROUNDS" \
-  --bo-initial "$BO_INITIAL" \
-  --workers "$WORKERS" \
-  --ei-candidate-count "$EI_CANDIDATES" \
-  --net-file "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --stage1-dir "$STAGE1_DIR" \
+  --n 1 \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --skip-pareto \
   --skip-noise-check
@@ -195,16 +200,17 @@ CMA-ES는 Python `cma` package의 `CMAEvolutionStrategy`를 사용합니다. 내
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id "$SENS_RUN_ID" \
+  --run-id taehoon_s1forced_sensitivity_m50_t6 \
   --methods BO \
   --n 1 \
-  --m "$M_ROUNDS" \
-  --bo-initial "$BO_INITIAL" \
-  --workers "$WORKERS" \
-  --ei-candidate-count "$EI_CANDIDATES" \
-  --net-file "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --stage1-dir "$STAGE1_DIR" \
+  --m 50 \
+  --theta-per-round 6 \
+  --bo-initial 10 \
+  --workers 6 \
+  --ei-candidate-count 600 \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --skip-noise-check
 ```
@@ -244,7 +250,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 ```bash
 python "10 Final Destination Validation/final_destination_validation.py" \
   --phase all \
-  --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/${METHOD_RUN_ID}/all_evaluations.csv" \
+  --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/all_evaluations.csv" \
   --theta-method ALL \
   --candidate-limit 18 \
   --screening-repeats 1 \
@@ -253,11 +259,11 @@ python "10 Final Destination Validation/final_destination_validation.py" \
   --depart-min 550 \
   --depart-max 650 \
   --seed 20260606 \
-  --workers "$WORKERS" \
-  --run-id "$FINAL_RUN_ID" \
-  --net "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --base-stage1-dir "$STAGE1_DIR" \
+  --workers 6 \
+  --run-id taehoon_final_destination_validation_001 \
+  --net "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --base-stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000
 ```
 
@@ -276,8 +282,8 @@ python "10 Final Destination Validation/final_destination_validation.py" \
 결과 위치:
 
 ```text
-results/metrics/compact_v9_final_destination_validation/${FINAL_RUN_ID}/
-runs/compact_v9_final_destination_validation/${FINAL_RUN_ID}/
+results/metrics/compact_v9_final_destination_validation/taehoon_final_destination_validation_001/
+runs/compact_v9_final_destination_validation/taehoon_final_destination_validation_001/
 ```
 
 ## 5. 옵션 설명
@@ -287,8 +293,9 @@ runs/compact_v9_final_destination_validation/${FINAL_RUN_ID}/
 | `--run-id` | 전체 | 결과 폴더 이름입니다. 같은 `run-id`를 쓰면 같은 output 디렉터리를 기준으로 읽고 씁니다. |
 | `--methods` | 방법론 비교, 민감도 | 실행할 최적화 방법입니다. `BO`, `Random Search`, `CMA-ES`를 받을 수 있습니다. alias로 `bo`, `random`, `rs`, `cma`도 됩니다. |
 | `--append-existing` | 방법론 비교 | 같은 `run-id`에 이미 있는 다른 방법 결과를 유지하고 새 방법 결과를 추가합니다. 이미 같은 method가 있으면 중복 방지를 위해 실패합니다. |
-| `--n` | 방법론 비교 | 방법별 seed 개수입니다. 이번 기준은 `15`입니다. |
+| `--n` | 방법론 비교 | 방법별 seed 개수입니다. 이번 기준은 `1`입니다. |
 | `--m` | 방법론 비교, 민감도 | seed 하나당 평가 round 수입니다. 이번 기준은 `50`입니다. 민감도에서는 각 weight ratio별 BO round 수로도 쓰입니다. |
+| `--theta-per-round` | 방법론 비교, 민감도 | 한 round에서 병렬 평가하는 theta 개수입니다. 이번 기준은 `6`입니다. |
 | `--bo-initial` | BO, 민감도 | BO 초기 random observation 수입니다. `2 <= bo_initial < m`이어야 합니다. 이번 기준은 `10`입니다. |
 | `--workers` | 전체 | SUMO 평가 병렬 worker 수입니다. 이번 기본값은 `6`입니다. 최적화는 theta 평가 단위, 최종 목적지 검증은 candidate route 단위로 병렬 실행합니다. |
 | `--ei-candidate-count` | BO, 민감도 | GP/ESSI acquisition이 다음 theta를 고르기 위해 sampling하는 후보 수입니다. 값이 클수록 후보 탐색은 촘촘하지만 시간이 늘어납니다. |
@@ -319,8 +326,9 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id taehoon_mock_smoke \
   --n 2 \
   --m 5 \
+  --theta-per-round 1 \
   --bo-initial 2 \
-  --workers "$WORKERS" \
+  --workers 6 \
   --ei-candidate-count 20
 ```
 
@@ -331,12 +339,13 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id taehoon_real_smoke \
   --n 1 \
   --m 4 \
+  --theta-per-round 1 \
   --bo-initial 2 \
-  --workers "$WORKERS" \
+  --workers 6 \
   --ei-candidate-count 50 \
-  --net-file "$NET_FILE" \
-  --background-route "$BACKGROUND_ROUTE" \
-  --stage1-dir "$STAGE1_DIR" \
+  --net-file "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml" \
+  --background-route "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml" \
+  --stage1-dir "data_prepared/compact_v9/b4_stage1_s1forced" \
   --hard-max-sim-time 4000 \
   --skip-pareto \
   --skip-noise-check
@@ -347,22 +356,22 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 방법론 비교가 끝나면 우선 이 파일을 봅니다.
 
 ```text
-09-1 B4 Optimization S1forced/outputs/${METHOD_RUN_ID}/final_method_comparison_results.csv
-09-1 B4 Optimization S1forced/outputs/${METHOD_RUN_ID}/figure1_best_so_far.png
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/final_method_comparison_results.csv
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_methods_n1_m50_t6/figure1_best_so_far.png
 ```
 
 민감도 분석이 끝나면 이 파일을 봅니다.
 
 ```text
-09-1 B4 Optimization S1forced/outputs/${SENS_RUN_ID}/final_sensitivity_results.csv
-09-1 B4 Optimization S1forced/outputs/${SENS_RUN_ID}/figure3_pareto.png
-09-1 B4 Optimization S1forced/outputs/${SENS_RUN_ID}/figure4_sensitivity_spc.png
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_sensitivity_m50_t6/final_sensitivity_results.csv
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_sensitivity_m50_t6/figure3_pareto.png
+09-1 B4 Optimization S1forced/outputs/taehoon_s1forced_sensitivity_m50_t6/figure4_sensitivity_spc.png
 ```
 
 최종 분석이 끝나면 이 파일을 봅니다.
 
 ```text
-results/metrics/compact_v9_final_destination_validation/${FINAL_RUN_ID}/final/final_destination_validation_report.md
-results/metrics/compact_v9_final_destination_validation/${FINAL_RUN_ID}/final/final_simulation_results.csv
-results/metrics/compact_v9_final_destination_validation/${FINAL_RUN_ID}/final/spc_repeat_stability.csv
+results/metrics/compact_v9_final_destination_validation/taehoon_final_destination_validation_001/final/final_destination_validation_report.md
+results/metrics/compact_v9_final_destination_validation/taehoon_final_destination_validation_001/final/final_simulation_results.csv
+results/metrics/compact_v9_final_destination_validation/taehoon_final_destination_validation_001/final/spc_repeat_stability.csv
 ```

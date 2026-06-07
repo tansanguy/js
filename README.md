@@ -130,11 +130,13 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | --- | --- |
 | `--mock-eval` | SUMO 대신 deterministic mock evaluator를 사용합니다. |
 | `--run-id` | `09-1 B4 Optimization S1forced/outputs/{run_id}` 결과 폴더 이름입니다. |
-| `--n` | 방법별 seed 개수입니다. |
+| `--n` | 방법별 seed 개수입니다. 기본값은 1입니다. |
 | `--m` | seed 하나당 평가 round 수입니다. |
+| `--theta-per-round`, `--solutions-per-round`, `--batch-size` | round당 theta 후보 수입니다. 총 평가는 방법/seed별 `m * theta_per_round`개입니다. |
 | `--bo-initial` | BO 초기 random observation 수입니다. |
-| `--workers` | SUMO 평가 병렬 worker 수입니다. |
+| `--workers` | round 내부 theta 평가 병렬 수입니다. 기본 `--theta-per-round 6 --workers 6`이면 한 round의 theta 6개가 동시에 실행됩니다. |
 | `--ei-candidate-count` | BO Expected Improvement 후보 sampling 개수입니다. |
+| `--resume`, `--bo-resume` | 중단된 같은 `run-id`를 `checkpoints/*.csv`와 기존 `all_evaluations.csv`에서 이어 실행합니다. |
 
 ## 6. Real Smoke 실행
 
@@ -152,6 +154,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id s1forced_real_smoke \
   --n 1 \
   --m 4 \
+  --theta-per-round 1 \
   --bo-initial 2 \
   --workers 6 \
   --ei-candidate-count 50 \
@@ -176,9 +179,10 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id s1forced_fixed_budget_n15_m50 \
-  --n 15 \
+  --run-id s1forced_fixed_budget_n1_m50_t6 \
+  --n 1 \
   --m 50 \
+  --theta-per-round 6 \
   --bo-initial 10 \
   --workers 6 \
   --ei-candidate-count 600 \
@@ -245,7 +249,7 @@ python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
 ```bash
 python "10 Final Destination Validation/final_destination_validation.py" \
   --phase all \
-  --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n15_m50/all_evaluations.csv" \
+  --theta-all-evaluations "09-1 B4 Optimization S1forced/outputs/s1forced_fixed_budget_n1_m50_t6/all_evaluations.csv" \
   --workers 6 \
   --run-id final_destination_validation_001
 ```

@@ -6,6 +6,8 @@
   "parameter_id": "no_control",
   "active_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
   "green18_source_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "canonical_signal_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "canonical_profile": "B04_B4_S1_FORCED_OPTIMIZATION",
   "active_net_sha256": "f9b5bee540b7cb39d2f08359c43e9d300ff93693913cf08fc159f3baf23e9371",
   "firetruck_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
   "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
@@ -87,7 +89,7 @@
       }
     ]
   },
-  "policy_ko": "Compact V9 green18 맵에 CSV/B4 route 경계 신호 후보를 메인라인 green-wave 중심으로 보강하고, 서울역 맵 경계 terminal egress 병목을 완화해 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
+  "policy_ko": "B04/B4 active baseline은 S1-forced global reality 신호망을 canonical net으로 채택합니다. green18은 과거 생성 단계 입력으로만 남기고 runtime/검증 기본 active net으로 쓰지 않습니다.",
   "selected_candidate": "B04_ad_stage23_trigger",
   "selection_summary": {
     "candidate": "B04_ad_stage23_trigger",

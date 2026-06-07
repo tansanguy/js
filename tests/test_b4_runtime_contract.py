@@ -678,6 +678,7 @@ class B4RuntimeContractTest(unittest.TestCase):
             stage1=self.stage1,
             params=self.runtime.B4MvpParams(delta_T_thr=1.0, t_lead=0.0, tau=0.75),
             run_id="contract",
+            stage3_measurement_scale=1.0,
         )
         controller.ev_distance_to_movement = lambda _ev_state, _movement: 999.0
         original = self.runtime.movement_runtime_metrics
@@ -763,6 +764,69 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(float(evaluations[1]["Lq"]), raw_queue)
         self.assertAlmostEqual(float(evaluations[1]["scaled_Lq_case_b_m"]), raw_queue * 1.30)
         self.assertAlmostEqual(float(evaluations[1]["tau_times_L"]), upstream.L_m * 0.75)
+
+    def test_stage3_case_b_uses_route_span_queue_not_local_queue(self):
+        upstream, downstream = self.stage3_movements()[:2]
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(delta_T_thr=1.0, t_lead=0.0, tau=0.75),
+            run_id="contract",
+            stage3_measurement_scale=1.0,
+        )
+        controller.ev_distance_to_movement = lambda _ev_state, _movement: 999.0
+        original = self.runtime.movement_runtime_metrics
+
+        def fake_metrics(_traci, candidate_movement, _thresholds):
+            metric = self.metric(
+                candidate_movement,
+                candidate=False,
+                queue_m_proxy=0.0,
+                local_fill_100m=0.0,
+                approach_speed_kmh=60.0,
+                trigger_reason="not_triggered",
+            )
+            if candidate_movement == upstream:
+                metric = replace(metric, case_b_queue_m_proxy=upstream.L_m * 0.80)
+            return metric
+
+        self.runtime.movement_runtime_metrics = fake_metrics
+        try:
+            ev_state = self.runtime.EVState(
+                present=True,
+                departed=True,
+                arrived=False,
+                vehicle_id=self.stage1.ev_id,
+                edge_id=upstream.from_edge,
+                lane_id=f"{upstream.from_edge}_0",
+                route_index=upstream.route_order_index,
+                speed_mps=0.0,
+                speed_kmh=0.0,
+            )
+            events = controller.handle_stage3(self.stage1.ev_depart_sec + 1.0, ev_state)
+        finally:
+            self.runtime.movement_runtime_metrics = original
+        evaluations = [event for event in events if event["action_type"] == "trigger_evaluation"]
+        self.assertGreaterEqual(len(evaluations), 2)
+        self.assertEqual(evaluations[0]["movement_id"], downstream.movement_id)
+        self.assertEqual(evaluations[0]["case_type"], "caseB")
+        self.assertEqual(float(evaluations[1]["Lq"]), 0.0)
+        self.assertAlmostEqual(float(evaluations[1]["scaled_Lq_case_b_m"]), upstream.L_m * 0.80)
+
+    def test_route_span_queue_sums_edge_queue_for_case_b_measurement(self):
+        traci = FakeTraci()
+        traci.lane.set_lane("edge_a_0", ["a1", "a2"], speed_mps=0.0, occupancy=0.0, length=100.0)
+        traci.lane.set_lane("edge_b_0", ["b1"], speed_mps=0.0, occupancy=0.0, length=80.0)
+        snapshots = self.runtime.sample_lane_snapshots(traci, ("edge_a_0", "edge_b_0"), 100.0)
+        queue_m, observed_lanes, missing_edges = self.runtime.route_span_queue_proxy_from_snapshots(
+            snapshots,
+            ("edge_a", "edge_b"),
+            200.0,
+        )
+        self.assertAlmostEqual(queue_m, 22.5)
+        self.assertEqual(observed_lanes, 2)
+        self.assertEqual(missing_edges, 0)
 
     def test_case_b_candidate_order_puts_bottleneck_before_upstream_when_runtime_tau_trips(self):
         upstream, bottleneck = self.stage3_movements()[:2]
@@ -865,6 +929,37 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(case_b.case_b_segment_id, "S_TEST")
         self.assertAlmostEqual(float(case_b.case_b_segment_fill), 0.80)
 
+    def test_stage3_plans_do_not_use_fixed_case_b_candidate_list(self):
+        upstream, bottleneck = self.stage3_movements()[:2]
+        candidate = self.runtime.B4CaseBCandidate(
+            segment_id="S_TEST",
+            bottleneck_movement_id=bottleneck.movement_id,
+            upstream_movement_id=upstream.movement_id,
+            L_b0_m=100.0,
+            lane_drop_delta=1,
+            q_avg_B0=1.0,
+            q_max_B0=2.0,
+            tQ_hist_B0=4.0,
+            lambda_B0=100.0,
+            fill_B0=0.10,
+            speed_B0=30.0,
+            mapping_status="mapped_route_span_proxy",
+            segment_lanes=("lane_a",),
+            case_b_runtime_enabled=True,
+        )
+        controller = self.runtime.B4RuntimeController(
+            traci=FakeTraci(),
+            stage1=replace(self.stage1, case_b_candidates=(candidate,)),
+            params=self.runtime.B4ThetaParams(tau=0.75),
+            run_id="contract",
+        )
+        upstream_metric = replace(self.metric(upstream, queue_m_proxy=0.0), case_b_queue_m_proxy=0.0)
+        bottleneck_metric = replace(self.metric(bottleneck, queue_m_proxy=0.0), case_b_queue_m_proxy=0.0)
+        metrics_by_id = {upstream.movement_id: upstream_metric, bottleneck.movement_id: bottleneck_metric}
+        plans = controller.stage3_case_plans([upstream_metric, bottleneck_metric], metrics_by_id)
+        self.assertTrue(plans)
+        self.assertNotIn("caseB", [plan.case_type for plan in plans])
+
     def test_case_b_tau_uses_runtime_queue_ratio_against_link_length(self):
         upstream, bottleneck = self.stage3_movements()[:2]
         candidate = self.runtime.B4CaseBCandidate(
@@ -891,6 +986,7 @@ class B4RuntimeContractTest(unittest.TestCase):
             stage1=stage1,
             params=self.runtime.B4ThetaParams(tau=0.80),
             run_id="contract",
+            stage3_measurement_scale=1.0,
         )
         below = replace(
             self.metric(bottleneck, queue_m_proxy=79.0),
@@ -1641,7 +1737,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(config.hard_max_sim_time, 1800.0)
         self.assertEqual(config.ev_stuck_duration_sec, 120.0)
         self.assertEqual(config.stage2_measurement_scale, 1.0)
-        self.assertEqual(config.stage3_measurement_scale, 1.0)
+        self.assertEqual(config.stage3_measurement_scale, 1.5)
         self.assertFalse(config.stage2_synthetic_demand)
         for field in [
             "phase",

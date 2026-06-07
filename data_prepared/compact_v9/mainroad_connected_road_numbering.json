@@ -1,0 +1,1634 @@
+{
+  "schema": "compact_v9_mainroad_connected_road_numbering.v1",
+  "generated_at": "2026-06-07T14:53:59+00:00",
+  "policy_ko": "소방서쪽에서 서울역 방향으로, 메인도로 edge가 실제로 붙어 있는 접속 노드의 비-mainroad 외부 도로를 1번부터 번호화한다. 북측/남측 연결 여부는 구분하지 않는다.",
+  "source": {
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "mainroad_edge_audit": "09 Compact Corridor Baseline/tdata_signal/mainroad_lane_recall_audit.csv",
+    "segment_reference_csv": "toegye_ro_mainstream_segments_english.csv",
+    "segment_fill_csv": "data_prepared/compact_v9/b4_stage1_s1forced/b4_approach_storage_link_plan.csv"
+  },
+  "numbering": {
+    "start_side": "jungbu_fire_station",
+    "order_key": "distance_from_fire_station_m along COMPACT_V9_FIRETRUCK_TO_SEOUL_STATION_FRONT",
+    "route_edge_count": 61,
+    "route_length_m": 3014.72,
+    "group_count": 42,
+    "edge_row_count": 102,
+    "csv_file": "data_prepared/compact_v9/mainroad_connected_road_numbering.csv"
+  },
+  "connected_road_groups": [
+    {
+      "distance_from_fire_station_m": 0.0,
+      "junction_id": "3785139882",
+      "nearest_route_edge_id": "420331801#1",
+      "nearest_segment_id": "S1",
+      "mainroad_edge_ids_at_junction": [
+        "420331801#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381802847#4",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 16.56,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3785139882",
+          "to_node": "3849700345",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-381802847#5",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 23.46,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_436833098_8496719929",
+          "to_node": "3785139882",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "-420331801#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 82.24,
+          "lane_count": 1,
+          "speed_kmh": 30.0,
+          "from_node": "3785139882",
+          "to_node": "3785139881",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "-420331801#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 90.33,
+          "lane_count": 2,
+          "speed_kmh": 30.0,
+          "from_node": "cluster_3849737606_8401234720_8496719924",
+          "to_node": "3785139882",
+          "side_edge_sub_index": 4
+        },
+        {
+          "edge_id": "381802847#4",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 16.56,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3849700345",
+          "to_node": "3785139882",
+          "side_edge_sub_index": 5
+        },
+        {
+          "edge_id": "381802847#5",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 22.99,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3785139882",
+          "to_node": "cluster_436833098_8496719929",
+          "side_edge_sub_index": 6
+        },
+        {
+          "edge_id": "420331801#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 82.24,
+          "lane_count": 1,
+          "speed_kmh": 30.0,
+          "from_node": "3785139881",
+          "to_node": "3785139882",
+          "side_edge_sub_index": 7
+        }
+      ],
+      "connected_road_no": 1
+    },
+    {
+      "distance_from_fire_station_m": 89.43,
+      "junction_id": "cluster_3849737606_8401234720_8496719924",
+      "nearest_route_edge_id": "420331801#1",
+      "nearest_segment_id": "S1",
+      "mainroad_edge_ids_at_junction": [
+        "-174870621#8",
+        "-174870621#9",
+        "174870621#8",
+        "174870621#9",
+        "420331801#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381807698#2",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 84.29,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3849737606_8401234720_8496719924",
+          "to_node": "cluster_8401224588_8401234723",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-420331801#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 90.33,
+          "lane_count": 2,
+          "speed_kmh": 30.0,
+          "from_node": "cluster_3849737606_8401234720_8496719924",
+          "to_node": "3785139882",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "381807698#2",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 83.76,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_8401224588_8401234723",
+          "to_node": "cluster_3849737606_8401234720_8496719924",
+          "side_edge_sub_index": 3
+        }
+      ],
+      "connected_road_no": 2
+    },
+    {
+      "distance_from_fire_station_m": 146.56,
+      "junction_id": "cluster_3849700778_8496719967",
+      "nearest_route_edge_id": "-174870621#8",
+      "nearest_segment_id": "S1",
+      "mainroad_edge_ids_at_junction": [
+        "-174870621#7",
+        "-174870621#8",
+        "174870621#7",
+        "174870621#8"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381802881#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 53.37,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3849700778_8496719967",
+          "to_node": "3849700349",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381802881#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 54.97,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3849700349",
+          "to_node": "cluster_3849700778_8496719967",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 3
+    },
+    {
+      "distance_from_fire_station_m": 183.16,
+      "junction_id": "cluster_3849737603_8401224596",
+      "nearest_route_edge_id": "-174870621#6",
+      "nearest_segment_id": "S1",
+      "mainroad_edge_ids_at_junction": [
+        "-174870621#5",
+        "-174870621#6",
+        "174870621#5",
+        "174870621#6"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "375125205#5",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 60.72,
+          "lane_count": 1,
+          "speed_kmh": 30.0,
+          "from_node": "3849737617",
+          "to_node": "cluster_3849737603_8401224596",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 4
+    },
+    {
+      "distance_from_fire_station_m": 229.74,
+      "junction_id": "cluster_436864145_7308485596_8401224597_8496719965",
+      "nearest_route_edge_id": "-174870621#4",
+      "nearest_segment_id": "S1",
+      "mainroad_edge_ids_at_junction": [
+        "-174870621#2",
+        "-174870621#4",
+        "174870621#2",
+        "174870621#4"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-183272625#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 11.35,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_1326096615_3849700763",
+          "to_node": "cluster_436864145_7308485596_8401224597_8496719965",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-782616914#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 18.85,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7308485597",
+          "to_node": "cluster_436864145_7308485596_8401224597_8496719965",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "183272625#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 10.02,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_436864145_7308485596_8401224597_8496719965",
+          "to_node": "cluster_1326096615_3849700763",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "782616914#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 18.85,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_436864145_7308485596_8401224597_8496719965",
+          "to_node": "7308485597",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 5
+    },
+    {
+      "distance_from_fire_station_m": 294.49,
+      "junction_id": "cluster_436864147_8401224600_8401234719",
+      "nearest_route_edge_id": "-174870621#2",
+      "nearest_segment_id": "S2",
+      "mainroad_edge_ids_at_junction": [
+        "-174870621#0",
+        "-174870621#2",
+        "174870621#0",
+        "174870621#2"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "381807720#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 99.85,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_436864147_8401224600_8401234719",
+          "to_node": "8454050955",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 6
+    },
+    {
+      "distance_from_fire_station_m": 446.57,
+      "junction_id": "cluster_4202586292_436877432_436877433",
+      "nearest_route_edge_id": "180368918#0",
+      "nearest_segment_id": "S3",
+      "mainroad_edge_ids_at_junction": [
+        "-180368918#0",
+        "-180368918#3",
+        "180368918#0",
+        "180368918#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381452153",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 57.78,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_1945254567_3846534052_436864153_7293684328_#1more",
+          "to_node": "cluster_4202586292_436877432_436877433",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-420319845",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 126.24,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_4202586296_7491131323",
+          "to_node": "cluster_4202586292_436877432_436877433",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "183272604",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 13.14,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_4202586292_436877432_436877433",
+          "to_node": "cluster_436827161_8496719958",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "381452153",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 58.22,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_4202586292_436877432_436877433",
+          "to_node": "cluster_1945254567_3846534052_436864153_7293684328_#1more",
+          "side_edge_sub_index": 4
+        },
+        {
+          "edge_id": "420319845",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 124.12,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_4202586292_436877432_436877433",
+          "to_node": "cluster_4202586296_7491131323",
+          "side_edge_sub_index": 5
+        }
+      ],
+      "connected_road_no": 7
+    },
+    {
+      "distance_from_fire_station_m": 471.93,
+      "junction_id": "cluster_3846534041_436877431",
+      "nearest_route_edge_id": "180368918#3",
+      "nearest_segment_id": "S5",
+      "mainroad_edge_ids_at_junction": [
+        "-180368918#3",
+        "-180368918#5",
+        "180368918#3",
+        "180368918#5"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381452176#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 46.37,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3846534041_436877431",
+          "to_node": "3846534029",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381452176#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 48.4,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846534029",
+          "to_node": "cluster_3846534041_436877431",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 8
+    },
+    {
+      "distance_from_fire_station_m": 491.35,
+      "junction_id": "3846534039",
+      "nearest_route_edge_id": "180368918#5",
+      "nearest_segment_id": "S5",
+      "mainroad_edge_ids_at_junction": [
+        "-180368918#5",
+        "-180368918#6",
+        "180368918#5",
+        "180368918#6"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381452158",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 56.17,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846534029",
+          "to_node": "3846534039",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381452158",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 63.14,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846534039",
+          "to_node": "3846534029",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 9
+    },
+    {
+      "distance_from_fire_station_m": 507.68,
+      "junction_id": "3365325935",
+      "nearest_route_edge_id": "180368918#6",
+      "nearest_segment_id": "S5",
+      "mainroad_edge_ids_at_junction": [
+        "-180368918#6",
+        "-180368918#7",
+        "180368918#6",
+        "180368918#7"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-329612996",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 118.98,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "436864154",
+          "to_node": "3365325935",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-381452169",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 62.21,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "4202586291",
+          "to_node": "3365325935",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "329612996",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 116.92,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3365325935",
+          "to_node": "436864154",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "381452169",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 62.66,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3365325935",
+          "to_node": "4202586291",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 10
+    },
+    {
+      "distance_from_fire_station_m": 573.27,
+      "junction_id": "414685825",
+      "nearest_route_edge_id": "180368918#8",
+      "nearest_segment_id": "S5",
+      "mainroad_edge_ids_at_junction": [
+        "-180368918#8",
+        "-218773868#0",
+        "180368918#8",
+        "218773868#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-218923171#5",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 14.24,
+          "lane_count": 4,
+          "speed_kmh": 50.0,
+          "from_node": "414685825",
+          "to_node": "436883285",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-913009312#10",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 6.55,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "414685825",
+          "to_node": "436870731",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "218923171#5",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 14.24,
+          "lane_count": 4,
+          "speed_kmh": 50.0,
+          "from_node": "436883285",
+          "to_node": "414685825",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "913009312#10",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 6.55,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "436870731",
+          "to_node": "414685825",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 11
+    },
+    {
+      "distance_from_fire_station_m": 590.69,
+      "junction_id": "cluster_436877427_8577223944",
+      "nearest_route_edge_id": "218773868#0",
+      "nearest_segment_id": "S5",
+      "mainroad_edge_ids_at_junction": [
+        "-218773868#0",
+        "-218773868#2",
+        "218773868#0",
+        "218773868#2"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "183272587",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 33.58,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "1936511488",
+          "to_node": "cluster_436877427_8577223944",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381447835#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 25.97,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_436877427_8577223944",
+          "to_node": "11118688131",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 12
+    },
+    {
+      "distance_from_fire_station_m": 637.8,
+      "junction_id": "436877426",
+      "nearest_route_edge_id": "218773868#2",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-218773868#2",
+        "-218773868#3",
+        "218773868#2",
+        "218773868#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381447826",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 43.6,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "436877426",
+          "to_node": "3846495845",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-381447833#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 43.75,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846495816",
+          "to_node": "436877426",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "381447826",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 43.16,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846495845",
+          "to_node": "436877426",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "381447833#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 44.29,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "436877426",
+          "to_node": "3846495816",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 13
+    },
+    {
+      "distance_from_fire_station_m": 659.28,
+      "junction_id": "3846495828",
+      "nearest_route_edge_id": "218773868#3",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-218773868#3",
+        "-218773868#4",
+        "218773868#3",
+        "218773868#4"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381447832",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 75.77,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3337470956",
+          "to_node": "3846495828",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-420331827",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 41.02,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846495828",
+          "to_node": "3846495816",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "381447832",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 74.34,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846495828",
+          "to_node": "3337470956",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "420331827",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 38.61,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846495816",
+          "to_node": "3846495828",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 14
+    },
+    {
+      "distance_from_fire_station_m": 719.48,
+      "junction_id": "3846495825",
+      "nearest_route_edge_id": "218773868#4",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-218773868#4",
+        "-218773868#5",
+        "218773868#4",
+        "218773868#5"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381447817#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 105.18,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846495825",
+          "to_node": "1327210822",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-381447831#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 19.46,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846495825",
+          "to_node": "3846495832",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "381447817#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 105.35,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "1327210822",
+          "to_node": "3846495825",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "381447831#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 12.61,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846495832",
+          "to_node": "3846495825",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 15
+    },
+    {
+      "distance_from_fire_station_m": 767.47,
+      "junction_id": "3547031098",
+      "nearest_route_edge_id": "218773868#5",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-218773868#5",
+        "-218773868#6",
+        "218773868#5",
+        "218773868#6"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-348626444#3",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 24.87,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3547031098",
+          "to_node": "3846495835",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "348626444#3",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 24.87,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846495835",
+          "to_node": "3547031098",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 16
+    },
+    {
+      "distance_from_fire_station_m": 779.49,
+      "junction_id": "3846495820",
+      "nearest_route_edge_id": "218773868#6",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-1455512070",
+        "-218773868#6",
+        "1455512070",
+        "218773868#6"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "381447828",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 88.56,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846495820",
+          "to_node": "3846495797",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 17
+    },
+    {
+      "distance_from_fire_station_m": 849.33,
+      "junction_id": "cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+      "nearest_route_edge_id": "-1455512070",
+      "nearest_segment_id": "S6",
+      "mainroad_edge_ids_at_junction": [
+        "-1455512070",
+        "1455512066",
+        "1455512070",
+        "428260110"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-1455512067",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 10.02,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+          "to_node": "4273893719",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-428260116#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 63.89,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3846542636",
+          "to_node": "cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "1455512067",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 10.02,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "4273893719",
+          "to_node": "cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "1455512071",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 64.43,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_13348213189_13348213190_13348213191_4273893706_#1more",
+          "to_node": "3846542636",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 18
+    },
+    {
+      "distance_from_fire_station_m": 884.05,
+      "junction_id": "10864285554",
+      "nearest_route_edge_id": "428260110",
+      "nearest_segment_id": "S7",
+      "mainroad_edge_ids_at_junction": [
+        "428260110",
+        "785130600#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381453328#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 22.05,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846542613",
+          "to_node": "10864285554",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381453328#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 21.92,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "10864285554",
+          "to_node": "3846542613",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 19
+    },
+    {
+      "distance_from_fire_station_m": 923.15,
+      "junction_id": "7335400044",
+      "nearest_route_edge_id": "785130600#0",
+      "nearest_segment_id": "S7",
+      "mainroad_edge_ids_at_junction": [
+        "785130600#0",
+        "785130600#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381453324",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 22.37,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7335400044",
+          "to_node": "cluster_3846542609_3846542610",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381453324",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 22.87,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3846542609_3846542610",
+          "to_node": "7335400044",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 20
+    },
+    {
+      "distance_from_fire_station_m": 1061.75,
+      "junction_id": "5863541379",
+      "nearest_route_edge_id": "785130600#2",
+      "nearest_segment_id": "S7",
+      "mainroad_edge_ids_at_junction": [
+        "785130600#2",
+        "785130600#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-420348556#3",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 56.07,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "5863541379",
+          "to_node": "3846542596",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "420348556#3",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 56.74,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846542596",
+          "to_node": "5863541379",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 21
+    },
+    {
+      "distance_from_fire_station_m": 1115.88,
+      "junction_id": "cluster_436844951_7335400040",
+      "nearest_route_edge_id": "785130600#3",
+      "nearest_segment_id": "S7",
+      "mainroad_edge_ids_at_junction": [
+        "1455497343#0",
+        "1455497345",
+        "785130598#8",
+        "785130600#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "1501824264",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 61.28,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_13748939987_3269822966",
+          "to_node": "cluster_436844951_7335400040",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 22
+    },
+    {
+      "distance_from_fire_station_m": 1198.44,
+      "junction_id": "3269944950",
+      "nearest_route_edge_id": "1455497345",
+      "nearest_segment_id": "S7",
+      "mainroad_edge_ids_at_junction": [
+        "1455497345",
+        "218773869#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "320473386",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 53.68,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3269944950",
+          "to_node": "3269944951",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 23
+    },
+    {
+      "distance_from_fire_station_m": 1228.19,
+      "junction_id": "cluster_3846576186_3846576188",
+      "nearest_route_edge_id": "218773869#1",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#1",
+        "218773869#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-1125773041",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 40.17,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846576206",
+          "to_node": "cluster_3846576186_3846576188",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-381456461",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 54.86,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3846576186_3846576188",
+          "to_node": "3846576227",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "320463283",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 39.34,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_3846576186_3846576188",
+          "to_node": "3846576206",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "381456461",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 54.12,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846576227",
+          "to_node": "cluster_3846576186_3846576188",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 24
+    },
+    {
+      "distance_from_fire_station_m": 1251.54,
+      "junction_id": "3269820249",
+      "nearest_route_edge_id": "218773869#3",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#3",
+        "218773869#4"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "320463177#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 35.22,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "3269820249",
+          "to_node": "3846576206",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 25
+    },
+    {
+      "distance_from_fire_station_m": 1290.91,
+      "junction_id": "3269822954",
+      "nearest_route_edge_id": "218773869#4",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#4",
+        "218773869#5"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "320463245#6",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 25.82,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846576196",
+          "to_node": "3269822954",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 26
+    },
+    {
+      "distance_from_fire_station_m": 1324.01,
+      "junction_id": "cluster_10294539232_2784743529",
+      "nearest_route_edge_id": "218773869#5",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#5",
+        "218773869#6"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381456463#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 41.67,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_10294539232_2784743529",
+          "to_node": "3846576202",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381456463#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 43.12,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846576202",
+          "to_node": "cluster_10294539232_2784743529",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 27
+    },
+    {
+      "distance_from_fire_station_m": 1406.26,
+      "junction_id": "cluster_10294539237_3846576172",
+      "nearest_route_edge_id": "218773869#6",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#6",
+        "218773869#7"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-381456462#2",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 47.44,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_10294539237_3846576172",
+          "to_node": "3846576189",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "381456462#2",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 48.19,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3846576189",
+          "to_node": "cluster_10294539237_3846576172",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 28
+    },
+    {
+      "distance_from_fire_station_m": 1480.52,
+      "junction_id": "cluster_11346754525_11346754526_2784736947_414685366_#2more",
+      "nearest_route_edge_id": "218773869#9",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "218773869#9",
+        "219696193#1",
+        "273638834#1",
+        "781985792#3",
+        "785130598#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-772527390#2",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 12.78,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_11346754525_11346754526_2784736947_414685366_#2more",
+          "to_node": "cluster_11833012688_2784736946",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "219696192#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 46.87,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_11346754525_11346754526_2784736947_414685366_#2more",
+          "to_node": "7168615338",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "772527390#2",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 12.78,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_11833012688_2784736946",
+          "to_node": "cluster_11346754525_11346754526_2784736947_414685366_#2more",
+          "side_edge_sub_index": 3
+        }
+      ],
+      "connected_road_no": 29
+    },
+    {
+      "distance_from_fire_station_m": 1539.57,
+      "junction_id": "2374697789",
+      "nearest_route_edge_id": "219696193#1",
+      "nearest_segment_id": "S9",
+      "mainroad_edge_ids_at_junction": [
+        "219696193#1",
+        "219696193#2"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-228796091#4",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 22.93,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "2374697789",
+          "to_node": "7168615340",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "228796091#4",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 23.22,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7168615340",
+          "to_node": "2374697789",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 30
+    },
+    {
+      "distance_from_fire_station_m": 1580.56,
+      "junction_id": "10864285556",
+      "nearest_route_edge_id": "219696193#2",
+      "nearest_segment_id": "S11",
+      "mainroad_edge_ids_at_junction": [
+        "219696193#2",
+        "781985793#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-228795477#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 59.9,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "8120895303",
+          "to_node": "10864285556",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "228795477#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 59.22,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "10864285556",
+          "to_node": "8120895303",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 31
+    },
+    {
+      "distance_from_fire_station_m": 1978.32,
+      "junction_id": "cluster_2087933382_3285441963",
+      "nearest_route_edge_id": "347237859#0",
+      "nearest_segment_id": "S13",
+      "mainroad_edge_ids_at_junction": [
+        "347237859#0",
+        "347237859#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-198691063#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 71.78,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_2087933382_3285441963",
+          "to_node": "2087933468",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "198691063#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 71.78,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "2087933468",
+          "to_node": "cluster_2087933382_3285441963",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 32
+    },
+    {
+      "distance_from_fire_station_m": 1999.88,
+      "junction_id": "cluster_2753218990_7495868732",
+      "nearest_route_edge_id": "347237859#1",
+      "nearest_segment_id": "S13",
+      "mainroad_edge_ids_at_junction": [
+        "347237859#1",
+        "347237859#2",
+        "781985786#6",
+        "781985786#7"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-270279684#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 43.12,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_2753218990_7495868732",
+          "to_node": "5484607159",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "270279684#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 43.12,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "5484607159",
+          "to_node": "cluster_2753218990_7495868732",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 33
+    },
+    {
+      "distance_from_fire_station_m": 2016.75,
+      "junction_id": "1908868479",
+      "nearest_route_edge_id": "347237859#2",
+      "nearest_segment_id": "S14",
+      "mainroad_edge_ids_at_junction": [
+        "347237859#2",
+        "347237859#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "198691061#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 65.43,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "1908868479",
+          "to_node": "2087933469",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 34
+    },
+    {
+      "distance_from_fire_station_m": 2090.9,
+      "junction_id": "1327214749",
+      "nearest_route_edge_id": "347237859#3",
+      "nearest_segment_id": "S14",
+      "mainroad_edge_ids_at_junction": [
+        "347237859#3",
+        "347237859#4"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "198691092#5",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 61.21,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "2087933392",
+          "to_node": "1327214749",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 35
+    },
+    {
+      "distance_from_fire_station_m": 2216.25,
+      "junction_id": "2087933412",
+      "nearest_route_edge_id": "347237859#5",
+      "nearest_segment_id": "S15",
+      "mainroad_edge_ids_at_junction": [
+        "347237859#5",
+        "781985787#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "198691069#7",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 55.01,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "2087933463",
+          "to_node": "2087933412",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 36
+    },
+    {
+      "distance_from_fire_station_m": 2266.75,
+      "junction_id": "cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+      "nearest_route_edge_id": "781985787#0",
+      "nearest_segment_id": "S15",
+      "mainroad_edge_ids_at_junction": [
+        "218915135#3",
+        "781985787#0",
+        "781985789#1",
+        "913372757"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "1467498054",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 41.55,
+          "lane_count": 4,
+          "speed_kmh": 50.0,
+          "from_node": "8485147596",
+          "to_node": "cluster_11203052955_11203052956_11203052960_11203052961_#11more",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 37
+    },
+    {
+      "distance_from_fire_station_m": 2379.86,
+      "junction_id": "8484958062",
+      "nearest_route_edge_id": "218915135#3",
+      "nearest_segment_id": "S16",
+      "mainroad_edge_ids_at_junction": [
+        "218915135#3",
+        "218915135#4"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "913405361",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 51.51,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "8484958062",
+          "to_node": "3053674659",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 38
+    },
+    {
+      "distance_from_fire_station_m": 2414.6,
+      "junction_id": "cluster_10864285557_3217915254_7300992880_9357585533",
+      "nearest_route_edge_id": "218915135#4",
+      "nearest_segment_id": "S17",
+      "mainroad_edge_ids_at_junction": [
+        "218915135#4",
+        "781983103#2",
+        "781983104#0",
+        "921117704#0"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-243542153#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 31.48,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7297194413",
+          "to_node": "cluster_10864285557_3217915254_7300992880_9357585533",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-315658899#0",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 143.67,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "11405764676",
+          "to_node": "cluster_10864285557_3217915254_7300992880_9357585533",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "243542153#1",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 31.17,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_10864285557_3217915254_7300992880_9357585533",
+          "to_node": "7297194413",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "315658899#0",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 144.74,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_10864285557_3217915254_7300992880_9357585533",
+          "to_node": "11405764676",
+          "side_edge_sub_index": 4
+        },
+        {
+          "edge_id": "913406478",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 55.17,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "3053674659",
+          "to_node": "cluster_10864285557_3217915254_7300992880_9357585533",
+          "side_edge_sub_index": 5
+        }
+      ],
+      "connected_road_no": 39
+    },
+    {
+      "distance_from_fire_station_m": 2506.62,
+      "junction_id": "4519241101",
+      "nearest_route_edge_id": "781983104#0",
+      "nearest_segment_id": "S17",
+      "mainroad_edge_ids_at_junction": [
+        "781983104#0",
+        "781983104#1"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-382947009",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 139.17,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "921242929",
+          "to_node": "4519241101",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "382947009",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 135.54,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "4519241101",
+          "to_node": "921242929",
+          "side_edge_sub_index": 2
+        }
+      ],
+      "connected_road_no": 40
+    },
+    {
+      "distance_from_fire_station_m": 2772.28,
+      "junction_id": "7669821053",
+      "nearest_route_edge_id": "333557072#2",
+      "nearest_segment_id": "S19",
+      "mainroad_edge_ids_at_junction": [
+        "333557072#2",
+        "333557072#3"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "821457682#1",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 33.52,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7669821052",
+          "to_node": "7669821053",
+          "side_edge_sub_index": 1
+        }
+      ],
+      "connected_road_no": 41
+    },
+    {
+      "distance_from_fire_station_m": 2835.86,
+      "junction_id": "cluster_6111866303_7195225084",
+      "nearest_route_edge_id": "333557072#3",
+      "nearest_segment_id": "S19",
+      "mainroad_edge_ids_at_junction": [
+        "333557072#3",
+        "333557072#5"
+      ],
+      "side_edges": [
+        {
+          "edge_id": "-651818430#3",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 109.19,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_6111866303_7195225084",
+          "to_node": "7195225069",
+          "side_edge_sub_index": 1
+        },
+        {
+          "edge_id": "-770860548#4",
+          "relation_to_mainroad_node": "leaves_mainroad_node",
+          "length_m": 33.96,
+          "lane_count": 2,
+          "speed_kmh": 50.0,
+          "from_node": "cluster_6111866303_7195225084",
+          "to_node": "7195269885",
+          "side_edge_sub_index": 2
+        },
+        {
+          "edge_id": "651818430#3",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 109.6,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7195225069",
+          "to_node": "cluster_6111866303_7195225084",
+          "side_edge_sub_index": 3
+        },
+        {
+          "edge_id": "770860548#4",
+          "relation_to_mainroad_node": "enters_mainroad_node",
+          "length_m": 33.92,
+          "lane_count": 1,
+          "speed_kmh": 50.0,
+          "from_node": "7195269885",
+          "to_node": "cluster_6111866303_7195225084",
+          "side_edge_sub_index": 4
+        }
+      ],
+      "connected_road_no": 42
+    }
+  ]
+}

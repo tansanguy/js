@@ -348,7 +348,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--edge-data", type=Path, default=None)
     parser.add_argument("--lane-data", type=Path, default=None)
     parser.add_argument("--tripinfo", type=Path, default=None)
-    parser.add_argument("--primary-candidate", default="B04_active_target15")
+    parser.add_argument("--primary-candidate", default="B04_ad_stage23_trigger")
     parser.add_argument("--source-run-id", default="")
     args = parser.parse_args(argv)
     args.run_dir = args.run_dir.resolve()

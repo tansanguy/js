@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_stage1_summary.v1",
-  "generated_at": "2026-06-07T13:24:15.978801+00:00",
+  "generated_at": "2026-06-07T15:08:00.705083+00:00",
   "algorithm": "B4",
   "status": "WARN",
   "primary_candidate": "B04_ad_stage23_trigger",

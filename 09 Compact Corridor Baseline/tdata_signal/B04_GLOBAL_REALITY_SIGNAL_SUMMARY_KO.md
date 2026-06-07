@@ -2,9 +2,9 @@
 
 ## 적용 범위
 
-- 대상 active B04 net: `/Users/junlee/Desktop/js/data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml`
-- 생성 net: `/Users/junlee/Desktop/js/09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml`
-- 기존 active net 백업: `/Users/junlee/Desktop/js/09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_green18.before_global_reality_mild.net.xml`
+- 대상 active B04/B4 net: `/Users/junlee/Desktop/js/09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml`
+- 생성 net: `/Users/junlee/Desktop/js/09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml`
+- 과거 green18 active 덮어쓰기 경로는 더 이상 runtime/검증 기본값으로 사용하지 않는다.
 
 현재 B04 net 안의 TLS 63개 전체에 현실형 신호 profile을 적용했다. 다만 이 결과는 "현장 신호 완전 재현"이 아니라, A008 위치 master와 T-Data snapshot에서 얻은 실측 잔여시간/상태를 활용한 plausible 전역 신호망이다.
 

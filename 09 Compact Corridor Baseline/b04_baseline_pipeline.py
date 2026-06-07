@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compact V9 B04 baseline demand and queue-recall workflow.
 
-B04 is the no-control reality baseline built on the Compact V9 green18 map.
+B04 is the no-control reality baseline built on the canonical S1-forced global-reality net.
 It is intentionally isolated from the earlier Expanded V7 and Signal BO assets.
 """
 
@@ -40,9 +40,9 @@ METRICS_ROOT = PROJECT_ROOT / "results/metrics/compact_v9_B04"
 HTML_ROOT = PROJECT_ROOT / "results/html"
 REFERENCE_CSV = PROJECT_ROOT / "toegye_ro_mainstream_segments_english.csv"
 GREEN18_NET = DATA_ROOT / "net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml"
-B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
-B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
 B04_GLOBAL_REALITY_S1FORCED_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+B04_NET = B04_GLOBAL_REALITY_S1FORCED_NET
+B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_MAPPING_CSV = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B04_MAPPING_FALLBACK_CSV = DATA_ROOT / "map/toegye_segment_edge_mapping.csv"
@@ -1973,11 +1973,10 @@ def promote_firetruck_route_priority_connections(net_file: Path) -> dict[str, An
 
 
 def adopt_green18() -> dict[str, Any]:
-    if not GREEN18_NET.is_file():
-        raise B04Error(f"missing_green18_net:{rel(GREEN18_NET)}")
-    B04_NET.parent.mkdir(parents=True, exist_ok=True)
+    if not B04_NET.is_file():
+        raise B04Error(f"missing_b04_canonical_net:{rel(B04_NET)}")
     previous_manifest = read_json(B04_MANIFEST) if B04_MANIFEST.is_file() else {}
-    csv_signal_summary = apply_csv_boundary_signals(GREEN18_NET, B04_NET)
+    csv_signal_summary = previous_manifest if previous_manifest.get("active_net") == rel(B04_NET) else {}
     firetruck_priority_summary = promote_firetruck_route_priority_connections(B04_NET)
     manifest = {
         "schema": "compact_v9_B04_b0_manifest.v1",
@@ -1986,12 +1985,19 @@ def adopt_green18() -> dict[str, Any]:
         "mode": "B0",
         "parameter_id": "no_control",
         "active_net": rel(B04_NET),
-        "green18_source_net": rel(GREEN18_NET),
+        "green18_source_net": rel(B04_NET),
+        "canonical_signal_net": rel(B04_NET),
+        "canonical_profile": "B04_B4_S1_FORCED_OPTIMIZATION",
         "active_net_sha256": sha256_file(B04_NET),
         "firetruck_route_xml": rel(B04_FIRETRUCK_ROUTE_XML),
         "reference_csv_abs": str(REFERENCE_CSV.resolve()),
         "emergency_depart_sec": EV_DEPART_SEC,
         "background_route": previous_manifest.get("background_route", ""),
+        "signal_pipeline_summary_json": previous_manifest.get("signal_pipeline_summary_json", "09 Compact Corridor Baseline/tdata_signal/summaries/b04_global_reality_signal_summary.json"),
+        "route_geometry_recall_audit_json": previous_manifest.get("route_geometry_recall_audit_json", "09 Compact Corridor Baseline/tdata_signal/route_geometry_recall_audit.json"),
+        "mainroad_lane_recall_audit_csv": previous_manifest.get("mainroad_lane_recall_audit_csv", "09 Compact Corridor Baseline/tdata_signal/mainroad_lane_recall_audit.csv"),
+        "route_internal_lane_alignment_audit_csv": previous_manifest.get("route_internal_lane_alignment_audit_csv", "09 Compact Corridor Baseline/tdata_signal/route_internal_lane_alignment_audit.csv"),
+        "route_tls_projection_audit_csv": previous_manifest.get("route_tls_projection_audit_csv", "09 Compact Corridor Baseline/tdata_signal/route_tls_projection_audit.csv"),
         "csv_signal_candidate_summary": rel(B04_CSV_SIGNAL_SUMMARY_JSON),
         "csv_signal_created_tls_count": csv_signal_summary.get("created_tls_count", 0),
         "csv_signal_existing_tls_count": csv_signal_summary.get("existing_tls_count", 0),
@@ -1999,7 +2005,7 @@ def adopt_green18() -> dict[str, Any]:
         "terminal_egress_tuning": csv_signal_summary.get("terminal_egress_tuning", {}),
         "terminal_endpoint_audit": csv_signal_summary.get("terminal_endpoint_audit", {}),
         "firetruck_route_priority": firetruck_priority_summary,
-        "policy_ko": "Compact V9 green18 맵에 CSV/B4 route 경계 신호 후보를 메인라인 green-wave 중심으로 보강하고, 서울역 맵 경계 terminal egress 병목을 완화해 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
+        "policy_ko": "B04/B4 active baseline은 S1-forced global reality 신호망을 canonical net으로 채택합니다. green18은 과거 생성 단계 입력으로만 남기고 runtime/검증 기본 active net으로 쓰지 않습니다.",
     }
     for key in ("selected_candidate", "selection_summary"):
         if key in previous_manifest:

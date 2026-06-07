@@ -18,7 +18,6 @@ import json
 import math
 import os
 import ssl
-import shutil
 import time
 import urllib.parse
 import urllib.request
@@ -36,10 +35,11 @@ RAW_DIR = TDATA_ROOT / "raw"
 NET_DIR = TDATA_ROOT / "nets"
 SUMMARY_DIR = TDATA_ROOT / "summaries"
 
-BASE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
+BASE_NET = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+LEGACY_GREEN18_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
 MAINROAD_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_intersections.csv"
 OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_tdata_plausible.net.xml"
-ACTIVE_NET_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_tdata_plausible.net.xml"
+ACTIVE_NET_BACKUP = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.before_tdata_plausible.net.xml"
 MAINROAD_PROFILES_CSV = TDATA_ROOT / "mainroad_signal_profiles.csv"
 INFERRED_PROFILES_CSV = TDATA_ROOT / "inferred_signal_profiles.csv"
 GLOBAL_PROFILES_CSV = TDATA_ROOT / "global_signal_profiles.csv"
@@ -766,11 +766,10 @@ def apply_profiles_to_net(
     tree.write(output_net, encoding="UTF-8", xml_declaration=True)
     active_overwritten = False
     if overwrite_active_net:
-        ACTIVE_NET_BACKUP.parent.mkdir(parents=True, exist_ok=True)
-        if input_net.resolve() == BASE_NET.resolve() and not ACTIVE_NET_BACKUP.is_file():
-            shutil.copy2(BASE_NET, ACTIVE_NET_BACKUP)
-        shutil.copy2(output_net, BASE_NET)
-        active_overwritten = True
+        raise TDataSignalError(
+            "overwrite_active_net_disabled: B04/B4 active net is fixed to the canonical S1-forced global-reality net; "
+            "write a separate --output-net and promote it through b04_global_reality_signal_pipeline.py."
+        )
 
     write_csv(MAINROAD_PROFILES_CSV, [profile.as_row() for profile in main_profiles], list(main_profiles[0].as_row().keys()))
     if inferred_profiles:
@@ -782,6 +781,7 @@ def apply_profiles_to_net(
         "input_net": rel(input_net),
         "output_net": rel(output_net),
         "active_net": rel(BASE_NET),
+        "legacy_green18_net": rel(LEGACY_GREEN18_NET),
         "active_net_overwritten": active_overwritten,
         "active_backup": rel(ACTIVE_NET_BACKUP) if ACTIVE_NET_BACKUP.is_file() else "",
         "tl_logic_count": len(logics),
@@ -870,7 +870,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval-sec", type=float, default=2.0)
     parser.add_argument("--input-net", type=Path, default=BASE_NET)
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
-    parser.add_argument("--overwrite-active-net", action="store_true", help="Copy generated net over the active B04 green18 net.")
+    parser.add_argument("--overwrite-active-net", action="store_true", help="Disabled guard: active B04/B4 uses the canonical S1-forced net.")
     parser.add_argument("--global-api-direct", action="store_true", help="Assign API-derived profiles to all non-mainroad TLS instead of inferred profiles.")
     parser.add_argument("--remaining-summary-only", action="store_true", help="Only summarize direction/movement remaining times; does not build a SUMO signal net.")
     args = parser.parse_args(argv)

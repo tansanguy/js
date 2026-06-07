@@ -721,7 +721,7 @@ def configure_stage1_source(stage1_module: Any, args: argparse.Namespace) -> dic
     missing = [key for key in required if not artifacts.get(key)]
     if missing:
         raise FinalDestinationValidationError(f"base_stage1_artifacts_missing:{','.join(missing)}")
-    primary_candidate = str(summary.get("primary_candidate") or "B04_active_target15")
+    primary_candidate = str(summary.get("primary_candidate") or "B04_ad_stage23_trigger")
     stage1_module.B04_NET = Path(args.net)
     stage1_module.B4_PRIMARY_CANDIDATE = primary_candidate
     stage1_module.B4_PRIMARY_RUN_SUMMARY = project_path(str(artifacts["primary_run_summary"]))

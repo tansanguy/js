@@ -13,8 +13,8 @@
 3. 나머지 TLS 47개도 역추정이 아니라 API 기반 프로파일을 직접 배정했다.
 4. 단, B04/B4 검증을 위해 메인도로 corridor는 route green 최소값과 후반 terminal 접근부 green을 보강했다.
 5. 생성 net은 `tdata_signal/nets/jungbu_compact_v9_B04_tdata_plausible.net.xml`이다.
-6. active B04 net `data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml`도 이 전역 API 신호망으로 덮어썼다.
-7. 덮어쓰기 전 active net은 `tdata_signal/nets/jungbu_compact_v9_B04_green18.before_tdata_plausible.net.xml`에 백업했다.
+6. 현재 active B04/B4 net은 `09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml`로 고정되어 있다.
+7. 과거 green18 덮어쓰기 경로는 생성 단계 이력으로만 남기고, 현재 생성 스크립트의 active 덮어쓰기 플래그는 비활성화했다.
 
 ## 산출물
 
@@ -26,7 +26,7 @@
 
 ## 구조 검증
 
-active net 기준:
+canonical active net 기준:
 
 - SUMO load: PASS
 - TLS integrity: PASS
@@ -54,4 +54,4 @@ B4는 전역 API 신호망에서도 EV를 통과시켰다. signal event는 620�
 
 ## 해석
 
-최종 전역 API 신호망은 모든 TLS에 API 기반 프로파일을 배정했고, active B04/B4 net에 반영됐다. B04 no-control 실패는 신호망이 깨진 증거라기보다, 전역 신호망에서 회현 접근부 병목이 강하게 드러난 결과다. B4는 같은 조건에서 EV를 통과시키므로, 이 신호망은 B4 제어의 필요성과 병목 대응을 보는 검증용 신호망으로 사용할 수 있다.
+최종 전역 API 신호망은 모든 TLS에 API 기반 프로파일을 배정했고, 현재 canonical active B04/B4 net은 S1-forced global-reality net으로 통일되어 있다. B04 no-control 실패는 신호망이 깨진 증거라기보다, 전역 신호망에서 회현 접근부 병목이 강하게 드러난 결과다. B4는 같은 조건에서 EV를 통과시키므로, 이 신호망은 B4 제어의 필요성과 병목 대응을 보는 검증용 신호망으로 사용할 수 있다.

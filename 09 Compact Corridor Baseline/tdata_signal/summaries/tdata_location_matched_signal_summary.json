@@ -56,11 +56,12 @@
   },
   "state_hit_count": 0,
   "state_missing_itst_ids": [],
-  "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
   "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml",
-  "active_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+  "active_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "legacy_green18_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "active_net_overwritten": false,
-  "active_backup": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_green18.before_location_matched.net.xml",
+  "active_backup": "",
   "applied_tls_count": 18,
   "applied_profiles_csv": "09 Compact Corridor Baseline/tdata_signal/location_matched_applied_signal_profiles.csv"
 }

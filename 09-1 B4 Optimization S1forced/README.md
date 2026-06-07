@@ -83,7 +83,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 ## 5. Fixed-Budget 본 실행
 
-기본 예산은 `n=15`, `m=50`입니다. 한 round는 theta 하나를 평가한 1회입니다.
+기본 예산은 `n=1`, `m=50`, `theta_per_round=6`, `workers=6`입니다. 한 round는 theta 6개를 병렬 평가합니다.
 
 BO는 초기 `bo_initial` round를 random observation으로 채운 뒤 GP surrogate로 후보별 개선 가능성을 계산합니다. 이후 최종 선택은 일반 EI가 아니라 subspace별 ESSI acquisition만 사용합니다.
 
@@ -96,9 +96,10 @@ ESSI는 Stage1 route movement를 route-order 기준 6개 spatial subspace로 나
 
 ```bash
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
-  --run-id s1forced_fixed_budget_n15_m50 \
-  --n 15 \
+  --run-id s1forced_fixed_budget_n1_m50_t6 \
+  --n 1 \
   --m 50 \
+  --theta-per-round 6 \
   --bo-initial 10 \
   --workers 6 \
   --essi-candidate-count 600 \
@@ -137,16 +138,18 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | 옵션 | 의미 |
 | --- | --- |
 | `--run-id` | `outputs/{run_id}` 결과 디렉터리 이름입니다. |
-| `--n` | 방법별 seed 개수입니다. |
+| `--n` | 방법별 seed 개수입니다. 기본값은 1입니다. |
 | `--m` | seed 하나당 평가 round 수입니다. |
+| `--theta-per-round`, `--solutions-per-round`, `--batch-size` | round당 theta 후보 수입니다. 총 평가는 방법/seed별 `m * theta_per_round`개입니다. |
 | `--bo-initial` | BO 초기 random observation 수입니다. |
-| `--workers` | SUMO 병렬 worker 수입니다. 코드 기본값은 1이고 실행 매뉴얼은 6을 명시합니다. |
+| `--workers` | round 내부 theta 평가 병렬 수입니다. 기본 `--theta-per-round 6 --workers 6`이면 한 round의 theta 6개가 동시에 실행됩니다. |
 | `--w-emv`, `--w1` | 응급차 delay 가중치입니다. 기본값은 10입니다. |
 | `--w-veh`, `--w2` | 일반차 delay 가중치입니다. 기본값은 1입니다. |
 | `--essi-candidate-count`, `--ei-candidate-count` | ESSI 후보 sampling 수입니다. 기존 호환을 위해 `--ei-candidate-count` alias도 유지합니다. |
 | `--methods` | 이번 실행에서 돌릴 방법만 지정합니다. `bo`, `random`, `cma` alias를 쓸 수 있습니다. |
 | `--bo-first` | 한 번의 실행에서 BO를 먼저 돌리고 나머지 선택 방법을 뒤에 실행합니다. |
 | `--append-existing` | 같은 `run-id`의 기존 `all_evaluations.csv`를 읽고 이번 method 결과를 merge합니다. 이미 존재하는 method를 다시 append하면 실패합니다. |
+| `--resume`, `--bo-resume` | 중단된 같은 `run-id`를 `checkpoints/*.csv`와 기존 `all_evaluations.csv`에서 이어 실행합니다. |
 | `--skip-pareto` | Pareto 가중치 sweep을 생략합니다. |
 | `--no-pareto-spc-stop` | Pareto sweep에서 SPC 기반 조기 중단을 끄고 round 수를 채웁니다. |
 | `--skip-noise-check` | 5회 noise check를 생략합니다. |
@@ -160,8 +163,10 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id s1forced_staged_bo_first \
   --methods bo \
-  --n 15 \
+  --n 1 \
   --m 50 \
+  --theta-per-round 6 \
+  --workers 6 \
   --bo-initial 10 \
   --essi-candidate-count 600 \
   --skip-pareto \
@@ -175,8 +180,10 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id s1forced_staged_bo_first \
   --methods random cma \
   --append-existing \
-  --n 15 \
+  --n 1 \
   --m 50 \
+  --theta-per-round 6 \
+  --workers 6 \
   --bo-initial 10 \
   --essi-candidate-count 600 \
   --skip-pareto \
@@ -189,8 +196,10 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
   --run-id s1forced_bo_first_single_run \
   --bo-first \
-  --n 15 \
+  --n 1 \
   --m 50 \
+  --theta-per-round 6 \
+  --workers 6 \
   --bo-initial 10 \
   --essi-candidate-count 600
 ```
@@ -225,4 +234,4 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 - 제출/보고용 clean CSV에서는 `output_delay_A_sec`, `output_delay_N_sec` 뒤에 `weight_A`, `weight_N`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다.
 - Pareto sweep은 가중치별 trade-off를 제시하는 절차입니다. 가중치 선택은 정책 결정자의 몫입니다.
 - noise check는 실제 5회 반복 artifact입니다. 30회 반복을 수행하지 않았다면 30회라고 설명하지 않습니다.
-- full `n=15`, `m=50` 결과가 제출 가능한지는 실제 run 후 CSV/PNG 존재와 row 수를 확인해야 판단합니다.
+- full `n=1`, `m=50`, `theta_per_round=6` 결과가 제출 가능한지는 실제 run 후 CSV/PNG 존재와 row 수를 확인해야 판단합니다.

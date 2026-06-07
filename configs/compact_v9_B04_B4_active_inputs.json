@@ -31,10 +31,11 @@
   },
   "optimizer_score_formula": "(10/11) * delay_A + (1/11) * delay_N",
   "fixed_budget": {
-    "n": 15,
+    "n": 1,
     "m": 50,
+    "theta_per_round": 6,
     "workers_runbook": 6,
-    "workers_code_default": 1
+    "workers_code_default": 6
   },
   "visualization_html": "results/html/compact_v9_route_tls_position_audit.html",
   "route_animation_html": "results/html/compact_v9_b04_b4_actual_route_animation.html",

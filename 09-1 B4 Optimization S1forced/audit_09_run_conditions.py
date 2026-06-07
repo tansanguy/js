@@ -36,9 +36,10 @@ CANONICAL = {
 }
 CANONICAL_DECISION_VARIABLES = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
 CANONICAL_METHODS = ["Random Search", "CMA-ES", "BO"]
-CANONICAL_N = 15
+CANONICAL_N = 1
 CANONICAL_M = 50
-CANONICAL_WORKERS_DEFAULT = 1
+CANONICAL_THETA_PER_ROUND = 6
+CANONICAL_WORKERS_DEFAULT = 6
 CANONICAL_OPTIMIZER_WEIGHTS = {"w_emv": 10.0, "w_veh": 1.0}
 FIRETRUCK_ROUTE_XML = PROJECT_ROOT / "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml"
 
@@ -170,6 +171,7 @@ def audit_runner_defaults(findings: list[Finding]) -> None:
     add_match(findings, module.METHODS == CANONICAL_METHODS, "runner_methods", runner_path, str(module.METHODS))
     add_match(findings, module.DEFAULT_N == CANONICAL_N, "runner_default_n", runner_path, str(module.DEFAULT_N))
     add_match(findings, module.DEFAULT_M == CANONICAL_M, "runner_default_m", runner_path, str(module.DEFAULT_M))
+    add_match(findings, module.DEFAULT_THETA_PER_ROUND == CANONICAL_THETA_PER_ROUND, "runner_default_theta_per_round", runner_path, str(module.DEFAULT_THETA_PER_ROUND))
     add_match(findings, module.DEFAULT_WORKERS == CANONICAL_WORKERS_DEFAULT, "runner_default_workers_safe", runner_path, str(module.DEFAULT_WORKERS))
     args = module.parse_args([])
     add_match(findings, args.w_emv == 10.0 and args.w_veh == 1.0, "runner_default_score_weights", runner_path, f"{args.w_emv}:{args.w_veh}")
@@ -216,6 +218,7 @@ def audit_other_runner_defaults(findings: list[Finding]) -> None:
 def audit_baseline_defaults(findings: list[Finding]) -> None:
     baseline_path = PIPELINE_DIR / "b04_baseline_pipeline.py"
     baseline = load_module(baseline_path, "b04_baseline_pipeline_audit")
+    add_match(findings, rel(baseline.B04_NET) == CANONICAL["net_file"], "baseline_default_net", baseline_path, rel(baseline.B04_NET))
     add_match(findings, getattr(baseline, "B04_LATEST_CANDIDATE", "") == "B04_ad_stage23_trigger", "baseline_latest_candidate", baseline_path, str(getattr(baseline, "B04_LATEST_CANDIDATE", "")))
     add_match(findings, "B04_ad_stage23_trigger" in baseline.CANDIDATES, "baseline_stage23_candidate_registered", baseline_path, str("B04_ad_stage23_trigger" in baseline.CANDIDATES))
 
@@ -264,6 +267,65 @@ def audit_signal_route_artifacts(findings: list[Finding]) -> None:
     add_match(findings, bool(tls_rows) and not tls_failures, "route_tls_projection_audit_no_fail", tls_path, f"rows={len(tls_rows)} fail={len(tls_failures)}")
 
 
+def audit_legacy_fallbacks(findings: list[Finding]) -> None:
+    stage1_builder_path = PIPELINE_DIR / "build_b4_stage1_from_b04_run.py"
+    stage1_builder_text = stage1_builder_path.read_text(encoding="utf-8")
+    add_match(
+        findings,
+        'parser.add_argument("--primary-candidate", default="B04_ad_stage23_trigger")' in stage1_builder_text,
+        "stage1_builder_default_primary_candidate",
+        stage1_builder_path,
+        "primary-candidate default must be B04_ad_stage23_trigger",
+    )
+    final_path = PROJECT_ROOT / "10 Final Destination Validation/final_destination_validation.py"
+    final_text = final_path.read_text(encoding="utf-8")
+    add_match(
+        findings,
+        'summary.get("primary_candidate") or "B04_ad_stage23_trigger"' in final_text,
+        "final_destination_primary_candidate_fallback",
+        final_path,
+        "fallback must be B04_ad_stage23_trigger",
+    )
+
+
+def audit_signal_generation_guards(findings: list[Finding]) -> None:
+    plausible_path = PIPELINE_DIR / "tdata_plausible_signal_pipeline.py"
+    plausible = load_module(plausible_path, "tdata_plausible_signal_pipeline_audit")
+    plausible_text = plausible_path.read_text(encoding="utf-8")
+    add_match(findings, rel(plausible.BASE_NET) == CANONICAL["net_file"], "tdata_plausible_default_input_net", plausible_path, rel(plausible.BASE_NET))
+    add_match(
+        findings,
+        "overwrite_active_net_disabled" in plausible_text and "shutil.copy2(output_net, BASE_NET)" not in plausible_text,
+        "tdata_plausible_active_overwrite_disabled",
+        plausible_path,
+        "generated nets must not overwrite canonical active net",
+    )
+
+    location_path = PIPELINE_DIR / "tdata_location_matched_signal_pipeline.py"
+    location = load_module(location_path, "tdata_location_matched_signal_pipeline_audit")
+    location_text = location_path.read_text(encoding="utf-8")
+    add_match(findings, rel(location.ACTIVE_NET) == CANONICAL["net_file"], "tdata_location_auto_input_net", location_path, rel(location.ACTIVE_NET))
+    add_match(
+        findings,
+        "overwrite_active_net_disabled" in location_text and "shutil.copy2(output_net, ACTIVE_NET)" not in location_text,
+        "tdata_location_active_overwrite_disabled",
+        location_path,
+        "generated nets must not overwrite canonical active net",
+    )
+
+    reality_path = PIPELINE_DIR / "b04_reality_congestion_pipeline.py"
+    reality = load_module(reality_path, "b04_reality_congestion_pipeline_audit")
+    reality_text = reality_path.read_text(encoding="utf-8")
+    add_match(findings, rel(reality.ACTIVE_NET) == CANONICAL["net_file"], "b04_reality_active_net", reality_path, rel(reality.ACTIVE_NET))
+    add_match(
+        findings,
+        "overwrite_active_net_disabled" in reality_text and "shutil.copy2(output_net, ACTIVE_NET)" not in reality_text,
+        "b04_reality_active_overwrite_disabled",
+        reality_path,
+        "generated nets must not overwrite canonical active net",
+    )
+
+
 def firetruck_route_edges() -> list[str]:
     root = ET.parse(FIRETRUCK_ROUTE_XML).getroot()
     route = root.find(".//route")
@@ -305,6 +367,8 @@ def audit() -> dict[str, Any]:
     audit_other_runner_defaults(findings)
     audit_baseline_defaults(findings)
     audit_signal_route_artifacts(findings)
+    audit_legacy_fallbacks(findings)
+    audit_signal_generation_guards(findings)
     audit_canonical_net_priority(findings)
     summary = {
         "schema": "compact_v9_B4_09_run_condition_audit.v1",
@@ -314,8 +378,9 @@ def audit() -> dict[str, Any]:
         "optimizer_score": "(10/11) * delay_A + (1/11) * delay_N",
         "n": CANONICAL_N,
         "m": CANONICAL_M,
+        "theta_per_round": CANONICAL_THETA_PER_ROUND,
         "workers_default": CANONICAL_WORKERS_DEFAULT,
-        "workers_runbook": 6,
+        "workers_runbook": CANONICAL_WORKERS_DEFAULT,
         "status": "FAIL" if any(item.severity == "FAIL" for item in findings) else "PASS",
         "findings": [item.__dict__ for item in findings],
     }

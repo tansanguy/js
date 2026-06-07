@@ -35,8 +35,9 @@ SUMMARY_DIR = TDATA_ROOT / "summaries"
 
 INPUT_NET = TDATA_ROOT / "nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml"
 OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml"
-ACTIVE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
-ACTIVE_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_reality_repaired.net.xml"
+ACTIVE_NET = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+LEGACY_GREEN18_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
+ACTIVE_BACKUP = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.before_reality_repaired.net.xml"
 
 BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 OUTPUT_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml"
@@ -256,19 +257,16 @@ def build_repaired_net(input_net: Path, output_net: Path, overwrite_active: bool
     tree.write(output_net, encoding="UTF-8", xml_declaration=True)
     active_overwritten = False
     if overwrite_active:
-        if not ACTIVE_BACKUP.is_file():
-            import shutil
-
-            shutil.copy2(ACTIVE_NET, ACTIVE_BACKUP)
-        import shutil
-
-        shutil.copy2(output_net, ACTIVE_NET)
-        active_overwritten = True
+        raise RealityCongestionError(
+            "overwrite_active_net_disabled: B04/B4 active net is fixed to the canonical S1-forced global-reality net; "
+            "write a separate --output-net and promote it through b04_global_reality_signal_pipeline.py."
+        )
     write_csv(APPLIED_CSV, applied_rows, list(applied_rows[0].keys()) if applied_rows else [])
     return {
         "input_net": rel(input_net),
         "output_net": rel(output_net),
         "active_net": rel(ACTIVE_NET),
+        "legacy_green18_net": rel(LEGACY_GREEN18_NET),
         "active_net_overwritten": active_overwritten,
         "active_backup": rel(ACTIVE_BACKUP) if ACTIVE_BACKUP.is_file() else "",
         "applied_tls_count": applied_count,
@@ -409,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Repair B04 reality signals and generate 4000-second sustained demand.")
     parser.add_argument("--input-net", type=Path, default=INPUT_NET)
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
-    parser.add_argument("--overwrite-active-net", action="store_true")
+    parser.add_argument("--overwrite-active-net", action="store_true", help="Disabled guard: active B04/B4 uses the canonical S1-forced net.")
     parser.add_argument("--base-demand", type=Path, default=BASE_DEMAND)
     parser.add_argument("--output-demand", type=Path, default=OUTPUT_DEMAND)
     parser.add_argument("--demand-begin", type=float, default=180.0)

@@ -4,7 +4,8 @@
   "signal": {
     "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml",
     "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml",
-    "active_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
+    "active_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "legacy_green18_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
     "active_net_overwritten": false,
     "active_backup": "",
     "applied_tls_count": 18,

@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_route_movement_plan.v1",
-  "generated_at": "2026-06-07T13:24:15.977523+00:00",
+  "generated_at": "2026-06-07T15:08:00.703933+00:00",
   "algorithm": "B4",
   "decision_variable_screening": {
     "schema": "compact_v9_B4_decision_variable_screening.v1",
@@ -1776,7 +1776,7 @@
   },
   "case_b_candidates": {
     "schema": "compact_v9_B4_case_b_candidates.v1",
-    "generated_at": "2026-06-07T13:24:14.915147+00:00",
+    "generated_at": "2026-06-07T15:07:59.820193+00:00",
     "candidate_segments": [
       "S7",
       "S10",

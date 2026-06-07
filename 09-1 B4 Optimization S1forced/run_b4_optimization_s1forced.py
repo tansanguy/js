@@ -9,9 +9,10 @@ import json
 import math
 import random
 import sys
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -40,10 +41,11 @@ DEFAULT_ACTIVE_INPUTS = PROJECT_ROOT / "configs/compact_v9_B04_B4_active_inputs.
 DEFAULT_OUTPUT_DIR = RUNNER_DIR / "outputs"
 DEFAULT_RUN_ROOT = PROJECT_ROOT / "runs/compact_v9_B4_optimization_s1forced"
 DEFAULT_SEED_BASE = 20260607
-DEFAULT_N = 15
+DEFAULT_N = 1
 DEFAULT_M = 50
 DEFAULT_BO_INITIAL = 10
-DEFAULT_WORKERS = 1
+DEFAULT_THETA_PER_ROUND = 6
+DEFAULT_WORKERS = 6
 FAILURE_PENALTY_SEC = 1_000_000.0
 METHODS = ["Random Search", "CMA-ES", "BO"]
 METHOD_ALIASES = {
@@ -75,6 +77,8 @@ EVALUATION_FIELDS = [
     "method",
     "seed",
     "round",
+    "round_theta_index",
+    "theta_per_round",
     *THETA_FIELDS,
     "delay_A",
     "delay_N",
@@ -96,10 +100,19 @@ EVALUATION_FIELDS = [
     "acquisition",
     *ESSI_FIELDS,
 ]
+CHECKPOINT_FIELDS = [
+    *EVALUATION_FIELDS,
+    "raw_score",
+    "essi_log_max_ewma",
+    "essi_spc_status",
+    "essi_stop_recommended",
+]
 BO_SURROGATE_FIELDS = [
     "method",
     "seed",
     "round",
+    "round_theta_index",
+    "theta_per_round",
     *THETA_FIELDS,
     "observed_score",
     "best_so_far",
@@ -221,6 +234,74 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", encoding="utf-8-sig", newline="") as file:
         return list(csv.DictReader(file))
+
+
+def method_seed_slug(method: str, seed: int) -> str:
+    cleaned = method.lower().replace(" ", "_").replace("-", "_")
+    return f"{cleaned}_{seed}"
+
+
+def checkpoint_path(output_dir: Path, method: str, seed: int) -> Path:
+    return output_dir / "checkpoints" / f"{method_seed_slug(method, seed)}.csv"
+
+
+def evaluation_key(method: str, seed: int, round_index: int, round_theta_index: int, parameter_id: str) -> tuple[str, int, int, int, str]:
+    return (method, int(seed), int(round_index), int(round_theta_index), str(parameter_id))
+
+
+def row_evaluation_key(row: dict[str, Any]) -> tuple[str, int, int, int, str]:
+    return evaluation_key(
+        str(row.get("method", "")),
+        int(safe_float(row.get("seed"), 0.0)),
+        int(safe_float(row.get("round"), 0.0)),
+        int(safe_float(row.get("round_theta_index"), 1.0)),
+        str(row.get("parameter_id", "")),
+    )
+
+
+def dedupe_evaluation_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    keyed: dict[tuple[str, int, int, int, str], dict[str, Any]] = {}
+    for row in rows:
+        if row.get("method") in {"", None} or row.get("parameter_id") in {"", None}:
+            continue
+        keyed[row_evaluation_key(row)] = dict(row)
+    return sorted(
+        keyed.values(),
+        key=lambda row: (
+            METHODS.index(str(row.get("method"))) if row.get("method") in METHODS else len(METHODS),
+            int(safe_float(row.get("seed"), 0.0)),
+            int(safe_float(row.get("round"), 0.0)),
+            int(safe_float(row.get("round_theta_index"), 1.0)),
+            str(row.get("parameter_id", "")),
+        ),
+    )
+
+
+def write_checkpoint_rows(path: Path, rows: list[dict[str, Any]]) -> None:
+    update_best_so_far(rows)
+    write_csv(path, [{field: row.get(field, "") for field in CHECKPOINT_FIELDS} for row in rows], CHECKPOINT_FIELDS)
+
+
+def checkpoint_method_rows(output_dir: Path, method: str, seed: int, rows: list[dict[str, Any]]) -> None:
+    write_checkpoint_rows(checkpoint_path(output_dir, method, seed), rows)
+
+
+def load_task_prior_rows(output_dir: Path, method: str, seed: int) -> list[dict[str, Any]]:
+    all_rows = [
+        dict(row)
+        for row in read_csv_rows(output_dir / "all_evaluations.csv")
+        if row.get("method") == method and int(safe_float(row.get("seed"), -1.0)) == seed
+    ]
+    checkpoint_rows = [dict(row) for row in read_csv_rows(checkpoint_path(output_dir, method, seed))]
+    return dedupe_evaluation_rows([*all_rows, *checkpoint_rows])
+
+
+def existing_rows_outside_methods(output_dir: Path, methods_to_run: list[str]) -> list[dict[str, Any]]:
+    return [
+        dict(row)
+        for row in read_csv_rows(output_dir / "all_evaluations.csv")
+        if str(row.get("method", "")) not in set(methods_to_run)
+    ]
 
 
 def sec(value: Any) -> str:
@@ -613,6 +694,31 @@ def evaluate_theta(
     }
 
 
+def materialize_new_row_worker(job: dict[str, Any]) -> dict[str, Any]:
+    row = evaluate_theta(
+        str(job["run_id"]),
+        str(job["method"]),
+        int(job["seed"]),
+        int(job["round_index"]),
+        dict(job["theta"]),
+        job["args"],
+        job["eval_args"],
+        job["real_context"],
+        float(job["w_emv"]),
+        float(job["w_veh"]),
+    )
+    row["round_theta_index"] = int(job["round_theta_index"])
+    row["theta_per_round"] = int(job["theta_per_round"])
+    row.update(dict(job.get("prediction") or {}))
+    bo_fields = dict(job.get("bo_fields") or {})
+    if bo_fields:
+        row.update(bo_fields)
+        row["acquisition"] = bo_fields.get("essi_acquisition", bo_fields.get("acquisition", ""))
+    else:
+        row["acquisition"] = ""
+    return row
+
+
 def surrogate_prediction(observations: list[dict[str, Any]], theta: dict[str, Any], bounds: dict[str, Any]) -> dict[str, str]:
     if len(observations) < 2:
         return {"surrogate_mean": "", "surrogate_ci_low": "", "surrogate_ci_high": ""}
@@ -648,18 +754,21 @@ def update_best_so_far(rows: list[dict[str, Any]]) -> None:
         row["best_so_far"] = sec(best)
 
 
-def random_search_thetas(bounds: dict[str, Any], m: int, seed: int) -> list[dict[str, Any]]:
-    rows = theta_bo.random_theta_samples(bounds, m, seed, "rs")
+def random_search_thetas(bounds: dict[str, Any], m: int, theta_per_round: int, seed: int) -> list[dict[str, Any]]:
+    rows = theta_bo.random_theta_samples(bounds, m * theta_per_round, seed, "rs")
     for index, row in enumerate(rows, start=1):
-        row["parameter_id"] = theta_bo.theta_id(f"rs_r{index:02d}", 1, row)
+        round_index = ((index - 1) // theta_per_round) + 1
+        round_theta_index = ((index - 1) % theta_per_round) + 1
+        row["parameter_id"] = theta_bo.theta_id(f"rs_r{round_index:02d}", round_theta_index, row)
     return rows
 
 
 def cma_es_thetas(
     bounds: dict[str, Any],
     m: int,
+    theta_per_round: int,
     seed: int,
-    evaluate: Any,
+    evaluate_batch: Any,
 ) -> list[dict[str, Any]]:
     try:
         import cma  # type: ignore
@@ -671,32 +780,36 @@ def cma_es_thetas(
     options = {
         "bounds": [0.0, 1.0],
         "seed": seed,
-        "popsize": min(8, max(4, dim + 1)),
+        "popsize": max(theta_per_round, min(8, max(4, dim + 1))),
         "verbose": -9,
     }
     strategy = cma.CMAEvolutionStrategy([0.5] * dim, 0.32, options)
     selected: set[tuple[float, float, float, float, float]] = set()
     rows: list[dict[str, Any]] = []
-    round_index = 1
-    while round_index <= m:
-        vectors_to_tell: list[list[float]] = []
-        scores_to_tell: list[float] = []
+    eval_index = 1
+    total_evaluations = m * theta_per_round
+    while eval_index <= total_evaluations:
+        generation_items: list[tuple[dict[str, Any], int, int, list[float]]] = []
         generation_vectors = strategy.ask()
         for raw_vector in generation_vectors:
-            if round_index > m:
+            if eval_index > total_evaluations:
                 break
+            round_index = ((eval_index - 1) // theta_per_round) + 1
+            round_theta_index = ((eval_index - 1) % theta_per_round) + 1
             vector = [max(0.0, min(1.0, float(value))) for value in raw_vector]
-            theta = theta_from_vector(vector, bounds, theta_bo.theta_id(f"cma_r{round_index:02d}", 1, {"t_lead": 0, "delta_T_thr": 0, "G_ext": 0, "Q_ratio": 0, "tau": 0.75}))
-            theta["parameter_id"] = theta_bo.theta_id(f"cma_r{round_index:02d}", 1, theta)
+            theta = theta_from_vector(vector, bounds, theta_bo.theta_id(f"cma_r{round_index:02d}", round_theta_index, {"t_lead": 0, "delta_T_thr": 0, "G_ext": 0, "Q_ratio": 0, "tau": 0.75}))
+            theta["parameter_id"] = theta_bo.theta_id(f"cma_r{round_index:02d}", round_theta_index, theta)
             if theta_key(theta) in selected:
-                theta = theta_bo.random_theta_samples(bounds, 1, seed + round_index * 1009 + rng.randint(0, 999), "cma_fill", selected)[0]
+                theta = theta_bo.random_theta_samples(bounds, 1, seed + eval_index * 1009 + rng.randint(0, 999), "cma_fill", selected)[0]
+                theta["parameter_id"] = theta_bo.theta_id(f"cma_r{round_index:02d}", round_theta_index, theta)
                 vector = vector_from_theta(theta, bounds)
             selected.add(theta_key(theta))
-            score = safe_float(evaluate(theta, round_index).get("score"), float("inf"))
-            vectors_to_tell.append(vector)
-            scores_to_tell.append(score)
+            generation_items.append((theta, round_index, round_theta_index, vector))
             rows.append(theta)
-            round_index += 1
+            eval_index += 1
+        result_rows = evaluate_batch([(theta, round_index, round_theta_index) for theta, round_index, round_theta_index, _vector in generation_items])
+        vectors_to_tell = [vector for _theta, _round_index, _round_theta_index, vector in generation_items]
+        scores_to_tell = [safe_float(row.get("score"), float("inf")) for row in result_rows]
         if len(vectors_to_tell) == len(generation_vectors):
             strategy.tell(vectors_to_tell, scores_to_tell)
     return rows
@@ -714,21 +827,46 @@ def run_method(
     w_veh: float,
     stage1: B4Stage1Inputs,
     stop_on_spc: bool = False,
+    prior_rows: list[dict[str, Any]] | None = None,
+    checkpoint_callback: Callable[[list[dict[str, Any]]], None] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     observations: list[dict[str, Any]] = []
     round_rows: list[dict[str, Any]] = []
     existing: set[tuple[float, float, float, float, float]] = set()
+    prior_by_key = {row_evaluation_key(row): dict(row) for row in (prior_rows or [])}
 
-    def evaluate_and_record(theta: dict[str, Any], round_index: int, bo_fields: dict[str, Any] | None = None) -> dict[str, Any]:
-        prediction = surrogate_prediction(observations, theta, bounds) if method == "BO" else {"surrogate_mean": "", "surrogate_ci_low": "", "surrogate_ci_high": ""}
+    def completed_row_for(theta: dict[str, Any], round_index: int, round_theta_index: int) -> dict[str, Any] | None:
+        completed = prior_by_key.get(evaluation_key(method, seed, round_index, round_theta_index, str(theta.get("parameter_id", ""))))
+        if completed is not None:
+            row = dict(completed)
+            row["method"] = method
+            row["seed"] = seed
+            row["round"] = round_index
+            row["round_theta_index"] = round_theta_index
+            row["theta_per_round"] = row.get("theta_per_round", args.theta_per_round)
+            return row
+        return None
+
+    def materialize_new_row(
+        theta: dict[str, Any],
+        round_index: int,
+        round_theta_index: int,
+        bo_fields: dict[str, Any] | None,
+        prediction: dict[str, Any],
+    ) -> dict[str, Any]:
         row = evaluate_theta(run_id, method, seed, round_index, theta, args, eval_args, real_context, w_emv, w_veh)
+        row["round_theta_index"] = round_theta_index
+        row["theta_per_round"] = args.theta_per_round
         row.update(prediction)
         if bo_fields:
             row.update(bo_fields)
             row["acquisition"] = bo_fields.get("essi_acquisition", bo_fields.get("acquisition", ""))
         else:
             row["acquisition"] = ""
+        return row
+
+    def record_row(row: dict[str, Any], round_index: int, round_theta_index: int) -> dict[str, Any]:
         observations.append({
             "mode": B4_MODE,
             **{field: row.get(field, "") for field in THETA_FIELDS},
@@ -742,6 +880,7 @@ def run_method(
                 update_spc_row(row, round_rows, args)
             round_rows.append({
                 "round": round_index,
+                "round_theta_index": round_theta_index,
                 "phase": "bo" if round_index > args.bo_initial else "initial",
                 "best_bo_score_sec": best.get("bo_score_sec", ""),
                 "essi_max": row.get("essi_max", ""),
@@ -751,39 +890,194 @@ def run_method(
                 "essi_stop_recommended": row.get("essi_stop_recommended", ""),
             })
         rows.append(row)
+        update_best_so_far(rows)
         return row
 
+    def checkpoint_partial(completed_rows: list[dict[str, Any]]) -> None:
+        if checkpoint_callback is not None:
+            checkpoint_callback([*rows, *completed_rows])
+
+    def evaluate_batch_and_record(
+        items: list[tuple[dict[str, Any], int, int, dict[str, Any] | None]],
+    ) -> list[dict[str, Any]]:
+        materialized: dict[int, dict[str, Any]] = {}
+        pending: list[tuple[int, dict[str, Any], int, int, dict[str, Any] | None, dict[str, Any]]] = []
+        for item_index, (theta, round_index, round_theta_index, bo_fields) in enumerate(items):
+            completed = completed_row_for(theta, round_index, round_theta_index)
+            if completed is not None:
+                materialized[item_index] = completed
+                continue
+            prediction = surrogate_prediction(observations, theta, bounds) if method == "BO" else {"surrogate_mean": "", "surrogate_ci_low": "", "surrogate_ci_high": ""}
+            pending.append((item_index, theta, round_index, round_theta_index, bo_fields, prediction))
+
+        if pending and args.workers > 1:
+            completed_new_rows: list[dict[str, Any]] = []
+            if args.mock_eval:
+                with ThreadPoolExecutor(max_workers=min(args.workers, len(pending))) as executor:
+                    future_map = {
+                        executor.submit(materialize_new_row, theta, round_index, round_theta_index, bo_fields, prediction): item_index
+                        for item_index, theta, round_index, round_theta_index, bo_fields, prediction in pending
+                    }
+                    for future in as_completed(future_map):
+                        row = future.result()
+                        materialized[future_map[future]] = row
+                        completed_new_rows.append(row)
+                        checkpoint_partial(completed_new_rows)
+            else:
+                with ProcessPoolExecutor(max_workers=min(args.workers, len(pending))) as executor:
+                    future_map = {
+                        executor.submit(
+                            materialize_new_row_worker,
+                            {
+                                "run_id": run_id,
+                                "method": method,
+                                "seed": seed,
+                                "round_index": round_index,
+                                "round_theta_index": round_theta_index,
+                                "theta_per_round": args.theta_per_round,
+                                "theta": theta,
+                                "args": args,
+                                "eval_args": eval_args,
+                                "real_context": real_context,
+                                "w_emv": w_emv,
+                                "w_veh": w_veh,
+                                "bo_fields": bo_fields,
+                                "prediction": prediction,
+                            },
+                        ): item_index
+                        for item_index, theta, round_index, round_theta_index, bo_fields, prediction in pending
+                    }
+                    for future in as_completed(future_map):
+                        row = future.result()
+                        materialized[future_map[future]] = row
+                        completed_new_rows.append(row)
+                        checkpoint_partial(completed_new_rows)
+        else:
+            completed_new_rows = []
+            for item_index, theta, round_index, round_theta_index, bo_fields, prediction in pending:
+                row = materialize_new_row(theta, round_index, round_theta_index, bo_fields, prediction)
+                materialized[item_index] = row
+                completed_new_rows.append(row)
+                checkpoint_partial(completed_new_rows)
+
+        ordered_rows: list[dict[str, Any]] = []
+        for item_index, (_theta, round_index, round_theta_index, _bo_fields) in enumerate(items):
+            row = record_row(materialized[item_index], round_index, round_theta_index)
+            ordered_rows.append(row)
+        if checkpoint_callback is not None:
+            checkpoint_callback(rows)
+        return ordered_rows
+
     if method == "Random Search":
-        for round_index, theta in enumerate(random_search_thetas(bounds, args.m, seed), start=1):
-            evaluate_and_record(theta, round_index)
+        all_thetas = random_search_thetas(bounds, args.m, args.theta_per_round, seed)
+        for round_index in range(1, args.m + 1):
+            batch = all_thetas[(round_index - 1) * args.theta_per_round : round_index * args.theta_per_round]
+            evaluate_batch_and_record([(theta, round_index, round_theta_index, None) for round_theta_index, theta in enumerate(batch, start=1)])
     elif method == "CMA-ES":
         cache: dict[tuple[float, float, float, float, float], dict[str, Any]] = {}
 
-        def cma_evaluate(theta: dict[str, Any], round_index: int) -> dict[str, Any]:
-            row = evaluate_and_record(theta, round_index)
-            cache[theta_key(theta)] = row
-            return row
+        def cma_evaluate_batch(batch: list[tuple[dict[str, Any], int, int]]) -> list[dict[str, Any]]:
+            result_rows = evaluate_batch_and_record([(theta, round_index, round_theta_index, None) for theta, round_index, round_theta_index in batch])
+            for theta, row in zip((item[0] for item in batch), result_rows):
+                cache[theta_key(theta)] = row
+            return result_rows
 
-        cma_es_thetas(bounds, args.m, seed, cma_evaluate)
+        cma_es_thetas(bounds, args.m, args.theta_per_round, seed, cma_evaluate_batch)
     elif method == "BO":
         for round_index in range(1, args.m + 1):
             if round_index <= args.bo_initial or len(observations) < 2:
-                theta = theta_bo.random_theta_samples(bounds, 1, seed + round_index * 31, "bo_init", existing)[0]
-                bo_fields: dict[str, Any] = {}
+                batch = theta_bo.random_theta_samples(bounds, args.theta_per_round, seed + round_index * 31, "bo_init", existing)
+                batch_fields: list[dict[str, Any]] = [{} for _theta in batch]
             else:
                 ranked = essi_improvement_candidates(observations, bounds, stage1, seed + round_index, existing, args.ei_candidate_count)
-                theta = theta_bo.clamp_theta(ranked[0], bounds)
-                theta["parameter_id"] = theta_bo.theta_id(f"bo_r{round_index:02d}", 1, theta)
-                bo_fields = {field: ranked[0].get(field, "") for field in ESSI_FIELDS}
-            existing.add(theta_key(theta))
-            row = evaluate_and_record(theta, round_index, bo_fields)
-            if stop_on_spc and str(row.get("essi_stop_recommended", "")).lower() == "true":
+                batch = [theta_bo.clamp_theta(item, bounds) for item in ranked[: args.theta_per_round]]
+                batch_fields = [{field: item.get(field, "") for field in ESSI_FIELDS} for item in ranked[: args.theta_per_round]]
+            stop_after_round = False
+            for round_theta_index, theta in enumerate(batch, start=1):
+                theta["parameter_id"] = theta_bo.theta_id(f"bo_r{round_index:02d}", round_theta_index, theta)
+                existing.add(theta_key(theta))
+            result_rows = evaluate_batch_and_record([
+                (theta, round_index, round_theta_index, batch_fields[round_theta_index - 1])
+                for round_theta_index, theta in enumerate(batch, start=1)
+            ])
+            for row in result_rows:
+                if stop_on_spc and str(row.get("essi_stop_recommended", "")).lower() == "true":
+                    stop_after_round = True
+            if stop_after_round:
                 break
     else:
         raise B4OptimizationError(f"unknown_method:{method}")
 
     update_best_so_far(rows)
+    if checkpoint_callback is not None:
+        checkpoint_callback(rows)
     return rows
+
+
+def run_method_with_checkpoint(
+    method: str,
+    seed: int,
+    run_id: str,
+    bounds: dict[str, Any],
+    args: argparse.Namespace,
+    real_context: dict[str, Any] | None,
+    w_emv: float,
+    w_veh: float,
+    stage1: B4Stage1Inputs,
+    prior_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    eval_args = build_eval_args(args, seed, args.run_root, args.output_dir / run_id)
+    method_run_id = f"{run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}"
+
+    def checkpoint(rows: list[dict[str, Any]]) -> None:
+        checkpoint_method_rows(args.output_dir / run_id, method, seed, rows)
+
+    return run_method(
+        method,
+        seed,
+        method_run_id,
+        bounds,
+        args,
+        eval_args,
+        real_context,
+        w_emv,
+        w_veh,
+        stage1,
+        prior_rows=prior_rows,
+        checkpoint_callback=checkpoint,
+    )
+
+
+def run_method_seed_grid(
+    run_id: str,
+    bounds: dict[str, Any],
+    args: argparse.Namespace,
+    real_context: dict[str, Any] | None,
+    w_emv: float,
+    w_veh: float,
+    stage1: B4Stage1Inputs,
+    methods_to_run: list[str],
+    seeds: list[int],
+) -> list[dict[str, Any]]:
+    output_dir = args.output_dir / run_id
+    jobs = [
+        (method, seed, load_task_prior_rows(output_dir, method, seed) if args.resume else [])
+        for method in methods_to_run
+        for seed in seeds
+    ]
+    completed: list[dict[str, Any]] = []
+    if args.workers == 1 or args.theta_per_round > 1 or len(jobs) <= 1:
+        for method, seed, prior_rows in jobs:
+            completed.extend(run_method_with_checkpoint(method, seed, run_id, bounds, args, real_context, w_emv, w_veh, stage1, prior_rows))
+    else:
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            future_map = {
+                executor.submit(run_method_with_checkpoint, method, seed, run_id, bounds, args, real_context, w_emv, w_veh, stage1, prior_rows): (method, seed)
+                for method, seed, prior_rows in jobs
+            }
+            for future in as_completed(future_map):
+                completed.extend(future.result())
+    return dedupe_evaluation_rows(completed)
 
 
 def build_best_so_far_table(rows: list[dict[str, Any]], m: int) -> list[dict[str, Any]]:
@@ -792,10 +1086,11 @@ def build_best_so_far_table(rows: list[dict[str, Any]], m: int) -> list[dict[str
         grouped.setdefault((str(row["method"]), int(row["seed"])), []).append(row)
     table: list[dict[str, Any]] = []
     for (method, seed), group in sorted(grouped.items()):
-        group = sorted(group, key=lambda item: int(item["round"]))
+        group = sorted(group, key=lambda item: (int(item["round"]), int(item.get("round_theta_index", 1) or 1)))
         out: dict[str, Any] = {"method": method, "seed": seed}
         for index in range(1, m + 1):
-            out[f"R{index}"] = group[index - 1]["best_so_far"] if index <= len(group) else ""
+            completed = [row for row in group if int(row["round"]) <= index]
+            out[f"R{index}"] = completed[-1]["best_so_far"] if completed else ""
         table.append(out)
     return table
 
@@ -809,6 +1104,8 @@ def build_bo_surrogate_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
             "method": row.get("method", ""),
             "seed": row.get("seed", ""),
             "round": row.get("round", ""),
+            "round_theta_index": row.get("round_theta_index", ""),
+            "theta_per_round": row.get("theta_per_round", ""),
             **{field: row.get(field, "") for field in THETA_FIELDS},
             "observed_score": row.get("score", ""),
             "best_so_far": row.get("best_so_far", ""),
@@ -865,7 +1162,23 @@ def run_pareto(
     for weight_ratio in ["1:1", "5:1", "10:1", "15:1", "20:1"]:
         w_emv, w_veh = normalize_pareto_weights(weight_ratio)
         raw_w_emv, raw_w_veh = parse_weight_ratio(weight_ratio)
-        rows = run_method("BO", args.seed_base, f"{run_id}_pareto_{weight_ratio.replace(':', '_')}", bounds, args, eval_args, real_context, w_emv, w_veh, stage1, stop_on_spc=args.pareto_spc_stop)
+        checkpoint = args.output_dir / run_id / "checkpoints" / f"pareto_{weight_ratio.replace(':', '_')}.csv"
+        prior_rows = read_csv_rows(checkpoint) if args.resume else []
+        rows = run_method(
+            "BO",
+            args.seed_base,
+            f"{run_id}_pareto_{weight_ratio.replace(':', '_')}",
+            bounds,
+            args,
+            eval_args,
+            real_context,
+            w_emv,
+            w_veh,
+            stage1,
+            stop_on_spc=args.pareto_spc_stop,
+            prior_rows=[dict(row) for row in prior_rows],
+            checkpoint_callback=lambda current_rows, path=checkpoint: write_checkpoint_rows(path, current_rows),
+        )
         best = min(rows, key=lambda row: safe_float(row.get("score"), float("inf")))
         final_rows.append(clean_final_result_row(best, raw_w_emv, raw_w_veh, weight_ratio))
         stop_rows = [row for row in rows if str(row.get("essi_stop_recommended", "")).lower() == "true"]
@@ -911,8 +1224,13 @@ def run_noise_check(
     real_context: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     theta = theta_bo.clamp_theta(B4ThetaParams().as_result_fields(), bounds, parameter_id="noise_reference_theta")
-    rows: list[dict[str, Any]] = []
+    parent_run_id = run_id.removesuffix("_noise")
+    checkpoint = args.output_dir / parent_run_id / "checkpoints" / "noise_check.csv"
+    rows: list[dict[str, Any]] = [dict(row) for row in read_csv_rows(checkpoint)] if args.resume else []
+    completed_repeats = {int(safe_float(row.get("repeat"), 0.0)) for row in rows}
     for repeat in range(1, 6):
+        if repeat in completed_repeats:
+            continue
         row = evaluate_theta(run_id, "Noise Check", args.seed_base, repeat, theta, args, eval_args, real_context, args.w_emv, args.w_veh, repeat_id=repeat)
         rows.append({
             "repeat": repeat,
@@ -922,6 +1240,7 @@ def run_noise_check(
             "score": row["score"],
             "final_status": row["final_status"],
         })
+        write_csv(checkpoint, rows, NOISE_FIELDS)
     scores = [safe_float(row["score"]) for row in rows]
     mean = sum(scores) / len(scores) if scores else 0.0
     variance = sum((value - mean) ** 2 for value in scores) / max(len(scores) - 1, 1)
@@ -935,6 +1254,69 @@ def run_noise_check(
         "policy_note": "This artifact records the actual 5-repeat noise check. It must not be described as a 30-repeat experiment.",
     }
     return rows, summary
+
+
+def safe_slug(value: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in value).strip("_") or "value"
+
+
+def select_visualization_solution(rows: list[dict[str, Any]], solution: str) -> dict[str, Any]:
+    if solution.lower() == "best":
+        pass_rows = [
+            row
+            for row in rows
+            if row.get("final_status") in {"PASS", "WARNING"}
+            and str(row.get("emergency_arrived", "")).lower() == "true"
+            and str(row.get("emergency_teleport", "")).lower() != "true"
+        ]
+        if not pass_rows:
+            raise B4OptimizationError("visualization_no_pass_rows")
+        return min(pass_rows, key=lambda row: safe_float(row.get("score"), float("inf")))
+    matches = [row for row in rows if row.get("parameter_id") == solution]
+    if not matches:
+        raise B4OptimizationError(f"visualization_solution_not_found:{solution}")
+    return min(matches, key=lambda row: safe_float(row.get("score"), float("inf")))
+
+
+def collect_visualization_info(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.run_id:
+        raise B4OptimizationError("visualization_run_id_required")
+    output_dir = args.output_dir / args.run_id
+    rows = [dict(row) for row in read_csv_rows(output_dir / "all_evaluations.csv")]
+    if not rows:
+        raise B4OptimizationError(f"visualization_missing_all_evaluations:{rel(output_dir / 'all_evaluations.csv')}")
+    solution = select_visualization_solution(rows, args.visualization_solution)
+    method = str(solution.get("method", ""))
+    seed = int(safe_float(solution.get("seed"), args.seed_base))
+    parameter_id = str(solution.get("parameter_id", ""))
+    method_run_id = f"{args.run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}"
+    b04_repeat_dir = args.run_root / args.run_id / "B04" / "no_control" / "repeat_001"
+    b4_repeat_dir = args.run_root / method_run_id / B4_MODE / parameter_id / "repeat_001"
+    required = {
+        "b04_fcd": b04_repeat_dir / "fcd.xml",
+        "b04_tripinfo": b04_repeat_dir / "tripinfo.xml",
+        "b4_fcd": b4_repeat_dir / "fcd.xml",
+        "b4_tripinfo": b4_repeat_dir / "tripinfo.xml",
+        "b4_signal_events": b4_repeat_dir / "signal_events.csv",
+    }
+    missing = [f"{name}:{rel(path)}" for name, path in required.items() if not path.is_file()]
+    if missing:
+        raise B4OptimizationError("visualization_missing_required_logs:" + ",".join(missing))
+    output_path = args.visualization_output or (output_dir / f"visualization_info_{safe_slug(parameter_id)}.json")
+    payload = {
+        "schema": "compact_v9_B4_visualization_info.v1",
+        "generated_at": utc_now(),
+        "run_id": args.run_id,
+        "solution_selector": args.visualization_solution,
+        "solution": {field: solution.get(field, "") for field in EVALUATION_FIELDS},
+        "paths": {name: rel(path) for name, path in required.items()},
+        "notes": [
+            "FCD logs are required. Re-run the selected solution with --emit-fcd if any path is missing.",
+            "B04 baseline and B4 theta runs live under different run_id folders in the optimization runner.",
+        ],
+    }
+    write_json(output_path, payload)
+    return payload
 
 
 def plot_best_so_far(table: list[dict[str, Any]], m: int, output: Path) -> None:
@@ -1057,6 +1439,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--n", type=int, default=DEFAULT_N)
     parser.add_argument("--m", type=int, default=DEFAULT_M)
+    parser.add_argument(
+        "--theta-per-round",
+        "--solutions-per-round",
+        "--batch-size",
+        dest="theta_per_round",
+        type=int,
+        default=DEFAULT_THETA_PER_ROUND,
+        help="Theta candidates per optimization round. Total evaluations per seed/method = m * theta_per_round.",
+    )
     parser.add_argument("--seed-base", type=int, default=DEFAULT_SEED_BASE)
     parser.add_argument("--bo-initial", type=int, default=DEFAULT_BO_INITIAL)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -1079,6 +1470,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--methods", nargs="+", default=None, help="Run only selected methods. Accepts BO, CMA-ES/cma, Random Search/random/rs.")
     parser.add_argument("--bo-first", action="store_true", help="Run BO before the other selected methods in a single invocation.")
     parser.add_argument("--append-existing", action="store_true", help="Merge selected method results into an existing run-id instead of starting from an empty comparison.")
+    parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true", help="Resume an interrupted run-id from per-method/seed checkpoints and existing all_evaluations.csv rows.")
+    parser.add_argument("--collect-visualization-info", action="store_true", help="Write a manifest for a selected solution's B04/B4 FCD logs without running optimization.")
+    parser.add_argument("--visualization-solution", default="best", help="Solution parameter_id to collect for visualization, or 'best' for the best PASS row.")
+    parser.add_argument("--visualization-output", type=Path, default=None)
     parser.add_argument("--mock-eval", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true")
     parser.add_argument("--skip-pareto", action="store_true")
@@ -1093,6 +1488,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("n_must_be_positive")
     if args.m < 2:
         raise B4OptimizationError("m_must_be_at_least_2")
+    if args.theta_per_round < 1:
+        raise B4OptimizationError("theta_per_round_must_be_positive")
     if not 2 <= args.bo_initial < args.m:
         raise B4OptimizationError("bo_initial_must_be_between_2_and_m_minus_1")
     if args.workers < 1:
@@ -1103,6 +1500,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("weight_sum_must_be_positive")
     if args.ei_candidate_count < 2:
         raise B4OptimizationError("ei_candidate_count_must_be_at_least_2")
+    if args.ei_candidate_count < args.theta_per_round:
+        raise B4OptimizationError("ei_candidate_count_must_be_at_least_theta_per_round")
     methods = selected_methods(args)
     if not methods:
         raise B4OptimizationError("at_least_one_method_required")
@@ -1113,6 +1512,7 @@ def validate_args(args: argparse.Namespace) -> None:
     args.net_file = args.net_file.resolve()
     args.background_route = args.background_route.resolve()
     args.stage1_dir = args.stage1_dir.resolve()
+    args.visualization_output = args.visualization_output.resolve() if args.visualization_output else None
 
 
 def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
@@ -1135,6 +1535,11 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "active_inputs": rel(args.active_inputs),
         },
         "decision_variables": bounds["decision_variables"],
+        "rounds_per_seed": args.m,
+        "theta_per_round": args.theta_per_round,
+        "theta_evaluations_per_seed_method": args.m * args.theta_per_round,
+        "workers": args.workers,
+        "resume": args.resume,
         "active_inputs": preflight_payload["active_inputs"],
     })
     spatial_subspaces = bo_spatial_subspaces(stage1)
@@ -1148,19 +1553,18 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
 
     eval_args = build_eval_args(args, args.seed_base, args.run_root, output_dir)
     real_context = prepare_real_context_once(run_id, eval_args)
-    existing_rows, existing_final_rows = existing_method_rows(output_dir, methods_to_run, args.append_existing, args.w_emv, args.w_veh)
-    new_rows: list[dict[str, Any]] = []
+    if args.resume:
+        existing_rows = existing_rows_outside_methods(output_dir, methods_to_run)
+    else:
+        existing_rows, _existing_final_rows = existing_method_rows(output_dir, methods_to_run, args.append_existing, args.w_emv, args.w_veh)
     seeds = [args.seed_base + index for index in range(args.n)]
-    for method in methods_to_run:
-        for seed in seeds:
-            method_rows = run_method(method, seed, f"{run_id}_{method.lower().replace(' ', '_').replace('-', '_')}_{seed}", bounds, args, build_eval_args(args, seed, args.run_root, output_dir), real_context, args.w_emv, args.w_veh, stage1)
-            new_rows.extend(method_rows)
-    all_rows: list[dict[str, Any]] = [*existing_rows, *new_rows]
+    new_rows = run_method_seed_grid(run_id, bounds, args, real_context, args.w_emv, args.w_veh, stage1, methods_to_run, seeds)
+    all_rows: list[dict[str, Any]] = dedupe_evaluation_rows([*existing_rows, *new_rows])
 
     best_table = build_best_so_far_table(all_rows, args.m)
     bo_table = build_bo_surrogate_table(all_rows)
     all_rows_public = [{field: row.get(field, "") for field in EVALUATION_FIELDS} for row in all_rows]
-    final_method_rows = [*existing_final_rows, *[clean_final_result_row(row, args.w_emv, args.w_veh) for row in new_rows]]
+    final_method_rows = [clean_final_result_row(row, args.w_emv, args.w_veh) for row in all_rows]
     write_csv(output_dir / "all_evaluations.csv", all_rows_public, EVALUATION_FIELDS)
     write_csv(output_dir / "final_method_comparison_results.csv", final_method_rows, FINAL_RESULT_FIELDS)
     write_csv(output_dir / "table1_best_so_far.csv", best_table, ["method", "seed", *[f"R{index}" for index in range(1, args.m + 1)]])
@@ -1211,13 +1615,17 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "mock_eval": args.mock_eval,
         "n": args.n,
         "m": args.m,
+        "theta_per_round": args.theta_per_round,
+        "theta_evaluations_per_seed_method": args.m * args.theta_per_round,
+        "workers": args.workers,
         "methods": sorted({str(row.get("method", "")) for row in all_rows if row.get("method")}, key=METHODS.index),
         "methods_run_this_invocation": methods_to_run,
         "append_existing": args.append_existing,
+        "resume": args.resume,
         "seeds": seeds,
         "bo_algorithm": "GP+ESSI",
         "objective": {"score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N", "w_emv": args.w_emv, "w_veh": args.w_veh},
-        "fixed_budget_policy": "Each round is one evaluated theta; best-so-far records cumulative minimum score.",
+        "fixed_budget_policy": "m is the number of optimization rounds; each round evaluates theta_per_round theta candidates, and best-so-far records the cumulative minimum after the full round.",
         "outputs": outputs,
         "noise_check": noise_summary,
     }
@@ -1230,7 +1638,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         validate_args(args)
-        result = run_experiment(args)
+        result = collect_visualization_info(args) if args.collect_visualization_info else run_experiment(args)
     except (B4OptimizationError, theta_bo.B4ThetaBoError, FileNotFoundError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

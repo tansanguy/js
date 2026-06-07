@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_runtime_index.v1",
-  "generated_at": "2026-06-07T13:24:15.977694+00:00",
+  "generated_at": "2026-06-07T15:08:00.704098+00:00",
   "algorithm": "B4",
   "runtime_status": "stage1_static_index_consumed_by_b4_runtime",
   "decision_variables": [
@@ -199,7 +199,7 @@
   },
   "ta_proxy_policy": {
     "schema": "compact_v9_B4_evtsp_ta_policy.v1",
-    "generated_at": "2026-06-07T13:24:15.977519+00:00",
+    "generated_at": "2026-06-07T15:08:00.703927+00:00",
     "algorithm": "B4",
     "ta_formula": "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec",
     "ta_control_policy": "Stage3 executes when tE_sec <= delta_T_thr and TA_sec <= t_lead; TA < 0 is immediate maximum-intensity green.",
@@ -390,7 +390,7 @@
     "tE_merge_sec": 10.0,
     "stage2_b0_merge_hold_params": {
       "schema": "compact_v9_B4_evtsp_stage2_merge_hold_params.v1",
-      "generated_at": "2026-06-07T13:24:15.865277+00:00",
+      "generated_at": "2026-06-07T15:08:00.606954+00:00",
       "algorithm": "B4",
       "primary_candidate": "B04_ad_stage23_trigger",
       "merge_hold_policy": "EVTSP dispatch-delay merge space hold",
@@ -454,7 +454,7 @@
   },
   "case_b_candidates": {
     "schema": "compact_v9_B4_case_b_candidates.v1",
-    "generated_at": "2026-06-07T13:24:14.915147+00:00",
+    "generated_at": "2026-06-07T15:07:59.820193+00:00",
     "candidate_segments": [
       "S7",
       "S10",
