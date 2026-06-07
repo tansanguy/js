@@ -137,19 +137,55 @@ def default_run_id() -> str:
     return "b4_mvp_" + datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+def validate_b4_stage1_audit(stage1: B4Stage1Inputs) -> None:
+    audit = stage1.stage1_audit
+    if not isinstance(audit, dict) or audit.get("schema") != "compact_v9_B4_evtsp_stage1_audit.v1":
+        raise B4RunnerError("stage1_audit_schema_missing")
+    expected = {
+        "dispatch_time_abs_sec": 61200.0,
+        "sim_begin_abs_sec": 61200.0,
+        "sim_end_abs_sec": 64800.0,
+        "step_length_sec": 1.0,
+        "t_dispatch_delay_sec": 45.0,
+        "tE_merge_sec": 10.0,
+        "t_merge_abs_rel_sec": 55.0,
+    }
+    for field, expected_value in expected.items():
+        if abs(safe_float(audit.get(field), -1.0) - expected_value) > 1e-6:
+            raise B4RunnerError(f"stage1_audit_field_mismatch:{field}")
+    if safe_float(audit.get("Q_ratio_default"), -1.0) < 0.0 or safe_float(audit.get("Q_ratio_default"), -1.0) > 1.0:
+        raise B4RunnerError("stage1_q_ratio_default_out_of_range")
+    tau_default = safe_float(audit.get("tau_default"), -1.0)
+    if tau_default < 0.70 or tau_default > 0.90:
+        raise B4RunnerError("stage1_tau_default_out_of_range")
+    n_movements = len(stage1.movements)
+    i_merge = int(round(safe_float(audit.get("i_merge"), 0.0)))
+    if safe_float(audit.get("N"), -1.0) != float(n_movements):
+        raise B4RunnerError("stage1_audit_N_mismatch")
+    if not (1 <= i_merge <= n_movements):
+        raise B4RunnerError(f"stage1_i_merge_out_of_range:{i_merge}")
+    merge_rows = [movement for movement in stage1.movements if movement.is_merge]
+    if len(merge_rows) != 1:
+        raise B4RunnerError(f"stage1_merge_row_count_mismatch:{len(merge_rows)}")
+    if merge_rows[0].route_intersection_index != i_merge or merge_rows[0].stage_owner != "stage2_merge":
+        raise B4RunnerError("stage1_merge_owner_mismatch")
+
+
 def validate_static_inputs(
     stage1_dir: Path | None = None,
     net_file: Path = B04_NET,
     background_route: Path = B04_AA_BACKGROUND_ROUTE,
+    firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
 ) -> B4Stage1Inputs:
-    stage1 = B4Stage1Inputs.load(stage1_dir) if stage1_dir is not None else B4Stage1Inputs.load()
-    for path in [net_file, background_route, B04_FIRETRUCK_ROUTE_XML, B04_MANIFEST]:
+    stage1 = B4Stage1Inputs.load(stage1_dir, route_xml=firetruck_route) if stage1_dir is not None else B4Stage1Inputs.load(route_xml=firetruck_route)
+    for path in [net_file, background_route, firetruck_route, B04_MANIFEST]:
         if not path.is_file():
             raise B4RunnerError(f"missing_required_input:{rel(path)}")
     manifest = read_json(B04_MANIFEST)
     allow_input_override = bool(stage1.summary.get("allow_runtime_input_override") or stage1.summary.get("runtime_input_provenance"))
     if not allow_input_override and manifest.get("selected_candidate") != B4_PRIMARY_CANDIDATE:
         raise B4RunnerError(f"unexpected_manifest_selected_candidate:{manifest.get('selected_candidate')}")
+    validate_b4_stage1_audit(stage1)
     return stage1
 
 
@@ -162,6 +198,7 @@ def build_tasks(
     run_root: Path = RUN_ROOT,
     net_file: Path = B04_NET,
     background_route: Path = B04_AA_BACKGROUND_ROUTE,
+    firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
 ) -> list[B4RunTask]:
     if repeat_id != DEFAULT_REPEAT_ID:
         raise B4RunnerError("B4 Runtime MVP supports repeat_id=1 only")
@@ -183,8 +220,45 @@ def build_tasks(
             leaf = B4_PARAMETER_ID
             task_background_route = background_route
         run_dir = run_root / run_id / mode / leaf / f"repeat_{repeat_id:03d}"
-        tasks.append(B4RunTask(run_id, mode, leaf, repeat_id, seed, run_dir, net_file=net_file, background_route=task_background_route))
+        tasks.append(B4RunTask(run_id, mode, leaf, repeat_id, seed, run_dir, net_file=net_file, background_route=task_background_route, firetruck_route=firetruck_route))
     return tasks
+
+
+def write_stage2_synthetic_demand_route(task: B4RunTask, stage1: B4Stage1Inputs) -> Path:
+    """Inject a small verification-only inflow near the merge window.
+
+    This does not change constants or theta. It only creates nonzero merge-zone
+    measurements so multiplication-based Stage2 verification can actually fire.
+    """
+    route_path = task.run_dir / "stage2_synthetic_merge_verify.rou.xml"
+    target_edge = stage1.departure.mainline_target_edge
+    route_edges = [target_edge]
+    if target_edge in stage1.route_edges:
+        start = stage1.route_edges.index(target_edge)
+        route_edges = list(stage1.route_edges[start : min(start + 4, len(stage1.route_edges))])
+    elif stage1.route_edges:
+        route_edges = list(stage1.route_edges[: min(4, len(stage1.route_edges))])
+    vehicles = []
+    for idx in range(24):
+        depart = 555 + idx * 1.5
+        vehicles.append(
+            f'  <vehicle id="stage2_verify_{idx:03d}" type="stage2_verify_passenger" '
+            f'route="stage2_verify_merge_route" depart="{depart:.1f}" departLane="best" '
+            'departPos="base" departSpeed="0"/>'
+        )
+    route_path.write_text(
+        "\n".join([
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            "<routes>",
+            '  <vType id="stage2_verify_passenger" vClass="passenger" length="5.0" minGap="2.5" accel="2.0" decel="4.5" maxSpeed="13.9"/>',
+            f'  <route id="stage2_verify_merge_route" edges="{" ".join(route_edges)}"/>',
+            *vehicles,
+            "</routes>",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    return route_path
 
 
 def write_sumo_config(
@@ -208,6 +282,10 @@ def write_sumo_config(
     fcd = task.run_dir / "fcd.xml"
     e2_output = task.run_dir / "e2_queue.xml"
     sumocfg = task.run_dir / "scenario.sumocfg"
+    route_files = [task.background_route, task.firetruck_route]
+    if task.mode == B4_MODE and phase_config.stage2_synthetic_demand:
+        synthetic_stage1 = stage1 or B4Stage1Inputs.load()
+        route_files.append(write_stage2_synthetic_demand_route(task, synthetic_stage1))
     output_lines = [
         "  <output>",
         f'    <tripinfo-output value="{tripinfo.as_posix()}"/>',
@@ -240,7 +318,7 @@ def write_sumo_config(
             "<configuration>",
             "  <input>",
             f'    <net-file value="{task.net_file.as_posix()}"/>',
-            f'    <route-files value="{task.background_route.as_posix()},{task.firetruck_route.as_posix()}"/>',
+            f'    <route-files value="{",".join(path.as_posix() for path in route_files)}"/>',
             f'    <additional-files value="{additional.as_posix()}"/>',
             "  </input>",
             "  <time>",
@@ -447,9 +525,16 @@ def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float
     return rows
 
 
-def build_b004_free_reference(stage1: B4Stage1Inputs, net_file: Path = B04_NET, background_route: Path = B04_AA_BACKGROUND_ROUTE) -> dict[str, Any]:
+def build_b004_free_reference(
+    stage1: B4Stage1Inputs,
+    net_file: Path = B04_NET,
+    background_route: Path = B04_AA_BACKGROUND_ROUTE,
+    firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
+    output_json: Path = B004_FREE_REFERENCE_JSON,
+    vehicle_free_times_csv: Path = B004_VEHICLE_FREE_TIMES_CSV,
+) -> dict[str, Any]:
     edge_lengths = load_edge_lengths(net_file)
-    route_meta = load_firetruck_route(B04_FIRETRUCK_ROUTE_XML)
+    route_meta = load_firetruck_route(firetruck_route)
     route_edges = list(route_meta["route_edges"])
     route_length = route_length_m(route_edges, edge_lengths)
     emv_free = free_time_sec(route_edges, edge_lengths)
@@ -476,9 +561,9 @@ def build_b004_free_reference(stage1: B4Stage1Inputs, net_file: Path = B04_NET, 
         "veh_free_mean_sec": round(sum(veh_free_values) / len(veh_free_values), 6) if veh_free_values else "",
         "v_definition": "Stage 1 controllable movement approach/storage/corridor edge route-overlap background vehicles; no FCD edge-pass claim.",
     }
-    write_json(B004_FREE_REFERENCE_JSON, reference)
+    write_json(output_json, reference)
     write_csv(
-        B004_VEHICLE_FREE_TIMES_CSV,
+        vehicle_free_times_csv,
         vehicle_rows,
         ["vehicle_id", "route_id", "route_edge_count", "route_length_m", "free_time_sec", "v_overlap_edge_count", "v_definition"],
     )
@@ -750,7 +835,7 @@ def summarize_task(
     emit_fcd: bool = False,
     params: B4MvpParams | None = None,
 ) -> dict[str, Any]:
-    paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd)
+    paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd, stage1=stage1)
     tripinfo = parse_tripinfo(paths["tripinfo"])
     emergency = tripinfo["emergency"] or {}
     background = tripinfo["background"]
@@ -847,7 +932,7 @@ def run_b04_task(
     emit_fcd: bool = False,
 ) -> dict[str, Any]:
     start = time.time()
-    command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd)
+    command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd, stage1=stage1)
     traci = import_traci()
     events: list[dict[str, Any]] = []
     monitor_fields: dict[str, Any] = {}
@@ -913,7 +998,7 @@ def run_b4_task(
     params: B4MvpParams | B4ThetaParams | None = None,
 ) -> dict[str, Any]:
     start = time.time()
-    command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd)
+    command = build_sumo_command(task, sumo_binary, phase_config, emit_fcd=emit_fcd, stage1=stage1)
     traci = import_traci()
     events: list[dict[str, Any]] = []
     stats: dict[str, Any] = {}
@@ -982,6 +1067,100 @@ def attach_b0_b4_comparison(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row["b4_minus_b0_EMV_sec"] = delta
         row["b4_performance_status"] = "faster_than_b0" if delta < 0 else "not_faster_than_b0"
     return rows
+
+
+VERIFICATION_SUMMARY_FIELDS = [
+    "run_id",
+    "parameter_id",
+    "stage2_measurement_scale",
+    "stage3_measurement_scale",
+    "stage2_synthetic_demand",
+    "stage2_hold_count",
+    "stage2_release_count",
+    "caseB_rows",
+    "green_dur_violation_count",
+    "gate_ta_mismatch_count",
+    "verification_pass",
+    "failure_reasons",
+]
+
+
+def build_verification_summary(rows: list[dict[str, Any]], event_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for row in [item for item in rows if item.get("mode") == B4_MODE]:
+        run_id = str(row.get("run_id", ""))
+        parameter_id = str(row.get("parameter_id", ""))
+        related = [
+            event
+            for event in event_rows
+            if str(event.get("run_id", "")) == run_id and str(event.get("parameter_id", "")) == parameter_id
+        ]
+        stage2_hold_count = sum(1 for event in related if event.get("stage") == "stage2" and event.get("action") == "RED_HOLD")
+        stage2_release_count = sum(1 for event in related if event.get("stage") == "stage2" and event.get("action") == "RELEASE")
+        caseb_rows = sum(1 for event in related if event.get("stage") == "stage3" and event.get("case_type") == "caseB")
+        green_dur_violation_count = 0
+        gate_ta_mismatch_count = 0
+        for event in related:
+            if event.get("stage") != "stage3":
+                continue
+            green_dur = safe_float(event.get("green_dur_sec"), 0.0)
+            gm = safe_float(event.get("Gm_sec"), 0.0)
+            if green_dur > 0.0 and gm > 0.0 and green_dur < gm:
+                green_dur_violation_count += 1
+            if event.get("action") in {"GREEN_REQUEST", "GREEN_ACTIVE"} and str(event.get("ta_triggered")).lower() not in {"true", "1"}:
+                gate_ta_mismatch_count += 1
+
+        reasons: set[str] = set()
+        stage2_scale = safe_float(row.get("stage2_measurement_scale"), 1.0)
+        stage3_scale = safe_float(row.get("stage3_measurement_scale"), 1.0)
+        if stage2_scale > 1.0 and stage2_hold_count == 0:
+            stage2_events = [event for event in related if event.get("stage") == "stage2"]
+            if not stage2_events or all(
+                safe_float(event.get("scaled_Lq_merge_m"), 0.0) <= 0.0
+                and safe_float(event.get("scaled_n_occ_runtime_veh"), 0.0) <= 0.0
+                for event in stage2_events
+            ):
+                reasons.add("ZERO_MEASUREMENT_CANNOT_SCALE")
+            elif any(str(event.get("SafetyGate_result", "")).startswith("DENY") for event in stage2_events):
+                reasons.add("SAFETY_DENIED")
+            else:
+                reasons.add("SCALED_VALUE_BELOW_THRESHOLD")
+        if stage3_scale > 1.0 and caseb_rows == 0:
+            stage3_events = [event for event in related if event.get("stage") == "stage3"]
+            if any(str(event.get("SafetyGate_result", "")).startswith("DENY") for event in stage3_events):
+                reasons.add("SAFETY_DENIED")
+            elif any(event.get("gate_result") == "CONTINUE_TOO_FAR" for event in stage3_events):
+                reasons.add("DELTA_GATE_CLOSED")
+            elif any(event.get("case_type") == "caseA_boundary" for event in stage3_events):
+                reasons.add("NO_DOWNSTREAM")
+            else:
+                reasons.add("SCALED_VALUE_BELOW_THRESHOLD")
+        if green_dur_violation_count:
+            reasons.add("GREEN_DUR_BELOW_GM")
+        if gate_ta_mismatch_count:
+            reasons.add("GATE_TA_MISMATCH")
+        verification_pass = (
+            stage2_hold_count > 0
+            and stage2_release_count > 0
+            and caseb_rows > 0
+            and green_dur_violation_count == 0
+            and gate_ta_mismatch_count == 0
+        )
+        summaries.append({
+            "run_id": run_id,
+            "parameter_id": parameter_id,
+            "stage2_measurement_scale": row.get("stage2_measurement_scale", ""),
+            "stage3_measurement_scale": row.get("stage3_measurement_scale", ""),
+            "stage2_synthetic_demand": row.get("stage2_synthetic_demand", ""),
+            "stage2_hold_count": stage2_hold_count,
+            "stage2_release_count": stage2_release_count,
+            "caseB_rows": caseb_rows,
+            "green_dur_violation_count": green_dur_violation_count,
+            "gate_ta_mismatch_count": gate_ta_mismatch_count,
+            "verification_pass": verification_pass,
+            "failure_reasons": ";".join(sorted(reasons)),
+        })
+    return summaries
 
 
 def queue_runtime_summary(stage1: B4Stage1Inputs, rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1174,6 +1353,8 @@ def write_metric_outputs(
     signal_events = metrics_root / "signal_events.csv"
     compare = metrics_root / "compare_b0_b4.csv"
     b004_compare = metrics_root / "b004_b04_b4_comparison.csv"
+    verification_summary_csv = metrics_root / "verification_summary.csv"
+    verification_summary_json = metrics_root / "verification_summary.json"
     summary_json = metrics_root / "experiment_summary.json"
     write_csv(experiment_results, rows, EXPERIMENT_RESULT_FIELDS)
 
@@ -1184,6 +1365,16 @@ def write_metric_outputs(
             with path.open("r", encoding="utf-8", newline="") as file:
                 event_rows.extend(csv.DictReader(file))
     write_csv(signal_events, event_rows, RUNTIME_EVENT_FIELDS)
+    verification_rows = build_verification_summary(rows, event_rows)
+    write_csv(verification_summary_csv, verification_rows, VERIFICATION_SUMMARY_FIELDS)
+    write_json(
+        verification_summary_json,
+        {
+            "schema": "compact_v9_B4_stage2_stage3_verification_summary.v1",
+            "generated_at": utc_now(),
+            "rows": verification_rows,
+        },
+    )
 
     compare_rows = [
         {
@@ -1273,6 +1464,8 @@ def write_metric_outputs(
                 "signal_events_csv": rel(signal_events),
                 "compare_b0_b4_csv": rel(compare),
                 "b004_b04_b4_comparison_csv": rel(b004_compare),
+                "verification_summary_csv": rel(verification_summary_csv),
+                "verification_summary_json": rel(verification_summary_json),
                 "experiment_summary_json": rel(summary_json),
                 **visualization_outputs,
                 "b4_ta_b0_measurement_review_html": ta_review_html,
@@ -1287,6 +1480,8 @@ def write_metric_outputs(
         "signal_events_csv": rel(signal_events),
         "compare_b0_b4_csv": rel(compare),
         "b004_b04_b4_comparison_csv": rel(b004_compare),
+        "verification_summary_csv": rel(verification_summary_csv),
+        "verification_summary_json": rel(verification_summary_json),
         "experiment_summary_json": rel(summary_json),
         **visualization_outputs,
         "b4_ta_b0_measurement_review_html": ta_review_html,
@@ -1307,22 +1502,33 @@ def run_pipeline(
     emit_fcd: bool = False,
     net_file: Path = B04_NET,
     background_route: Path = B04_AA_BACKGROUND_ROUTE,
+    firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
     hard_max_sim_time: float | None = None,
     b4_params: B4MvpParams | None = None,
     stage1_dir: Path | None = None,
+    b4_stage2_measurement_scale: float = 1.0,
+    b4_stage3_measurement_scale: float = 1.0,
+    b4_stage2_synthetic_demand: bool = False,
 ) -> dict[str, Any]:
     net_file = net_file if net_file.is_absolute() else (PROJECT_ROOT / net_file)
     background_route = background_route if background_route.is_absolute() else (PROJECT_ROOT / background_route)
+    firetruck_route = firetruck_route if firetruck_route.is_absolute() else (PROJECT_ROOT / firetruck_route)
     stage1_dir = stage1_dir.resolve() if stage1_dir is not None else None
-    stage1 = validate_static_inputs(stage1_dir=stage1_dir, net_file=net_file, background_route=background_route)
+    stage1 = validate_static_inputs(stage1_dir=stage1_dir, net_file=net_file, background_route=background_route, firetruck_route=firetruck_route)
     phase_config = B4RuntimePhaseConfig.from_phase(phase)
     if hard_max_sim_time is not None:
         phase_config = replace(phase_config, hard_max_sim_time=float(hard_max_sim_time))
-    tasks = build_tasks(run_id=run_id, modes=modes, run_root=run_root, net_file=net_file, background_route=background_route)
+    phase_config = replace(
+        phase_config,
+        stage2_measurement_scale=max(float(b4_stage2_measurement_scale), 0.0),
+        stage3_measurement_scale=max(float(b4_stage3_measurement_scale), 0.0),
+        stage2_synthetic_demand=bool(b4_stage2_synthetic_demand),
+    )
+    tasks = build_tasks(run_id=run_id, modes=modes, run_root=run_root, net_file=net_file, background_route=background_route, firetruck_route=firetruck_route)
     for task in tasks:
         if not task.is_analytic:
-            write_sumo_config(task, phase_config, emit_fcd=emit_fcd)
-    free_reference = build_b004_free_reference(stage1, net_file=net_file, background_route=background_route)
+            write_sumo_config(task, phase_config, emit_fcd=emit_fcd, stage1=stage1)
+    free_reference = build_b004_free_reference(stage1, net_file=net_file, background_route=background_route, firetruck_route=firetruck_route)
     free_rows = read_free_vehicle_rows()
     free_rows_by_id = {row["vehicle_id"]: row for row in free_rows}
     if dry_run:
@@ -1362,6 +1568,7 @@ def run_pipeline(
         "primary_candidate": B4_PRIMARY_CANDIDATE,
         "net_file": rel(net_file),
         "background_route_file": rel(background_route),
+        "firetruck_route_file": rel(firetruck_route),
         "phase": phase_config.phase,
         "run_id": tasks[0].run_id if tasks else "",
         "outputs": outputs,
@@ -1381,39 +1588,48 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--emit-fcd", action="store_true", help="Write geo FCD output for visualization runs only.")
     parser.add_argument("--net-file", type=Path, default=B04_NET, help="Optional B04/B4 SUMO net file override.")
     parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE, help="Optional B04/B4 background route file override.")
+    parser.add_argument("--firetruck-route", type=Path, default=B04_FIRETRUCK_ROUTE_XML, help="Optional emergency/firetruck route XML override.")
     parser.add_argument("--stage1-dir", type=Path, default=None, help="Optional B4 Stage1 directory generated from the same B04 inputs.")
     parser.add_argument("--hard-max-sim-time", type=float, default=None, help="Optional SUMO/B4 hard max simulation time in seconds.")
     parser.add_argument("--b4-parameter-id", default=B4_PARAMETER_ID)
     parser.add_argument("--b4-alpha", type=float, default=None)
     parser.add_argument("--b4-t-lead", type=float, default=None)
     parser.add_argument("--b4-delta-t-thr", type=float, default=None)
+    parser.add_argument("--b4-q-ratio", type=float, default=None)
     parser.add_argument("--b4-q-trig", type=float, default=None)
     parser.add_argument("--b4-g-ext", type=float, default=None)
     parser.add_argument("--b4-ext-max", type=float, default=None, help="Legacy alias for --b4-g-ext.")
     parser.add_argument("--b4-hold-max", type=float, default=None, help="Fixed structure override; not a screened decision variable.")
-    parser.add_argument("--b4-tau", type=float, default=None, help="Fixed Case B tau override; not a screened decision variable.")
+    parser.add_argument("--b4-tau", type=float, default=None, help="EVTSP Case B tau decision-variable override.")
     parser.add_argument("--b4-d-up", type=int, default=None, help="Fixed lookahead/action-budget override; not a screened decision variable.")
-    parser.add_argument("--b4-tau-scale", type=float, default=None)
-    parser.add_argument("--b4-tau-numerator-gamma", type=float, default=None)
+    parser.add_argument("--b4-tau-scale", type=float, default=None, help="Deprecated legacy alias; ignored by EVTSP runtime.")
+    parser.add_argument("--b4-tau-numerator-gamma", type=float, default=None, help="Deprecated legacy alias; ignored by EVTSP runtime.")
+    parser.add_argument("--b4-stage2-measurement-scale", type=float, default=1.0, help="Verification-only scale applied to Stage2 merge queue/occupancy measurements.")
+    parser.add_argument("--b4-stage3-measurement-scale", type=float, default=1.0, help="Verification-only scale applied to Stage3 Case B queue measurements.")
+    parser.add_argument("--b4-stage2-synthetic-demand", action="store_true", help="Verification-only merge-zone demand used to make Stage2 measurements nonzero.")
     parser.add_argument("--b4-theta", action="store_true", help="Compatibility flag; B4ThetaParams is now the default B4 runtime.")
     args = parser.parse_args(argv)
     b4_g_ext = args.b4_g_ext if args.b4_g_ext is not None else args.b4_ext_max
+    legacy_q_ratio = None
+    if args.b4_q_trig is not None:
+        legacy_q_ratio = args.b4_q_trig / 50.0
     b4_params = B4ThetaParams(
         parameter_id=args.b4_parameter_id,
         alpha=args.b4_alpha if args.b4_alpha is not None else B4ThetaParams.alpha,
         t_lead=args.b4_t_lead if args.b4_t_lead is not None else B4ThetaParams.t_lead,
         delta_T_thr=args.b4_delta_t_thr if args.b4_delta_t_thr is not None else B4ThetaParams.delta_T_thr,
+        Q_ratio=(
+            args.b4_q_ratio
+            if args.b4_q_ratio is not None
+            else legacy_q_ratio
+            if legacy_q_ratio is not None
+            else B4ThetaParams.Q_ratio
+        ),
         Q_trig=args.b4_q_trig if args.b4_q_trig is not None else B4ThetaParams.Q_trig,
         G_ext=b4_g_ext if b4_g_ext is not None else B4ThetaParams.G_ext,
         tau=args.b4_tau if args.b4_tau is not None else B4ThetaParams.tau,
         hold_max=args.b4_hold_max if args.b4_hold_max is not None else B4ThetaParams.hold_max,
         d_up=args.b4_d_up if args.b4_d_up is not None else B4ThetaParams.d_up,
-        tau_scale=args.b4_tau_scale if args.b4_tau_scale is not None else B4ThetaParams.tau_scale,
-        tau_numerator_gamma=(
-            args.b4_tau_numerator_gamma
-            if args.b4_tau_numerator_gamma is not None
-            else B4ThetaParams.tau_numerator_gamma
-        ),
     )
     try:
         result = run_pipeline(
@@ -1427,9 +1643,13 @@ def main(argv: list[str] | None = None) -> int:
             emit_fcd=args.emit_fcd,
             net_file=args.net_file,
             background_route=args.background_route,
+            firetruck_route=args.firetruck_route,
             hard_max_sim_time=args.hard_max_sim_time,
             b4_params=b4_params,
             stage1_dir=args.stage1_dir,
+            b4_stage2_measurement_scale=args.b4_stage2_measurement_scale,
+            b4_stage3_measurement_scale=args.b4_stage3_measurement_scale,
+            b4_stage2_synthetic_demand=args.b4_stage2_synthetic_demand,
         )
     except (B4RunnerError, B4RuntimeError, FileNotFoundError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

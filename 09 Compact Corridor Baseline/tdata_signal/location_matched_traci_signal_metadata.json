@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_location_matched_traci_signal_metadata.v1",
-  "generated_at": "2026-06-05T12:14:02.976094+00:00",
+  "generated_at": "2026-06-07T01:53:43.161190+00:00",
   "profile_source": "09 Compact Corridor Baseline/tdata_signal/location_matched_signal_profiles.csv",
   "items": [
     {
@@ -12,11 +12,11 @@
       "route_pair_index": "6",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "cycle_sec": 90,
+      "main_green_sec": 59,
+      "side_green_sec": 25,
       "offset_sec": 28,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S02_S03_HANYANG_TECHNICAL_HIGH_SCHOOL_FRONT",
@@ -27,26 +27,26 @@
       "route_pair_index": "10",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "cycle_sec": 90,
+      "main_green_sec": 59,
+      "side_green_sec": 25,
       "offset_sec": 48,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
-      "tls_id": "cluster_3846534041_436877431",
+      "tls_id": "CSV_TLS_S03_S04_TOYOKO_INN_HOTEL_FRONT",
       "itst_id": "6813",
       "a008_name": "토요코인호텔앞",
-      "movement_ids": "B4_MOVEMENT_02",
-      "mapped_segments": "S3:upbound",
+      "movement_ids": "",
+      "mapped_segments": "",
       "route_pair_index": "12",
-      "selected_green_phases": "0",
-      "selected_red_phases": "2",
-      "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "selected_green_phases": "",
+      "selected_red_phases": "",
+      "cycle_sec": 80,
+      "main_green_sec": 62,
+      "side_green_sec": 12,
       "offset_sec": 57,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S05_S06_GWANGHUI_INTERSECTION",
@@ -57,11 +57,11 @@
       "route_pair_index": "16",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "cycle_sec": 80,
+      "main_green_sec": 62,
+      "side_green_sec": 12,
       "offset_sec": 76,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more",
@@ -72,11 +72,11 @@
       "route_pair_index": "23",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 100,
+      "cycle_sec": 95,
       "main_green_sec": 65,
-      "side_green_sec": 29,
-      "offset_sec": 10,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "side_green_sec": 24,
+      "offset_sec": 15,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S08_S09_TOEGYE_RO_4_GA",
@@ -88,10 +88,10 @@
       "selected_green_phases": "0",
       "selected_red_phases": "2",
       "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "main_green_sec": 70,
+      "side_green_sec": 24,
       "offset_sec": 34,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more",
@@ -103,10 +103,10 @@
       "selected_green_phases": "2 8",
       "selected_red_phases": "0 0",
       "cycle_sec": 100,
-      "main_green_sec": 65,
-      "side_green_sec": 29,
+      "main_green_sec": 70,
+      "side_green_sec": 24,
       "offset_sec": 77,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S11_S12_TOEGYE_RO_2_GA",
@@ -117,10 +117,10 @@
       "route_pair_index": "42",
       "selected_green_phases": "0",
       "selected_red_phases": "",
-      "cycle_sec": 110,
-      "main_green_sec": 75,
-      "side_green_sec": 29,
-      "offset_sec": 4,
+      "cycle_sec": 85,
+      "main_green_sec": 55,
+      "side_green_sec": 24,
+      "offset_sec": 47,
       "source": "A008_location_matched_TData_SPAT"
     },
     {
@@ -132,11 +132,11 @@
       "route_pair_index": "45",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 36,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "cycle_sec": 100,
+      "main_green_sec": 70,
+      "side_green_sec": 24,
+      "offset_sec": 16,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S14_S15_DAYS_HOTEL_FRONT",
@@ -146,12 +146,12 @@
       "mapped_segments": "S14:upbound",
       "route_pair_index": "48",
       "selected_green_phases": "0",
-      "selected_red_phases": "",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 50,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "selected_red_phases": "2",
+      "cycle_sec": 95,
+      "main_green_sec": 65,
+      "side_green_sec": 24,
+      "offset_sec": 40,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more",
@@ -162,11 +162,11 @@
       "route_pair_index": "50",
       "selected_green_phases": "4",
       "selected_red_phases": "0",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 60,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "cycle_sec": 85,
+      "main_green_sec": 54,
+      "side_green_sec": 25,
+      "offset_sec": 70,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE",
@@ -177,11 +177,11 @@
       "route_pair_index": "52",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 69,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "cycle_sec": 100,
+      "main_green_sec": 70,
+      "side_green_sec": 24,
+      "offset_sec": 49,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S17_S18_NAMDAEMUN_MARKET",
@@ -192,11 +192,11 @@
       "route_pair_index": "53",
       "selected_green_phases": "0",
       "selected_red_phases": "2",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 74,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "cycle_sec": 85,
+      "main_green_sec": 54,
+      "side_green_sec": 25,
+      "offset_sec": 84,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S18_S19_SAMSEON_BUILDING",
@@ -206,12 +206,12 @@
       "mapped_segments": "S18:upbound",
       "route_pair_index": "55",
       "selected_green_phases": "0",
-      "selected_red_phases": "",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
-      "side_green_sec": 12,
-      "offset_sec": 84,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "selected_red_phases": "2",
+      "cycle_sec": 100,
+      "main_green_sec": 70,
+      "side_green_sec": 24,
+      "offset_sec": 64,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     },
     {
       "tls_id": "CSV_TLS_S19_S20_SEVERANCE_BUILDING",
@@ -225,23 +225,53 @@
       "cycle_sec": 100,
       "main_green_sec": 75,
       "side_green_sec": 19,
-      "offset_sec": 3,
+      "offset_sec": 6,
+      "source": "A008_location_matched_TData_SPAT"
+    },
+    {
+      "tls_id": "CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT",
+      "itst_id": "5921",
+      "a008_name": "서울스퀘어앞",
+      "movement_ids": "",
+      "mapped_segments": "",
+      "route_pair_index": "59",
+      "selected_green_phases": "",
+      "selected_red_phases": "",
+      "cycle_sec": 80,
+      "main_green_sec": 62,
+      "side_green_sec": 12,
+      "offset_sec": 43,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
+    },
+    {
+      "tls_id": "CSV_TLS_S01_START_SINDANG_STATION",
+      "itst_id": "148",
+      "a008_name": "신당역",
+      "movement_ids": "",
+      "mapped_segments": "",
+      "route_pair_index": "",
+      "selected_green_phases": "",
+      "selected_red_phases": "",
+      "cycle_sec": 85,
+      "main_green_sec": 55,
+      "side_green_sec": 24,
+      "offset_sec": 10,
       "source": "A008_location_matched_TData_SPAT"
     },
     {
       "tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
-      "itst_id": "5921",
-      "a008_name": "서울스퀘어앞",
+      "itst_id": "475",
+      "a008_name": "서울역",
       "movement_ids": "B4_MOVEMENT_16",
       "mapped_segments": "S21:upbound",
-      "route_pair_index": "59",
+      "route_pair_index": "",
       "selected_green_phases": "2",
       "selected_red_phases": "0",
-      "cycle_sec": 90,
-      "main_green_sec": 72,
+      "cycle_sec": 80,
+      "main_green_sec": 62,
       "side_green_sec": 12,
-      "offset_sec": 13,
-      "source": "A008_location_matched_no_tdata_timing_fallback"
+      "offset_sec": 1,
+      "source": "A008_location_matched_TData_measured_average_pm3_fallback"
     }
   ]
 }

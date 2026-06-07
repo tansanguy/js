@@ -18,8 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_DIR = Path(__file__).resolve().parent
 TDATA_ROOT = PIPELINE_DIR / "tdata_signal"
 DEMAND_DIR = PROJECT_ROOT / "data_prepared/compact_v9/demand"
-STAGE1_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1/b4_approach_storage_link_plan.csv"
-BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained.rou.xml"
+STAGE1_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_approach_storage_link_plan.csv"
+BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml"
 
 AUDIT_CSV = TDATA_ROOT / "b4_mainroad_tau_control_audit.csv"
 AUDIT_JSON = TDATA_ROOT / "b4_mainroad_tau_control_audit.json"

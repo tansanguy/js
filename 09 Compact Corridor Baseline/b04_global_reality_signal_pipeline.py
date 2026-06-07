@@ -26,19 +26,23 @@ NET_DIR = TDATA_ROOT / "nets"
 SUMMARY_DIR = TDATA_ROOT / "summaries"
 
 A008_CSV = PROJECT_ROOT / "A008_P.csv"
-INPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired.net.xml"
-OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_global_reality.net.xml"
+INPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml"
+OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 MAIN_PROFILES_CSV = TDATA_ROOT / "reality_repaired_signal_profiles.csv"
-TIMING_SNAPSHOTS = [
-    TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210517.jsonl",
-    TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210751.jsonl",
-    TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210833.jsonl",
-]
+TIMING_SNAPSHOTS = sorted(TDATA_ROOT.glob("api_snapshots/timing_location_matched_*.jsonl"))
+if not TIMING_SNAPSHOTS:
+    TIMING_SNAPSHOTS = [
+        TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210517.jsonl",
+        TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210751.jsonl",
+        TDATA_ROOT / "api_snapshots/timing_location_matched_20260605_210833.jsonl",
+    ]
 
 GLOBAL_MAPPING_CSV = TDATA_ROOT / "global_tls_a008_itst_mapping.csv"
 GLOBAL_PROFILES_CSV = TDATA_ROOT / "global_reality_signal_profiles.csv"
 GLOBAL_APPLIED_CSV = TDATA_ROOT / "global_reality_applied_signal_profiles.csv"
 SUMMARY_JSON = SUMMARY_DIR / "b04_global_reality_signal_summary.json"
+VIRTUAL_TLS_IDS = {"COMPACT_V9_FIRE_STATION_ENTRY_TLS"}
+CSV_SIGNAL_CANDIDATES_CSV = PROJECT_ROOT / "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv"
 
 TDATA_HELPER_PATH = PIPELINE_DIR / "tdata_plausible_signal_pipeline.py"
 
@@ -172,16 +176,8 @@ def load_snapshots(paths: list[Path]) -> list[dict[str, Any]]:
     return records
 
 
-def latest_timing_by_itst(paths: list[Path]) -> dict[str, Any]:
-    latest: dict[str, Any] = {}
-    for row in load_snapshots(paths):
-        record = tdp.api_record_from_row(row)
-        if record is None:
-            continue
-        previous = latest.get(record.itst_id)
-        if previous is None or record.utc_ms >= previous.utc_ms:
-            latest[record.itst_id] = record
-    return latest
+def averaged_timing_by_itst(paths: list[Path]) -> dict[str, Any]:
+    return tdp.aggregate_api_records_by_itst(load_snapshots(paths))
 
 
 def logic_phase_count(input_net: Path) -> dict[str, int]:
@@ -267,24 +263,47 @@ def tls_xy_from_connections(tls: Any) -> tuple[float, float] | None:
     return sum(xs) / len(xs), sum(ys) / len(ys)
 
 
+def csv_signal_position_overrides(net: Any) -> dict[str, tuple[float, float, float, float]]:
+    overrides: dict[str, tuple[float, float, float, float]] = {}
+    if not CSV_SIGNAL_CANDIDATES_CSV.is_file():
+        return overrides
+    for row in read_csv(CSV_SIGNAL_CANDIDATES_CSV):
+        tls_id = str(row.get("tls_id", "")).strip()
+        lat = safe_float(row.get("csv_lat"), 0.0)
+        lon = safe_float(row.get("csv_lon"), 0.0)
+        if not tls_id or not lat or not lon:
+            continue
+        try:
+            x, y = net.convertLonLat2XY(lon, lat)
+        except Exception:
+            continue
+        overrides[tls_id] = (float(x), float(y), float(lat), float(lon))
+    return overrides
+
+
 def tls_points(input_net: Path) -> list[TlsPoint]:
     net = sumolib.net.readNet(str(input_net))
     phase_counts = logic_phase_count(input_net)
     link_counts = logic_link_count(input_net)
     node_ids = {node.getID() for node in net.getNodes()}
+    csv_position_overrides = csv_signal_position_overrides(net)
     points: list[TlsPoint] = []
     for tls in net.getTrafficLights():
         tls_id = tls.getID()
         coord_source = "junction"
-        if tls_id in node_ids:
+        if tls_id in csv_position_overrides:
+            x, y, lat, lon = csv_position_overrides[tls_id]
+            coord_source = "csv_reference_signal_position"
+        elif tls_id in node_ids:
             x, y = net.getNode(tls_id).getCoord()
+            lon, lat = net.convertXY2LonLat(x, y)
         else:
             xy = tls_xy_from_connections(tls)
             if xy is None:
                 continue
             x, y = xy
             coord_source = "connection_centroid"
-        lon, lat = net.convertXY2LonLat(x, y)
+            lon, lat = net.convertXY2LonLat(x, y)
         points.append(TlsPoint(
             tls_id=tls_id,
             x=float(x),
@@ -330,6 +349,44 @@ def main_profile_objects() -> dict[str, Any]:
         )
         profiles[profile.tls_id] = profile
     return profiles
+
+
+def existing_logic_profile(tls: TlsPoint, logic: ET.Element | None) -> Any:
+    phases = list(logic.findall("phase")) if logic is not None else []
+    cycle = int(round(sum(safe_float(phase.get("duration")) for phase in phases))) if phases else 60
+    yellow = 3
+    yellow_total = 0.0
+    main_green = 0.0
+    for phase in phases:
+        duration = safe_float(phase.get("duration"))
+        state = str(phase.get("state", ""))
+        if "y" in state or "Y" in state:
+            yellow_total += duration
+        elif state.count("G") * 2 + state.count("g") > 0:
+            main_green = max(main_green, duration)
+    if main_green <= 0.0:
+        main_green = max(1.0, cycle - 2 * yellow)
+    side_green = max(0, int(round(cycle - main_green - yellow_total)))
+    return tdp.SignalProfile(
+        tls_id=tls.tls_id,
+        profile_role="virtual_merge_control",
+        source="virtual_merge_tls_preserved_no_A008_claim",
+        source_itst_id="",
+        source_eqmn_id="",
+        source_tls_id=tls.tls_id,
+        movement_ids="",
+        mapped_segments="virtual_merge_control",
+        route_order_min=0.0,
+        cycle_sec=max(1, cycle),
+        main_green_sec=max(1, int(round(main_green))),
+        side_green_sec=side_green,
+        yellow_sec=yellow,
+        offset_sec=safe_int(logic.get("offset") if logic is not None else 0),
+        confidence=1.0,
+        dominant_api_field="",
+        dominant_remaining_sec=0.0,
+        inference_reason="Preserved virtual fire-station merge TLS; excluded from physical A008/T-Data mapping.",
+    )
 
 
 def profile_from_timing(tls: TlsPoint, itst_id: str, a008_name: str, timing: Any, nearest_rank: float) -> Any:
@@ -393,16 +450,33 @@ def profile_from_source(tls: TlsPoint, source: Any, a008: A008Point, dist_to_a00
     )
 
 
-def average_profile(tls: TlsPoint, a008: A008Point, dist_to_a008: float, averages: dict[str, float]) -> Any:
-    cycle = int(averages["cycle_sec"])
-    main_green = int(averages["main_green_sec"])
+def stable_index(seed: str) -> int:
+    return sum(ord(char) for char in seed)
+
+
+def fallback_timing_family(tls: TlsPoint, averages: dict[str, float]) -> dict[str, int]:
     yellow = int(averages["yellow_sec"])
+    family_index = (stable_index(tls.tls_id) + tls.phase_count + tls.link_count) % 6
+    cycle = clamp_int(int(averages["cycle_sec"]) + [-10, -5, 0, 5, 10, 15][family_index], 80, 115)
+    main_green = clamp_int(
+        int(averages["main_green_sec"]) + [-11, -6, -1, 5, 10, 14][family_index],
+        42,
+        cycle - 2 * yellow - 10,
+    )
+    return {"cycle_sec": cycle, "main_green_sec": main_green, "yellow_sec": yellow}
+
+
+def average_profile(tls: TlsPoint, a008: A008Point, dist_to_a008: float, averages: dict[str, float]) -> Any:
+    timing = fallback_timing_family(tls, averages)
+    cycle = timing["cycle_sec"]
+    yellow = timing["yellow_sec"]
+    main_green = timing["main_green_sec"]
     side_green = max(6, cycle - main_green - 2 * yellow)
     offset = int((tls.x * 0.015 + tls.y * 0.009 + tls.link_count * 3.0) % cycle)
     return tdp.SignalProfile(
         tls_id=tls.tls_id,
         profile_role="global_average_fallback",
-        source="realistic_API_and_field_average_fallback",
+        source="realistic_API_measured_route_family_fallback",
         source_itst_id=a008.itst_id,
         source_eqmn_id="",
         source_tls_id="average",
@@ -417,7 +491,10 @@ def average_profile(tls: TlsPoint, a008: A008Point, dist_to_a008: float, average
         confidence=0.32,
         dominant_api_field="",
         dominant_remaining_sec=0.0,
-        inference_reason=f"nearest A008={a008.name} ({dist_to_a008:.1f}m), average fallback",
+        inference_reason=(
+            f"nearest A008={a008.name} ({dist_to_a008:.1f}m), no direct timing hit; "
+            "used measured T-Data profile average route-family timing"
+        ),
     )
 
 
@@ -429,6 +506,14 @@ def profile_averages(profiles: list[Any]) -> dict[str, float]:
         "main_green_sec": round(sum(p.main_green_sec for p in profiles) / len(profiles)),
         "yellow_sec": round(sum(p.yellow_sec for p in profiles) / len(profiles)),
     }
+
+
+def measured_profile_averages(profiles: list[Any]) -> dict[str, float]:
+    measured = [
+        profile for profile in profiles
+        if "TData_SPAT" in str(profile.source) or str(profile.source).endswith("_direct")
+    ]
+    return profile_averages(measured or profiles)
 
 
 def replace_single_phase(logic: ET.Element, profile: Any) -> dict[str, Any]:
@@ -512,21 +597,124 @@ def apply_profile_preserve_phase_ratios(logic: ET.Element, profile: Any) -> dict
     }
 
 
+def phase_green_score(phase: ET.Element) -> int:
+    state = phase.get("state", "")
+    return state.count("G") * 2 + state.count("g")
+
+
+def yellow_state_from_green(state: str) -> str:
+    return "".join("y" if char in {"G", "g", "y", "Y"} else "r" for char in state)
+
+
+def all_red_state(length: int) -> str:
+    return "r" * max(1, length)
+
+
+def apply_mainroad_semantic_profile(logic: ET.Element, profile: Any, selected_indices: list[int] | None) -> dict[str, Any]:
+    phases = list(logic.findall("phase"))
+    if not phases:
+        return {"status": "SKIP", "reason": "no_phase"}
+    before_cycle = sum(safe_float(phase.get("duration")) for phase in phases)
+    valid_main = [index for index in (selected_indices or []) if 0 <= index < len(phases)]
+    if not valid_main:
+        valid_main = tdp.auto_main_phase_indices(phases)
+    valid_main = valid_main[:3]
+    yellow = max(1, int(profile.yellow_sec))
+    target = max(30, int(profile.cycle_sec))
+    main_total = clamp_int(int(profile.main_green_sec), 12 * len(valid_main), target - yellow * (len(valid_main) + 1) - 6)
+    main_durations = tdp.distribute(main_total, len(valid_main), minimum=8)
+    side_green = max(6, target - sum(main_durations) - yellow * (len(valid_main) + 1))
+    delta = target - (sum(main_durations) + side_green + yellow * (len(valid_main) + 1))
+    side_green += delta
+
+    state_len = max(len(phase.get("state", "")) for phase in phases)
+    side_candidates = [
+        (phase_green_score(phase), index, phase)
+        for index, phase in enumerate(phases)
+        if index not in valid_main and not tdp.is_yellow_phase(phase) and phase_green_score(phase) > 0
+    ]
+    side_state = max(side_candidates)[2].get("state", "") if side_candidates else all_red_state(state_len)
+    side_state = (side_state + all_red_state(state_len))[:state_len]
+    side_yellow = yellow_state_from_green(side_state)
+
+    specs: list[tuple[int, str, str]] = []
+    new_main_indices: list[int] = []
+    for order, (phase_index, duration) in enumerate(zip(valid_main, main_durations, strict=True), start=1):
+        green_state = (phases[phase_index].get("state", "") + all_red_state(state_len))[:state_len]
+        yellow_index = phase_index + 1
+        if yellow_index < len(phases) and tdp.is_yellow_phase(phases[yellow_index]):
+            yellow_state = (phases[yellow_index].get("state", "") + all_red_state(state_len))[:state_len]
+        else:
+            yellow_state = yellow_state_from_green(green_state)
+        new_main_indices.append(len(specs))
+        specs.append((duration, green_state, f"mainroad_green_{order}"))
+        specs.append((yellow, yellow_state, f"mainroad_yellow_{order}"))
+    specs.append((side_green, side_state, "side_green"))
+    specs.append((yellow, side_yellow, "side_yellow"))
+
+    for phase in phases:
+        logic.remove(phase)
+    for duration, state, name in specs:
+        ET.SubElement(logic, "phase", {"duration": str(int(duration)), "state": state, "name": name})
+    logic.set("type", "static")
+    logic.set("programID", "GLOBAL_REALITY")
+    logic.set("offset", str(int(profile.offset_sec)))
+    return {
+        "status": "APPLIED_MAINROAD_SEMANTIC",
+        "before_cycle_sec": round(before_cycle, 3),
+        "after_cycle_sec": sum(item[0] for item in specs),
+        "phase_count": len(specs),
+        "main_phase_indices": " ".join(str(index) for index in new_main_indices),
+        "yellow_phase_count": len(valid_main) + 1,
+    }
+
+
+def mainroad_phase_indices() -> dict[str, list[int]]:
+    if not (TDATA_ROOT / "a008_tls_itst_mapping.csv").is_file():
+        return {}
+    return {
+        str(row.get("tls_id", "")): tdp.parse_index_list(str(row.get("selected_green_phases", "")))
+        for row in read_csv(TDATA_ROOT / "a008_tls_itst_mapping.csv")
+        if row.get("tls_id")
+    }
+
+
 def build_profiles(input_net: Path, timing_snapshots: list[Path]) -> tuple[list[Any], list[dict[str, Any]], dict[str, Any]]:
     tls_list = tls_points(input_net)
     a008_points = load_a008_points()
-    timing_by_itst = latest_timing_by_itst(timing_snapshots)
+    timing_by_itst = averaged_timing_by_itst(timing_snapshots)
     main_profiles = main_profile_objects()
+    net_root = ET.parse(input_net).getroot()
+    logic_by_tls = {str(logic.get("id", "")): logic for logic in net_root.findall("tlLogic") if logic.get("id")}
     direct_profiles: list[Any] = []
     mapping_rows: list[dict[str, Any]] = []
     profiles_by_tls: dict[str, Any] = {}
 
     for tls in tls_list:
+        if tls.tls_id in VIRTUAL_TLS_IDS:
+            profile = existing_logic_profile(tls, logic_by_tls.get(tls.tls_id))
+            profiles_by_tls[tls.tls_id] = profile
+            mapping_rows.append({
+                "tls_id": tls.tls_id,
+                "tls_lat": round(tls.lat, 8),
+                "tls_lon": round(tls.lon, 8),
+                "coord_source": tls.coord_source,
+                "link_count": tls.link_count,
+                "phase_count": tls.phase_count,
+                "itst_id": "",
+                "a008_name": "virtual_merge_control",
+                "a008_lat": "",
+                "a008_lon": "",
+                "distance_m": "",
+                "timing_hit": False,
+                "source_kind": "virtual_preserved",
+            })
+            continue
         a008, dist = nearest_a008(tls, a008_points)
         timing = timing_by_itst.get(a008.itst_id)
         if tls.tls_id in main_profiles:
             profile = main_profiles[tls.tls_id]
-            source_kind = "mainroad_preserved"
+            source_kind = "mainroad_profile"
         elif timing is not None:
             profile = profile_from_timing(tls, a008.itst_id, a008.name, timing, dist)
             direct_profiles.append(profile)
@@ -552,8 +740,11 @@ def build_profiles(input_net: Path, timing_snapshots: list[Path]) -> tuple[list[
             "source_kind": source_kind,
         })
 
-    source_profiles = list(profiles_by_tls.values())
-    averages = profile_averages(source_profiles)
+    source_profiles = [
+        profile for profile in profiles_by_tls.values()
+        if profile.profile_role != "virtual_merge_control"
+    ]
+    averages = measured_profile_averages(source_profiles)
     tls_by_id = {tls.tls_id: tls for tls in tls_list}
     for row in mapping_rows:
         if row["tls_id"] in profiles_by_tls:
@@ -568,26 +759,16 @@ def build_profiles(input_net: Path, timing_snapshots: list[Path]) -> tuple[list[
             y=0.0,
         )
         dist_to_a008 = safe_float(row["distance_m"])
-        if source_profiles:
-            source = min(
-                source_profiles,
-                key=lambda profile: distance_m(tls.lat, tls.lon, tls_by_id.get(profile.tls_id, tls).lat, tls_by_id.get(profile.tls_id, tls).lon)
-                + abs(tls.phase_count - tls_by_id.get(profile.tls_id, tls).phase_count) * 15.0
-                + abs(tls.link_count - tls_by_id.get(profile.tls_id, tls).link_count) * 3.0,
-            )
-            source_tls = tls_by_id.get(source.tls_id, tls)
-            dist_to_source = distance_m(tls.lat, tls.lon, source_tls.lat, source_tls.lon)
-            profile = profile_from_source(tls, source, a008, dist_to_a008, dist_to_source)
-            row["source_kind"] = "nearest_source_fallback"
-        else:
-            profile = average_profile(tls, a008, dist_to_a008, averages)
-            row["source_kind"] = "average_fallback"
+        profile = average_profile(tls, a008, dist_to_a008, averages)
+        row["source_kind"] = "average_fallback"
         profiles_by_tls[tls.tls_id] = profile
 
     profiles = [profiles_by_tls[tls.tls_id] for tls in tls_list if tls.tls_id in profiles_by_tls]
     stats = {
         "tls_count": len(tls_list),
-        "mainroad_preserved_count": sum(1 for row in mapping_rows if row["source_kind"] == "mainroad_preserved"),
+        "mainroad_profile_count": sum(1 for row in mapping_rows if row["source_kind"] == "mainroad_profile"),
+        "mainroad_preserved_count": 0,
+        "virtual_preserved_count": sum(1 for row in mapping_rows if row["source_kind"] == "virtual_preserved"),
         "direct_api_count": sum(1 for row in mapping_rows if row["source_kind"] == "direct_api"),
         "nearest_fallback_count": sum(1 for row in mapping_rows if row["source_kind"] == "nearest_source_fallback"),
         "average_fallback_count": sum(1 for row in mapping_rows if row["source_kind"] == "average_fallback"),
@@ -604,14 +785,17 @@ def apply_profiles(input_net: Path, output_net: Path, profiles: list[Any]) -> di
     applied_rows: list[dict[str, Any]] = []
     applied_count = 0
     single_repaired = 0
+    phase_indices_by_tls = mainroad_phase_indices()
     for logic in root.findall("tlLogic"):
         tls_id = str(logic.get("id", ""))
         profile = by_tls.get(tls_id)
         if profile is None:
             continue
         if profile.profile_role == "location_matched_mainroad":
+            result = apply_mainroad_semantic_profile(logic, profile, phase_indices_by_tls.get(tls_id))
+        elif profile.profile_role == "virtual_merge_control":
             result = {
-                "status": "PRESERVED_MAINROAD",
+                "status": "PRESERVED_VIRTUAL",
                 "before_cycle_sec": sum(safe_float(phase.get("duration")) for phase in logic.findall("phase")),
                 "after_cycle_sec": sum(safe_float(phase.get("duration")) for phase in logic.findall("phase")),
                 "phase_count": len(logic.findall("phase")),
@@ -623,7 +807,10 @@ def apply_profiles(input_net: Path, output_net: Path, profiles: list[Any]) -> di
             single_repaired += 1
         else:
             result = apply_profile_preserve_phase_ratios(logic, profile)
-        if str(result.get("status", "")).startswith("APPLIED") or result.get("status") == "PRESERVED_MAINROAD":
+        if (
+            str(result.get("status", "")).startswith("APPLIED")
+            or result.get("status") in {"PRESERVED_MAINROAD", "PRESERVED_VIRTUAL"}
+        ):
             applied_count += 1
         applied_rows.append(profile.as_row() | result)
     normalize_stats = normalize_tls_phase_state_lengths(root)

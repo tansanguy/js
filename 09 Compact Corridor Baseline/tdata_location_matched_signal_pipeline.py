@@ -42,11 +42,11 @@ SUMMARY_DIR = TDATA_ROOT / "summaries"
 A008_CSV = PROJECT_ROOT / "A008_P.csv"
 SKELETON_CSV = PROJECT_ROOT / "mainstream_segment_skeleton.csv"
 CANDIDATES_CSV = PROJECT_ROOT / "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv"
-INTERSECTIONS_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1/b4_intersections.csv"
+INTERSECTIONS_CSV = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_intersections.csv"
 ACTIVE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
 ORIGINAL_NET_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_tdata_plausible.net.xml"
 LOCATION_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_location_matched.net.xml"
-OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched.net.xml"
+OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_s1forced.net.xml"
 
 TIMING_ENDPOINT = "https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseTimingInformation/1.0"
 STATE_ENDPOINT = "https://t-data.seoul.go.kr/apig/apiman-gateway/tapi/v2xSignalPhaseInformation/1.0"
@@ -291,6 +291,20 @@ def endpoint_name_is_virtual(name: str) -> bool:
 
 
 def choose_candidate_endpoint(candidate: dict[str, str], endpoint_map: dict[tuple[str, str], dict[str, Any]]) -> dict[str, Any]:
+    explicit = str(candidate.get("endpoint_source", "")).strip()
+    if ":" in explicit:
+        segment_id, role = explicit.split(":", 1)
+        row = endpoint_map.get((segment_id, role))
+        if row:
+            score = 0.0
+            score += 2.0 if row.get("match_status", "").startswith("auto_confirmed") else 0.0
+            score += 1.0 if not endpoint_name_is_virtual(str(row.get("skeleton_intersection", ""))) else 0.0
+            score += safe_float(row.get("match_confidence"), 0.0)
+            score -= safe_float(row.get("distance_m"), 999.0) / 1000.0
+            return dict(row) | {
+                "candidate_endpoint_score": round(score, 6),
+                "candidate_endpoint_source": explicit,
+            }
     choices: list[dict[str, Any]] = []
     from_segment = candidate.get("from_segment", "")
     to_segment = candidate.get("to_segment", "")
@@ -446,6 +460,10 @@ def load_snapshots(paths: list[Path]) -> list[dict[str, Any]]:
     return records
 
 
+def archived_timing_snapshots() -> list[Path]:
+    return sorted(path for path in SNAPSHOT_DIR.glob("timing_location_matched_*.jsonl") if path.is_file())
+
+
 def snapshot_stats_many(paths: list[Path]) -> dict[str, Any]:
     stats = [snapshot_stats(path) for path in paths if path and path.is_file()]
     return {
@@ -457,16 +475,8 @@ def snapshot_stats_many(paths: list[Path]) -> dict[str, Any]:
     }
 
 
-def latest_timing_by_itst(records: list[dict[str, Any]]) -> dict[str, Any]:
-    latest: dict[str, Any] = {}
-    for row in records:
-        record = tdp.api_record_from_row(row)
-        if record is None:
-            continue
-        previous = latest.get(record.itst_id)
-        if previous is None or record.utc_ms >= previous.utc_ms:
-            latest[record.itst_id] = record
-    return latest
+def averaged_timing_by_itst(records: list[dict[str, Any]]) -> dict[str, Any]:
+    return tdp.aggregate_api_records_by_itst(records)
 
 
 def latest_state_by_itst(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -489,17 +499,53 @@ def clamp_int(value: float, low: int, high: int) -> int:
     return int(max(low, min(high, round(value))))
 
 
-def profile_from_match(row: dict[str, Any], timing_record: Any | None, state_record: dict[str, Any] | None, index: int) -> Any:
+def measured_profile_average(profiles: list[Any]) -> dict[str, int]:
+    measured = [profile for profile in profiles if "TData_SPAT" in str(profile.source)]
+    if not measured:
+        return {"cycle_sec": 90, "main_green_sec": 60, "yellow_sec": 3}
+    return {
+        "cycle_sec": round(sum(int(profile.cycle_sec) for profile in measured) / len(measured)),
+        "main_green_sec": round(sum(int(profile.main_green_sec) for profile in measured) / len(measured)),
+        "yellow_sec": round(sum(int(profile.yellow_sec) for profile in measured) / len(measured)),
+    }
+
+
+def fallback_timing_family(row: dict[str, Any], index: int, averages: dict[str, int]) -> dict[str, int]:
+    route_order = safe_float(row.get("route_pair_index"), index)
+    yellow = int(averages["yellow_sec"])
+    family_index = int(route_order + index) % 5
+    cycle = clamp_int(int(averages["cycle_sec"]) + [-5, 0, 5, 10, -10][family_index], 80, 105)
+    main_green = clamp_int(
+        int(averages["main_green_sec"]) + [-8, -3, 3, 8, 0][family_index],
+        45,
+        cycle - 2 * yellow - 10,
+    )
+    return {
+        "cycle_sec": cycle,
+        "main_green_sec": main_green,
+        "yellow_sec": yellow,
+    }
+
+
+def profile_from_match(
+    row: dict[str, Any],
+    timing_record: Any | None,
+    state_record: dict[str, Any] | None,
+    index: int,
+    fallback_average: dict[str, int] | None = None,
+) -> Any:
     route_order = safe_float(row.get("route_pair_index"), index)
     if timing_record is None:
-        cycle = 90 if route_order >= 45 else 100
-        main_green = 72 if route_order >= 45 else 65
+        timing = fallback_timing_family(row, index, fallback_average or {"cycle_sec": 90, "main_green_sec": 60, "yellow_sec": 3})
+        cycle = timing["cycle_sec"]
+        yellow = timing["yellow_sec"]
+        main_green = timing["main_green_sec"]
         dominant = 0.0
         median = 0.0
-        source = "A008_location_matched_no_tdata_timing_fallback"
+        source = "A008_location_matched_TData_measured_average_pm3_fallback"
         api_field = ""
         eqmn_id = ""
-        confidence = 0.45
+        confidence = 0.5
         timing_count = 0
     else:
         dominant = timing_record.dominant_remaining_sec
@@ -516,13 +562,19 @@ def profile_from_match(row: dict[str, Any], timing_record: Any | None, state_rec
         eqmn_id = timing_record.eqmn_id
         confidence = min(0.92, safe_float(row.get("match_confidence"), 0.5) * 0.55 + timing_record.vehicle_field_count * 0.045)
         timing_count = timing_record.vehicle_field_count
-    yellow = 3
+        yellow = 3
     side_green = max(6, cycle - main_green - 2 * yellow)
     offset = int((route_order * 4.8 + dominant * 0.25) % cycle)
     state_fields = [
         key for key, value in (state_record or {}).items()
         if key.endswith("StatNm") and value not in (None, "")
     ]
+    reason = (
+        f"location matched by A008 distance/name; timing_fields={timing_count}; "
+        f"state_fields={len(state_fields)}; match_status={row.get('match_status', '')}"
+    )
+    if timing_record is None:
+        reason += "; fallback_policy=measured_average_route_family"
     return tdp.SignalProfile(
         tls_id=str(row.get("tls_id", "")),
         profile_role="location_matched_mainroad",
@@ -541,10 +593,7 @@ def profile_from_match(row: dict[str, Any], timing_record: Any | None, state_rec
         confidence=confidence,
         dominant_api_field=api_field,
         dominant_remaining_sec=dominant,
-        inference_reason=(
-            f"location matched by A008 distance/name; timing_fields={timing_count}; "
-            f"state_fields={len(state_fields)}; match_status={row.get('match_status', '')}"
-        ),
+        inference_reason=reason,
     )
 
 
@@ -686,11 +735,15 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
     api_key = args.api_key or os.environ.get("SEOUL_TDATA_API_KEY", "")
     if args.timing_snapshot:
-        timing_snapshots = args.timing_snapshot
+        timing_snapshots = list(args.timing_snapshot)
     else:
         if not api_key:
             raise LocationMatchedSignalError("missing_api_key: set SEOUL_TDATA_API_KEY or pass --api-key")
         timing_snapshots = [collect_snapshot(api_key, TIMING_ENDPOINT, "timing_location_matched", args.start_page, args.max_pages, args.num_rows)]
+        for path in archived_timing_snapshots():
+            if path not in timing_snapshots:
+                timing_snapshots.append(path)
+    timing_snapshots.extend(args.fallback_timing_snapshot or [])
     if args.state_snapshot:
         state_snapshots = args.state_snapshot
     elif args.skip_state_snapshot:
@@ -700,11 +753,23 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             raise LocationMatchedSignalError("missing_api_key: set SEOUL_TDATA_API_KEY or pass --api-key")
         state_snapshots = [collect_snapshot(api_key, STATE_ENDPOINT, "state_location_matched", args.start_page, args.max_pages, args.num_rows)]
 
-    timing_records = latest_timing_by_itst(load_snapshots(timing_snapshots))
+    timing_records = averaged_timing_by_itst(load_snapshots(timing_snapshots))
     state_records = latest_state_by_itst(load_snapshots(state_snapshots)) if state_snapshots else {}
 
+    direct_profiles = [
+        profile_from_match(row, timing_records[str(row.get("itst_id", ""))], state_records.get(str(row.get("itst_id", ""))), index)
+        for index, row in enumerate(tls_rows)
+        if str(row.get("itst_id", "")) in timing_records
+    ]
+    fallback_average = measured_profile_average(direct_profiles)
     profiles = [
-        profile_from_match(row, timing_records.get(str(row.get("itst_id", ""))), state_records.get(str(row.get("itst_id", ""))), index)
+        profile_from_match(
+            row,
+            timing_records.get(str(row.get("itst_id", ""))),
+            state_records.get(str(row.get("itst_id", ""))),
+            index,
+            fallback_average,
+        )
         for index, row in enumerate(tls_rows)
     ]
     write_csv(PROFILES_CSV, [profile.as_row() for profile in profiles], list(profiles[0].as_row().keys()) if profiles else [])
@@ -712,7 +777,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
 
     input_net = args.input_net
     if str(input_net) == "auto":
-        input_net = ORIGINAL_NET_BACKUP if ORIGINAL_NET_BACKUP.is_file() else ACTIVE_NET
+        input_net = ACTIVE_NET
     apply_summary = apply_location_profiles(Path(input_net), args.output_net, profiles, args.overwrite_active_net)
 
     endpoint_auto = sum(1 for row in mapping_rows if str(row.get("match_status", "")).startswith("auto_confirmed"))
@@ -739,6 +804,8 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "matched_unique_itst_count": len(matched_itst_ids),
         "timing_hit_count": len(timing_hits),
         "timing_missing_itst_ids": sorted(matched_itst_ids - set(timing_records)),
+        "fallback_average_policy": "measured_TData_profiles_average_with_route_family_timing",
+        "fallback_average": fallback_average,
         "state_hit_count": len(state_hits),
         "state_missing_itst_ids": sorted(matched_itst_ids - set(state_records)) if state_records else [],
         **apply_summary,
@@ -752,12 +819,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build A008 location-matched T-Data signal network for B04/B4.")
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--timing-snapshot", type=Path, action="append", default=None)
+    parser.add_argument("--fallback-timing-snapshot", type=Path, action="append", default=None)
     parser.add_argument("--state-snapshot", type=Path, action="append", default=None)
     parser.add_argument("--skip-state-snapshot", action="store_true")
     parser.add_argument("--max-pages", type=int, default=120)
     parser.add_argument("--start-page", type=int, default=1)
     parser.add_argument("--num-rows", type=int, default=100)
-    parser.add_argument("--input-net", default="auto", help="Input net path or 'auto' for original backup if present.")
+    parser.add_argument("--input-net", default="auto", help="Input net path or 'auto' for the active B04 CSV-signal net.")
     parser.add_argument("--output-net", type=Path, default=OUTPUT_NET)
     parser.add_argument("--overwrite-active-net", action="store_true")
     parser.add_argument("--results-csv", type=Path, default=None, help="Optional experiment_results.csv to include B04/B4 rows in the validation document.")

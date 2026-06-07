@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_csv_boundary_signals.v1",
-  "generated_at": "2026-06-05T02:57:51.038232+00:00",
+  "generated_at": "2026-06-06T17:10:26.011909+00:00",
   "source_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml",
   "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "reference_csv": "toegye_ro_mainstream_segments_english.csv",
@@ -8,32 +8,62 @@
   "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
   "candidate_point_count": 18,
   "route_candidate_count": 16,
-  "created_tls_count": 11,
-  "existing_tls_count": 5,
+  "created_tls_count": 13,
+  "existing_tls_count": 3,
   "skipped_candidate_count": 0,
+  "signal_type_counts": {
+    "intersection_signal": 8,
+    "straight_signal": 10
+  },
+  "position_policy": "Signal placement uses the reference CSV signal coordinate. A008 points are reserved for timing/provenance only.",
+  "straight_signal_policy": "Straight signals control only mainline through/same-direction connections at the CSV stopline; side-road/intersection phases are not inferred.",
+  "forced_tls_count": 2,
+  "forced_tls_created_count": 1,
+  "lane_change_boundary_count": 5,
+  "lane_change_boundary_policy": "Lane Change Point boundaries are segmentation/lane-change artifacts and are not signalized.",
   "terminal_egress_tuning": {
     "applied": true,
     "reason": "terminal_egress_green_priority",
-    "terminal_tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+    "terminal_tls_id": "CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT",
     "terminal_from_edge": "619147738#0",
     "terminal_to_edge": "619147738#1",
-    "terminal_route_linkIndex": "2 3 4",
-    "original_cycle_sec": 296.0,
-    "tuned_cycle_sec": 176.0,
+    "terminal_route_linkIndex": "0 1 2",
+    "original_cycle_sec": 72.0,
+    "tuned_cycle_sec": 102.0,
     "terminal_green_sec": 96.0,
     "terminal_yellow_sec": 3.0,
-    "terminal_green_ratio": 0.545455,
+    "terminal_green_ratio": 0.941176,
     "policy": "Map-boundary egress: Seoul Station target sits immediately after a large terminal junction, so the final through movement receives dominant green to avoid artificial end-of-map delay."
+  },
+  "terminal_endpoint_audit": {
+    "s1_start": {
+      "policy": "forced_physical_vehicle_tls",
+      "tls_id": "CSV_TLS_S01_START_SINDANG_STATION",
+      "junction_id": "414685846",
+      "action": "created_forced_tls",
+      "endpoint_source": "S1:start",
+      "a008_expected_itst_id": "148",
+      "a008_expected_name": "신당역"
+    },
+    "s22_end": {
+      "policy": "csv_reference_terminal_signal_position",
+      "tls_id": "joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more",
+      "junction_id": "11139302899",
+      "action": "existing_terminal_tls",
+      "endpoint_source": "S22:end"
+    }
   },
   "candidate_csv": "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv",
   "policy": {
-    "selection": "Named CSV segment-boundary intersections on the B4 firetruck route are mapped to the actual SUMO route transition junction.",
+    "selection": "Named CSV signal boundaries on the B4 firetruck route are installed at the reference CSV signal coordinates. A008 is not used for signal placement.",
     "s1_s2_no_phase_policy": "A shared named boundary without CSV phase is still treated as a conservative signal candidate.",
+    "s1_start_policy": "S1:start is forced as a physical Sindang Station vehicle TLS and moved to the CSV Sindang Station signal coordinate.",
+    "s22_end_policy": "S22:end is represented by the existing Seoul Station terminal TLS and moved/reported at the CSV Seoul Station Rotary signal coordinate.",
     "cycle_sec": 72.0,
     "yellow_sec": 3.0,
     "mainline_min_green_sec": 57.0,
     "green_wave_target_phase_sec": 10.0,
-    "mainline_priority": "Mainline straight/right movements receive the dominant green and a route-progression offset; side/turn movements receive a short service phase.",
+    "mainline_priority": "Intersection signals use mainline-dominant phases; straight signals use mainline-only green/yellow/red phases.",
     "terminal_egress": "The final Seoul Station-front route movement is a map-boundary egress and is tuned separately from CSV-created TLS."
   }
 }

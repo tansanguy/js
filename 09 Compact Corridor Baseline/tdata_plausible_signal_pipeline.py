@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from collections import Counter, defaultdict
 import json
 import math
 import os
@@ -65,7 +66,7 @@ class ApiSignalRecord:
     dominant_field: str
     dominant_remaining_sec: float
     median_remaining_sec: float
-    vehicle_field_count: int
+    vehicle_field_count: float
 
 
 @dataclass(frozen=True)
@@ -261,17 +262,58 @@ def api_record_from_row(row: dict[str, Any]) -> ApiSignalRecord | None:
     )
 
 
-def select_api_records(records: list[dict[str, Any]], required_count: int) -> list[ApiSignalRecord]:
-    latest_by_itst: dict[str, ApiSignalRecord] = {}
-    for row in records:
-        record = api_record_from_row(row)
-        if record is None or not record.itst_id:
-            continue
-        previous = latest_by_itst.get(record.itst_id)
+def _dedupe_api_records(records: list[ApiSignalRecord]) -> list[ApiSignalRecord]:
+    deduped: dict[str, ApiSignalRecord] = {}
+    for record in records:
+        key = record.data_id.strip() if record.data_id.strip() else (
+            f"{record.itst_id}:{record.utc_ms:.3f}:{record.dominant_field}:"
+            f"{record.dominant_remaining_sec:.3f}:{record.median_remaining_sec:.3f}:{record.vehicle_field_count:.3f}"
+        )
+        previous = deduped.get(key)
         if previous is None or record.utc_ms >= previous.utc_ms:
-            latest_by_itst[record.itst_id] = record
+            deduped[key] = record
+    return list(deduped.values())
+
+
+def aggregate_api_records_by_itst(records: list[dict[str, Any]]) -> dict[str, ApiSignalRecord]:
+    parsed = [record for row in records if (record := api_record_from_row(row)) is not None and record.itst_id]
+    deduped = _dedupe_api_records(parsed)
+    grouped: dict[str, list[ApiSignalRecord]] = defaultdict(list)
+    for record in deduped:
+        grouped[record.itst_id].append(record)
+
+    aggregated: dict[str, ApiSignalRecord] = {}
+    for itst_id, items in grouped.items():
+        items = sorted(items, key=lambda item: (item.utc_ms, item.data_id))
+        latest = items[-1]
+        dominant_counter = Counter(item.dominant_field for item in items if item.dominant_field)
+        if dominant_counter:
+            best_count = max(dominant_counter.values())
+            dominant_field = sorted(field for field, count in dominant_counter.items() if count == best_count)[0]
+        else:
+            dominant_field = latest.dominant_field
+        dominant_remaining_sec = sum(item.dominant_remaining_sec for item in items) / len(items)
+        median_remaining_sec = sum(item.median_remaining_sec for item in items) / len(items)
+        vehicle_field_count = sum(item.vehicle_field_count for item in items) / len(items)
+        aggregated[itst_id] = ApiSignalRecord(
+            itst_id=itst_id,
+            eqmn_id=latest.eqmn_id,
+            data_id=f"avg:{itst_id}:{len(items)}",
+            utc_ms=latest.utc_ms,
+            reg_dt=latest.reg_dt,
+            vehicle_values_sec=tuple(sorted((dominant_remaining_sec, median_remaining_sec))),
+            dominant_field=dominant_field,
+            dominant_remaining_sec=dominant_remaining_sec,
+            median_remaining_sec=median_remaining_sec,
+            vehicle_field_count=vehicle_field_count,
+        )
+    return aggregated
+
+
+def select_api_records(records: list[dict[str, Any]], required_count: int) -> list[ApiSignalRecord]:
+    aggregated = aggregate_api_records_by_itst(records)
     ranked = sorted(
-        latest_by_itst.values(),
+        aggregated.values(),
         key=lambda item: (
             item.vehicle_field_count,
             min(item.dominant_remaining_sec, 140.0),

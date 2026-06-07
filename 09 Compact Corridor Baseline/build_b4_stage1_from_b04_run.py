@@ -23,7 +23,7 @@ import b4_stage1_pipeline as stage1  # noqa: E402
 
 
 DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_active_target15"
-DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
+DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 DEFAULT_DEMAND = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
 DEFAULT_RUN_DIR = PROJECT_ROOT / "runs/compact_v9_B4_fixed_param_sensitivity/fixed_param_all_currentstress_20260606/B04/no_control/repeat_001"
 

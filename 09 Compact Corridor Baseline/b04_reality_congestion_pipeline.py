@@ -4,7 +4,8 @@
 This is a pragmatic follow-up to the A008 location-matched T-Data work:
 
 * keep API-hit signal profiles as-is,
-* replace no-hit fallback profiles with the nearest API-hit timing family,
+* replace no-hit fallback profiles with measured API-profile averages plus
+  +/-3s green/red transfer,
 * turn single-phase mainline-open TLS into cyclic green/yellow/red plans, and
 * generate a sustained 4000-second background demand from the skeleton's
   one-hour traffic volumes.
@@ -32,13 +33,13 @@ NET_DIR = TDATA_ROOT / "nets"
 DEMAND_DIR = PROJECT_ROOT / "data_prepared/compact_v9/demand"
 SUMMARY_DIR = TDATA_ROOT / "summaries"
 
-INPUT_NET = TDATA_ROOT / "nets/jungbu_compact_v9_B04_location_matched.net.xml"
-OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired.net.xml"
+INPUT_NET = TDATA_ROOT / "nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml"
+OUTPUT_NET = NET_DIR / "jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml"
 ACTIVE_NET = PROJECT_ROOT / "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml"
 ACTIVE_BACKUP = NET_DIR / "jungbu_compact_v9_B04_green18.before_reality_repaired.net.xml"
 
 BASE_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml"
-OUTPUT_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained.rou.xml"
+OUTPUT_DEMAND = DEMAND_DIR / "background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml"
 SKELETON_CSV = PROJECT_ROOT / "mainstream_segment_skeleton.csv"
 TLS_MAPPING_CSV = TDATA_ROOT / "a008_tls_itst_mapping.csv"
 PROFILES_CSV = TDATA_ROOT / "location_matched_signal_profiles.csv"
@@ -114,34 +115,62 @@ def safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def measured_average_profile(rows: list[dict[str, Any]]) -> dict[str, int]:
+    api_profiles = [row for row in rows if "TData_SPAT" in str(row.get("source", ""))]
+    if not api_profiles:
+        return {"cycle_sec": 90, "main_green_sec": 60, "yellow_sec": 3}
+    return {
+        "cycle_sec": round(sum(safe_int(row.get("cycle_sec"), 90) for row in api_profiles) / len(api_profiles)),
+        "main_green_sec": round(sum(safe_int(row.get("main_green_sec"), 60) for row in api_profiles) / len(api_profiles)),
+        "yellow_sec": round(sum(safe_int(row.get("yellow_sec"), 3) for row in api_profiles) / len(api_profiles)),
+    }
+
+
+def fallback_timing_family(row: dict[str, Any], averages: dict[str, int]) -> dict[str, int]:
+    route_order = safe_float(row.get("route_order_min"), 0.0)
+    yellow = int(averages["yellow_sec"])
+    family_index = int(route_order) % 5
+    cycle = max(80, min(105, int(averages["cycle_sec"]) + [-5, 0, 5, 10, -10][family_index]))
+    main_green = clamp_main_green(
+        int(averages["main_green_sec"]) + [-8, -3, 3, 8, 0][family_index],
+        cycle,
+        yellow,
+    )
+    return {"cycle_sec": cycle, "main_green_sec": main_green, "yellow_sec": yellow}
+
+
 def load_signal_profiles() -> list[dict[str, Any]]:
     profiles = [dict(row) for row in read_csv(PROFILES_CSV)]
-    api_profiles = [row for row in profiles if "TData" in str(row.get("source", ""))]
+    api_profiles = [row for row in profiles if "TData_SPAT" in str(row.get("source", ""))]
     if not api_profiles:
         return profiles
 
-    def route_order(row: dict[str, Any]) -> float:
-        return safe_float(row.get("route_order_min"), 0.0)
-
+    averages = measured_average_profile(profiles)
     enhanced: list[dict[str, Any]] = []
     for row in profiles:
         row = dict(row)
-        if "TData" not in str(row.get("source", "")):
-            nearest = min(api_profiles, key=lambda item: abs(route_order(item) - route_order(row)))
-            row["cycle_sec"] = nearest["cycle_sec"]
-            row["main_green_sec"] = nearest["main_green_sec"]
-            row["side_green_sec"] = nearest["side_green_sec"]
-            row["yellow_sec"] = nearest.get("yellow_sec", "3")
-            row["source"] = "A008_location_matched_nearest_TData_timing_fallback"
-            row["source_eqmn_id"] = nearest.get("source_eqmn_id", "")
+        if "TData_SPAT" not in str(row.get("source", "")):
+            timing = fallback_timing_family(row, averages)
+            cycle = timing["cycle_sec"]
+            yellow = timing["yellow_sec"]
+            main_green = timing["main_green_sec"]
+            row["cycle_sec"] = str(cycle)
+            row["main_green_sec"] = str(main_green)
+            row["side_green_sec"] = str(max(6, cycle - main_green - 2 * yellow))
+            row["yellow_sec"] = str(yellow)
+            row["source"] = "A008_location_matched_TData_measured_route_family_fallback"
+            row["source_eqmn_id"] = ""
             row["confidence"] = max(safe_float(row.get("confidence"), 0.0), 0.55)
             row["inference_reason"] = (
-                f"no direct API timing hit; borrowed nearest API timing from {nearest.get('tls_id')} "
-                f"at route_order={nearest.get('route_order_min')}"
+                "no direct API timing hit; used direct T-Data profile average route-family timing"
             )
         enhanced.append(row)
     write_csv(OUTPUT_PROFILES_CSV, enhanced, list(enhanced[0].keys()) if enhanced else [])
     return enhanced
+
+
+def clamp_main_green(value: int, cycle: int, yellow: int) -> int:
+    return max(24, min(cycle - 2 * yellow - 6, value))
 
 
 def profile_object(row: dict[str, Any]) -> Any:

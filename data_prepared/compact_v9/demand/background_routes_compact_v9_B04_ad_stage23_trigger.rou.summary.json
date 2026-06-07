@@ -1,0 +1,43 @@
+{
+  "schema": "compact_v9_B04_stage23_trigger_demand.v1",
+  "generated_at": "2026-06-07T02:25:02.810901+00:00",
+  "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
+  "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+  "stage2_route_id": "stage23_trigger_merge_upbound",
+  "stage2_edges": [
+    "-174870621#8",
+    "-174870621#7",
+    "-174870621#6",
+    "-174870621#5",
+    "-174870621#4",
+    "-174870621#2",
+    "-174870621#0",
+    "578313748#0"
+  ],
+  "stage2_vehicle_count": 140,
+  "stage2_depart_window_sec": [
+    555.0,
+    589.75
+  ],
+  "stage3_route_id": "stage23_trigger_caseb_m09",
+  "stage3_edges": [
+    "347237859#1",
+    "347237859#2",
+    "347237859#3",
+    "347237859#4",
+    "347237859#5",
+    "781985787#0",
+    "218915135#3",
+    "218915135#4",
+    "781983104#0",
+    "781983104#1",
+    "333557072#1",
+    "333557072#2"
+  ],
+  "stage3_vehicle_count": 36,
+  "stage3_depart_window_sec": [
+    680.0,
+    715.0
+  ],
+  "notes": "Original demand is not modified; this is a selectable Stage2/Stage3 trigger demand variant."
+}

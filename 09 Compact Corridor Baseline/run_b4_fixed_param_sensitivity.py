@@ -40,7 +40,7 @@ from run_b4_theta_bo import (  # noqa: E402
 DEFAULT_OUTPUT_PREFIX = "compact_v9_B4_fixed_param_sensitivity"
 DEFAULT_METRICS_ROOT = PROJECT_ROOT / "results/metrics" / DEFAULT_OUTPUT_PREFIX
 DEFAULT_RUN_ROOT = PROJECT_ROOT / "runs" / DEFAULT_OUTPUT_PREFIX
-DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
+DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 DEFAULT_ROUTE = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml"
 DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_u130_toegye15"
 DEFAULT_OUTPUT_DIR = PIPELINE_DIR / "tdata_signal/u130_toegye15_fixed_param_sensitivity"

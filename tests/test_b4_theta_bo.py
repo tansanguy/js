@@ -35,31 +35,33 @@ class B4ThetaRuntimeTest(unittest.TestCase):
     def test_theta_bounds_include_five_variables(self):
         bounds = self.runtime.theta_bounds_from_stage1(self.stage1)
 
-        self.assertEqual(bounds["decision_variables"], ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"])
+        self.assertEqual(bounds["decision_variables"], ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"])
         for field in bounds["decision_variables"]:
             self.assertIn(field, bounds)
-        self.assertEqual(bounds["alpha"]["lower"], 1.0)
+        self.assertEqual(bounds["Q_ratio"]["lower"], 0.0)
+        self.assertEqual(bounds["Q_ratio"]["upper"], 1.0)
+        self.assertEqual(bounds["tau"]["lower"], 0.70)
+        self.assertEqual(bounds["tau"]["upper"], 0.90)
         self.assertEqual(bounds["G_ext"]["lower"], 0)
         self.assertEqual(bounds["source"], "B4Stage1Inputs+B04_signal_program_proxy")
         self.assertGreater(bounds["t_lead"]["upper"], 0)
         self.assertGreaterEqual(bounds["G_ext"]["upper"], bounds["G_ext"]["lower"])
-        self.assertEqual(bounds["fixed_structure_params"]["tau"], 0.75)
+        self.assertEqual(bounds["fixed_structure_params"], {"hold_max": 14.0, "d_up": 1})
 
     def test_theta_default_is_patched_b4_default(self):
         params = self.runtime.B4ThetaParams()
 
         self.assertEqual(params.parameter_id, self.runtime.B4_PARAMETER_ID)
-        self.assertEqual(params.alpha, 1.15)
         self.assertEqual(params.t_lead, 21.0)
         self.assertEqual(params.delta_T_thr, 80.0)
         self.assertEqual(params.G_ext, 32.0)
-        self.assertEqual(params.Q_trig, 0.0)
+        self.assertEqual(params.Q_ratio, 0.0)
         self.assertEqual(params.tau, 0.75)
         self.assertEqual(params.ext_max, params.G_ext)
         self.assertEqual(params.hold_max, 14.0)
         self.assertEqual(params.d_up, 1)
-        self.assertEqual(params.tau_scale, 0.85)
-        self.assertEqual(params.tau_numerator_gamma, 5.0)
+        self.assertNotIn("alpha", params.as_result_fields())
+        self.assertNotIn("Q_trig", params.as_result_fields())
 
     def test_green_only_csv_tls_keep_missing_red_phase_as_none(self):
         green_only = {
@@ -70,8 +72,6 @@ class B4ThetaRuntimeTest(unittest.TestCase):
 
         self.assertEqual(set(green_only), {
             "CSV_TLS_S11_S12_TOEGYE_RO_2_GA",
-            "CSV_TLS_S14_S15_DAYS_HOTEL_FRONT",
-            "CSV_TLS_S18_S19_SAMSEON_BUILDING",
         })
         for movement in green_only.values():
             self.assertIsNone(movement.selected_red_phase)
@@ -188,19 +188,21 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         runtime = load_script("b4_theta_runtime_for_ext_zero", RUNTIME_PATH)
         params = runtime.B4ThetaParams(G_ext=0)
         bo = self.bo
-        bounds = {"alpha": {"lower": 1.0, "upper": 1.2, "step": 0.05}, "t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 20}, "Q_trig": {"lower": 0, "upper": 50}}
+        bounds = {"t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 20}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
 
-        clamped = bo.clamp_theta({"alpha": 1.1, "t_lead": 1, "delta_T_thr": 10, "G_ext": 0, "Q_trig": 1}, bounds)
+        clamped = bo.clamp_theta({"t_lead": 1, "delta_T_thr": 10, "G_ext": 0, "Q_ratio": 0.25, "tau": 0.80}, bounds)
 
         self.assertEqual(params.G_ext, 0)
         self.assertEqual(clamped["G_ext"], 0)
+        self.assertEqual(clamped["Q_ratio"], 0.25)
+        self.assertEqual(clamped["tau"], 0.80)
 
     def test_sklearn_fallback_recommends_batch(self):
-        bounds = {"alpha": {"lower": 1.0, "upper": 1.2, "step": 0.05}, "t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 10}, "Q_trig": {"lower": 0, "upper": 50}}
+        bounds = {"t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 10}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
         observations = [
-            {"mode": self.bo.B4_MODE, "parameter_id": "a", "alpha": 1.0, "t_lead": 0, "delta_T_thr": 20, "G_ext": 0, "Q_trig": 0, "score_sec": 300.0, "bo_score_sec": 300.0},
-            {"mode": self.bo.B4_MODE, "parameter_id": "b", "alpha": 1.1, "t_lead": 5, "delta_T_thr": 50, "G_ext": 5, "Q_trig": 20, "score_sec": 200.0, "bo_score_sec": 200.0},
-            {"mode": self.bo.B4_MODE, "parameter_id": "c", "alpha": 1.2, "t_lead": 10, "delta_T_thr": 80, "G_ext": 10, "Q_trig": 50, "score_sec": 250.0, "bo_score_sec": 250.0},
+            {"mode": self.bo.B4_MODE, "parameter_id": "a", "t_lead": 0, "delta_T_thr": 20, "G_ext": 0, "Q_ratio": 0.0, "tau": 0.70, "score_sec": 300.0, "bo_score_sec": 300.0},
+            {"mode": self.bo.B4_MODE, "parameter_id": "b", "t_lead": 5, "delta_T_thr": 50, "G_ext": 5, "Q_ratio": 0.4, "tau": 0.80, "score_sec": 200.0, "bo_score_sec": 200.0},
+            {"mode": self.bo.B4_MODE, "parameter_id": "c", "t_lead": 10, "delta_T_thr": 80, "G_ext": 10, "Q_ratio": 1.0, "tau": 0.90, "score_sec": 250.0, "bo_score_sec": 250.0},
         ]
         existing = {self.bo.theta_key(row) for row in observations}
 
@@ -247,7 +249,7 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
             with score_summary.open("r", encoding="utf-8", newline="") as file:
                 rows = list(csv.DictReader(file))
             self.assertEqual(len(rows), 7)
-            for field in ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig", "score_sec", "bo_score_sec"]:
+            for field in ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau", "score_sec", "bo_score_sec"]:
                 self.assertIn(field, rows[0])
 
             with all_values.open("r", encoding="utf-8", newline="") as file:
@@ -271,8 +273,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.bo.default_route_subspaces = lambda _stage1: [{"weight": 1.0} for _ in range(6)]
         args = types.SimpleNamespace(spc_alpha=0.3, spc_window=2, spc_min_rounds=15, spc_min_improvement_sec=1.0, ei_candidate_count=10)
         best = {"bo_score_sec": 100.0}
-        observations = [{"parameter_id": "best", "alpha": 1.1, "t_lead": 1, "delta_T_thr": 50, "G_ext": 1, "Q_trig": 0, "bo_score_sec": 100.0}]
-        bounds = {"alpha": {"lower": 1.0, "upper": 1.2, "step": 0.05}, "t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 10}, "Q_trig": {"lower": 0, "upper": 50}}
+        observations = [{"parameter_id": "best", "t_lead": 1, "delta_T_thr": 50, "G_ext": 1, "Q_ratio": 0.0, "tau": 0.75, "bo_score_sec": 100.0}]
+        bounds = {"t_lead": {"lower": 0, "upper": 10}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 10}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
         try:
             initial = {"round": "0", "phase": "initial", "best_bo_score_sec": "100.0", "essi_log_max": "0.0", "essi_log_max_ewma": "0.0"}
             thirteen_bo = [
@@ -355,10 +357,10 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
             str(background_route),
             "--hard-max-sim-time",
             "4000",
-            "--tau-scale",
-            "0.85",
-            "--tau-numerator-gamma",
-            "3.0",
+            "--q-ratio",
+            "0.35",
+            "--tau",
+            "0.80",
         ])
 
         self.bo.validate_args(args)
@@ -367,8 +369,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(args.background_route, background_route.resolve())
         self.assertEqual(args.hard_max_sim_time, 4000.0)
         self.assertTrue(args.allow_baseline_speed_out_of_target)
-        self.assertEqual(args.tau_scale, 0.85)
-        self.assertEqual(args.tau_numerator_gamma, 3.0)
+        self.assertEqual(args.q_ratio, 0.35)
+        self.assertEqual(args.tau, 0.80)
 
     def test_target15_baseline_can_be_required_explicitly(self):
         net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
@@ -395,11 +397,8 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
                 "schema": "compact_v9_B4_structure_param_lock.v1",
                 "lock_status": "LOCKED",
                 "selected_structure": {
-                    "tau": 0.65,
                     "hold_max": 24,
                     "d_up": 2,
-                    "tau_scale": 0.90,
-                    "tau_numerator_gamma": 3.0,
                 },
             })
             args = self.bo.parse_args([
@@ -410,19 +409,18 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
                 str(background_route),
                 "--structure-lock-json",
                 str(lock_json),
+                "--q-ratio",
+                "0.25",
                 "--tau",
                 "0.80",
-                "--tau-numerator-gamma",
-                "7.0",
             ])
 
             self.bo.validate_args(args)
 
+            self.assertEqual(args.q_ratio, 0.25)
             self.assertEqual(args.tau, 0.80)
             self.assertEqual(args.hold_max, 24.0)
             self.assertEqual(args.d_up, 2)
-            self.assertEqual(args.tau_scale, 0.90)
-            self.assertEqual(args.tau_numerator_gamma, 7.0)
             self.assertEqual(args.structure_lock_info["lock_status"], "LOCKED")
 
     def test_fixed_param_candidates_do_not_vary_screened_decision_variables(self):
@@ -528,7 +526,7 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(locked["lock_status"], "DIAGNOSTIC_LOCKED_BASELINE_FAIL")
         self.assertEqual(locked["selected_structure"]["tau"], 0.85)
 
-    def test_tau_numerator_gamma_validation_rejects_nonpositive_values(self):
+    def test_q_ratio_validation_rejects_out_of_bounds_values(self):
         net_file = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
         background_route = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130.rou.xml"
         args = self.bo.parse_args([
@@ -537,11 +535,11 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
             str(net_file),
             "--background-route",
             str(background_route),
-            "--tau-numerator-gamma",
-            "0.0",
+            "--q-ratio",
+            "1.5",
         ])
 
-        with self.assertRaisesRegex(self.bo.B4ThetaBoError, "tau_numerator_gamma_must_be_at_least_0p1"):
+        with self.assertRaisesRegex(self.bo.B4ThetaBoError, "q_ratio_must_be_between_0_and_1"):
             self.bo.validate_args(args)
 
 

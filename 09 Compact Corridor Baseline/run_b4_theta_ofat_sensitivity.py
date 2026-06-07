@@ -36,24 +36,23 @@ from run_b4_theta_bo import (  # noqa: E402
 DEFAULT_OUTPUT_PREFIX = "compact_v9_B4_theta_u130_toegye15_ofat"
 DEFAULT_METRICS_ROOT = PROJECT_ROOT / "results/metrics" / DEFAULT_OUTPUT_PREFIX
 DEFAULT_RUN_ROOT = PROJECT_ROOT / "runs" / DEFAULT_OUTPUT_PREFIX
-DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml"
+DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 DEFAULT_ROUTE = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_target15_u130_toegye15.rou.xml"
 DEFAULT_STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_u130_toegye15"
-DEFAULT_TAU_NUMERATOR_GAMMA = 5.0
 DEFAULT_BASELINE = {
-    "parameter_id": "baseline_al115_tl21_dt80_ge32_q0",
-    "alpha": 1.15,
+    "parameter_id": "baseline_tl21_dt80_ge32_qr00_tau80",
     "t_lead": 21,
     "delta_T_thr": 80,
     "G_ext": 32,
-    "Q_trig": 0,
+    "Q_ratio": 0.00,
+    "tau": 0.80,
 }
 OFAT_VALUES = {
-    "alpha": [1.00, 1.05, 1.15, 1.25, 1.40, 1.60],
     "t_lead": [0, 10, 21, 35, 50, 65, 95],
     "delta_T_thr": [0, 40, 60, 80, 120, 160],
     "G_ext": [0, 10, 20, 32, 40, 45],
-    "Q_trig": [0, 5, 10, 20, 35, 50],
+    "Q_ratio": [0.00, 0.10, 0.20, 0.35, 0.50, 0.75, 1.00],
+    "tau": [0.70, 0.75, 0.80, 0.85, 0.90],
 }
 FOCUS_SEGMENTS = {"S6:upbound", "S7:upbound", "S9:upbound", "S15:upbound"}
 
@@ -167,11 +166,11 @@ def summary_rows(rows: list[dict[str, Any]], candidates: list[dict[str, Any]]) -
             "delta_EV_sec": round(ev - baseline_ev, 3) if ev else "",
             "delta_general_sec": round(general - baseline_general, 3) if general else "",
             "delta_score_sec": round(score - baseline_score, 3) if score else "",
-            "alpha": row.get("alpha", ""),
             "t_lead": row.get("t_lead", ""),
             "delta_T_thr": row.get("delta_T_thr", ""),
             "G_ext": row.get("G_ext", ""),
-            "Q_trig": row.get("Q_trig", ""),
+            "Q_ratio": row.get("Q_ratio", ""),
+            "tau": row.get("tau", ""),
         })
     return out
 
@@ -244,15 +243,12 @@ def write_report(path: Path, payload: dict[str, Any]) -> None:
         f"- run_id: `{payload['run_id']}`",
         f"- net: `{payload['net_file']}`",
         f"- demand: `{payload['background_route']}`",
-        f"- tau: `{payload['tau']}`",
         f"- hold_max: `{payload['hold_max']}`",
         f"- d_up: `{payload['d_up']}`",
-        f"- tau_scale: `{payload['tau_scale']}`",
-        f"- tau_numerator_gamma: `{payload['tau_numerator_gamma']}`",
         "",
         "## Baseline",
         "",
-        f"- theta: alpha={baseline['alpha']}, t_lead={baseline['t_lead']}, delta_T_thr={baseline['delta_T_thr']}, G_ext={baseline['G_ext']}, Q_trig={baseline['Q_trig']}",
+        f"- theta: t_lead={baseline['t_lead']}, delta_T_thr={baseline['delta_T_thr']}, G_ext={baseline['G_ext']}, Q_ratio={baseline['Q_ratio']}, tau={baseline['tau']}",
         f"- result: status={baseline['final_status']}, EV={baseline['T_actual_EMV_sec']} sec, general={baseline['general_mean_travel_time_sec']} sec, score={baseline['bo_score_sec']}",
         "",
         "## Variable Sensitivity",
@@ -290,7 +286,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     run_metrics_dir.mkdir(parents=True, exist_ok=True)
     candidates = build_candidates(args.only_variable)
     candidate_csv = run_metrics_dir / "ofat_candidates.csv"
-    write_rows(candidate_csv, candidates, ["parameter_id", "changed_variable", "changed_value", "alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"])
+    write_rows(candidate_csv, candidates, ["parameter_id", "changed_variable", "changed_value", "t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"])
 
     real_context = prepare_real_context(run_id, args)
     rows = evaluate_theta_batch(run_id, candidates, 0, args, real_context)
@@ -327,11 +323,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "delta_EV_sec",
         "delta_general_sec",
         "delta_score_sec",
-        "alpha",
         "t_lead",
         "delta_T_thr",
         "G_ext",
-        "Q_trig",
+        "Q_ratio",
+        "tau",
     ])
     write_rows(variable_csv, variable_summary, [
         "variable",
@@ -398,11 +394,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--hard-max-sim-time", type=float, default=4000.0)
     parser.add_argument("--require-target15-baseline", action="store_true")
     parser.add_argument("--structure-lock-json", type=Path, default=None)
-    parser.add_argument("--tau", type=float, default=None)
     parser.add_argument("--hold-max", dest="hold_max", type=float, default=None)
     parser.add_argument("--d-up", dest="d_up", type=int, default=None)
-    parser.add_argument("--tau-scale", type=float, default=None)
-    parser.add_argument("--tau-numerator-gamma", type=float, default=None)
     parser.add_argument("--phase", default="bo-smoke")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--repeats", type=int, default=1)
@@ -422,10 +415,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args.run_root = args.run_root.resolve()
     args.output_dir = args.output_dir.resolve()
     args.allow_baseline_speed_out_of_target = not args.require_target15_baseline
-    if args.tau_scale is not None and not 0.0 <= args.tau_scale <= 1.0:
-        raise ValueError("tau_scale_must_be_between_0_and_1")
-    if args.tau_numerator_gamma is not None and args.tau_numerator_gamma < 0.1:
-        raise ValueError("tau_numerator_gamma_must_be_at_least_0p1")
     apply_structure_params(args)
     if args.stage1_dir is not None and not args.stage1_dir.is_dir():
         raise FileNotFoundError(f"missing_stage1_dir:{args.stage1_dir}")

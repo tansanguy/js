@@ -1,6 +1,6 @@
 {
-  "schema": "compact_v9_B4_stage1_summary.v1",
-  "generated_at": "2026-06-06T07:27:20.665462+00:00",
+  "schema": "compact_v9_B4_evtsp_stage1_summary.v1",
+  "generated_at": "2026-06-06T16:02:38.179010+00:00",
   "algorithm": "B4",
   "status": "WARN",
   "primary_candidate": "B04_ad_variance_smoothed",
@@ -10,11 +10,11 @@
     "schema": "compact_v9_B4_decision_variable_screening.v1",
     "model_form": "Y = f(X, Z)",
     "decision_variables_X": [
-      "alpha",
       "t_lead",
       "delta_T_thr",
       "G_ext",
-      "Q_trig"
+      "Q_ratio",
+      "tau"
     ],
     "screening_filters": [
       "controllability",
@@ -44,12 +44,8 @@
       "minimum_pedestrian_crossing_time"
     ],
     "fixed_structure_params": [
-      "tau",
-      "beta",
       "hold_max",
-      "d_up",
-      "tau_scale",
-      "tau_numerator_gamma"
+      "d_up"
     ],
     "concept_only_or_unimplemented": [
       "green_split",
@@ -58,7 +54,8 @@
       "green_wave_intersection_set"
     ],
     "notes": [
-      "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+      "tau is an EVTSP Case B decision variable with search range [0.70, 0.90].",
+      "Q_ratio replaces legacy Q_trig and is converted to Q_th = Q_ratio * L at runtime.",
       "seed and demand scale remain experiment design or robustness factors, not theta variables."
     ]
   },
@@ -83,10 +80,10 @@
   },
   "mode": "Stage1 static preparation only",
   "runtime_implemented": false,
-  "control_candidate_expression": "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
+  "control_candidate_expression": "EVTSP Stage3 scans all controllable route movements ahead of EV; queue/speed readiness remains diagnostic only.",
   "ta_proxy_policy": {
-    "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
-    "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+    "ta_formula": "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec",
+    "ta_control_policy": "Stage3 executes when tE_sec <= delta_T_thr and TA_sec <= t_lead; TA < 0 is immediate maximum-intensity green.",
     "b0_measured_params_source": "SUMO B04_ad_variance_smoothed no-control edgeData/laneData/tripinfo outputs",
     "field_queue_claim": false
   },
@@ -103,8 +100,10 @@
     "mainline_target_edge": "-174870621#8",
     "merge_control_tls": "COMPACT_V9_FIRE_STATION_ENTRY_TLS",
     "ev_release_control_status": "uncontrolled_by_merge_tls",
-    "dispatch_lead_time_sec": 35.0,
-    "stage2_b0_formula": "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
+    "dispatch_lead_time_sec": 45.0,
+    "t_dispatch_delay_sec": 45.0,
+    "tE_merge_sec": 10.0,
+    "stage2_b0_formula": "T_hold_proxy_sec = 10 - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
     "stage2_b0_measurement_source": "SUMO_B04_AD_B0_laneData_edgeData_proxy",
     "stage2_runtime_control_uses_formula_directly": true,
     "stage2_b0_merge_support_status": "weak_runtime_required",
@@ -160,8 +159,8 @@
     "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
     "B0 measured signal parameters are SUMO B04_ad_variance_smoothed no-control measurements, not field-observed queue lengths.",
     "Stage 2 B0 merge hold parameters are SUMO B04_ad_variance_smoothed no-control laneData/edgeData proxy values, not field-observed occupancy.",
-    "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
-    "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
+    "Stage 2 runtime uses Q_ratio * L_merge_m and T_hold_proxy_sec <= 0 inside the 45s dispatch-delay window.",
+    "Stage 3 scans all controllable route movements ahead of EV and gates by delta_T_thr plus TA <= t_lead.",
     "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
     "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
     "linkIndex is a SUMO TLS movement index, not physical storage length.",

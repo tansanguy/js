@@ -10,7 +10,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = PROJECT_ROOT / "09 Compact Corridor Baseline/b4_stage1_pipeline.py"
-STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1"
+STAGE1_DIR = PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 CSV_SIGNAL_CANDIDATES = PROJECT_ROOT / "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv"
 
@@ -46,8 +46,8 @@ class B4Stage1ContractTest(unittest.TestCase):
 
     def test_outputs_are_b4_named_and_manifest_is_unchanged(self):
         self.assertEqual(self.manifest_before, self.manifest_after)
-        self.assertEqual(self.summary["primary_candidate"], "B04_ad_variance_smoothed")
-        self.assertEqual(self.summary["manifest_selected_candidate"], "B04_ad_variance_smoothed")
+        self.assertEqual(self.summary["primary_candidate"], "B04_ad_stage23_trigger")
+        self.assertEqual(self.summary["manifest_selected_candidate"], "B04_ad_stage23_trigger")
         self.assertEqual(self.summary["manifest_selected_candidate_role"], "primary_selected")
         metrics = self.summary["primary_candidate_lock"]["metrics"]
         self.assertEqual(metrics["vehicles"], 1302)
@@ -92,8 +92,21 @@ class B4Stage1ContractTest(unittest.TestCase):
         required = {
             "movement_id",
             "tls_id",
+            "route_intersection_index",
             "from_edge",
             "to_edge",
+            "L_m",
+            "W_m",
+            "Q_th_formula",
+            "Q_th_default_m",
+            "is_merge",
+            "stage_owner",
+            "ped_min_green_sec",
+            "ped_min_green_source",
+            "ped_safety_margin_sec",
+            "Gm_sec",
+            "Y_sec",
+            "R_sec",
             "linkIndex",
             "control_linkIndex",
             "ev_route_linkIndex",
@@ -120,7 +133,12 @@ class B4Stage1ContractTest(unittest.TestCase):
             self.assertEqual(float(row["stopline_local_storage_m"]), 100.0)
             self.assertLessEqual(float(row["corridor_storage_length_m"]), 250.0)
             self.assertIn("SUMO TLS movement index", row["linkIndex_note"])
+            self.assertAlmostEqual(float(row["Q_th_default_m"]), 0.0)
+            self.assertGreater(float(row["ped_min_green_sec"]), 0.0)
             self.assertTrue(row["movement_id"].startswith("B4_MOVEMENT_"))
+        merge_rows = [row for row in rows if row["is_merge"] == "True"]
+        self.assertEqual(len(merge_rows), 1)
+        self.assertEqual(merge_rows[0]["stage_owner"], "stage2_merge")
 
     def test_mainline_same_lane_blocker_flush_plan_is_recorded(self):
         path = STAGE1_DIR / "b4_approach_storage_link_plan.csv"
@@ -136,11 +154,11 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(movement["parallel_through_linkIndex"], "14 15 16 18")
         self.assertEqual(movement["same_lane_blocking_linkIndex"], "15 16 17")
         self.assertEqual(movement["flush_linkIndex"], "15 16 17")
-        self.assertEqual(movement["selected_green_phase"], "4")
-        self.assertEqual(movement["selected_flush_phase"], "2")
+        self.assertEqual(movement["selected_green_phase"], "0")
+        self.assertEqual(movement["selected_flush_phase"], "")
         self.assertEqual(movement["full_through_phase_available"], "False")
-        self.assertEqual(movement["same_lane_blocker_flush_available"], "True")
-        self.assertEqual(movement["control_strategy"], "route_green_with_same_lane_blocker_flush")
+        self.assertEqual(movement["same_lane_blocker_flush_available"], "False")
+        self.assertEqual(movement["control_strategy"], "route_green_only_no_full_through_phase")
 
     def test_readiness_keeps_80_100_120_fill_and_uses_100m_trigger(self):
         path = STAGE1_DIR / "b4_bottleneck_queue_readiness.csv"
@@ -172,13 +190,23 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(proposal["thresholds"]["speed_trigger_kmh"], 15.0)
         self.assertEqual(
             proposal["control_candidate_expression"],
-            "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
+            "EVTSP Stage3 scans all controllable route movements ahead of EV; queue/speed readiness remains diagnostic only.",
         )
         self.assertEqual(
             proposal["local_fill_comparison_metrics"],
             ["local_fill_80m", "local_fill_100m", "local_fill_120m"],
         )
         for field in ["time", "stage", "action_type", "tls_id", "movement_id", "local_fill_100m", "safety_status"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["Q_ratio", "Q_th_m", "Q_th_merge_m", "T_hold_sec", "hold_elapsed_sec"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["route_intersection_index", "L_m", "W_m", "Gm_sec", "Y_sec", "R_sec", "green_dur_sec"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["intersection_index", "junction_id", "is_ahead_of_ev", "is_i_merge", "L", "W", "Lq", "tau", "tau_times_L"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["case_type", "downstream_index", "gate_target", "tE_gate_target", "delta_T_thr", "gate_result", "ge", "tQ"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["t_lead", "G_ext", "preemption_state", "processing_order", "Lq_i", "TA_down", "tQ_i"]:
             self.assertIn(field, proposal["event_schema"])
         for field in ["TA_proxy_sec", "tQ_sec", "b0_q_avg_proxy_veh", "ta_triggered", "ta_formula"]:
             self.assertIn(field, proposal["event_schema"])
@@ -188,12 +216,18 @@ class B4Stage1ContractTest(unittest.TestCase):
             self.assertIn(field, proposal["event_schema"])
         for field in ["n_occ_runtime_veh", "T_hold_proxy_sec", "stage2_formula", "stage2_measurement_source"]:
             self.assertIn(field, proposal["event_schema"])
+        for field in ["step", "ev_status", "EV_NotDeparted", "EV_Departed", "EV_MergePassed"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["time_to_merge_sec", "time_to_merge_source", "s_vph", "HOLD_MAX_sec", "current_phase", "current_state"]:
+            self.assertIn(field, proposal["event_schema"])
+        for field in ["ped_state", "SafetyGate_result", "action", "deny_reason"]:
+            self.assertIn(field, proposal["event_schema"])
         self.assertIn("Lq_merge_m", proposal["event_schema"])
-        self.assertEqual(proposal["decision_variables"], ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"])
-        self.assertEqual(proposal["decision_variable_screening"]["decision_variables_X"], ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"])
+        self.assertEqual(proposal["decision_variables"], ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"])
+        self.assertEqual(proposal["decision_variable_screening"]["decision_variables_X"], ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"])
         self.assertEqual(
             proposal["runtime_preemption_expression"],
-            "(stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+            "Scan all ahead movements after EV departure; skip i_merge; CaseA uses [i], CaseB uses adjacent [i+1,i] when Lq_i >= tau * L_i; gate by tE_gate_target <= delta_T_thr and TA <= t_lead.",
         )
 
     def test_b0_measured_signal_params_and_ta_policy_are_generated(self):
@@ -228,8 +262,8 @@ class B4Stage1ContractTest(unittest.TestCase):
             self.assertGreater(float(row["queue_calibration_factor_applied"]), 0.0)
             self.assertEqual(row["queue_calibration_source"], "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv")
         policy = json.loads((STAGE1_DIR / "b4_ta_proxy_policy.json").read_text(encoding="utf-8"))
-        self.assertEqual(policy["ta_formula"], "TA_proxy_sec = tE_sec - tS_sec - tQ_sec")
-        self.assertIn("TA_proxy_sec <= 0", policy["ta_control_policy"])
+        self.assertEqual(policy["ta_formula"], "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec")
+        self.assertIn("TA_sec <= t_lead", policy["ta_control_policy"])
         self.assertFalse(policy["field_queue_claim"])
         self.assertIn("b0_source_policy", policy)
 
@@ -298,15 +332,48 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(params["merge_control_tls"], "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
         self.assertAlmostEqual(float(params["L_merge_m"]), 50.0)
         self.assertAlmostEqual(float(params["C_merge_proxy_veh"]), 50.0 / 6.5, places=5)
-        self.assertAlmostEqual(float(params["n_need_proxy_veh"]), 2.0)
+        self.assertAlmostEqual(float(params["len_E_m"]), 8.0)
+        self.assertEqual(params["len_E_source"], "firetruck_route_vType_length")
+        self.assertAlmostEqual(float(params["n_need_proxy_veh"]), 3.0)
         self.assertEqual(params["measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
         self.assertGreaterEqual(float(params["D_merge_m"]), 0.0)
+        self.assertEqual(float(params["t_dispatch_delay_sec"]), 45.0)
+        self.assertEqual(float(params["tE_merge_sec"]), 10.0)
+        self.assertEqual(params["Q_th_merge_formula"], "Q_ratio * L_merge_m")
+        self.assertAlmostEqual(float(params["Q_th_merge_default_m"]), 0.0)
+        self.assertEqual(params["HOLD_MAX_formula"], "max(ped_min_green_sec - ped_safety_margin_sec, 1)")
+        self.assertIn("HOLD_MAX_sec", params)
+        self.assertAlmostEqual(float(params["ped_min_green_sec"]), 17.0)
+        self.assertAlmostEqual(float(params["ped_safety_margin_sec"]), 3.0)
+        self.assertAlmostEqual(float(params["HOLD_MAX_sec"]), 14.0)
         self.assertGreaterEqual(float(params["b0_merge_n_occ_mean_proxy_veh"]), 0.0)
 
         with (STAGE1_DIR / "b4_stage2_b0_merge_hold_params.csv").open(encoding="utf-8-sig", newline="") as file:
             rows = list(csv.DictReader(file))
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["field_measurement_claim"], "false")
+
+    def test_stage1_audit_records_evtsp_initialize_contract(self):
+        runtime_index = json.loads((STAGE1_DIR / "b4_runtime_index.json").read_text(encoding="utf-8"))
+        audit = runtime_index["stage1_audit"]
+        self.assertEqual(audit["schema"], "compact_v9_B4_evtsp_stage1_audit.v1")
+        self.assertEqual(audit["dispatch_time_rel_sec"], 0.0)
+        self.assertEqual(audit["dispatch_time_abs_sec"], 61200.0)
+        self.assertEqual(audit["sim_begin_abs_sec"], 61200.0)
+        self.assertEqual(audit["sim_end_abs_sec"], 64800.0)
+        self.assertEqual(audit["step_length_sec"], 1.0)
+        self.assertEqual(audit["t_dispatch_delay_sec"], 45.0)
+        self.assertEqual(audit["tE_merge_sec"], 10.0)
+        self.assertEqual(audit["t_merge_abs_rel_sec"], 55.0)
+        self.assertEqual(audit["Q_ratio_default"], 0.0)
+        self.assertEqual(audit["tau_default"], 0.75)
+        self.assertEqual(audit["tau_bounds"], [0.7, 0.9])
+        self.assertEqual(audit["Q_ratio_bounds"], [0.0, 1.0])
+        self.assertEqual(audit["len_E_m"], 8.0)
+        self.assertEqual(audit["len_E_source"], "firetruck_route_vType_length")
+        self.assertGreaterEqual(audit["i_merge"], 1)
+        self.assertLessEqual(audit["i_merge"], audit["N"])
+        self.assertEqual(runtime_index["i_merge"], audit["i_merge"])
 
     def test_departure_flow_records_entry_tls_hold_and_ev_warn(self):
         departure = json.loads((STAGE1_DIR / "b4_departure_flow_plan.json").read_text(encoding="utf-8"))
@@ -317,12 +384,12 @@ class B4Stage1ContractTest(unittest.TestCase):
         self.assertEqual(departure["merge_control_linkIndex"], "0 4 5 6")
         self.assertEqual(departure["ev_release_control_status"], "uncontrolled_by_merge_tls")
         self.assertEqual(departure["validation"]["ev_release_control"], "WARN")
-        self.assertEqual(departure["dispatch_lead_time_sec"], 35.0)
+        self.assertEqual(departure["dispatch_lead_time_sec"], 45.0)
 
     def test_created_csv_tls_are_connected_to_b4_runtime(self):
         with CSV_SIGNAL_CANDIDATES.open(encoding="utf-8-sig", newline="") as file:
             candidates = [row for row in csv.DictReader(file) if row["action"] == "created_tls"]
-        self.assertEqual(len(candidates), 11)
+        self.assertEqual(len(candidates), 13)
 
         with (STAGE1_DIR / "b4_intersections.csv").open(encoding="utf-8-sig", newline="") as file:
             intersections = {row["tls_id"]: row for row in csv.DictReader(file)}
@@ -332,12 +399,17 @@ class B4Stage1ContractTest(unittest.TestCase):
             movements_by_tls.setdefault(str(movement["tls_id"]), []).append(movement)
 
         green_only_tls = set()
+        unlinked_created_tls = set()
         for candidate in candidates:
             tls_id = candidate["tls_id"]
-            self.assertIn(tls_id, intersections)
+            if tls_id not in intersections:
+                unlinked_created_tls.add(tls_id)
+                continue
             self.assertGreater(int(intersections[tls_id]["controllable_count"]), 0)
             movements = movements_by_tls.get(tls_id, [])
-            self.assertTrue(movements, tls_id)
+            if not movements:
+                unlinked_created_tls.add(tls_id)
+                continue
             self.assertTrue(any(movement["controllable"] for movement in movements), tls_id)
             controllable = next(movement for movement in movements if movement["controllable"])
             self.assertNotEqual(controllable["selected_green_phase"], "")
@@ -352,17 +424,20 @@ class B4Stage1ContractTest(unittest.TestCase):
 
         self.assertEqual(green_only_tls, {
             "CSV_TLS_S11_S12_TOEGYE_RO_2_GA",
-            "CSV_TLS_S14_S15_DAYS_HOTEL_FRONT",
-            "CSV_TLS_S18_S19_SAMSEON_BUILDING",
         })
+        self.assertEqual(unlinked_created_tls, set())
 
     def test_runtime_index_is_consumed_by_b4_runtime(self):
         runtime = json.loads((STAGE1_DIR / "b4_runtime_index.json").read_text(encoding="utf-8"))
         self.assertFalse(runtime.get("runtime_implemented", False))
         self.assertEqual(runtime["runtime_status"], "stage1_static_index_consumed_by_b4_runtime")
-        self.assertEqual(runtime["decision_variables"], ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"])
+        self.assertEqual(runtime["decision_variables"], ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"])
+        self.assertEqual(runtime["decision_variable_bounds"]["Q_ratio"]["lower"], 0.0)
+        self.assertEqual(runtime["decision_variable_bounds"]["Q_ratio"]["upper"], 1.0)
+        self.assertEqual(runtime["decision_variable_bounds"]["tau"]["lower"], 0.70)
+        self.assertEqual(runtime["decision_variable_bounds"]["tau"]["upper"], 0.90)
         self.assertEqual(runtime["max_active_movements"], 3)
-        self.assertIn("Use only precomputed Stage 1 lanes", runtime["scan_policy"])
+        self.assertIn("Stage3 scans only precomputed route movements ahead of EV", runtime["scan_policy"])
 
 
 if __name__ == "__main__":

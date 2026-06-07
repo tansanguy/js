@@ -1,23 +1,23 @@
 {
-  "schema": "compact_v9_B4_control_queue_threshold_proposal.v1",
-  "generated_at": "2026-06-06T07:27:20.664368+00:00",
+  "schema": "compact_v9_B4_evtsp_control_queue_threshold_proposal.v1",
+  "generated_at": "2026-06-06T16:02:38.177958+00:00",
   "candidate": "B04_ad_variance_smoothed",
   "decision_variables": [
-    "alpha",
     "t_lead",
     "delta_T_thr",
     "G_ext",
-    "Q_trig"
+    "Q_ratio",
+    "tau"
   ],
   "decision_variable_screening": {
     "schema": "compact_v9_B4_decision_variable_screening.v1",
     "model_form": "Y = f(X, Z)",
     "decision_variables_X": [
-      "alpha",
       "t_lead",
       "delta_T_thr",
       "G_ext",
-      "Q_trig"
+      "Q_ratio",
+      "tau"
     ],
     "screening_filters": [
       "controllability",
@@ -47,12 +47,8 @@
       "minimum_pedestrian_crossing_time"
     ],
     "fixed_structure_params": [
-      "tau",
-      "beta",
       "hold_max",
-      "d_up",
-      "tau_scale",
-      "tau_numerator_gamma"
+      "d_up"
     ],
     "concept_only_or_unimplemented": [
       "green_split",
@@ -61,7 +57,8 @@
       "green_wave_intersection_set"
     ],
     "notes": [
-      "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+      "tau is an EVTSP Case B decision variable with search range [0.70, 0.90].",
+      "Q_ratio replaces legacy Q_trig and is converted to Q_th = Q_ratio * L at runtime.",
       "seed and demand scale remain experiment design or robustness factors, not theta variables."
     ]
   },
@@ -71,8 +68,21 @@
     "local_fill_100m",
     "local_fill_120m"
   ],
-  "control_candidate_expression": "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
-  "runtime_preemption_expression": "(stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+  "control_candidate_expression": "EVTSP Stage3 scans all controllable route movements ahead of EV; queue/speed readiness remains diagnostic only.",
+  "runtime_preemption_expression": "tE_sec <= delta_T_thr AND TA_sec <= t_lead; CaseB if Lq_i >= tau * L_i and i != i_merge.",
+  "decision_variable_bounds": {
+    "Q_ratio": {
+      "lower": 0.0,
+      "upper": 1.0,
+      "step": 0.01,
+      "formula": "Q_th = Q_ratio * L"
+    },
+    "tau": {
+      "lower": 0.7,
+      "upper": 0.9,
+      "step": 0.01
+    }
+  },
   "thresholds": {
     "local_fill_trigger": 0.5,
     "speed_trigger_kmh": 15.0,
@@ -86,6 +96,7 @@
     "bottleneck_risk": "local_fill_100m >= 0.70 OR corridor_fill_250m >= 0.50 OR downstream_blockage evidence"
   },
   "measurement_policy": {
+    "Q_ratio": "Runtime converts Q_ratio to Q_th_m per movement and Q_th_merge_m for Stage2.",
     "stopline_local_fill_100m": "queue_m_proxy / 100m; primary B4 control trigger denominator",
     "local_fill_80m": "comparison-only local fill using an 80m denominator",
     "local_fill_100m": "comparison alias for stopline_local_fill_100m and the default trigger metric",
@@ -184,9 +195,12 @@
     "tE_merge_sec",
     "L_merge_m",
     "Lq_merge_m",
+    "stage2_measurement_scale",
+    "scaled_Lq_merge_m",
     "C_merge_proxy_veh",
     "n_need_proxy_veh",
     "n_occ_runtime_veh",
+    "scaled_n_occ_runtime_veh",
     "n_excess_proxy_veh",
     "t_clear_proxy_sec",
     "T_hold_proxy_sec",
@@ -195,6 +209,20 @@
     "b0_background_inflow_lambda_vph",
     "stage2_formula",
     "stage2_measurement_source",
-    "runtime_or_b0_fallback"
+    "runtime_or_b0_fallback",
+    "Q_ratio",
+    "Q_th_m",
+    "Q_th_merge_m",
+    "T_hold_sec",
+    "hold_elapsed_sec",
+    "route_intersection_index",
+    "L_m",
+    "W_m",
+    "stage3_measurement_scale",
+    "scaled_Lq_case_b_m",
+    "Gm_sec",
+    "Y_sec",
+    "R_sec",
+    "green_dur_sec"
   ]
 }

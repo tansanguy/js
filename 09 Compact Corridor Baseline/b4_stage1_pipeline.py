@@ -13,6 +13,7 @@ import csv
 import html
 import importlib.util
 import json
+import math
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -24,14 +25,16 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_DIR = PROJECT_ROOT / "09 Compact Corridor Baseline"
 DATA_ROOT = PROJECT_ROOT / "data_prepared/compact_v9"
-STAGE1_DIR = DATA_ROOT / "b4_stage1"
+STAGE1_DIR = DATA_ROOT / "b4_stage1_s1forced"
 METRICS_ROOT = PROJECT_ROOT / "results/metrics/compact_v9_B04"
 QUEUE_AUDIT_DIR = METRICS_ROOT / "queue_audit"
 HTML_ROOT = PROJECT_ROOT / "results/html"
 
 B04_PIPELINE = PIPELINE_DIR / "b04_baseline_pipeline.py"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
-B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
+DEFAULT_B04_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+B04_NET = DEFAULT_B04_NET
+B04_BACKGROUND_ROUTE: Path | None = None
 B04_FIRETRUCK_ROUTE_XML = DATA_ROOT / "routes/firetruck_to_seoul_station_front.rou.xml"
 B04_FIRETRUCK_ROUTE_CSV = DATA_ROOT / "routes/firetruck_route.csv"
 ENTRY_TLS_SUMMARY = DATA_ROOT / "net/entry_tls_summary.json"
@@ -41,9 +44,10 @@ B04_QUEUE_PROXY_BY_SEGMENT = QUEUE_AUDIT_DIR / "b04_queue_proxy_by_segment.csv"
 B04_MEASUREMENT_DIAGNOSTICS = QUEUE_AUDIT_DIR / "b4_queue_measurement_diagnostics.csv"
 B04_SEGMENT_EDGE_MAPPING = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B04_CSV_SIGNAL_CANDIDATES = DATA_ROOT / "net/B04_csv_signal_candidates.csv"
-B4_PRIMARY_CANDIDATE = "B04_ad_variance_smoothed"
-B4_PRIMARY_RUN_SUMMARY = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "b0_run_summary.json"
-B4_PRIMARY_SPEED_RECALL = METRICS_ROOT / B4_PRIMARY_CANDIDATE / "B04_segment_speed_recall.csv"
+B4_PRIMARY_CANDIDATE = "B04_ad_stage23_trigger"
+B4_MEASUREMENT_SOURCE_CANDIDATE = "B04_ad_variance_smoothed"
+B4_PRIMARY_RUN_SUMMARY = METRICS_ROOT / B4_MEASUREMENT_SOURCE_CANDIDATE / "b0_run_summary.json"
+B4_PRIMARY_SPEED_RECALL = METRICS_ROOT / B4_MEASUREMENT_SOURCE_CANDIDATE / "B04_segment_speed_recall.csv"
 
 B4_ROUTE_MOVEMENT_PLAN = STAGE1_DIR / "b4_route_movement_plan.json"
 B4_INTERSECTIONS_CSV = STAGE1_DIR / "b4_intersections.csv"
@@ -73,15 +77,29 @@ SPEED_TRIGGER_KMH = 15.0
 TRAFFIC_PRESSURE_LOCAL_FILL = 0.20
 BOTTLENECK_LOCAL_FILL = 0.70
 BOTTLENECK_CORRIDOR_FILL = 0.50
-DISPATCH_LEAD_TIME_SEC = 35.0
-DISPATCH_LEAD_TIME_RANGE_SEC = [30.0, 40.0]
+DISPATCH_LEAD_TIME_SEC = 45.0
+DISPATCH_LEAD_TIME_RANGE_SEC = [45.0, 45.0]
+EVTSP_DISPATCH_TIME_REL_SEC = 0.0
+EVTSP_SIM_BEGIN_ABS_SEC = 61200.0
+EVTSP_SIM_END_ABS_SEC = 64800.0
+EVTSP_STEP_LENGTH_SEC = 1.0
 MAX_ACTIVE_MOVEMENTS = 3
 TA_EV_SPEED_MPS = 13.9
 TA_HEADWAY_M = 6.5
 TA_SATURATION_FLOW_VPH_PER_LANE = 1800.0
 TA_DIRECT_SWITCH_BUFFER_SEC = 5.0
+EVTSP_T_E_MERGE_SEC = 10.0
+EVTSP_FALLBACK_EV_LENGTH_M = TA_HEADWAY_M
+EVTSP_EV_LENGTH_M = EVTSP_FALLBACK_EV_LENGTH_M
+EVTSP_DEFAULT_Q_RATIO = 0.0
+EVTSP_TAU_LOWER = 0.70
+EVTSP_TAU_UPPER = 0.90
+EVTSP_DEFAULT_TAU = 0.75
+EVTSP_T_MERGE_ABS_REL_SEC = DISPATCH_LEAD_TIME_SEC + EVTSP_T_E_MERGE_SEC
+EVTSP_PED_MIN_GREEN_DEFAULT_SEC = 17.0
+EVTSP_PED_SAFETY_MARGIN_SEC = 3.0
 STAGE2_MERGE_DESIGN_LENGTH_M = 50.0
-STAGE2_N_NEED_PROXY_VEH = 2.0
+STAGE2_N_NEED_PROXY_VEH = math.ceil(EVTSP_EV_LENGTH_M / TA_HEADWAY_M) + 1
 STAGE2_MEASUREMENT_SOURCE = "SUMO_B04_AD_B0_laneData_edgeData_proxy"
 B4_PRIMARY_EDGE_LANE_SOURCE = "SUMO_B04_AD_B0_edge_lane_data"
 B4_PRIMARY_B0_MEASURED_PROXY = "SUMO_B04_AD_B0_measured_proxy"
@@ -112,6 +130,11 @@ EVENT_SCHEMA = [
     "ev_distance_m",
     "control_mode",
     "safety_status",
+    "step",
+    "ev_status",
+    "EV_NotDeparted",
+    "EV_Departed",
+    "EV_MergePassed",
     "tE_sec",
     "tS_sec",
     "tQ_sec",
@@ -138,11 +161,25 @@ EVENT_SCHEMA = [
     "tE_merge_sec",
     "L_merge_m",
     "Lq_merge_m",
+    "stage2_measurement_scale",
+    "scaled_Lq_merge_m",
     "C_merge_proxy_veh",
     "n_need_proxy_veh",
     "n_occ_runtime_veh",
+    "scaled_n_occ_runtime_veh",
     "n_excess_proxy_veh",
     "t_clear_proxy_sec",
+    "time_to_merge_sec",
+    "time_to_merge_source",
+    "s_vph",
+    "tS_merge_sec",
+    "HOLD_MAX_sec",
+    "current_phase",
+    "current_state",
+    "ped_state",
+    "SafetyGate_result",
+    "action",
+    "deny_reason",
     "T_hold_proxy_sec",
     "b0_merge_n_occ_mean_proxy_veh",
     "b0_merge_n_occ_max_proxy_veh",
@@ -150,9 +187,99 @@ EVENT_SCHEMA = [
     "stage2_formula",
     "stage2_measurement_source",
     "runtime_or_b0_fallback",
+    "Q_ratio",
+    "Q_th_m",
+    "Q_th_merge_m",
+    "T_hold_sec",
+    "hold_elapsed_sec",
+    "route_intersection_index",
+    "L_m",
+    "W_m",
+    "intersection_index",
+    "junction_id",
+    "is_ahead_of_ev",
+    "is_i_merge",
+    "L",
+    "W",
+    "Lq",
+    "stage3_measurement_scale",
+    "scaled_Lq_case_b_m",
+    "tau",
+    "tau_times_L",
+    "case_type",
+    "downstream_index",
+    "gate_target",
+    "tE_gate_target",
+    "delta_T_thr",
+    "gate_result",
+    "ge",
+    "tQ",
+    "t_lead",
+    "G_ext",
+    "preemption_state",
+    "processing_order",
+    "Lq_i",
+    "TA_down",
+    "tQ_i",
+    "Gm_sec",
+    "Y_sec",
+    "R_sec",
+    "green_dur_sec",
 ]
 
-B4_DECISION_VARIABLES = ["alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig"]
+B4_DECISION_VARIABLES = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
+
+
+def configure_stage1_paths(
+    *,
+    stage1_dir: Path | None = None,
+    net_file: Path | None = None,
+    background_route: Path | None = None,
+    firetruck_route_xml: Path | None = None,
+    firetruck_route_csv: Path | None = None,
+    review_html: Path | None = None,
+) -> None:
+    """Override Stage 1 inputs/outputs while preserving existing defaults."""
+    global STAGE1_DIR
+    global B04_NET, B04_BACKGROUND_ROUTE
+    global B04_FIRETRUCK_ROUTE_XML, B04_FIRETRUCK_ROUTE_CSV
+    global B4_ROUTE_MOVEMENT_PLAN, B4_INTERSECTIONS_CSV, B4_APPROACH_STORAGE_LINK_PLAN_CSV
+    global B4_MERGE_ZONE, B4_DEPARTURE_FLOW_PLAN, B4_BOTTLENECK_QUEUE_READINESS_CSV
+    global B4_CASE_B_CANDIDATES_CSV, B4_CASE_B_CANDIDATES_JSON
+    global B4_CONTROL_QUEUE_THRESHOLD_PROPOSAL, B4_B0_MEASURED_SIGNAL_PARAMS_CSV
+    global B4_TA_PROXY_POLICY, B4_STAGE2_B0_MERGE_HOLD_PARAMS_JSON
+    global B4_STAGE2_B0_MERGE_HOLD_PARAMS_CSV, B4_RUNTIME_INDEX
+    global B4_STAGE1_SUMMARY, B4_STAGE1_REVIEW_HTML
+
+    if net_file is not None:
+        B04_NET = Path(net_file)
+    if background_route is not None:
+        B04_BACKGROUND_ROUTE = Path(background_route)
+    if stage1_dir is not None:
+        STAGE1_DIR = Path(stage1_dir)
+        B4_ROUTE_MOVEMENT_PLAN = STAGE1_DIR / "b4_route_movement_plan.json"
+        B4_INTERSECTIONS_CSV = STAGE1_DIR / "b4_intersections.csv"
+        B4_APPROACH_STORAGE_LINK_PLAN_CSV = STAGE1_DIR / "b4_approach_storage_link_plan.csv"
+        B4_MERGE_ZONE = STAGE1_DIR / "b4_merge_zone.json"
+        B4_DEPARTURE_FLOW_PLAN = STAGE1_DIR / "b4_departure_flow_plan.json"
+        B4_BOTTLENECK_QUEUE_READINESS_CSV = STAGE1_DIR / "b4_bottleneck_queue_readiness.csv"
+        B4_CASE_B_CANDIDATES_CSV = STAGE1_DIR / "b4_case_b_candidates.csv"
+        B4_CASE_B_CANDIDATES_JSON = STAGE1_DIR / "b4_case_b_candidates.json"
+        B4_CONTROL_QUEUE_THRESHOLD_PROPOSAL = STAGE1_DIR / "b4_control_queue_threshold_proposal.json"
+        B4_B0_MEASURED_SIGNAL_PARAMS_CSV = STAGE1_DIR / "b4_b0_measured_signal_params.csv"
+        B4_TA_PROXY_POLICY = STAGE1_DIR / "b4_ta_proxy_policy.json"
+        B4_STAGE2_B0_MERGE_HOLD_PARAMS_JSON = STAGE1_DIR / "b4_stage2_b0_merge_hold_params.json"
+        B4_STAGE2_B0_MERGE_HOLD_PARAMS_CSV = STAGE1_DIR / "b4_stage2_b0_merge_hold_params.csv"
+        B4_RUNTIME_INDEX = STAGE1_DIR / "b4_runtime_index.json"
+        B4_STAGE1_SUMMARY = STAGE1_DIR / "b4_stage1_summary.json"
+        if review_html is None:
+            B4_STAGE1_REVIEW_HTML = STAGE1_DIR / "b4_stage1_review.html"
+    if firetruck_route_xml is not None:
+        B04_FIRETRUCK_ROUTE_XML = Path(firetruck_route_xml)
+    if firetruck_route_csv is not None:
+        B04_FIRETRUCK_ROUTE_CSV = Path(firetruck_route_csv)
+    if review_html is not None:
+        B4_STAGE1_REVIEW_HTML = Path(review_html)
 
 
 def decision_variable_screening_payload() -> dict[str, Any]:
@@ -176,10 +303,11 @@ def decision_variable_screening_payload() -> dict[str, Any]:
             "demand_scale_scenario",
         ],
         "safety_constraints": ["phase_order", "yellow_clearance", "all_red_clearance", "minimum_pedestrian_crossing_time"],
-        "fixed_structure_params": ["tau", "beta", "hold_max", "d_up", "tau_scale", "tau_numerator_gamma"],
+        "fixed_structure_params": ["hold_max", "d_up"],
         "concept_only_or_unimplemented": ["green_split", "offset", "cycle_length", "green_wave_intersection_set"],
         "notes": [
-            "tau is retained as a fixed Case B bottleneck threshold, not a screened optimization variable.",
+            "tau is an EVTSP Case B decision variable with search range [0.70, 0.90].",
+            "Q_ratio replaces legacy Q_trig and is converted to Q_th = Q_ratio * L at runtime.",
             "seed and demand scale remain experiment design or robustness factors, not theta variables.",
         ],
     }
@@ -278,12 +406,22 @@ def route_metadata() -> dict[str, Any]:
     route_root = ET.parse(require_input(B04_FIRETRUCK_ROUTE_XML, "firetruck_route_xml")).getroot()
     route = route_root.find("route")
     vehicle = route_root.find("vehicle")
+    vehicle_type_id = vehicle.get("type") if vehicle is not None else ""
+    vtype = next(
+        (item for item in route_root.findall("vType") if item.get("id") == vehicle_type_id),
+        route_root.find("vType"),
+    )
+    ev_length_m = safe_float(vtype.get("length") if vtype is not None else "", EVTSP_FALLBACK_EV_LENGTH_M)
+    len_source = "firetruck_route_vType_length" if vtype is not None and vtype.get("length") else "fallback_headway"
     edges = str(route.get("edges") if route is not None else row.get("route_edges", "")).split()
     if not edges:
         raise B4Stage1Error("missing_b4_firetruck_route_edges")
     return {
         "route_id": route.get("id") if route is not None else row.get("route_id", ""),
         "vehicle_id": vehicle.get("id") if vehicle is not None else EV_ID,
+        "vehicle_type_id": vehicle_type_id,
+        "ev_length_m": ev_length_m,
+        "len_E_source": len_source,
         "depart_sec": safe_float(vehicle.get("depart") if vehicle is not None else 600.0, 600.0),
         "target_edge_id": row.get("target_edge_id", edges[-1]),
         "selected_policy": row.get("selected_policy", ""),
@@ -595,6 +733,7 @@ def build_stage2_b0_merge_hold_params(
     b04: Any,
     departure_plan: dict[str, Any],
     lane_samples: dict[str, list[dict[str, float]]],
+    route: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     sumo_net = b04.read_sumo_net(B04_NET)
     phases = tl_logic_details(B04_NET).get(ENTRY_TLS_ID, [])
@@ -603,8 +742,13 @@ def build_stage2_b0_merge_hold_params(
     direct_switch_buffer = TA_DIRECT_SWITCH_BUFFER_SEC
     d_merge_m = safe_float(departure_plan.get("merge_zone_length_m"), 0.0)
     l_merge_m = STAGE2_MERGE_DESIGN_LENGTH_M
-    tE_merge_sec = d_merge_m / TA_EV_SPEED_MPS if d_merge_m > 0.0 else 0.0
+    tE_merge_sec = EVTSP_T_E_MERGE_SEC
     c_merge_proxy_veh = l_merge_m / TA_HEADWAY_M
+    ev_length_m = safe_float(route.get("ev_length_m"), EVTSP_FALLBACK_EV_LENGTH_M)
+    len_e_source = str(route.get("len_E_source", "fallback_headway"))
+    n_need_proxy_veh = math.ceil(ev_length_m / TA_HEADWAY_M) + 1
+    hold_max_sec = evtsp_hold_max_sec()
+    q_th_merge_default_m = round(EVTSP_DEFAULT_Q_RATIO * l_merge_m, 6)
     tS_merge_sec = max(yellow_duration, direct_switch_buffer)
     q_a_proxy_veh = max(
         0.0,
@@ -639,10 +783,10 @@ def build_stage2_b0_merge_hold_params(
     ]
     b0_merge_occ_mean = sum(merge_occ_values) / len(merge_occ_values) if merge_occ_values else 0.0
     b0_merge_occ_max = max(merge_occ_values) if merge_occ_values else 0.0
-    b0_merge_support_status = "weak_runtime_required" if q_a_proxy_veh <= 0.0 and b0_merge_occ_max < STAGE2_N_NEED_PROXY_VEH else "usable_b0_proxy"
+    b0_merge_support_status = "weak_runtime_required" if q_a_proxy_veh <= 0.0 and b0_merge_occ_max < n_need_proxy_veh else "usable_b0_proxy"
     runtime_control_note = (
         "Runtime TraCI merge lane snapshot is primary. B0 mean/max is documented only as fallback/provenance, "
-        "and weak B0 support requires runtime n_occ/Lq before deciding Q_trig and T_hold."
+            "and weak B0 support requires runtime n_occ/Lq before deciding Q_ratio threshold and T_hold."
         if b0_merge_support_status == "weak_runtime_required"
         else "Runtime TraCI merge lane snapshot remains primary; B0 mean/max is fallback/provenance."
     )
@@ -652,8 +796,18 @@ def build_stage2_b0_merge_hold_params(
         "D_merge_m": round(d_merge_m, 6),
         "L_merge_m": l_merge_m,
         "tE_merge_sec": round(tE_merge_sec, 6),
+        "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
         "C_merge_proxy_veh": round(c_merge_proxy_veh, 6),
-        "n_need_proxy_veh": STAGE2_N_NEED_PROXY_VEH,
+        "n_need_proxy_veh": n_need_proxy_veh,
+        "len_E_m": round(ev_length_m, 6),
+        "len_E_source": len_e_source,
+        "Q_th_merge_formula": "Q_ratio * L_merge_m",
+        "Q_th_merge_default_m": q_th_merge_default_m,
+        "HOLD_MAX_formula": "max(ped_min_green_sec - ped_safety_margin_sec, 1)",
+        "HOLD_MAX_sec": hold_max_sec,
+        "ped_min_green_sec": EVTSP_PED_MIN_GREEN_DEFAULT_SEC,
+        "ped_min_green_source": "config_default_no_sumo_ped_model",
+        "ped_safety_margin_sec": EVTSP_PED_SAFETY_MARGIN_SEC,
         "tS_merge_sec": round(tS_merge_sec, 6),
         "entry_yellow_sec": round(yellow_duration, 6),
         "entry_open_green_sec": round(open_duration, 6),
@@ -673,15 +827,27 @@ def build_stage2_b0_merge_hold_params(
         "runtime_control_note": runtime_control_note,
     }
     payload = {
-        "schema": "compact_v9_B4_stage2_b0_merge_hold_params.v1",
+        "schema": "compact_v9_B4_evtsp_stage2_merge_hold_params.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
         "primary_candidate": B4_PRIMARY_CANDIDATE,
-        "merge_hold_policy": "T_hold_proxy_direct_inside_dispatch_window",
-        "stage2_formula": "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec; t_clear_proxy_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
+        "merge_hold_policy": "EVTSP dispatch-delay merge space hold",
+        "stage2_formula": "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec; t_clear_sec = n_excess_proxy_veh * 3600 / (1800 * merge_lane_count)",
         "q_A_formula": "q_A_proxy_veh = max(0, (tE_merge_sec - (Y + R + Gm + O)) * s / 3600)",
-        "runtime_hold_condition": "if T_hold_proxy_sec > 0, now >= ev_depart_sec - min(T_hold_proxy_sec, dispatch_lead_time_sec); if T_hold_proxy_sec <= 0, hold at dispatch-window open; EV not merged; merge hold TLS available",
+        "runtime_hold_condition": "dispatch_detect_time <= now < ev_depart_sec AND Lq_merge_m >= Q_ratio * L_merge_m AND T_hold_sec <= 0 AND EV not merged; existing HOLD remains until EV merge or HOLD_MAX",
         "runtime_control_uses_formula_directly": True,
+        "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+        "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
+        "Q_th_merge_formula": "Q_ratio * L_merge_m",
+        "Q_th_merge_default_m": q_th_merge_default_m,
+        "HOLD_MAX_formula": "max(ped_min_green_sec - ped_safety_margin_sec, 1)",
+        "HOLD_MAX_sec": hold_max_sec,
+        "ped_min_green_sec": EVTSP_PED_MIN_GREEN_DEFAULT_SEC,
+        "ped_min_green_source": "config_default_no_sumo_ped_model",
+        "ped_safety_margin_sec": EVTSP_PED_SAFETY_MARGIN_SEC,
+        "len_E_m": round(ev_length_m, 6),
+        "len_E_source": len_e_source,
+        "vehicle_type_id": route.get("vehicle_type_id", ""),
         "measurement_source": STAGE2_MEASUREMENT_SOURCE,
         "b0_merge_support_status": b0_merge_support_status,
         "runtime_dependency": "runtime_n_occ_and_Lq_merge_primary",
@@ -788,6 +954,119 @@ def trigger_reason(local_fill: float, approach_speed: float) -> str:
     return "+".join(reasons) if reasons else "below_default_trigger"
 
 
+def evtsp_phase_constants(phases: list[dict[str, Any]], green_phase: int | str) -> dict[str, float]:
+    green_index = safe_int(green_phase, -1)
+    green_duration = next(
+        (safe_float(phase.get("duration")) for phase in phases if safe_int(phase.get("phase_index"), -2) == green_index),
+        TA_DIRECT_SWITCH_BUFFER_SEC,
+    )
+    yellow = max(
+        (
+            safe_float(phase.get("duration"))
+            for phase in phases
+            if "y" in str(phase.get("state", "")).lower() or "yellow" in str(phase.get("name", "")).lower()
+        ),
+        default=3.0,
+    )
+    all_red = max(
+        (
+            safe_float(phase.get("duration"))
+            for phase in phases
+            if str(phase.get("state", ""))
+            and not any(token in str(phase.get("state", "")) for token in ("G", "g", "y"))
+        ),
+        default=max(TA_DIRECT_SWITCH_BUFFER_SEC - yellow, 0.0),
+    )
+    return {
+        "Gm_sec": round(max(green_duration, TA_DIRECT_SWITCH_BUFFER_SEC), 6),
+        "Y_sec": round(yellow, 6),
+        "R_sec": round(all_red, 6),
+    }
+
+
+def evtsp_hold_max_sec() -> float:
+    return round(max(EVTSP_PED_MIN_GREEN_DEFAULT_SEC - EVTSP_PED_SAFETY_MARGIN_SEC, 1.0), 6)
+
+
+def merge_owner_intersection_index(route: dict[str, Any], plan_rows: list[dict[str, Any]]) -> int:
+    route_edges = list(route.get("route_edges", []))
+    merge_edge = str(route.get("merge_edge_id", ""))
+    try:
+        merge_route_index = route_edges.index(merge_edge)
+    except ValueError:
+        merge_route_index = 0
+    candidates = [
+        row for row in plan_rows
+        if truthy(row.get("controllable")) and safe_int(row.get("route_order_index"), -1) >= merge_route_index
+    ]
+    if not candidates:
+        candidates = [row for row in plan_rows if truthy(row.get("controllable"))]
+    if not candidates:
+        return 0
+    owner = min(candidates, key=lambda row: safe_int(row.get("route_order_index"), 999999))
+    return safe_int(owner.get("route_intersection_index"), 0)
+
+
+def apply_merge_owner(plan_rows: list[dict[str, Any]], readiness_rows: list[dict[str, Any]], i_merge: int) -> None:
+    for row in [*plan_rows, *readiness_rows]:
+        is_merge_owner = i_merge > 0 and safe_int(row.get("route_intersection_index"), -1) == i_merge
+        row["is_merge"] = is_merge_owner
+        row["stage_owner"] = "stage2_merge" if is_merge_owner else "stage3"
+
+
+def stage1_audit_payload(
+    route: dict[str, Any],
+    plan_rows: list[dict[str, Any]],
+    stage2_b0_payload: dict[str, Any],
+) -> dict[str, Any]:
+    merge_row = next((row for row in plan_rows if truthy(row.get("is_merge"))), {})
+    i_merge = safe_int(merge_row.get("route_intersection_index"), 0)
+    len_e_m = safe_float(route.get("ev_length_m"), EVTSP_FALLBACK_EV_LENGTH_M)
+    return {
+        "schema": "compact_v9_B4_evtsp_stage1_audit.v1",
+        "dispatch_time_rel_sec": EVTSP_DISPATCH_TIME_REL_SEC,
+        "dispatch_time_abs_sec": EVTSP_SIM_BEGIN_ABS_SEC,
+        "sim_begin_abs_sec": EVTSP_SIM_BEGIN_ABS_SEC,
+        "sim_end_abs_sec": EVTSP_SIM_END_ABS_SEC,
+        "step_length_sec": EVTSP_STEP_LENGTH_SEC,
+        "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+        "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
+        "t_merge_abs_rel_sec": EVTSP_T_MERGE_ABS_REL_SEC,
+        "t_merge_abs_sec": EVTSP_SIM_BEGIN_ABS_SEC + EVTSP_T_MERGE_ABS_REL_SEC,
+        "depot_edge": route.get("start_edge_id", ""),
+        "destination_edge": route.get("target_edge_id", ""),
+        "route_edges": route.get("route_edges", []),
+        "N": len(plan_rows),
+        "i_merge": i_merge,
+        "merge_movement_id": merge_row.get("movement_id", ""),
+        "merge_tls_id": merge_row.get("tls_id", ""),
+        "merge_stage_owner": merge_row.get("stage_owner", ""),
+        "Q_ratio_default": EVTSP_DEFAULT_Q_RATIO,
+        "tau_default": EVTSP_DEFAULT_TAU,
+        "Q_ratio_bounds": [0.0, 1.0],
+        "tau_bounds": [EVTSP_TAU_LOWER, EVTSP_TAU_UPPER],
+        "v_E_mps": TA_EV_SPEED_MPS,
+        "len_E_m": round(len_e_m, 6),
+        "len_E_source": route.get("len_E_source", "fallback_headway"),
+        "vehicle_type_id": route.get("vehicle_type_id", ""),
+        "h_m_per_veh": TA_HEADWAY_M,
+        "s_vph_per_lane": TA_SATURATION_FLOW_VPH_PER_LANE,
+        "L_merge_m": safe_float(stage2_b0_payload.get("params", {}).get("L_merge_m"), STAGE2_MERGE_DESIGN_LENGTH_M),
+        "C_merge": safe_float(stage2_b0_payload.get("params", {}).get("C_merge_proxy_veh"), 0.0),
+        "n_need": safe_float(stage2_b0_payload.get("params", {}).get("n_need_proxy_veh"), 0.0),
+        "Q_th_merge_default_m": safe_float(stage2_b0_payload.get("Q_th_merge_default_m"), 0.0),
+        "Q_th_merge_formula": "Q_ratio * L_merge_m",
+        "tS_merge_sec": safe_float(stage2_b0_payload.get("params", {}).get("tS_merge_sec"), 0.0),
+        "ped_min_green_default_sec": EVTSP_PED_MIN_GREEN_DEFAULT_SEC,
+        "ped_min_green_source": "config_default_no_sumo_ped_model",
+        "ped_safety_margin_sec": EVTSP_PED_SAFETY_MARGIN_SEC,
+        "HOLD_MAX_sec": safe_float(stage2_b0_payload.get("HOLD_MAX_sec"), evtsp_hold_max_sec()),
+        "stage1_execution_policy": "build_once_runtime_load_only",
+        "route_source": "prepared_firetruck_route_xml",
+        "time_axis_policy": "SUMO relative 0-1800 retained; 61200-64800 stored as absolute metadata only",
+    }
+
+
 def build_approach_storage_plan(
     b04: Any,
     route: dict[str, Any],
@@ -846,6 +1125,11 @@ def build_approach_storage_plan(
         to_lane_count = len(b04.edge_lanes(sumo_net, str(movement["to_edge"])))
         segment = edge_segments.get(str(movement["from_edge"]), {})
         mapped = str(segment.get("mapped_S_segment", ""))
+        skeleton_segment = next(
+            (row for row in read_csv(MAINSTREAM_SEGMENT_SKELETON) if row.get("segment_id") == segment.get("segment_id")),
+            {},
+        )
+        from_edge_length_m, _from_len_lane_count = b04.edge_length_and_lane_count(sumo_net, str(movement["from_edge"]))
         speed_row = speed_by_segment.get(mapped, {})
         diagnostic = diagnostics_by_segment.get(mapped, {})
         local_queue_by_length = {
@@ -879,6 +1163,14 @@ def build_approach_storage_plan(
         operational_queue = control_candidate
         movement_id = f"B4_MOVEMENT_{len(plan_rows):02d}"
         controllable = bool(ev_route_link_indices and green_phase != "" and local["storage_edges"])
+        phase_constants = evtsp_phase_constants(tls_phases, green_phase)
+        L_m = safe_float(
+            skeleton_segment.get("segment_length_m"),
+            safe_float(from_edge_length_m, safe_float(corridor.get("storage_length_m"), STOPLINE_LOCAL_STORAGE_M)),
+        )
+        W_m = round(max(from_lane_count, to_lane_count, 1) * 3.5, 6)
+        route_intersection_index = len(plan_rows) + 1
+        is_merge = False
         plan_rows.append({
             "movement_id": movement_id,
             "tls_id": movement["tls_id"],
@@ -918,6 +1210,17 @@ def build_approach_storage_plan(
             "selected_red_phase": red_phase,
             "red_phase_available": red_phase_available,
             "green_only_no_red_phase": green_only_no_red_phase,
+            "route_intersection_index": route_intersection_index,
+            "L_m": round(L_m, 6),
+            "W_m": W_m,
+            "Q_th_formula": "Q_ratio * L_m",
+            "Q_th_default_m": round(EVTSP_DEFAULT_Q_RATIO * L_m, 6),
+            "is_merge": is_merge,
+            "stage_owner": "stage3",
+            "ped_min_green_sec": EVTSP_PED_MIN_GREEN_DEFAULT_SEC,
+            "ped_min_green_source": "config_default_no_sumo_ped_model",
+            "ped_safety_margin_sec": EVTSP_PED_SAFETY_MARGIN_SEC,
+            **phase_constants,
             "mapped_S_segment": mapped,
             "mapped_segment_id": segment.get("segment_id", ""),
             "mapped_direction": segment.get("direction", ""),
@@ -944,6 +1247,17 @@ def build_approach_storage_plan(
             "control_strategy": signal_context["control_strategy"],
             "mapped_S_segment": mapped,
             "route_order_index": route_pair_index,
+            "route_intersection_index": route_intersection_index,
+            "L_m": round(L_m, 6),
+            "W_m": W_m,
+            "Q_th_formula": "Q_ratio * L_m",
+            "Q_th_default_m": round(EVTSP_DEFAULT_Q_RATIO * L_m, 6),
+            "is_merge": is_merge,
+            "stage_owner": "stage3",
+            "ped_min_green_sec": EVTSP_PED_MIN_GREEN_DEFAULT_SEC,
+            "ped_min_green_source": "config_default_no_sumo_ped_model",
+            "ped_safety_margin_sec": EVTSP_PED_SAFETY_MARGIN_SEC,
+            **phase_constants,
             "stopline_local_queue_m_proxy": local_queue_m,
             "local_queue_m_proxy_80m": local_queue_by_length[80],
             "local_queue_m_proxy_100m": local_queue_by_length[100],
@@ -971,6 +1285,8 @@ def build_approach_storage_plan(
             "control_mode": "bottleneck_first" if local_fill >= BOTTLENECK_LOCAL_FILL or corridor_fill >= BOTTLENECK_CORRIDOR_FILL else "normal_preemptive",
             "queue_evidence_source": "SUMO B04 B0 edgeData/laneData proxy only; no field-observed queue length.",
         })
+    i_merge = merge_owner_intersection_index(route, plan_rows)
+    apply_merge_owner(plan_rows, readiness_rows, i_merge)
     for index, row in enumerate(readiness_rows[:-1]):
         downstream = readiness_rows[index + 1]
         downstream_blocked = (
@@ -1143,7 +1459,7 @@ def build_intersection_rows(plan_rows: list[dict[str, Any]]) -> list[dict[str, A
 
 def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {
-        "schema": "compact_v9_B4_control_queue_threshold_proposal.v1",
+        "schema": "compact_v9_B4_evtsp_control_queue_threshold_proposal.v1",
         "generated_at": utc_now(),
         "candidate": primary_candidate,
         "decision_variables": B4_DECISION_VARIABLES,
@@ -1154,8 +1470,12 @@ def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[s
             "local_fill_100m",
             "local_fill_120m",
         ],
-        "control_candidate_expression": "stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15",
-        "runtime_preemption_expression": "(stopline_local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+        "control_candidate_expression": "EVTSP Stage3 scans all controllable route movements ahead of EV; queue/speed readiness remains diagnostic only.",
+        "runtime_preemption_expression": "Scan all ahead movements after EV departure; skip i_merge; CaseA uses [i], CaseB uses adjacent [i+1,i] when Lq_i >= tau * L_i; gate by tE_gate_target <= delta_T_thr and TA <= t_lead.",
+        "decision_variable_bounds": {
+            "Q_ratio": {"lower": 0.0, "upper": 1.0, "step": 0.01, "formula": "Q_th = Q_ratio * L"},
+            "tau": {"lower": EVTSP_TAU_LOWER, "upper": EVTSP_TAU_UPPER, "step": 0.01},
+        },
         "thresholds": {
             "local_fill_trigger": LOCAL_FILL_TRIGGER,
             "speed_trigger_kmh": SPEED_TRIGGER_KMH,
@@ -1169,6 +1489,7 @@ def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[s
             "bottleneck_risk": "local_fill_100m >= 0.70 OR corridor_fill_250m >= 0.50 OR downstream_blockage evidence",
         },
         "measurement_policy": {
+            "Q_ratio": "Runtime converts Q_ratio to Q_th_m per movement and Q_th_merge_m for Stage2.",
             "stopline_local_fill_100m": "queue_m_proxy / 100m; primary B4 control trigger denominator",
             "local_fill_80m": "comparison-only local fill using an 80m denominator",
             "local_fill_100m": "comparison alias for stopline_local_fill_100m and the default trigger metric",
@@ -1200,11 +1521,11 @@ def build_threshold_proposal(primary_candidate: str, readiness_rows: list[dict[s
 
 def build_ta_proxy_policy() -> dict[str, Any]:
     return {
-        "schema": "compact_v9_B4_ta_proxy_policy.v1",
+        "schema": "compact_v9_B4_evtsp_ta_policy.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
-        "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
-        "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+        "ta_formula": "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec",
+        "ta_control_policy": "Stage3 executes when tE_sec <= delta_T_thr and TA_sec <= t_lead; TA < 0 is immediate maximum-intensity green.",
         "tE_sec": "EV_to_stopline_distance_m / 13.9mps",
         "tS_sec": "0 if selected target phase is already active, else 5s direct switch safety buffer using existing SUMO phases only",
         "tQ_sec": "(queue_m_proxy / 6.5m) * 3600 / (1800 veh/h/lane * lane_count)",
@@ -1212,7 +1533,7 @@ def build_ta_proxy_policy() -> dict[str, Any]:
         "field_queue_claim": False,
         "notes": [
             "B0 measured values are simulation-internal proxies, not field-observed queue lengths.",
-            "TA is used with the existing B4 local fill / low speed safety filter, not as a standalone trigger.",
+            "Local fill and low speed remain diagnostics; EVTSP Stage3 scans all route movements ahead of the EV.",
             "B4 only switches to phases that already exist in the SUMO net.",
             "When runtime queue is stale or empty, B0 tQ_hist may be used as a fallback and is logged with queue_source=b0_fallback.",
         ],
@@ -1222,6 +1543,8 @@ def build_ta_proxy_policy() -> dict[str, Any]:
             "headway_m_per_vehicle": TA_HEADWAY_M,
             "saturation_flow_vph_per_lane": TA_SATURATION_FLOW_VPH_PER_LANE,
             "direct_switch_buffer_sec": TA_DIRECT_SWITCH_BUFFER_SEC,
+            "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+            "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
         },
     }
 
@@ -1262,6 +1585,19 @@ def runtime_movement_rows(
             "same_lane_blocker_flush_available": truthy(row["same_lane_blocker_flush_available"]),
             "control_strategy": row["control_strategy"],
             "route_order_index": row["route_order_index"],
+            "route_intersection_index": row.get("route_intersection_index", row["route_order_index"]),
+            "L_m": safe_float(row.get("L_m"), safe_float(row.get("corridor_storage_length_m"), 100.0)),
+            "W_m": safe_float(row.get("W_m"), 10.5),
+            "Q_th_formula": row.get("Q_th_formula", "Q_ratio * L_m"),
+            "Q_th_default_m": safe_float(row.get("Q_th_default_m"), EVTSP_DEFAULT_Q_RATIO * safe_float(row.get("L_m"), 0.0)),
+            "is_merge": truthy(row.get("is_merge", False)),
+            "stage_owner": row.get("stage_owner", "stage2_merge" if truthy(row.get("is_merge", False)) else "stage3"),
+            "ped_min_green_sec": safe_float(row.get("ped_min_green_sec"), EVTSP_PED_MIN_GREEN_DEFAULT_SEC),
+            "ped_min_green_source": row.get("ped_min_green_source", "config_default_no_sumo_ped_model"),
+            "ped_safety_margin_sec": safe_float(row.get("ped_safety_margin_sec"), EVTSP_PED_SAFETY_MARGIN_SEC),
+            "Gm_sec": safe_float(row.get("Gm_sec"), TA_DIRECT_SWITCH_BUFFER_SEC),
+            "Y_sec": safe_float(row.get("Y_sec"), 3.0),
+            "R_sec": safe_float(row.get("R_sec"), max(TA_DIRECT_SWITCH_BUFFER_SEC - 3.0, 0.0)),
             "mapped_S_segment": row["mapped_S_segment"],
             "controllable": truthy(row["controllable"]),
             "default_control_candidate": truthy(readiness.get("control_candidate")),
@@ -1588,15 +1924,15 @@ def build_case_b_candidates(
 
 def primary_candidate_metrics(traffic_review: dict[str, Any]) -> dict[str, Any]:
     candidate_summary = next(
-        (row for row in traffic_review.get("candidate_summaries", []) if row.get("candidate") == B4_PRIMARY_CANDIDATE),
+        (row for row in traffic_review.get("candidate_summaries", []) if row.get("candidate") == B4_MEASUREMENT_SOURCE_CANDIDATE),
         {},
     )
     growth_summary = next(
-        (row for row in traffic_review.get("demand_growth_candidate_summary", []) if row.get("candidate") == B4_PRIMARY_CANDIDATE),
+        (row for row in traffic_review.get("demand_growth_candidate_summary", []) if row.get("candidate") == B4_MEASUREMENT_SOURCE_CANDIDATE),
         {},
     )
     return {
-        "candidate": B4_PRIMARY_CANDIDATE,
+        "candidate": B4_MEASUREMENT_SOURCE_CANDIDATE,
         "vehicles": safe_int(growth_summary.get("vehicle_count")),
         "main_through_flow": safe_int(growth_summary.get("main_through_flow")),
         "terminal_sink_flow": safe_int(growth_summary.get("terminal_sink_flow")),
@@ -1685,7 +2021,7 @@ def write_review_html(
   <h2>B0 Measured Proxy Parameters</h2>
   {table(b0_measured_rows or [], b0_fields)}
   <h2>Stage 2 B0 Merge Hold Proxy</h2>
-  <p>Stage 2 실제 제어는 35초 dispatch window 안에서 <code>T_hold_proxy_sec</code>를 직접 사용합니다. <code>T_hold_proxy_sec &lt;= 0</code>이면 시간이 부족하다는 뜻이므로 dispatch window가 열리자마자 hold합니다.</p>
+  <p>Stage 2 실제 제어는 dispatch window 안에서 <code>time_to_merge_sec - t_clear_sec - tS_merge_sec</code>를 사용합니다. <code>T_hold_sec &lt;= 0</code>이면 EV 도착 전 큐 방류 시간이 부족하다는 뜻입니다.</p>
   {table(stage2_b0_rows or [], stage2_fields)}
   <h2>Queue Readiness</h2>
   {table(readiness_rows, readiness_fields)}
@@ -1699,7 +2035,23 @@ def write_review_html(
 """, encoding="utf-8")
 
 
-def build_b4_stage1() -> dict[str, Any]:
+def build_b4_stage1(
+    *,
+    stage1_dir: Path | None = None,
+    net_file: Path | None = None,
+    background_route: Path | None = None,
+    firetruck_route_xml: Path | None = None,
+    firetruck_route_csv: Path | None = None,
+    review_html: Path | None = None,
+) -> dict[str, Any]:
+    configure_stage1_paths(
+        stage1_dir=stage1_dir,
+        net_file=net_file,
+        background_route=background_route,
+        firetruck_route_xml=firetruck_route_xml,
+        firetruck_route_csv=firetruck_route_csv,
+        review_html=review_html,
+    )
     b04 = load_b04_pipeline()
     require_input(B04_MANIFEST, "b04_manifest")
     require_input(B04_NET, "b04_net")
@@ -1711,6 +2063,10 @@ def build_b4_stage1() -> dict[str, Any]:
     manifest = read_json(B04_MANIFEST)
     route = route_metadata()
     run_summary = read_json(B4_PRIMARY_RUN_SUMMARY)
+    run_background_route = str(manifest.get("background_route") or run_summary.get("background_route") or run_summary.get("demand_xml") or "")
+    background_route_path = B04_BACKGROUND_ROUTE or (project_path(run_background_route) if run_background_route else None)
+    net_override_active = B04_NET.resolve() != DEFAULT_B04_NET.resolve()
+    input_override_active = bool(net_override_active or B04_BACKGROUND_ROUTE is not None)
     edge_data_path = project_path(str(run_summary.get("edgeData", "")))
     lane_data_path = project_path(str(run_summary.get("laneData", "")))
     speed_csv_path = B4_PRIMARY_SPEED_RECALL
@@ -1741,18 +2097,20 @@ def build_b4_stage1() -> dict[str, Any]:
         lane_flow_samples,
     )
     departure_plan, merge_zone = build_departure_flow_plan(b04, route)
-    stage2_b0_payload, stage2_b0_rows = build_stage2_b0_merge_hold_params(b04, departure_plan, lane_samples)
+    stage2_b0_payload, stage2_b0_rows = build_stage2_b0_merge_hold_params(b04, departure_plan, lane_samples, route)
+    stage1_audit = stage1_audit_payload(route, plan_rows, stage2_b0_payload)
     intersection_rows = build_intersection_rows(plan_rows)
     threshold_proposal = build_threshold_proposal(primary_candidate, readiness_rows)
     ta_proxy_policy = build_ta_proxy_policy()
     route_movement_plan = {
-        "schema": "compact_v9_B4_route_movement_plan.v1",
+        "schema": "compact_v9_B4_evtsp_route_movement_plan.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
         "decision_variable_screening": decision_variable_screening_payload(),
         "route": {
             "route_id": route["route_id"],
             "vehicle_id": route["vehicle_id"],
+            "vehicle_type_id": route.get("vehicle_type_id", ""),
             "depart_sec": route["depart_sec"],
             "start_edge_id": route["start_edge_id"],
             "merge_edge_id": route["merge_edge_id"],
@@ -1761,6 +2119,7 @@ def build_b4_stage1() -> dict[str, Any]:
             "route_length_m": route["route_length_m"],
             "route_edges": route["route_edges"],
         },
+        "stage1_audit": stage1_audit,
         "ordered_movements": runtime_movement_rows(plan_rows, readiness_rows, b0_measured_rows),
         "stage_policy": {
             "stage1": "dispatch capture and static route/movement/storage precompute",
@@ -1768,16 +2127,30 @@ def build_b4_stage1() -> dict[str, Any]:
             "stage3": "preemptive control of controllable movements ahead of the EV",
             "bottleneck_order": "open mapped downstream bottleneck movement first, upstream movement later",
         },
+        "evtsp_constants": {
+            "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+            "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
+            "headway_m": TA_HEADWAY_M,
+            "ev_length_m": route.get("ev_length_m", EVTSP_FALLBACK_EV_LENGTH_M),
+            "len_E_source": route.get("len_E_source", "fallback_headway"),
+            "saturation_flow_vph_per_lane": TA_SATURATION_FLOW_VPH_PER_LANE,
+            "Q_ratio_formula": "Q_th = Q_ratio * L",
+            "tau_range": [EVTSP_TAU_LOWER, EVTSP_TAU_UPPER],
+        },
         "case_b_candidates": case_b_payload,
     }
     runtime_index = {
-        "schema": "compact_v9_B4_runtime_index.v1",
+        "schema": "compact_v9_B4_evtsp_runtime_index.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
         "runtime_status": "stage1_static_index_consumed_by_b4_runtime",
         "decision_variables": B4_DECISION_VARIABLES,
         "decision_variable_screening": decision_variable_screening_payload(),
+        "decision_variable_bounds": threshold_proposal["decision_variable_bounds"],
         "max_active_movements": MAX_ACTIVE_MOVEMENTS,
+        "stage1_audit": stage1_audit,
+        "N": stage1_audit["N"],
+        "i_merge": stage1_audit["i_merge"],
         "thresholds": threshold_proposal["thresholds"],
         "ta_proxy_policy": ta_proxy_policy,
         "event_schema": EVENT_SCHEMA,
@@ -1789,12 +2162,27 @@ def build_b4_stage1() -> dict[str, Any]:
             "background_inflow_open_phase": departure_plan["background_inflow_open_phase"],
             "ev_release_control_status": departure_plan["ev_release_control_status"],
             "dispatch_lead_time_sec": DISPATCH_LEAD_TIME_SEC,
+            "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+            "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
             "stage2_b0_merge_hold_params": stage2_b0_payload,
         },
         "case_b_candidates": case_b_payload,
         "ordered_movements": runtime_movement_rows(plan_rows, readiness_rows, b0_measured_rows),
-        "scan_policy": "Use only precomputed Stage 1 lanes/movements; do not scan all vehicles.",
+        "scan_policy": "EVTSP Stage3 scans only precomputed route movements ahead of EV; it does not scan all vehicles.",
     }
+    runtime_input_provenance = {}
+    if input_override_active:
+        runtime_input_provenance = {
+            "source": "stage1_cli_input_override",
+            "net_file": rel(B04_NET),
+            "background_route": rel(background_route_path) if background_route_path else "",
+            "source_run_summary": rel(B4_PRIMARY_RUN_SUMMARY),
+            "edgeData": rel(edge_data_path),
+            "laneData": rel(lane_data_path),
+            "tripinfo": rel(project_path(str(run_summary.get("tripinfo", "")))) if run_summary.get("tripinfo") else "",
+        }
+        runtime_index["allow_runtime_input_override"] = True
+        runtime_index["runtime_input_provenance"] = runtime_input_provenance
     validation = {
         "overall": "WARN" if departure_plan["validation_status"] == "WARN" else "FAIL",
         "b04_inputs_available": "PASS",
@@ -1825,19 +2213,21 @@ def build_b4_stage1() -> dict[str, Any]:
         "b4_stage1_review_html": rel(B4_STAGE1_REVIEW_HTML),
     }
     summary = {
-        "schema": "compact_v9_B4_stage1_summary.v1",
+        "schema": "compact_v9_B4_evtsp_stage1_summary.v1",
         "generated_at": utc_now(),
         "algorithm": "B4",
         "status": validation["overall"],
         "primary_candidate": primary_candidate,
         "manifest_selected_candidate": manifest.get("selected_candidate", ""),
-        "manifest_selected_candidate_role": "primary_selected",
+        "manifest_selected_candidate_role": "active_runtime_override" if input_override_active else "primary_selected",
+        "stage1_audit": stage1_audit,
         "decision_variable_screening": decision_variable_screening_payload(),
         "primary_candidate_lock": {
             "primary_candidate": B4_PRIMARY_CANDIDATE,
+            "measurement_source_candidate": B4_MEASUREMENT_SOURCE_CANDIDATE,
             "manifest_selected_candidate": manifest.get("selected_candidate", ""),
-            "manifest_selected_candidate_role": "primary_selected",
-            "reason": "AD is the current variance-smoothed main-through B04 input and the manifest-selected B04 candidate for B4 Stage 1.",
+            "manifest_selected_candidate_role": "active_runtime_override" if input_override_active else "primary_selected",
+            "reason": "Stage1 CLI net/background override is active." if input_override_active else "Stage23 trigger demand is the manifest-selected B04/B4 runtime input; existing variance-smoothed B0 artifacts remain the static Stage1 measurement source until Stage23 B0 metrics are regenerated.",
             "metrics": primary_metrics,
         },
         "mode": "Stage1 static preparation only",
@@ -1851,6 +2241,8 @@ def build_b4_stage1() -> dict[str, Any]:
         },
         "movement_summary": {
             "movement_count": len(plan_rows),
+            "N": stage1_audit["N"],
+            "i_merge": stage1_audit["i_merge"],
             "controllable_movement_count": sum(1 for row in plan_rows if truthy(row.get("controllable"))),
             "control_candidate_count": threshold_proposal["readiness_counts"]["control_candidate_count"],
             "bottleneck_risk_count": threshold_proposal["readiness_counts"]["bottleneck_risk_count"],
@@ -1863,6 +2255,8 @@ def build_b4_stage1() -> dict[str, Any]:
             "merge_control_tls": departure_plan["merge_control_tls"],
             "ev_release_control_status": departure_plan["ev_release_control_status"],
             "dispatch_lead_time_sec": DISPATCH_LEAD_TIME_SEC,
+            "t_dispatch_delay_sec": DISPATCH_LEAD_TIME_SEC,
+            "tE_merge_sec": EVTSP_T_E_MERGE_SEC,
             "stage2_b0_formula": stage2_b0_payload["stage2_formula"],
             "stage2_b0_measurement_source": stage2_b0_payload["measurement_source"],
             "stage2_runtime_control_uses_formula_directly": stage2_b0_payload["runtime_control_uses_formula_directly"],
@@ -1885,21 +2279,28 @@ def build_b4_stage1() -> dict[str, Any]:
             "laneData": rel(lane_data_path),
             "tripinfo": rel(project_path(str(run_summary.get("tripinfo", "")))) if run_summary.get("tripinfo") else "",
             "segment_speed_recall": rel(speed_csv_path),
+            "background_route": rel(background_route_path) if background_route_path else "",
         },
         "outputs": outputs,
         "policy_notes": [
             "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
             "No field queue length exists in the reference CSV; B4 queue length values are SUMO stopline/local storage proxies.",
-            f"B0 measured signal parameters are SUMO {B4_PRIMARY_CANDIDATE} no-control measurements, not field-observed queue lengths.",
-            f"Stage 2 B0 merge hold parameters are SUMO {B4_PRIMARY_CANDIDATE} no-control laneData/edgeData proxy values, not field-observed occupancy.",
-            "Stage 2 runtime uses T_hold_proxy_sec directly inside the 35s dispatch window; nonpositive T_hold means immediate hold after dispatch capture.",
-            "TA_proxy_sec is used with the B4 local fill / low speed safety filter.",
+            f"B0 measured signal parameters are SUMO {B4_MEASUREMENT_SOURCE_CANDIDATE} no-control measurements, not field-observed queue lengths.",
+            f"Stage 2 B0 merge hold parameters are SUMO {B4_MEASUREMENT_SOURCE_CANDIDATE} no-control laneData/edgeData proxy values, not field-observed occupancy.",
+            "Stage 2 runtime uses Q_ratio * L_merge_m and T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec inside the 45s dispatch-delay window.",
+            "Stage 3 scans all controllable route movements ahead of EV and gates by delta_T_thr plus TA <= t_lead.",
             "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
             "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
             "linkIndex is a SUMO TLS movement index, not physical storage length.",
             "Full B4 runtime is intentionally not implemented until this Stage 1 review is accepted.",
         ],
     }
+    if runtime_input_provenance:
+        summary["allow_runtime_input_override"] = True
+        summary["runtime_input_provenance"] = runtime_input_provenance
+        summary["provenance_status"] = "PASS"
+        summary["provenance_note"] = "Stage1 was generated with explicit --net-file/--background-route inputs; use matching runtime inputs."
+        summary["policy_notes"].append("This Stage1 directory is bound to explicit CLI net/background-route overrides.")
     write_json(B4_ROUTE_MOVEMENT_PLAN, route_movement_plan)
     write_csv(B4_INTERSECTIONS_CSV, intersection_rows, [
         "tls_id", "route_order_min", "route_order_max", "movement_ids", "mapped_S_segments",
@@ -1920,6 +2321,9 @@ def build_b4_stage1() -> dict[str, Any]:
         "stopline_local_actual_length_m", "corridor_storage_length_m", "corridor_storage_raw_length_m",
         "lane_count", "from_edge_lane_count", "to_edge_lane_count", "lane_drop_delta",
         "selected_green_phase", "selected_red_phase", "red_phase_available", "green_only_no_red_phase",
+        "route_intersection_index", "L_m", "W_m", "Q_th_formula", "Q_th_default_m",
+        "is_merge", "stage_owner", "ped_min_green_sec", "ped_min_green_source", "ped_safety_margin_sec",
+        "Gm_sec", "Y_sec", "R_sec",
         "mapped_S_segment", "mapped_segment_id",
         "mapped_direction", "route_order_index", "controllable", "storage_definition", "linkIndex_note",
     ])
@@ -1930,7 +2334,11 @@ def build_b4_stage1() -> dict[str, Any]:
         "control_linkIndex", "ev_route_linkIndex", "parallel_through_linkIndex",
         "same_lane_blocking_linkIndex", "flush_linkIndex", "selected_flush_phase",
         "full_through_phase_available", "same_lane_blocker_flush_available", "control_strategy",
-        "mapped_S_segment", "route_order_index", "stopline_local_queue_m_proxy",
+        "mapped_S_segment", "route_order_index", "route_intersection_index",
+        "L_m", "W_m", "Q_th_formula", "Q_th_default_m", "is_merge", "stage_owner",
+        "ped_min_green_sec", "ped_min_green_source", "ped_safety_margin_sec",
+        "Gm_sec", "Y_sec", "R_sec",
+        "stopline_local_queue_m_proxy",
         "local_queue_m_proxy_80m", "local_queue_m_proxy_100m", "local_queue_m_proxy_120m",
         "corridor_queue_m_proxy", "local_fill_80m", "local_fill_100m", "local_fill_120m",
         "stopline_local_fill_100m", "corridor_fill_250m",
@@ -1964,7 +2372,10 @@ def build_b4_stage1() -> dict[str, Any]:
     write_json(B4_STAGE2_B0_MERGE_HOLD_PARAMS_JSON, stage2_b0_payload)
     write_csv(B4_STAGE2_B0_MERGE_HOLD_PARAMS_CSV, stage2_b0_rows, [
         "stage2_param_id", "merge_control_tls", "D_merge_m", "L_merge_m",
-        "tE_merge_sec", "C_merge_proxy_veh", "n_need_proxy_veh", "tS_merge_sec",
+        "tE_merge_sec", "t_dispatch_delay_sec", "C_merge_proxy_veh", "n_need_proxy_veh",
+        "len_E_m", "len_E_source", "tS_merge_sec",
+        "Q_th_merge_formula", "Q_th_merge_default_m", "HOLD_MAX_formula", "HOLD_MAX_sec",
+        "ped_min_green_sec", "ped_min_green_source", "ped_safety_margin_sec",
         "entry_yellow_sec", "entry_open_green_sec", "direct_switch_buffer_sec",
         "q_A_proxy_veh", "b0_merge_n_occ_mean_proxy_veh", "b0_merge_n_occ_max_proxy_veh",
         "b0_background_inflow_lambda_vph", "b0_merge_waiting_max_sec",
@@ -1981,12 +2392,25 @@ def build_b4_stage1() -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build Compact V9 B4 Stage 1 static inputs")
     parser.add_argument("command", nargs="?", default="b4-stage1", choices=["b4-stage1"])
+    parser.add_argument("--stage1-dir", type=Path, default=None, help="Optional output directory for route-specific Stage 1 artifacts.")
+    parser.add_argument("--net-file", type=Path, default=None, help="Optional SUMO net override for this Stage 1 directory.")
+    parser.add_argument("--background-route", type=Path, default=None, help="Optional background route override to record in runtime provenance.")
+    parser.add_argument("--firetruck-route-xml", type=Path, default=None, help="Optional firetruck route XML override.")
+    parser.add_argument("--firetruck-route-csv", type=Path, default=None, help="Optional firetruck route CSV override.")
+    parser.add_argument("--review-html", type=Path, default=None, help="Optional Stage 1 review HTML output path.")
     return parser.parse_args()
 
 
 def main() -> int:
-    parse_args()
-    result = build_b4_stage1()
+    args = parse_args()
+    result = build_b4_stage1(
+        stage1_dir=args.stage1_dir,
+        net_file=args.net_file,
+        background_route=args.background_route,
+        firetruck_route_xml=args.firetruck_route_xml,
+        firetruck_route_csv=args.firetruck_route_csv,
+        review_html=args.review_html,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

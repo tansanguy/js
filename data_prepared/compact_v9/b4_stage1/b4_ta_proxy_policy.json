@@ -1,9 +1,9 @@
 {
-  "schema": "compact_v9_B4_ta_proxy_policy.v1",
-  "generated_at": "2026-06-06T07:27:20.664397+00:00",
+  "schema": "compact_v9_B4_evtsp_ta_policy.v1",
+  "generated_at": "2026-06-06T16:02:38.177987+00:00",
   "algorithm": "B4",
-  "ta_formula": "TA_proxy_sec = tE_sec - tS_sec - tQ_sec",
-  "ta_control_policy": "(local_fill_100m >= 0.50 OR approach_speed_kmh <= 15) AND TA_proxy_sec <= 0",
+  "ta_formula": "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec",
+  "ta_control_policy": "Stage3 executes when tE_sec <= delta_T_thr and TA_sec <= t_lead; TA < 0 is immediate maximum-intensity green.",
   "tE_sec": "EV_to_stopline_distance_m / 13.9mps",
   "tS_sec": "0 if selected target phase is already active, else 5s direct switch safety buffer using existing SUMO phases only",
   "tQ_sec": "(queue_m_proxy / 6.5m) * 3600 / (1800 veh/h/lane * lane_count)",
@@ -11,7 +11,7 @@
   "field_queue_claim": false,
   "notes": [
     "B0 measured values are simulation-internal proxies, not field-observed queue lengths.",
-    "TA is used with the existing B4 local fill / low speed safety filter, not as a standalone trigger.",
+    "Local fill and low speed remain diagnostics; EVTSP Stage3 scans all route movements ahead of the EV.",
     "B4 only switches to phases that already exist in the SUMO net.",
     "When runtime queue is stale or empty, B0 tQ_hist may be used as a fallback and is logged with queue_source=b0_fallback."
   ],
@@ -45,6 +45,8 @@
     "v_E_mps": 13.9,
     "headway_m_per_vehicle": 6.5,
     "saturation_flow_vph_per_lane": 1800.0,
-    "direct_switch_buffer_sec": 5.0
+    "direct_switch_buffer_sec": 5.0,
+    "t_dispatch_delay_sec": 45.0,
+    "tE_merge_sec": 10.0
   }
 }

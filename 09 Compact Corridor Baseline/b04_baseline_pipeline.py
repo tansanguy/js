@@ -42,6 +42,8 @@ B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
 B04_MAPPING_CSV = DATA_ROOT / "map/B04_toegye_segment_edge_mapping.csv"
 B04_MAPPING_FALLBACK_CSV = DATA_ROOT / "map/toegye_segment_edge_mapping.csv"
+S1_EDGE_GROUPS_CSV = DATA_ROOT / "map/S1_sumo_edge_groups.csv"
+S1_EDGE_GROUPS_HTML = HTML_ROOT / "compact_v9_S1_edge_groups.html"
 B04_TARGET_PROFILE_CSV = DATA_ROOT / "map/B04_target_profile.csv"
 B04_FIRETRUCK_ROUTE_XML = DATA_ROOT / "routes/firetruck_to_seoul_station_front.rou.xml"
 B04_FIRETRUCK_ROUTE_CSV = DATA_ROOT / "routes/firetruck_route.csv"
@@ -76,6 +78,17 @@ CSV_SIGNAL_CYCLE_SEC = 72.0
 CSV_SIGNAL_YELLOW_SEC = 3.0
 CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC = 57.0
 CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC = 10.0
+CSV_SIGNAL_REAL_POSITION_POLICY = "csv_reference_signal_position"
+CSV_SIGNAL_TYPE_INTERSECTION = "intersection_signal"
+CSV_SIGNAL_TYPE_STRAIGHT = "straight_signal"
+FORCED_S1_START_TLS_ID = "CSV_TLS_S01_START_SINDANG_STATION"
+FORCED_S1_START_JUNCTION_ID = "414685846"
+FORCED_S1_START_ROUTE_FROM_EDGE = "-218684411#0"
+FORCED_S1_START_ROUTE_TO_EDGE = "-174870621#10"
+FORCED_S1_START_DOWNBOUND_FROM_EDGE = "174870621#10"
+FORCED_S1_START_DOWNBOUND_TO_EDGE = "218684411#0"
+FORCED_S22_END_TLS_ID = "CSV_TLS_S22_END_SEOUL_STATION_ROTARY"
+FORCED_S22_END_JUNCTION_ID = "11139302899"
 TERMINAL_EGRESS_GREEN_SEC = 96.0
 TERMINAL_EGRESS_OTHER_GREEN_SEC = 8.0
 TERMINAL_EGRESS_YELLOW_SEC = 3.0
@@ -696,6 +709,17 @@ def candidate_phase_count(value: set[str]) -> int:
     return max(counts) if counts else 0
 
 
+def csv_signal_type(name: str, critical: bool) -> str:
+    lowered = str(name or "").strip().lower()
+    if critical:
+        return CSV_SIGNAL_TYPE_INTERSECTION
+    if "intersection" in lowered or "rotary" in lowered:
+        return CSV_SIGNAL_TYPE_INTERSECTION
+    if "toegye-ro" in lowered and "-ga" in lowered:
+        return CSV_SIGNAL_TYPE_INTERSECTION
+    return CSV_SIGNAL_TYPE_STRAIGHT
+
+
 def csv_signal_candidate_points() -> list[dict[str, Any]]:
     points: dict[tuple[float, float, str], dict[str, Any]] = {}
     for row in read_csv(REFERENCE_CSV):
@@ -757,6 +781,7 @@ def csv_signal_candidate_points() -> list[dict[str, Any]]:
             "intersection_name": slot["name"],
             "lat": slot["lat"],
             "lon": slot["lon"],
+            "signal_type": csv_signal_type(slot["name"], bool(slot["critical"])),
             "segments": " ".join(slot["segments"]),
             "segment_numbers": segment_numbers,
             "phase_count": phase_count,
@@ -785,6 +810,206 @@ def load_signal_edge_segments() -> dict[str, dict[str, Any]]:
                 "direction": row.get("direction", ""),
             }
     return best
+
+
+def s1_mapping_rows() -> list[dict[str, str]]:
+    mapping_path = B04_MAPPING_CSV if B04_MAPPING_CSV.is_file() else B04_MAPPING_FALLBACK_CSV
+    if not mapping_path.is_file():
+        build_mapping()
+        mapping_path = B04_MAPPING_CSV
+    rows = [row for row in read_csv(mapping_path) if row.get("segment_id") == "S1"]
+    rows.sort(key=lambda row: (row.get("direction", ""), safe_int(row.get("edge_order"))))
+    return rows
+
+
+def edge_lane_counts(net_file: Path) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event, elem in ET.iterparse(net_file, events=("end",)):
+        if elem.tag != "edge":
+            elem.clear()
+            continue
+        edge_id = elem.get("id", "")
+        if edge_id and not edge_id.startswith(":"):
+            counts[edge_id] = len(elem.findall("lane"))
+        elem.clear()
+    return counts
+
+
+def edge_latlon_geometry(net_file: Path, edge_ids: set[str]) -> dict[str, list[list[float]]]:
+    if not edge_ids:
+        return {}
+    sumo_net = read_sumo_net(net_file)
+    geometries: dict[str, list[list[float]]] = {}
+    for edge_id in edge_ids:
+        try:
+            edge = sumo_net.getEdge(edge_id)
+        except Exception:
+            continue
+        points = []
+        for x, y in edge.getShape():
+            lon, lat = sumo_net.convertXY2LonLat(float(x), float(y))
+            points.append([round(float(lat), 8), round(float(lon), 8)])
+        if points:
+            geometries[edge_id] = points
+    return geometries
+
+
+def render_s1_edge_groups_html(payload: dict[str, Any]) -> str:
+    payload_json = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compact V9 S1 SUMO Edge Groups</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQBdjlIeqio5I8fAFs1C7lYLVQ2wZj4=" crossorigin="">
+  <style>
+    html, body {{ height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; }}
+    .app {{ height: 100%; display: grid; grid-template-columns: minmax(280px, 380px) 1fr; background: #f6f7f9; }}
+    aside {{ overflow: auto; padding: 16px; border-right: 1px solid #d8dde7; background: #fff; }}
+    h1 {{ margin: 0 0 8px; font-size: 18px; }}
+    .muted {{ color: #667085; font-size: 13px; line-height: 1.45; }}
+    .stat {{ display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid #edf0f5; font-size: 13px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }}
+    th, td {{ padding: 6px 5px; border-bottom: 1px solid #edf0f5; text-align: left; vertical-align: top; }}
+    th {{ position: sticky; top: 0; background: #fff; z-index: 1; }}
+    code {{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }}
+    #map {{ height: 100%; min-height: 420px; }}
+    .legend {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; font-size: 12px; }}
+    .swatch {{ width: 12px; height: 12px; display: inline-block; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }}
+    @media (max-width: 760px) {{ .app {{ grid-template-columns: 1fr; grid-template-rows: 42vh 58vh; }} aside {{ order: 2; border-right: 0; border-top: 1px solid #d8dde7; }} #map {{ order: 1; }} }}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>Compact V9 S1 Edge Groups</h1>
+      <div class="muted">S1 기준 CSV와 현재 B04 SUMO edge mapping을 같은 그룹으로 묶은 확인용 지도입니다.</div>
+      <div class="legend">
+        <span><i class="swatch" style="background:#2563eb"></i>upbound</span>
+        <span><i class="swatch" style="background:#dc2626"></i>downbound</span>
+      </div>
+      <div id="stats"></div>
+      <table>
+        <thead><tr><th>group</th><th>edge</th><th>order</th><th>lanes</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </aside>
+    <div id="map"></div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const payload = {payload_json};
+    const map = L.map('map', {{ preferCanvas: true }});
+    L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }}).addTo(map);
+    const colors = {{ upbound: '#2563eb', downbound: '#dc2626' }};
+    const bounds = [];
+    for (const row of payload.rows) {{
+      const geom = payload.geometries[row.edge_id] || [];
+      if (!geom.length) continue;
+      const line = L.polyline(geom, {{
+        color: colors[row.direction] || '#334155',
+        weight: Math.max(4, Number(row.lane_count || 1) + 3),
+        opacity: 0.82
+      }}).addTo(map);
+      line.bindPopup(`<strong>${{row.group_id}}</strong><br><code>${{row.edge_id}}</code><br>${{row.direction}}, order ${{row.edge_order}}<br>lanes ${{row.lane_count}}`);
+      for (const point of geom) bounds.push(point);
+    }}
+    for (const point of payload.reference_points) {{
+      L.circleMarker([point.lat, point.lon], {{
+        radius: point.role === 'start' ? 7 : 6,
+        color: point.role === 'start' ? '#111827' : '#64748b',
+        fillColor: '#fff',
+        fillOpacity: 1,
+        weight: 2
+      }}).addTo(map).bindPopup(`<strong>${{point.label}}</strong><br>${{point.role}}`);
+      bounds.push([point.lat, point.lon]);
+    }}
+    if (bounds.length) map.fitBounds(bounds, {{ padding: [28, 28] }}); else map.setView([37.565, 127.014], 16);
+    const stats = [
+      ['CSV', payload.reference_csv],
+      ['net', payload.net_file],
+      ['rows', payload.rows.length],
+      ['upbound', payload.rows.filter(r => r.direction === 'upbound').length],
+      ['downbound', payload.rows.filter(r => r.direction === 'downbound').length]
+    ];
+    document.getElementById('stats').innerHTML = stats.map(([k, v]) => `<div class="stat"><span>${{k}}</span><strong>${{v}}</strong></div>`).join('');
+    document.getElementById('rows').innerHTML = payload.rows.map(row => `<tr><td>${{row.group_id}}</td><td><code>${{row.edge_id}}</code></td><td>${{row.edge_order}}</td><td>${{row.lane_count}}</td></tr>`).join('');
+  </script>
+</body>
+</html>
+"""
+
+
+def build_s1_edge_groups() -> dict[str, Any]:
+    if not B04_NET.is_file():
+        adopt_green18()
+    rows = []
+    lane_counts = edge_lane_counts(B04_NET)
+    mapping_rows = s1_mapping_rows()
+    edge_ids = {row.get("edge_id", "") for row in mapping_rows if row.get("edge_id")}
+    geometries = edge_latlon_geometry(B04_NET, edge_ids)
+    for row in mapping_rows:
+        direction = row.get("direction", "")
+        edge_id = row.get("edge_id", "")
+        rows.append({
+            "group_id": f"S1_{direction}",
+            "segment_id": "S1",
+            "direction": direction,
+            "edge_id": edge_id,
+            "edge_order": row.get("edge_order", ""),
+            "axis_position": row.get("axis_position", ""),
+            "matched_length_m": row.get("matched_length_m", ""),
+            "match_ratio": row.get("match_ratio", ""),
+            "lane_count": lane_counts.get(edge_id, safe_int(row.get("current_lanes"))),
+            "geometry_source": "sumo_net_shape" if edge_id in geometries else "missing_geometry",
+        })
+    write_csv(S1_EDGE_GROUPS_CSV, rows, [
+        "group_id", "segment_id", "direction", "edge_id", "edge_order",
+        "axis_position", "matched_length_m", "match_ratio", "lane_count", "geometry_source",
+    ])
+    s1 = next((row for row in read_csv(REFERENCE_CSV) if row.get("segment_id") == "S1"), {})
+    payload = {
+        "schema": "compact_v9_s1_sumo_edge_groups.v1",
+        "generated_at": utc_now(),
+        "reference_csv": rel(REFERENCE_CSV),
+        "net_file": rel(B04_NET),
+        "output_csv": rel(S1_EDGE_GROUPS_CSV),
+        "rows": rows,
+        "geometries": geometries,
+        "reference_points": [
+            {
+                "role": "start",
+                "label": s1.get("start_intersection", "S1 start"),
+                "lat": safe_float(s1.get("start_latitude")),
+                "lon": safe_float(s1.get("start_longitude")),
+            },
+            {
+                "role": "end",
+                "label": s1.get("end_intersection", "S1 end"),
+                "lat": safe_float(s1.get("end_latitude")),
+                "lon": safe_float(s1.get("end_longitude")),
+            },
+        ],
+    }
+    S1_EDGE_GROUPS_HTML.parent.mkdir(parents=True, exist_ok=True)
+    S1_EDGE_GROUPS_HTML.write_text(render_s1_edge_groups_html(payload), encoding="utf-8")
+    return {
+        "schema": payload["schema"],
+        "generated_at": payload["generated_at"],
+        "row_count": len(rows),
+        "direction_counts": {
+            "upbound": sum(1 for row in rows if row["direction"] == "upbound"),
+            "downbound": sum(1 for row in rows if row["direction"] == "downbound"),
+        },
+        "output_csv": rel(S1_EDGE_GROUPS_CSV),
+        "output_html": rel(S1_EDGE_GROUPS_HTML),
+    }
 
 
 def route_edges_for_signal_mapping() -> list[str]:
@@ -887,9 +1112,22 @@ def connection_sort_key(connection: ET.Element) -> tuple[str, int, int, str, str
     return (direct_connection_junction_id(connection), base, lane, connection.get("from", ""), connection.get("to", ""))
 
 
-def build_csv_signal_states(length: int, main_indices: set[int], phase_count: int) -> list[dict[str, Any]]:
+def build_csv_signal_states(
+    length: int,
+    main_indices: set[int],
+    phase_count: int,
+    signal_type: str = CSV_SIGNAL_TYPE_INTERSECTION,
+) -> list[dict[str, Any]]:
     if length <= 0:
         return []
+    if signal_type == CSV_SIGNAL_TYPE_STRAIGHT:
+        main_green = max(CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC, CSV_SIGNAL_CYCLE_SEC - CSV_SIGNAL_YELLOW_SEC - side_green_seconds(phase_count))
+        red_sec = max(5.0, CSV_SIGNAL_CYCLE_SEC - main_green - CSV_SIGNAL_YELLOW_SEC)
+        return [
+            {"duration": main_green, "state": "G" * length, "name": "csv_straight_main_green"},
+            {"duration": CSV_SIGNAL_YELLOW_SEC, "state": "y" * length, "name": "csv_straight_main_yellow"},
+            {"duration": red_sec, "state": "r" * length, "name": "csv_straight_main_red"},
+        ]
     minor_indices = set(range(length)) - main_indices
     if not minor_indices:
         return [{"duration": CSV_SIGNAL_CYCLE_SEC, "state": "G" * length, "name": "csv_mainline_open"}]
@@ -915,17 +1153,7 @@ def build_csv_signal_states(length: int, main_indices: set[int], phase_count: in
     ]
 
 
-def apply_csv_signal_to_junction(
-    root: ET.Element,
-    *,
-    junction_id: str,
-    tls_id: str,
-    route_from_edge: str,
-    route_to_edge: str,
-    phase_count: int,
-    offset_sec: float,
-    edge_segments: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
+def direct_connections_at_junction(root: ET.Element, junction_id: str) -> list[ET.Element]:
     direct_connections = [
         connection
         for connection in root.findall("connection")
@@ -933,27 +1161,97 @@ def apply_csv_signal_to_junction(
         and direct_connection_junction_id(connection) == junction_id
     ]
     direct_connections.sort(key=connection_sort_key)
-    if not direct_connections:
-        return {"created": False, "skip_reason": "no_direct_connections_at_junction"}
-    existing_tls = sorted({connection.get("tl", "") for connection in direct_connections if connection.get("tl")})
-    if existing_tls:
-        return {"created": False, "skip_reason": "junction_already_has_tls", "existing_tls_id": " ".join(existing_tls)}
+    return direct_connections
 
-    route_indices = {
-        index
-        for index, connection in enumerate(direct_connections)
-        if connection.get("from") == route_from_edge and connection.get("to") == route_to_edge
-    }
-    main_indices = set(route_indices)
-    for index, connection in enumerate(direct_connections):
-        from_meta = edge_segments.get(connection.get("from", ""), {})
-        to_meta = edge_segments.get(connection.get("to", ""), {})
-        same_direction = from_meta.get("direction") and from_meta.get("direction") == to_meta.get("direction")
-        if same_direction and connection.get("dir") in {"s", "r"}:
-            main_indices.add(index)
-    if not main_indices:
-        main_indices = set(range(len(direct_connections)))
 
+def move_junction_to_csv_position(
+    net_file: Path,
+    root: ET.Element,
+    *,
+    junction_id: str,
+    csv_lon: float,
+    csv_lat: float,
+) -> dict[str, Any]:
+    if not junction_id or not csv_lon or not csv_lat:
+        return {"moved": False, "reason": "missing_junction_or_csv_coord"}
+    try:
+        sumo_net = read_sumo_net(net_file)
+        new_x, new_y = sumo_net.convertLonLat2XY(csv_lon, csv_lat)
+    except Exception as exc:
+        return {"moved": False, "reason": f"coord_convert_failed:{exc}"}
+    for junction in root.findall("junction"):
+        if junction.get("id") != junction_id:
+            continue
+        old_x = safe_float(junction.get("x"))
+        old_y = safe_float(junction.get("y"))
+        dx = float(new_x) - old_x
+        dy = float(new_y) - old_y
+        junction.set("x", f"{float(new_x):.2f}")
+        junction.set("y", f"{float(new_y):.2f}")
+        shape = str(junction.get("shape", "") or "").strip()
+        if shape:
+            shifted = []
+            for token in shape.split():
+                try:
+                    x_text, y_text = token.split(",")[:2]
+                    shifted.append(f"{float(x_text) + dx:.2f},{float(y_text) + dy:.2f}")
+                except Exception:
+                    shifted.append(token)
+            junction.set("shape", " ".join(shifted))
+        adjusted_lane_shapes = 0
+        for edge in root.findall("edge"):
+            edge_id = str(edge.get("id", ""))
+            is_internal = edge_id.startswith(f":{junction_id}_")
+            touches_from = edge.get("from") == junction_id
+            touches_to = edge.get("to") == junction_id
+            if not (is_internal or touches_from or touches_to):
+                continue
+            for lane in edge.findall("lane"):
+                shape_text = str(lane.get("shape", "") or "").strip()
+                if not shape_text:
+                    continue
+                points = []
+                changed = False
+                for index, token in enumerate(shape_text.split()):
+                    try:
+                        x_text, y_text = token.split(",")[:2]
+                        x_val = float(x_text)
+                        y_val = float(y_text)
+                    except Exception:
+                        points.append(token)
+                        continue
+                    should_shift = is_internal or (touches_from and index == 0) or (touches_to and index == len(shape_text.split()) - 1)
+                    if should_shift:
+                        x_val += dx
+                        y_val += dy
+                        changed = True
+                    points.append(f"{x_val:.2f},{y_val:.2f}")
+                if changed:
+                    lane.set("shape", " ".join(points))
+                    adjusted_lane_shapes += 1
+        return {
+            "moved": True,
+            "old_x": round(old_x, 3),
+            "old_y": round(old_y, 3),
+            "new_x": round(float(new_x), 3),
+            "new_y": round(float(new_y), 3),
+            "adjusted_lane_shapes": adjusted_lane_shapes,
+        }
+    return {"moved": False, "reason": "junction_not_found"}
+
+
+def install_static_tls(
+    root: ET.Element,
+    *,
+    junction_id: str,
+    tls_id: str,
+    direct_connections: list[ET.Element],
+    main_indices: set[int],
+    phase_count: int,
+    offset_sec: float,
+    program_id: str,
+    signal_type: str = CSV_SIGNAL_TYPE_INTERSECTION,
+) -> ET.Element:
     for junction in root.findall("junction"):
         if junction.get("id") == junction_id:
             junction.set("type", "traffic_light")
@@ -970,24 +1268,334 @@ def apply_csv_signal_to_junction(
     tl_logic = ET.Element("tlLogic", {
         "id": tls_id,
         "type": "static",
-        "programID": "CSV_BOUNDARY",
+        "programID": program_id,
         "offset": f"{max(offset_sec, 0.0):g}",
     })
-    for phase in build_csv_signal_states(len(direct_connections), main_indices, phase_count):
+    for phase in build_csv_signal_states(len(direct_connections), main_indices, phase_count, signal_type):
         ET.SubElement(tl_logic, "phase", {
             "duration": f"{safe_float(phase['duration']):g}",
             "state": str(phase["state"]),
             "name": str(phase["name"]),
         })
     root.insert(0, tl_logic)
+    return tl_logic
+
+
+def apply_csv_signal_to_junction(
+    root: ET.Element,
+    *,
+    junction_id: str,
+    tls_id: str,
+    route_from_edge: str,
+    route_to_edge: str,
+    phase_count: int,
+    offset_sec: float,
+    edge_segments: dict[str, dict[str, Any]],
+    signal_type: str = CSV_SIGNAL_TYPE_INTERSECTION,
+) -> dict[str, Any]:
+    direct_connections = direct_connections_at_junction(root, junction_id)
+    if not direct_connections:
+        return {"created": False, "skip_reason": "no_direct_connections_at_junction"}
+
+    route_indices = {
+        index
+        for index, connection in enumerate(direct_connections)
+        if connection.get("from") == route_from_edge and connection.get("to") == route_to_edge
+    }
+    main_indices = set(route_indices)
+    for index, connection in enumerate(direct_connections):
+        from_meta = edge_segments.get(connection.get("from", ""), {})
+        to_meta = edge_segments.get(connection.get("to", ""), {})
+        same_direction = from_meta.get("direction") and from_meta.get("direction") == to_meta.get("direction")
+        if same_direction and connection.get("dir") in {"s", "r"}:
+            main_indices.add(index)
+    if not main_indices:
+        main_indices = set(range(len(direct_connections)))
+    if signal_type == CSV_SIGNAL_TYPE_STRAIGHT:
+        controlled_pairs = {
+            index
+            for index, connection in enumerate(direct_connections)
+            if index in main_indices and connection.get("dir") in {"s", "r"}
+        }
+        if not controlled_pairs:
+            controlled_pairs = set(route_indices)
+        controlled_connections = [
+            connection for index, connection in enumerate(direct_connections) if index in controlled_pairs
+        ]
+        original_index_by_connection = {id(connection): index for index, connection in enumerate(direct_connections)}
+        main_indices = set(range(len(controlled_connections)))
+        for index, connection in enumerate(direct_connections):
+            if index not in controlled_pairs and connection.get("tl") == tls_id:
+                connection.attrib.pop("tl", None)
+                connection.attrib.pop("linkIndex", None)
+        route_indices = {
+            index
+            for index, connection in enumerate(controlled_connections)
+            if connection.get("from") == route_from_edge and connection.get("to") == route_to_edge
+        }
+        original_controlled_indices = {
+            original_index_by_connection.get(id(connection), -1) for connection in controlled_connections
+        }
+    else:
+        existing_tls = sorted({connection.get("tl", "") for connection in direct_connections if connection.get("tl")})
+        if existing_tls and tls_id not in existing_tls:
+            return {"created": False, "skip_reason": "junction_already_has_tls", "existing_tls_id": " ".join(existing_tls)}
+        controlled_connections = direct_connections
+        original_controlled_indices = set(range(len(direct_connections)))
+
+    tl_logic = install_static_tls(
+        root,
+        junction_id=junction_id,
+        tls_id=tls_id,
+        direct_connections=controlled_connections,
+        main_indices=main_indices,
+        phase_count=phase_count,
+        offset_sec=offset_sec,
+        program_id="CSV_STRAIGHT" if signal_type == CSV_SIGNAL_TYPE_STRAIGHT else "CSV_INTERSECTION",
+        signal_type=signal_type,
+    )
     return {
         "created": True,
-        "controlled_connection_count": len(direct_connections),
+        "controlled_connection_count": len(controlled_connections),
         "mainline_linkIndex": " ".join(str(index) for index in sorted(main_indices)),
         "route_linkIndex": " ".join(str(index) for index in sorted(route_indices)),
+        "original_controlled_connection_index": " ".join(str(index) for index in sorted(original_controlled_indices) if index >= 0),
         "phase_count": len(tl_logic.findall("phase")),
         "cycle_sec": sum(safe_float(phase.get("duration")) for phase in tl_logic.findall("phase")),
         "offset_sec": safe_float(tl_logic.get("offset")),
+    }
+
+
+def forced_s1_start_csv_row() -> dict[str, str]:
+    s1 = next((row for row in read_csv(REFERENCE_CSV) if row.get("segment_id") == "S1"), {})
+    return {
+        "boundary_id": "S01_START",
+        "intersection_name": s1.get("start_intersection", "Sindang Station"),
+        "candidate_reason": "csv_signal_phase+csv_critical_intersection+forced_corridor_start",
+        "csv_segments": "S1:start",
+        "csv_phase_count": safe_int(s1.get("start_signal_phase"), 4),
+        "signal_type": CSV_SIGNAL_TYPE_INTERSECTION,
+        "csv_lat": s1.get("start_latitude", ""),
+        "csv_lon": s1.get("start_longitude", ""),
+        "position_source": CSV_SIGNAL_REAL_POSITION_POLICY,
+        "endpoint_source": "S1:start",
+        "terminal_role": "corridor_start",
+    }
+
+
+def apply_forced_s1_start_signal(
+    root: ET.Element,
+    junction_coords: dict[str, tuple[float, float]],
+    *,
+    net_file: Path,
+) -> dict[str, Any]:
+    direct_connections = direct_connections_at_junction(root, FORCED_S1_START_JUNCTION_ID)
+    base_row = forced_s1_start_csv_row()
+    if not direct_connections:
+        return {
+            **base_row,
+            "route_pair_index": "",
+            "route_from_edge": FORCED_S1_START_ROUTE_FROM_EDGE,
+            "route_to_edge": FORCED_S1_START_ROUTE_TO_EDGE,
+            "from_segment": "S1",
+            "to_segment": "",
+            "junction_id": FORCED_S1_START_JUNCTION_ID,
+            "distance_m": "",
+            "action": "skipped_forced_tls",
+            "tls_id": FORCED_S1_START_TLS_ID,
+            "skip_reason": "no_direct_connections_at_s1_start_junction",
+        }
+
+    existing_tls = sorted({connection.get("tl", "") for connection in direct_connections if connection.get("tl")})
+    if existing_tls and FORCED_S1_START_TLS_ID not in existing_tls:
+        return {
+            **base_row,
+            "route_pair_index": "",
+            "route_from_edge": FORCED_S1_START_ROUTE_FROM_EDGE,
+            "route_to_edge": FORCED_S1_START_ROUTE_TO_EDGE,
+            "from_segment": "S1",
+            "to_segment": "",
+            "junction_id": FORCED_S1_START_JUNCTION_ID,
+            "distance_m": "",
+            "action": "existing_forced_tls",
+            "tls_id": " ".join(existing_tls),
+            "skip_reason": "s1_start_junction_already_has_tls",
+        }
+
+    through_pairs = {
+        (FORCED_S1_START_ROUTE_FROM_EDGE, FORCED_S1_START_ROUTE_TO_EDGE),
+        (FORCED_S1_START_DOWNBOUND_FROM_EDGE, FORCED_S1_START_DOWNBOUND_TO_EDGE),
+    }
+    main_approaches = {FORCED_S1_START_ROUTE_FROM_EDGE, FORCED_S1_START_DOWNBOUND_FROM_EDGE}
+    main_indices = {
+        index
+        for index, connection in enumerate(direct_connections)
+        if (connection.get("from"), connection.get("to")) in through_pairs
+        or (connection.get("from") in main_approaches and connection.get("dir") == "r")
+    }
+    if not main_indices:
+        main_indices = set(range(len(direct_connections)))
+
+    tl_logic = install_static_tls(
+        root,
+        junction_id=FORCED_S1_START_JUNCTION_ID,
+        tls_id=FORCED_S1_START_TLS_ID,
+        direct_connections=direct_connections,
+        main_indices=main_indices,
+        phase_count=safe_int(base_row["csv_phase_count"], 4),
+        offset_sec=0.0,
+        program_id="CSV_S1_START",
+        signal_type=CSV_SIGNAL_TYPE_INTERSECTION,
+    )
+    s1 = next((row for row in read_csv(REFERENCE_CSV) if row.get("segment_id") == "S1"), {})
+    move_summary = move_junction_to_csv_position(
+        net_file,
+        root,
+        junction_id=FORCED_S1_START_JUNCTION_ID,
+        csv_lon=safe_float(s1.get("start_longitude")),
+        csv_lat=safe_float(s1.get("start_latitude")),
+    )
+    junction_lon, junction_lat = junction_coords.get(FORCED_S1_START_JUNCTION_ID, (0.0, 0.0))
+    distance = lonlat_distance_m(
+        junction_lon,
+        junction_lat,
+        safe_float(s1.get("start_longitude")),
+        safe_float(s1.get("start_latitude")),
+    ) if junction_lon and junction_lat else 0.0
+    return {
+        **base_row,
+        "route_pair_index": "",
+        "route_from_edge": FORCED_S1_START_ROUTE_FROM_EDGE,
+        "route_to_edge": FORCED_S1_START_ROUTE_TO_EDGE,
+        "from_segment": "S1",
+        "to_segment": "",
+        "junction_id": FORCED_S1_START_JUNCTION_ID,
+        "distance_m": 0.0 if move_summary.get("moved") else round(distance, 3),
+        "nearest_junction_distance_m": round(distance, 3),
+        "action": "created_forced_tls",
+        "tls_id": FORCED_S1_START_TLS_ID,
+        "controlled_connection_count": len(direct_connections),
+        "mainline_linkIndex": " ".join(str(index) for index in sorted(main_indices)),
+        "route_linkIndex": " ".join(
+            str(index)
+            for index, connection in enumerate(direct_connections)
+            if connection.get("from") == FORCED_S1_START_ROUTE_FROM_EDGE
+            and connection.get("to") == FORCED_S1_START_ROUTE_TO_EDGE
+        ),
+        "original_controlled_connection_index": " ".join(str(index) for index in range(len(direct_connections))),
+        "phase_count": len(tl_logic.findall("phase")),
+        "cycle_sec": sum(safe_float(phase.get("duration")) for phase in tl_logic.findall("phase")),
+        "offset_sec": safe_float(tl_logic.get("offset")),
+        "signal_position_moved": move_summary.get("moved", False),
+        "position_source": CSV_SIGNAL_REAL_POSITION_POLICY,
+        "expected_arrival_sec": "",
+        "skip_reason": "",
+    }
+
+
+def forced_s22_end_csv_row() -> dict[str, str]:
+    s22 = next((row for row in read_csv(REFERENCE_CSV) if row.get("segment_id") == "S22"), {})
+    return {
+        "boundary_id": "S22_END",
+        "intersection_name": s22.get("end_intersection", "Seoul Station Rotary"),
+        "candidate_reason": "csv_signal_phase+csv_critical_intersection+forced_corridor_end",
+        "csv_segments": "S22:end",
+        "csv_phase_count": safe_int(s22.get("end_signal_phase"), 4),
+        "signal_type": CSV_SIGNAL_TYPE_INTERSECTION,
+        "csv_lat": s22.get("end_latitude", ""),
+        "csv_lon": s22.get("end_longitude", ""),
+        "position_source": CSV_SIGNAL_REAL_POSITION_POLICY,
+        "endpoint_source": "S22:end",
+        "terminal_role": "corridor_end",
+    }
+
+
+def apply_forced_s22_end_signal(
+    root: ET.Element,
+    junction_coords: dict[str, tuple[float, float]],
+    *,
+    net_file: Path,
+) -> dict[str, Any]:
+    direct_connections = direct_connections_at_junction(root, FORCED_S22_END_JUNCTION_ID)
+    base_row = forced_s22_end_csv_row()
+    s22 = next((row for row in read_csv(REFERENCE_CSV) if row.get("segment_id") == "S22"), {})
+    if not direct_connections:
+        return {
+            **base_row,
+            "route_pair_index": "",
+            "route_from_edge": "",
+            "route_to_edge": "",
+            "from_segment": "S22",
+            "to_segment": "",
+            "junction_id": FORCED_S22_END_JUNCTION_ID,
+            "distance_m": "",
+            "nearest_junction_distance_m": "",
+            "action": "skipped_forced_tls",
+            "tls_id": FORCED_S22_END_TLS_ID,
+            "skip_reason": "no_direct_connections_at_s22_end_junction",
+        }
+
+    existing_tls = sorted({connection.get("tl", "") for connection in direct_connections if connection.get("tl")})
+    tls_id = existing_tls[0] if existing_tls else FORCED_S22_END_TLS_ID
+    if not existing_tls:
+        main_indices = set(range(len(direct_connections)))
+        tl_logic = install_static_tls(
+            root,
+            junction_id=FORCED_S22_END_JUNCTION_ID,
+            tls_id=tls_id,
+            direct_connections=direct_connections,
+            main_indices=main_indices,
+            phase_count=safe_int(base_row["csv_phase_count"], 4),
+            offset_sec=0.0,
+            program_id="CSV_S22_END",
+            signal_type=CSV_SIGNAL_TYPE_INTERSECTION,
+        )
+        action = "created_forced_tls"
+    else:
+        tl_logic = next((logic for logic in root.findall("tlLogic") if logic.get("id") == tls_id), None)
+        action = "existing_terminal_tls"
+
+    move_summary = move_junction_to_csv_position(
+        net_file,
+        root,
+        junction_id=FORCED_S22_END_JUNCTION_ID,
+        csv_lon=safe_float(s22.get("end_longitude")),
+        csv_lat=safe_float(s22.get("end_latitude")),
+    )
+    junction_lon, junction_lat = junction_coords.get(FORCED_S22_END_JUNCTION_ID, (0.0, 0.0))
+    distance = lonlat_distance_m(
+        junction_lon,
+        junction_lat,
+        safe_float(s22.get("end_longitude")),
+        safe_float(s22.get("end_latitude")),
+    ) if junction_lon and junction_lat else 0.0
+    phases = tl_logic.findall("phase") if tl_logic is not None else []
+    return {
+        **base_row,
+        "route_pair_index": "",
+        "route_from_edge": direct_connections[0].get("from", "") if direct_connections else "",
+        "route_to_edge": direct_connections[0].get("to", "") if direct_connections else "",
+        "from_segment": "S22",
+        "to_segment": "",
+        "junction_id": FORCED_S22_END_JUNCTION_ID,
+        "distance_m": 0.0 if move_summary.get("moved") else round(distance, 3),
+        "nearest_junction_distance_m": round(distance, 3),
+        "signal_position_moved": move_summary.get("moved", False),
+        "action": action,
+        "tls_id": tls_id,
+        "controlled_connection_count": len(direct_connections),
+        "mainline_linkIndex": " ".join(str(index) for index in range(len(direct_connections))) if not existing_tls else "",
+        "route_linkIndex": " ".join(
+            str(safe_int(connection.get("linkIndex"), -1))
+            for connection in direct_connections
+            if safe_int(connection.get("linkIndex"), -1) >= 0
+        ),
+        "original_controlled_connection_index": " ".join(str(index) for index in range(len(direct_connections))),
+        "phase_count": len(phases),
+        "cycle_sec": sum(safe_float(phase.get("duration")) for phase in phases),
+        "offset_sec": safe_float(tl_logic.get("offset")) if tl_logic is not None else "",
+        "expected_arrival_sec": "",
+        "skip_reason": "",
     }
 
 
@@ -1122,16 +1730,25 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
         distance_m, candidate = sorted(nearby, key=lambda item: item[0])[0]
         route_candidate_count += 1
         existing_tls_id = connection.get("tl", "")
-        action = "existing_tls" if existing_tls_id else "created_tls"
+        signal_type = candidate.get("signal_type", CSV_SIGNAL_TYPE_STRAIGHT)
+        tls_id = existing_tls_id if existing_tls_id and signal_type == CSV_SIGNAL_TYPE_INTERSECTION else candidate["tls_id"]
+        action = "existing_tls" if existing_tls_id and signal_type == CSV_SIGNAL_TYPE_INTERSECTION else "created_tls"
         result: dict[str, Any]
-        if existing_tls_id:
+        move_summary = move_junction_to_csv_position(
+            source_net,
+            root,
+            junction_id=junction_id,
+            csv_lon=safe_float(candidate.get("lon")),
+            csv_lat=safe_float(candidate.get("lat")),
+        )
+        if existing_tls_id and signal_type == CSV_SIGNAL_TYPE_INTERSECTION:
             existing_count += 1
-            result = {"created": False, "existing_tls_id": existing_tls_id}
+            result = {"created": False, "existing_tls_id": existing_tls_id, "signal_position_moved": move_summary.get("moved", False)}
         else:
             result = apply_csv_signal_to_junction(
                 root,
                 junction_id=junction_id,
-                tls_id=candidate["tls_id"],
+                tls_id=tls_id,
                 route_from_edge=from_edge,
                 route_to_edge=to_edge,
                 phase_count=safe_int(candidate.get("phase_count")),
@@ -1140,6 +1757,7 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
                     CSV_SIGNAL_CYCLE_SEC,
                 ),
                 edge_segments=edge_segments,
+                signal_type=signal_type,
             )
             if result.get("created"):
                 created_count += 1
@@ -1153,18 +1771,27 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
             "candidate_reason": candidate["candidate_reason"],
             "csv_segments": candidate["segments"],
             "csv_phase_count": candidate["phase_count"],
+            "signal_type": signal_type,
+            "csv_lat": candidate["lat"],
+            "csv_lon": candidate["lon"],
+            "position_source": CSV_SIGNAL_REAL_POSITION_POLICY,
+            "endpoint_source": "",
+            "terminal_role": "",
             "route_pair_index": route_pair_index,
             "route_from_edge": from_edge,
             "route_to_edge": to_edge,
             "from_segment": from_meta.get("segment_id", ""),
             "to_segment": to_meta.get("segment_id", ""),
             "junction_id": junction_id,
-            "distance_m": round(distance_m, 3),
+            "distance_m": 0.0 if move_summary.get("moved") else round(distance_m, 3),
+            "nearest_junction_distance_m": round(distance_m, 3),
+            "signal_position_moved": move_summary.get("moved", False),
             "action": action,
-            "tls_id": existing_tls_id or candidate["tls_id"],
+            "tls_id": tls_id,
             "controlled_connection_count": result.get("controlled_connection_count", ""),
             "mainline_linkIndex": result.get("mainline_linkIndex", ""),
             "route_linkIndex": result.get("route_linkIndex", connection.get("linkIndex", "")),
+            "original_controlled_connection_index": result.get("original_controlled_connection_index", ""),
             "phase_count": result.get("phase_count", ""),
             "cycle_sec": result.get("cycle_sec", ""),
             "offset_sec": result.get("offset_sec", ""),
@@ -1172,17 +1799,29 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
             "skip_reason": result.get("skip_reason", ""),
         })
 
+    forced_s1_start = apply_forced_s1_start_signal(root, junction_coords, net_file=source_net)
+    rows.append(forced_s1_start)
+    forced_s22_end = apply_forced_s22_end_signal(root, junction_coords, net_file=source_net)
+    rows.append(forced_s22_end)
     terminal_egress_summary = tune_terminal_egress_tls(root, route_edges)
     output_net.parent.mkdir(parents=True, exist_ok=True)
     ET.indent(tree, space="    ")
     tree.write(output_net, encoding="utf-8", xml_declaration=True)
     write_csv(B04_CSV_SIGNAL_CANDIDATES_CSV, rows, [
         "boundary_id", "intersection_name", "candidate_reason", "csv_segments",
-        "csv_phase_count", "route_pair_index", "route_from_edge", "route_to_edge",
-        "from_segment", "to_segment", "junction_id", "distance_m", "action", "tls_id",
+        "csv_phase_count", "signal_type", "csv_lat", "csv_lon", "position_source",
+        "endpoint_source", "terminal_role",
+        "route_pair_index", "route_from_edge", "route_to_edge",
+        "from_segment", "to_segment", "junction_id", "distance_m", "nearest_junction_distance_m",
+        "signal_position_moved", "action", "tls_id",
         "controlled_connection_count", "mainline_linkIndex", "route_linkIndex",
-        "phase_count", "cycle_sec", "offset_sec", "expected_arrival_sec", "skip_reason",
+        "original_controlled_connection_index", "phase_count", "cycle_sec", "offset_sec",
+        "expected_arrival_sec", "skip_reason",
     ])
+    lane_change_boundaries = [
+        row for row in read_csv(REFERENCE_CSV)
+        if row.get("end_intersection", "").lower().startswith("lane change point")
+    ]
     summary = {
         "schema": "compact_v9_B04_csv_boundary_signals.v1",
         "generated_at": utc_now(),
@@ -1196,16 +1835,52 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
         "created_tls_count": created_count,
         "existing_tls_count": existing_count,
         "skipped_candidate_count": skipped_count,
+        "signal_type_counts": {
+            CSV_SIGNAL_TYPE_INTERSECTION: sum(1 for row in rows if row.get("signal_type") == CSV_SIGNAL_TYPE_INTERSECTION),
+            CSV_SIGNAL_TYPE_STRAIGHT: sum(1 for row in rows if row.get("signal_type") == CSV_SIGNAL_TYPE_STRAIGHT),
+        },
+        "position_policy": "Signal placement uses the reference CSV signal coordinate. A008 points are reserved for timing/provenance only.",
+        "straight_signal_policy": "Straight signals control only mainline through/same-direction connections at the CSV stopline; side-road/intersection phases are not inferred.",
+        "forced_tls_count": sum(
+            1 for row in (forced_s1_start, forced_s22_end)
+            if row.get("action") in {"created_forced_tls", "existing_forced_tls", "existing_terminal_tls"}
+        ),
+        "forced_tls_created_count": sum(
+            1 for row in (forced_s1_start, forced_s22_end)
+            if row.get("action") == "created_forced_tls"
+        ),
+        "lane_change_boundary_count": len(lane_change_boundaries),
+        "lane_change_boundary_policy": "Lane Change Point boundaries are segmentation/lane-change artifacts and are not signalized.",
         "terminal_egress_tuning": terminal_egress_summary,
+        "terminal_endpoint_audit": {
+            "s1_start": {
+                "policy": "forced_physical_vehicle_tls",
+                "tls_id": forced_s1_start.get("tls_id", FORCED_S1_START_TLS_ID),
+                "junction_id": forced_s1_start.get("junction_id", FORCED_S1_START_JUNCTION_ID),
+                "action": forced_s1_start.get("action", ""),
+                "endpoint_source": forced_s1_start.get("endpoint_source", "S1:start"),
+                "a008_expected_itst_id": "148",
+                "a008_expected_name": "신당역",
+            },
+            "s22_end": {
+                "policy": "csv_reference_terminal_signal_position",
+                "tls_id": forced_s22_end.get("tls_id", FORCED_S22_END_TLS_ID),
+                "junction_id": forced_s22_end.get("junction_id", FORCED_S22_END_JUNCTION_ID),
+                "action": forced_s22_end.get("action", ""),
+                "endpoint_source": forced_s22_end.get("endpoint_source", "S22:end"),
+            },
+        },
         "candidate_csv": rel(B04_CSV_SIGNAL_CANDIDATES_CSV),
         "policy": {
-            "selection": "Named CSV segment-boundary intersections on the B4 firetruck route are mapped to the actual SUMO route transition junction.",
+            "selection": "Named CSV signal boundaries on the B4 firetruck route are installed at the reference CSV signal coordinates. A008 is not used for signal placement.",
             "s1_s2_no_phase_policy": "A shared named boundary without CSV phase is still treated as a conservative signal candidate.",
+            "s1_start_policy": "S1:start is forced as a physical Sindang Station vehicle TLS and moved to the CSV Sindang Station signal coordinate.",
+            "s22_end_policy": "S22:end is represented by the existing Seoul Station terminal TLS and moved/reported at the CSV Seoul Station Rotary signal coordinate.",
             "cycle_sec": CSV_SIGNAL_CYCLE_SEC,
             "yellow_sec": CSV_SIGNAL_YELLOW_SEC,
             "mainline_min_green_sec": CSV_SIGNAL_MAINLINE_MIN_GREEN_SEC,
             "green_wave_target_phase_sec": CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC,
-            "mainline_priority": "Mainline straight/right movements receive the dominant green and a route-progression offset; side/turn movements receive a short service phase.",
+            "mainline_priority": "Intersection signals use mainline-dominant phases; straight signals use mainline-only green/yellow/red phases.",
             "terminal_egress": "The final Seoul Station-front route movement is a map-boundary egress and is tuned separately from CSV-created TLS.",
         },
     }
@@ -1235,7 +1910,9 @@ def adopt_green18() -> dict[str, Any]:
         "csv_signal_candidate_summary": rel(B04_CSV_SIGNAL_SUMMARY_JSON),
         "csv_signal_created_tls_count": csv_signal_summary.get("created_tls_count", 0),
         "csv_signal_existing_tls_count": csv_signal_summary.get("existing_tls_count", 0),
+        "csv_signal_forced_tls_count": csv_signal_summary.get("forced_tls_count", 0),
         "terminal_egress_tuning": csv_signal_summary.get("terminal_egress_tuning", {}),
+        "terminal_endpoint_audit": csv_signal_summary.get("terminal_endpoint_audit", {}),
         "policy_ko": "Compact V9 green18 맵에 CSV/B4 route 경계 신호 후보를 메인라인 green-wave 중심으로 보강하고, 서울역 맵 경계 terminal egress 병목을 완화해 B04 현실 수요/queue recall용 B0 baseline map으로 채택합니다.",
     }
     for key in ("selected_candidate", "selection_summary"):
@@ -4400,6 +5077,7 @@ def parse_args() -> argparse.Namespace:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("b04-adopt-green18")
     sub.add_parser("b04-map-segments")
+    sub.add_parser("b04-s1-edge-groups")
     sub.add_parser("b04-target-profile")
     build_parser = sub.add_parser("b04-build-demand")
     build_parser.add_argument("--candidates", help="Comma-separated candidate names to build")
@@ -4422,6 +5100,8 @@ def main() -> int:
         result = adopt_green18()
     elif args.command == "b04-map-segments":
         result = build_mapping()
+    elif args.command == "b04-s1-edge-groups":
+        result = build_s1_edge_groups()
     elif args.command == "b04-target-profile":
         result = build_target_profile()
     elif args.command == "b04-build-demand":

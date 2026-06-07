@@ -20,14 +20,15 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = PROJECT_ROOT / "data_prepared/compact_v9"
-STAGE1_DIR = DATA_ROOT / "b4_stage1"
+STAGE1_DIR = DATA_ROOT / "b4_stage1_s1forced"
 B4_CASE_B_CANDIDATES_CSV = "b4_case_b_candidates.csv"
 B04_MANIFEST = PROJECT_ROOT / "configs/compact_v9_B04_b0_manifest.json"
-B04_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
+B04_NET = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 B04_FIRETRUCK_ROUTE_XML = DATA_ROOT / "routes/firetruck_to_seoul_station_front.rou.xml"
 
-B4_PRIMARY_CANDIDATE = "B04_ad_variance_smoothed"
+B4_PRIMARY_CANDIDATE = "B04_ad_stage23_trigger"
 B04_AA_BACKGROUND_ROUTE = DATA_ROOT / f"demand/background_routes_compact_v9_{B4_PRIMARY_CANDIDATE}.rou.xml"
+B04_REALITY_BACKGROUND_ROUTE = DATA_ROOT / "demand/background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml"
 B4_MANIFEST_SELECTED_CANDIDATE = B4_PRIMARY_CANDIDATE
 B4_MANIFEST_SELECTED_ROLE = "primary_selected"
 B4_PRIMARY_B0_MEASURED_PROXY = "SUMO_B04_AD_B0_measured_proxy"
@@ -73,13 +74,17 @@ B4_DEFAULT_PHASE = "bo-smoke"
 B4_EV_DEPARTURE_POLICY = "fixed"
 B4_EV_DEPART_RANDOMIZED = False
 B4_FINAL_VALIDATION_RANDOM_DEPARTURE_IMPLEMENTED = False
-B4_DECISION_VARIABLES = ("alpha", "t_lead", "delta_T_thr", "G_ext", "Q_trig")
+B4_DECISION_VARIABLES = ("t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau")
+EVTSP_DISPATCH_DELAY_SEC = 45.0
+EVTSP_T_E_MERGE_SEC = 10.0
+EVTSP_EV_LENGTH_M = TA_HEADWAY_M
+EVTSP_DEFAULT_Q_RATIO = 0.0
+EVTSP_TAU_LOWER = 0.70
+EVTSP_TAU_UPPER = 0.90
+EVTSP_DEFAULT_TAU = 0.75
 B4_FIXED_STRUCTURE_PARAMS = {
-    "tau": 0.75,
     "hold_max": 14.0,
     "d_up": 1,
-    "tau_scale": 0.85,
-    "tau_numerator_gamma": 5.0,
 }
 
 REQUIRED_STAGE1_EVENT_FIELDS = [
@@ -116,6 +121,11 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "ev_lane",
     "ev_route_index",
     "ev_speed_kmh",
+    "step",
+    "ev_status",
+    "EV_NotDeparted",
+    "EV_Departed",
+    "EV_MergePassed",
     "local_fill_80m",
     "local_fill_120m",
     "queue_m_proxy",
@@ -146,11 +156,25 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "tE_merge_sec",
     "L_merge_m",
     "Lq_merge_m",
+    "stage2_measurement_scale",
+    "scaled_Lq_merge_m",
     "C_merge_proxy_veh",
     "n_need_proxy_veh",
     "n_occ_runtime_veh",
+    "scaled_n_occ_runtime_veh",
     "n_excess_proxy_veh",
     "t_clear_proxy_sec",
+    "time_to_merge_sec",
+    "time_to_merge_source",
+    "s_vph",
+    "tS_merge_sec",
+    "HOLD_MAX_sec",
+    "current_phase",
+    "current_state",
+    "ped_state",
+    "SafetyGate_result",
+    "action",
+    "deny_reason",
     "T_hold_proxy_sec",
     "b0_merge_n_occ_mean_proxy_veh",
     "b0_merge_n_occ_max_proxy_veh",
@@ -165,6 +189,44 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "active_movement_count",
     "phase_duration_sec",
     "stage2_hold_status",
+    "Q_ratio",
+    "Q_th_m",
+    "Q_th_merge_m",
+    "T_hold_sec",
+    "hold_elapsed_sec",
+    "route_intersection_index",
+    "L_m",
+    "W_m",
+    "intersection_index",
+    "junction_id",
+    "is_ahead_of_ev",
+    "is_i_merge",
+    "L",
+    "W",
+    "Lq",
+    "stage3_measurement_scale",
+    "scaled_Lq_case_b_m",
+    "tau",
+    "tau_times_L",
+    "case_type",
+    "downstream_index",
+    "gate_target",
+    "tE_gate_target",
+    "delta_T_thr",
+    "gate_result",
+    "ge",
+    "tQ",
+    "t_lead",
+    "G_ext",
+    "preemption_state",
+    "processing_order",
+    "Lq_i",
+    "TA_down",
+    "tQ_i",
+    "Gm_sec",
+    "Y_sec",
+    "R_sec",
+    "green_dur_sec",
     "monitor_local_fill_mean",
     "monitor_speed_mean_kmh",
     "monitor_waiting_mean",
@@ -212,13 +274,10 @@ EXPERIMENT_RESULT_FIELDS = [
     "ev_route_file",
     "free_time_method",
     "delta_T_thr",
-    "Q_trig",
+    "Q_ratio",
     "t_lead",
-    "alpha",
     "G_ext",
     "tau",
-    "tau_scale",
-    "tau_numerator_gamma",
     "ext_max",
     "hold_max",
     "d_up",
@@ -231,6 +290,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "speed_trigger_kmh",
     "max_active_movements",
     "stage2_dispatch_lead_sec",
+    "stage2_measurement_scale",
+    "stage3_measurement_scale",
+    "stage2_synthetic_demand",
     "termination_reason",
     "termination_time_sec",
     "hard_max_sim_time",
@@ -326,11 +388,13 @@ class B4MvpParams:
 
     parameter_id: str = B4_PARAMETER_ID
     delta_T_thr: float = 0.0
-    Q_trig: float = 0.0
+    Q_ratio: float = EVTSP_DEFAULT_Q_RATIO
     t_lead: float = 35.0
+    # Legacy input compatibility only. EVTSP runtime does not use alpha/Q_trig.
     alpha: float = 1.0
+    Q_trig: float = 0.0
     G_ext: float = 30.0
-    tau: float = 0.50
+    tau: float = EVTSP_TAU_LOWER
     ext_max: float = 30.0
     hold_max: float = DEFAULT_MAX_HOLD_SEC
     d_up: int = 3
@@ -339,9 +403,8 @@ class B4MvpParams:
         return {
             "parameter_id": self.parameter_id,
             "delta_T_thr": self.delta_T_thr,
-            "Q_trig": self.Q_trig,
+            "Q_ratio": self.Q_ratio,
             "t_lead": self.t_lead,
-            "alpha": self.alpha,
             "G_ext": self.G_ext,
             "tau": self.tau,
             "ext_max": self.ext_max,
@@ -352,57 +415,47 @@ class B4MvpParams:
 
 @dataclass(frozen=True)
 class B4ThetaParams(B4MvpParams):
-    """Five screened B4 decision variables plus fixed structure parameters."""
+    """EVTSP screened B4 decision variables plus fixed safety structure."""
 
     parameter_id: str = B4_PARAMETER_ID
-    alpha: float = 1.15
     t_lead: float = 21.0
     delta_T_thr: float = 80.0
     G_ext: float = 32.0
-    Q_trig: float = 0.0
-    tau: float = B4_FIXED_STRUCTURE_PARAMS["tau"]
+    Q_ratio: float = EVTSP_DEFAULT_Q_RATIO
+    tau: float = 0.75
     ext_max: float = 32.0
     hold_max: float = B4_FIXED_STRUCTURE_PARAMS["hold_max"]
     d_up: int = B4_FIXED_STRUCTURE_PARAMS["d_up"]
-    tau_scale: float = B4_FIXED_STRUCTURE_PARAMS["tau_scale"]
-    tau_numerator_gamma: float = B4_FIXED_STRUCTURE_PARAMS["tau_numerator_gamma"]
+    alpha: float = 1.0
+    Q_trig: float = 0.0
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "alpha", round_float(max(float(self.alpha), 1.0), 2))
         object.__setattr__(self, "t_lead", round_float(max(float(self.t_lead), 0.0), 0))
         object.__setattr__(self, "delta_T_thr", round_float(max(float(self.delta_T_thr), 0.0), 0))
         object.__setattr__(self, "G_ext", round_float(max(float(self.G_ext), 0.0), 0))
-        object.__setattr__(self, "Q_trig", round_float(max(float(self.Q_trig), 0.0), 0))
-        object.__setattr__(self, "tau", round_float(clamp_float(float(self.tau), 0.0, 10.0), 2))
+        object.__setattr__(self, "Q_ratio", round_float(clamp_float(float(self.Q_ratio), 0.0, 1.0), 2))
+        object.__setattr__(self, "tau", round_float(clamp_float(float(self.tau), EVTSP_TAU_LOWER, EVTSP_TAU_UPPER), 2))
         object.__setattr__(self, "ext_max", self.G_ext)
         object.__setattr__(self, "hold_max", round_float(max(float(self.hold_max), 0.0), 0))
         object.__setattr__(self, "d_up", max(1, min(int(self.d_up), 3)))
-        object.__setattr__(self, "tau_scale", round_float(clamp_float(float(self.tau_scale), 0.0, 1.0), 3))
-        object.__setattr__(self, "tau_numerator_gamma", round_float(max(float(self.tau_numerator_gamma), 0.1), 3))
+        object.__setattr__(self, "alpha", round_float(max(float(self.alpha), 1.0), 2))
+        object.__setattr__(self, "Q_trig", round_float(max(float(self.Q_trig), 0.0), 0))
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "B4ThetaParams":
+        legacy_q_ratio = safe_float(row.get("Q_trig"), 0.0) / 50.0 if row.get("Q_trig") not in {"", None} else cls.Q_ratio
         return cls(
             parameter_id=str(row.get("parameter_id", cls.parameter_id)),
-            alpha=safe_float(row.get("alpha"), cls.alpha),
             t_lead=safe_float(row.get("t_lead"), cls.t_lead),
             delta_T_thr=safe_float(row.get("delta_T_thr", row.get("delta_T_th")), cls.delta_T_thr),
             G_ext=safe_float(row.get("G_ext", row.get("ext_max")), cls.G_ext),
-            Q_trig=safe_float(row.get("Q_trig"), cls.Q_trig),
+            Q_ratio=safe_float(row.get("Q_ratio"), legacy_q_ratio),
             tau=safe_float(row.get("tau"), cls.tau),
             hold_max=safe_float(row.get("hold_max"), cls.hold_max),
             d_up=safe_int(row.get("d_up"), cls.d_up),
-            tau_scale=safe_float(row.get("tau_scale"), cls.tau_scale),
-            tau_numerator_gamma=safe_float(row.get("tau_numerator_gamma"), cls.tau_numerator_gamma),
+            alpha=safe_float(row.get("alpha"), cls.alpha),
+            Q_trig=safe_float(row.get("Q_trig"), cls.Q_trig),
         )
-
-    def as_result_fields(self) -> dict[str, Any]:
-        fields = super().as_result_fields()
-        fields.update({
-            "tau_scale": self.tau_scale,
-            "tau_numerator_gamma": self.tau_numerator_gamma,
-        })
-        return fields
 
 
 @dataclass(frozen=True)
@@ -422,6 +475,9 @@ class B4RuntimePhaseConfig:
     ev_stuck_speed_kmh: float = 1.0
     ev_stuck_duration_sec: float = 120.0
     objective_includes_recovery: bool = False
+    stage2_measurement_scale: float = 1.0
+    stage3_measurement_scale: float = 1.0
+    stage2_synthetic_demand: bool = False
 
     @classmethod
     def bo_smoke(cls) -> "B4RuntimePhaseConfig":
@@ -453,6 +509,9 @@ class B4RuntimePhaseConfig:
             "pre_ev_congestion_reference_window": self.pre_ev_window_text,
             "recovery_threshold_policy": self.recovery_threshold_policy,
             "objective_includes_recovery": self.objective_includes_recovery,
+            "stage2_measurement_scale": round_float(self.stage2_measurement_scale),
+            "stage3_measurement_scale": round_float(self.stage3_measurement_scale),
+            "stage2_synthetic_demand": self.stage2_synthetic_demand,
         }
 
 
@@ -672,6 +731,19 @@ class B4Movement:
     route_order_index: int
     mapped_s_segment: str
     controllable: bool
+    route_intersection_index: int = 0
+    L_m: float = 100.0
+    W_m: float = 10.5
+    Gm_sec: float = DEFAULT_PHASE_BUFFER_SEC
+    Y_sec: float = 3.0
+    R_sec: float = 2.0
+    is_merge: bool = False
+    Q_th_formula: str = "Q_ratio * L_m"
+    Q_th_default_m: float = 0.0
+    stage_owner: str = "stage3"
+    ped_min_green_sec: float = 17.0
+    ped_min_green_source: str = ""
+    ped_safety_margin_sec: float = 3.0
     local_storage_edges: tuple[str, ...] = tuple()
     corridor_storage_edges: tuple[str, ...] = tuple()
     stopline_local_storage_m: float = 100.0
@@ -805,17 +877,26 @@ class B4DepartureFlow:
 class B4Stage2MergeHoldParams:
     D_merge_m: float = 0.0
     L_merge_m: float = 50.0
-    tE_merge_sec: float = 0.0
+    tE_merge_sec: float = EVTSP_T_E_MERGE_SEC
+    t_dispatch_delay_sec: float = EVTSP_DISPATCH_DELAY_SEC
     C_merge_proxy_veh: float = 0.0
     n_need_proxy_veh: float = 2.0
+    len_E_m: float = 6.5
+    len_E_source: str = ""
     tS_merge_sec: float = DEFAULT_PHASE_BUFFER_SEC
+    Q_th_merge_default_m: float = 0.0
+    HOLD_MAX_formula: str = ""
+    HOLD_MAX_sec: float = B4_FIXED_STRUCTURE_PARAMS["hold_max"]
+    ped_min_green_sec: float = 17.0
+    ped_min_green_source: str = ""
+    ped_safety_margin_sec: float = 3.0
     b0_merge_n_occ_mean_proxy_veh: float = 0.0
     b0_merge_n_occ_max_proxy_veh: float = 0.0
     b0_background_inflow_lambda_vph: float = 0.0
     b0_merge_waiting_max_sec: float = 0.0
     b0_merge_halting_proxy_max: float = 0.0
     measurement_source: str = B4_PRIMARY_LANE_DATA_SOURCE
-    stage2_formula: str = "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec"
+    stage2_formula: str = "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec"
     runtime_control_uses_formula_directly: bool = False
 
     @classmethod
@@ -826,17 +907,26 @@ class B4Stage2MergeHoldParams:
         return cls(
             D_merge_m=safe_float(params.get("D_merge_m"), safe_float(payload.get("D_merge_m"))),
             L_merge_m=safe_float(params.get("L_merge_m"), 50.0),
-            tE_merge_sec=safe_float(params.get("tE_merge_sec"), 0.0),
+            tE_merge_sec=safe_float(params.get("tE_merge_sec"), EVTSP_T_E_MERGE_SEC),
+            t_dispatch_delay_sec=safe_float(params.get("t_dispatch_delay_sec", payload.get("t_dispatch_delay_sec")), EVTSP_DISPATCH_DELAY_SEC),
             C_merge_proxy_veh=safe_float(params.get("C_merge_proxy_veh"), 0.0),
             n_need_proxy_veh=safe_float(params.get("n_need_proxy_veh"), 2.0),
+            len_E_m=safe_float(params.get("len_E_m", payload.get("len_E_m")), 6.5),
+            len_E_source=str(params.get("len_E_source", payload.get("len_E_source", ""))),
             tS_merge_sec=safe_float(params.get("tS_merge_sec"), DEFAULT_PHASE_BUFFER_SEC),
+            Q_th_merge_default_m=safe_float(params.get("Q_th_merge_default_m", payload.get("Q_th_merge_default_m")), 0.0),
+            HOLD_MAX_formula=str(params.get("HOLD_MAX_formula", payload.get("HOLD_MAX_formula", ""))),
+            HOLD_MAX_sec=safe_float(params.get("HOLD_MAX_sec", payload.get("HOLD_MAX_sec")), B4_FIXED_STRUCTURE_PARAMS["hold_max"]),
+            ped_min_green_sec=safe_float(params.get("ped_min_green_sec", payload.get("ped_min_green_sec")), 17.0),
+            ped_min_green_source=str(params.get("ped_min_green_source", payload.get("ped_min_green_source", ""))),
+            ped_safety_margin_sec=safe_float(params.get("ped_safety_margin_sec", payload.get("ped_safety_margin_sec")), 3.0),
             b0_merge_n_occ_mean_proxy_veh=safe_float(params.get("b0_merge_n_occ_mean_proxy_veh"), 0.0),
             b0_merge_n_occ_max_proxy_veh=safe_float(params.get("b0_merge_n_occ_max_proxy_veh"), 0.0),
             b0_background_inflow_lambda_vph=safe_float(params.get("b0_background_inflow_lambda_vph"), 0.0),
             b0_merge_waiting_max_sec=safe_float(params.get("b0_merge_waiting_max_sec"), 0.0),
             b0_merge_halting_proxy_max=safe_float(params.get("b0_merge_halting_proxy_max"), 0.0),
             measurement_source=str(params.get("measurement_source", payload.get("measurement_source", B4_PRIMARY_LANE_DATA_SOURCE))),
-            stage2_formula=str(payload.get("stage2_formula", "T_hold_proxy_sec = tE_merge_sec - t_clear_proxy_sec - tS_merge_sec")),
+            stage2_formula=str(payload.get("stage2_formula", "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec")),
             runtime_control_uses_formula_directly=truthy(payload.get("runtime_control_uses_formula_directly", False)),
         )
 
@@ -849,6 +939,7 @@ class B4Stage1Inputs:
     stage2_merge_hold_payload: dict[str, Any]
     threshold_payload: dict[str, Any]
     summary: dict[str, Any]
+    stage1_audit: dict[str, Any]
     thresholds: B4Thresholds
     departure: B4DepartureFlow
     stage2_merge_hold: B4Stage2MergeHoldParams
@@ -859,13 +950,14 @@ class B4Stage1Inputs:
     route_edges: tuple[str, ...]
     ev_id: str
     ev_depart_sec: float
+    i_merge: int
     max_active_movements: int
     primary_candidate: str
     manifest_selected_candidate: str
     manifest_selected_candidate_role: str
 
     @classmethod
-    def load(cls, stage1_dir: Path = STAGE1_DIR) -> "B4Stage1Inputs":
+    def load(cls, stage1_dir: Path = STAGE1_DIR, route_xml: Path = B04_FIRETRUCK_ROUTE_XML) -> "B4Stage1Inputs":
         runtime_index = read_json(stage1_dir / "b4_runtime_index.json")
         departure_payload = read_json(stage1_dir / "b4_departure_flow_plan.json")
         stage2_merge_hold_path = stage1_dir / "b4_stage2_b0_merge_hold_params.json"
@@ -888,8 +980,13 @@ class B4Stage1Inputs:
             if row.get("movement_id")
         } if (stage1_dir / "b4_bottleneck_queue_readiness.csv").is_file() else {}
         case_b_rows = read_csv(stage1_dir / B4_CASE_B_CANDIDATES_CSV) if (stage1_dir / B4_CASE_B_CANDIDATES_CSV).is_file() else []
-        route_meta = load_firetruck_route()
+        route_meta = load_firetruck_route(route_xml)
         thresholds = B4Thresholds.from_payload(runtime_index.get("thresholds", {}))
+        stage1_audit = (
+            runtime_index.get("stage1_audit")
+            or summary.get("stage1_audit")
+            or {}
+        )
         movements = tuple(
             _movement_from_stage1(
                 item,
@@ -905,6 +1002,7 @@ class B4Stage1Inputs:
             stage2_merge_hold_payload=stage2_merge_hold_payload,
             threshold_payload=threshold_payload,
             summary=summary,
+            stage1_audit=stage1_audit if isinstance(stage1_audit, dict) else {},
             thresholds=thresholds,
             departure=B4DepartureFlow.from_payload(departure_payload),
             stage2_merge_hold=B4Stage2MergeHoldParams.from_payload(stage2_merge_hold_payload),
@@ -915,6 +1013,7 @@ class B4Stage1Inputs:
             route_edges=tuple(route_meta["route_edges"]),
             ev_id=str(route_meta["vehicle_id"] or EV_ID),
             ev_depart_sec=safe_float(route_meta["depart_sec"], 600.0),
+            i_merge=safe_int(runtime_index.get("i_merge", (stage1_audit or {}).get("i_merge") if isinstance(stage1_audit, dict) else 0), 0),
             max_active_movements=safe_int(runtime_index.get("max_active_movements"), 3),
             primary_candidate=str(summary.get("primary_candidate", "")),
             manifest_selected_candidate=str(summary.get("manifest_selected_candidate", "")),
@@ -946,6 +1045,22 @@ class B4Stage1Inputs:
             raise B4RuntimeError("missing_b4_movements")
         if self.max_active_movements != 3:
             raise B4RuntimeError(f"unexpected_max_active_movements:{self.max_active_movements}")
+        merge_count = sum(1 for movement in self.movements if movement.is_merge)
+        if self.i_merge and merge_count != 1:
+            raise B4RuntimeError(f"stage1_i_merge_requires_one_merge_movement:{merge_count}")
+        if self.i_merge and not any(movement.route_intersection_index == self.i_merge and movement.is_merge for movement in self.movements):
+            raise B4RuntimeError(f"stage1_i_merge_row_missing:{self.i_merge}")
+
+    def pedestrian_min_green_by_tls(self) -> dict[str, float]:
+        ped_by_tls: dict[str, float] = {}
+        for movement in self.movements:
+            if not movement.tls_id:
+                continue
+            ped_min = safe_float(movement.ped_min_green_sec, 0.0)
+            if ped_min <= 0.0:
+                continue
+            ped_by_tls[movement.tls_id] = max(ped_by_tls.get(movement.tls_id, 0.0), ped_min)
+        return ped_by_tls
 
 
 def queue_calibration_priors_from_stage1(
@@ -1043,6 +1158,22 @@ def _movement_from_stage1(item: dict[str, Any], approach_row: dict[str, str]) ->
         route_order_index=safe_int(item.get("route_order_index", approach_row.get("route_order_index")), 0),
         mapped_s_segment=str(item.get("mapped_S_segment", approach_row.get("mapped_S_segment", ""))),
         controllable=truthy(item.get("controllable", approach_row.get("controllable", True))),
+        route_intersection_index=safe_int(
+            item.get("route_intersection_index", approach_row.get("route_intersection_index", item.get("route_order_index", approach_row.get("route_order_index")))),
+            0,
+        ),
+        L_m=safe_float(item.get("L_m", approach_row.get("L_m", approach_row.get("corridor_storage_length_m"))), 100.0),
+        W_m=safe_float(item.get("W_m", approach_row.get("W_m")), 10.5),
+        Gm_sec=safe_float(item.get("Gm_sec", approach_row.get("Gm_sec")), DEFAULT_PHASE_BUFFER_SEC),
+        Y_sec=safe_float(item.get("Y_sec", approach_row.get("Y_sec")), 3.0),
+        R_sec=safe_float(item.get("R_sec", approach_row.get("R_sec")), 2.0),
+        is_merge=truthy(item.get("is_merge", approach_row.get("is_merge", False))),
+        Q_th_formula=str(item.get("Q_th_formula", approach_row.get("Q_th_formula", "Q_ratio * L_m"))),
+        Q_th_default_m=safe_float(item.get("Q_th_default_m", approach_row.get("Q_th_default_m", 0.0)), 0.0),
+        stage_owner=str(item.get("stage_owner", approach_row.get("stage_owner", "stage2_merge" if truthy(item.get("is_merge", approach_row.get("is_merge", False))) else "stage3"))),
+        ped_min_green_sec=safe_float(item.get("ped_min_green_sec", approach_row.get("ped_min_green_sec")), 17.0),
+        ped_min_green_source=str(item.get("ped_min_green_source", approach_row.get("ped_min_green_source", ""))),
+        ped_safety_margin_sec=safe_float(item.get("ped_safety_margin_sec", approach_row.get("ped_safety_margin_sec")), 3.0),
         local_storage_edges=tuple(split_tokens(item.get("local_storage_edges", approach_row.get("local_storage_edges", approach_row.get("storage_edges", ""))))),
         corridor_storage_edges=tuple(split_tokens(item.get("corridor_storage_edges", approach_row.get("corridor_storage_edges", "")))),
         stopline_local_storage_m=safe_float(approach_row.get("stopline_local_storage_m"), 100.0),
@@ -1219,6 +1350,16 @@ class CaseBEvaluation:
     case_b_segment_queue_m_proxy: float | str = ""
     case_b_segment_fill: float | str = ""
     case_b_same_tls_policy: str = ""
+
+
+@dataclass(frozen=True)
+class Stage3CasePlan:
+    case_type: str
+    source_metric: MovementRuntimeMetrics
+    processing_metrics: tuple[MovementRuntimeMetrics, ...]
+    gate_metric: MovementRuntimeMetrics
+    downstream_index: int | str = ""
+    processing_order: str = ""
 
 
 @dataclass(frozen=True)
@@ -1401,24 +1542,17 @@ def evaluate_queue_levels(
 
 
 def theta_runtime_thresholds(base: B4Thresholds, params: B4MvpParams) -> B4Thresholds:
-    tau = safe_float(getattr(params, "tau", base.local_fill_trigger), base.local_fill_trigger)
-    local_fill_trigger = tau
-    speed_trigger_kmh = base.speed_trigger_kmh
-    if isinstance(params, B4ThetaParams):
-        local_fill_trigger = base.local_fill_trigger
     return B4Thresholds(
-        local_fill_trigger=local_fill_trigger,
-        speed_trigger_kmh=speed_trigger_kmh,
+        local_fill_trigger=base.local_fill_trigger,
+        speed_trigger_kmh=base.speed_trigger_kmh,
         traffic_pressure_local_fill_100m=base.traffic_pressure_local_fill_100m,
-        bottleneck_local_fill_100m=max(local_fill_trigger, base.bottleneck_local_fill_100m),
+        bottleneck_local_fill_100m=base.bottleneck_local_fill_100m,
         bottleneck_corridor_fill_250m=base.bottleneck_corridor_fill_250m,
     )
 
 
 def theta_ta_lead_sec(params: B4MvpParams) -> float:
-    if isinstance(params, B4ThetaParams):
-        return safe_float(params.t_lead, 0.0)
-    return 0.0
+    return safe_float(getattr(params, "t_lead", 0.0), 0.0)
 
 
 def theta_bounds_from_stage1(stage1: B4Stage1Inputs, net_file: Path = B04_NET) -> dict[str, Any]:
@@ -1434,21 +1568,21 @@ def theta_bounds_from_stage1(stage1: B4Stage1Inputs, net_file: Path = B04_NET) -
     t_lead_ub = max(DEFAULT_PHASE_BUFFER_SEC, math.ceil(max_signal_switch))
     ext_ub = max(DEFAULT_STAGE2_HOLD_REFRESH_SEC, math.ceil(stage1.departure.dispatch_lead_time_range_sec[1] + DEFAULT_PHASE_BUFFER_SEC))
     delta_ub = max(120, int(math.ceil(t_lead_ub * 2)))
-    q_trig_ub = max(50, int(math.ceil(stage1.stage2_merge_hold.L_merge_m)))
     return {
-        "schema": "compact_v9_B4_theta_bounds.v2",
+        "schema": "compact_v9_B4_evtsp_theta_bounds.v1",
         "source": "B4Stage1Inputs+B04_signal_program_proxy",
         "decision_variables": list(B4_DECISION_VARIABLES),
-        "screening_policy": "Only alpha, t_lead, delta_T_thr, G_ext, and Q_trig are optimized. tau, hold_max, d_up, tau_scale, and tau_numerator_gamma are fixed structure parameters unless explicitly reclassified.",
+        "screening_policy": "EVTSP optimizes t_lead, delta_T_thr, G_ext, Q_ratio, and tau. Legacy alpha/Q_trig are accepted only as input aliases and are not runtime decision variables.",
         "fixed_structure_params": dict(B4_FIXED_STRUCTURE_PARAMS),
-        "alpha": {"type": "continuous_quantized_0p05", "lower": 1.0, "upper": 1.8, "step": 0.05},
         "t_lead": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(t_lead_ub)},
         "delta_T_thr": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(delta_ub)},
         "G_ext": {"type": "continuous_quantized_1s", "lower": 0, "upper": int(ext_ub)},
-        "Q_trig": {"type": "continuous_quantized_1m", "lower": 0, "upper": int(q_trig_ub)},
+        "Q_ratio": {"type": "continuous_quantized_0p01", "lower": 0.0, "upper": 1.0, "step": 0.01},
+        "tau": {"type": "continuous_quantized_0p01", "lower": EVTSP_TAU_LOWER, "upper": EVTSP_TAU_UPPER, "step": 0.01},
         "constraints": [
             "delta_T_thr is the Stage 3 ETA gate; 0 disables the gate for legacy smoke runs.",
-            "Q_trig is measured in meters of merge-zone queue proxy; 0 keeps Stage 2 always eligible inside the dispatch window.",
+            "Q_ratio is converted to absolute thresholds as Q_th = Q_ratio * L for movement links and merge zone.",
+            f"tau is bounded to [{EVTSP_TAU_LOWER:.2f}, {EVTSP_TAU_UPPER:.2f}] for Case B spillback classification.",
         ],
     }
 
@@ -1482,7 +1616,8 @@ def compute_ta_proxy(
     b0_queue_veh: float = 0.0,
     eta_buffer_alpha: float = 1.0,
 ) -> TAProxyMetrics:
-    t_e = max(eta_buffer_alpha, 1.0) * max(ev_distance_m, 0.0) / TA_EV_SPEED_MPS
+    _ = eta_buffer_alpha
+    t_e = max(ev_distance_m, 0.0) / TA_EV_SPEED_MPS
     if previous_phase == target_phase:
         t_s = 0.0
         t_s_source = "current_phase_direct"
@@ -2125,13 +2260,44 @@ def monitor_snapshot(traci: Any, lanes: tuple[str, ...]) -> dict[str, Any]:
     }
 
 
-def stage2_merge_hold_proxy_snapshot(traci: Any, stage1: B4Stage1Inputs) -> dict[str, Any]:
+def stage2_time_to_merge(
+    *,
+    now: float | None,
+    stage1: B4Stage1Inputs,
+    ev_state: EVState | None = None,
+    distance_to_merge_m: float | None = None,
+) -> tuple[float, str]:
     params = stage1.stage2_merge_hold
-    merge_lanes = stage1.departure.merge_zone_lanes
+    if now is None:
+        return params.tE_merge_sec, "fallback_tE_merge_no_time"
+    if ev_state is None or (not ev_state.present and now < stage1.ev_depart_sec):
+        return max(stage1.ev_depart_sec - now, 0.0) + params.tE_merge_sec, "pre_departure_dispatch_plus_tE_merge"
+    if ev_state.arrived:
+        return 0.0, "ev_arrived"
+    if ev_state.present and distance_to_merge_m is not None:
+        return max(distance_to_merge_m, 0.0) / max(TA_EV_SPEED_MPS, 0.1), "ev_position_distance_over_v_E"
+    return params.tE_merge_sec, "fallback_tE_merge_no_ev_distance"
+
+
+def stage2_merge_hold_proxy_snapshot(
+    traci: Any,
+    stage1: B4Stage1Inputs,
+    *,
+    now: float | None = None,
+    ev_state: EVState | None = None,
+    distance_to_merge_m: float | None = None,
+    merged: bool | None = None,
+    measurement_scale: float = 1.0,
+) -> dict[str, Any]:
+    params = stage1.stage2_merge_hold
+    merge_lanes = tuple(dict.fromkeys((*stage1.departure.merge_zone_lanes, *stage1.departure.background_inflow_lanes)))
     metrics = lane_storage_metrics(traci, merge_lanes, params.L_merge_m)
-    merge_lane_count = max(len(merge_lanes), 1)
+    merge_lane_count = max(len(stage1.departure.merge_zone_lanes), 1)
     fallback_label = "runtime"
-    n_occ = float(metrics.vehicle_count)
+    scale = max(safe_float(measurement_scale, 1.0), 0.0)
+    raw_queue_m = float(metrics.queue_m_proxy)
+    raw_n_occ = float(metrics.vehicle_count)
+    n_occ = raw_n_occ
     valid_merge_lane_count = 0
     for lane_id in merge_lanes:
         try:
@@ -2141,27 +2307,55 @@ def stage2_merge_hold_proxy_snapshot(traci: Any, stage1: B4Stage1Inputs) -> dict
             pass
     if not merge_lanes or valid_merge_lane_count == 0:
         n_occ = max(params.b0_merge_n_occ_max_proxy_veh, params.b0_merge_n_occ_mean_proxy_veh)
+        raw_n_occ = n_occ
         fallback_label = "b0_fallback_no_merge_lanes" if not merge_lanes else "b0_fallback_unreadable_merge_lanes"
+    scaled_queue_m = raw_queue_m * scale
+    scaled_n_occ = n_occ * scale
     n_excess = max(0.0, n_occ - (params.C_merge_proxy_veh - params.n_need_proxy_veh))
-    t_clear = n_excess * 3600.0 / max(TA_SATURATION_FLOW_VPH_PER_LANE * merge_lane_count, 1.0)
-    t_hold = params.tE_merge_sec - t_clear - params.tS_merge_sec
+    scaled_n_excess = max(0.0, scaled_n_occ - (params.C_merge_proxy_veh - params.n_need_proxy_veh))
+    s_vph = TA_SATURATION_FLOW_VPH_PER_LANE * merge_lane_count
+    t_clear = scaled_n_excess * 3600.0 / max(s_vph, 1.0)
+    time_to_merge, time_to_merge_source = stage2_time_to_merge(
+        now=now,
+        stage1=stage1,
+        ev_state=ev_state,
+        distance_to_merge_m=distance_to_merge_m,
+    )
+    t_hold = time_to_merge - t_clear - params.tS_merge_sec
+    ev_departed = bool(ev_state.present or ev_state.departed) if ev_state is not None else False
+    ev_arrived = bool(ev_state.arrived) if ev_state is not None else False
+    ev_merged = bool(merged) if merged is not None else False
+    ev_status = "merge_passed" if ev_merged else ("arrived" if ev_arrived else ("departed" if ev_departed else "not_departed"))
     return {
         "D_merge_m": round_float(params.D_merge_m),
         "tE_merge_sec": round_float(params.tE_merge_sec),
         "L_merge_m": round_float(params.L_merge_m),
-        "Lq_merge_m": round_float(metrics.queue_m_proxy),
+        "Lq_merge_m": round_float(scaled_queue_m),
+        "stage2_measurement_scale": round_float(scale),
+        "scaled_Lq_merge_m": round_float(scaled_queue_m),
         "C_merge_proxy_veh": round_float(params.C_merge_proxy_veh),
         "n_need_proxy_veh": round_float(params.n_need_proxy_veh),
-        "n_occ_runtime_veh": round_float(n_occ),
-        "n_excess_proxy_veh": round_float(n_excess),
+        "n_occ_runtime_veh": round_float(scaled_n_occ),
+        "scaled_n_occ_runtime_veh": round_float(scaled_n_occ),
+        "n_excess_proxy_veh": round_float(scaled_n_excess),
         "t_clear_proxy_sec": round_float(t_clear),
+        "time_to_merge_sec": round_float(time_to_merge),
+        "time_to_merge_source": time_to_merge_source,
+        "s_vph": round_float(s_vph),
+        "tS_merge_sec": round_float(params.tS_merge_sec),
+        "HOLD_MAX_sec": round_float(params.HOLD_MAX_sec),
         "T_hold_proxy_sec": round_float(t_hold),
+        "EV_NotDeparted": not ev_departed and not ev_arrived,
+        "EV_Departed": ev_departed,
+        "EV_MergePassed": ev_merged,
+        "ev_status": ev_status,
         "b0_merge_n_occ_mean_proxy_veh": round_float(params.b0_merge_n_occ_mean_proxy_veh),
         "b0_merge_n_occ_max_proxy_veh": round_float(params.b0_merge_n_occ_max_proxy_veh),
         "b0_background_inflow_lambda_vph": round_float(params.b0_background_inflow_lambda_vph),
         "stage2_formula": params.stage2_formula,
         "stage2_measurement_source": params.measurement_source,
         "runtime_or_b0_fallback": fallback_label,
+        "stage2_scale_status": "ZERO_MEASUREMENT_CANNOT_SCALE" if scale > 1.0 and raw_queue_m <= 0.0 and raw_n_occ <= 0.0 else "SCALED",
     }
 
 
@@ -2390,7 +2584,6 @@ def order_stage3_candidates(
         for metric in metrics
         if metric.movement.controllable
         and metric.movement.route_order_index >= current_route_index
-        and metric.control_candidate
     ]
     current = [metric for metric in ahead if metric.movement.route_order_index == current_route_index]
     remaining = [metric for metric in ahead if metric.movement.route_order_index != current_route_index]
@@ -2419,6 +2612,14 @@ def event_row(
     phase_duration_sec: float | str = "",
     active_movement_count: int | str = "",
     stage2_hold_status: str = "",
+    stage2_action: str = "",
+    deny_reason: str = "",
+    q_ratio: float | str = "",
+    q_th_m: float | str = "",
+    q_th_merge_m: float | str = "",
+    t_hold_sec: float | str = "",
+    hold_elapsed_sec: float | str = "",
+    green_dur_sec: float | str = "",
     run_id: str = "",
     mode: str = "B4",
     parameter_id: str = B4_PARAMETER_ID,
@@ -2440,15 +2641,18 @@ def event_row(
     case_b_segment_fill: float | str = "",
     case_b_same_tls_policy: str = "",
     stage2_proxy: dict[str, Any] | None = None,
+    stage3_context: dict[str, Any] | None = None,
     monitor_local_fill_mean: float | str = "",
     monitor_speed_mean_kmh: float | str = "",
     monitor_waiting_mean: float | str = "",
     monitor_halting_count: int | str = "",
     termination_reason: str = "",
+    step: int | str = "",
 ) -> dict[str, Any]:
     movement = movement or B4Movement("", "", "", "", tuple(), tuple(), tuple(), tuple(), 0, 0, 0, "", False)
     ev_state = ev_state or EVState(False, False, False, EV_ID)
     stage2_proxy = stage2_proxy or {}
+    stage3_context = stage3_context or {}
     row = {
         "time": round_float(time),
         "stage": stage,
@@ -2480,6 +2684,11 @@ def event_row(
         "ev_lane": ev_state.lane_id,
         "ev_route_index": ev_state.route_index,
         "ev_speed_kmh": round_float(ev_state.speed_kmh),
+        "step": step if step != "" else safe_int(time),
+        "ev_status": stage2_proxy.get("ev_status", "arrived" if ev_state.arrived else ("departed" if ev_state.departed or ev_state.present else "not_departed")),
+        "EV_NotDeparted": stage2_proxy.get("EV_NotDeparted", not (ev_state.departed or ev_state.present or ev_state.arrived)),
+        "EV_Departed": stage2_proxy.get("EV_Departed", ev_state.departed or ev_state.present),
+        "EV_MergePassed": stage2_proxy.get("EV_MergePassed", ""),
         "local_fill_80m": metrics.local_fill_80m if metrics else "",
         "local_fill_120m": metrics.local_fill_120m if metrics else "",
         "queue_m_proxy": metrics.queue_m_proxy if metrics else "",
@@ -2510,11 +2719,28 @@ def event_row(
         "tE_merge_sec": stage2_proxy.get("tE_merge_sec", ""),
         "L_merge_m": stage2_proxy.get("L_merge_m", ""),
         "Lq_merge_m": stage2_proxy.get("Lq_merge_m", ""),
+        "stage2_measurement_scale": stage2_proxy.get("stage2_measurement_scale", ""),
+        "scaled_Lq_merge_m": stage2_proxy.get("scaled_Lq_merge_m", ""),
         "C_merge_proxy_veh": stage2_proxy.get("C_merge_proxy_veh", ""),
         "n_need_proxy_veh": stage2_proxy.get("n_need_proxy_veh", ""),
         "n_occ_runtime_veh": stage2_proxy.get("n_occ_runtime_veh", ""),
+        "scaled_n_occ_runtime_veh": stage2_proxy.get("scaled_n_occ_runtime_veh", ""),
         "n_excess_proxy_veh": stage2_proxy.get("n_excess_proxy_veh", ""),
         "t_clear_proxy_sec": stage2_proxy.get("t_clear_proxy_sec", ""),
+        "time_to_merge_sec": stage2_proxy.get("time_to_merge_sec", ""),
+        "time_to_merge_source": stage2_proxy.get("time_to_merge_source", ""),
+        "s_vph": stage2_proxy.get("s_vph", ""),
+        "tS_merge_sec": stage2_proxy.get("tS_merge_sec", ""),
+        "HOLD_MAX_sec": stage2_proxy.get("HOLD_MAX_sec", ""),
+        "current_phase": stage2_proxy.get("current_phase", ""),
+        "current_state": stage2_proxy.get("current_state", ""),
+        "ped_state": stage2_proxy.get("ped_state", ""),
+        "SafetyGate_result": stage2_proxy.get("SafetyGate_result", stage3_context.get("SafetyGate_result", safety_status)),
+        "action": stage2_proxy.get("action", stage3_context.get("action", stage2_action)),
+        "deny_reason": stage2_proxy.get(
+            "deny_reason",
+            stage3_context.get("deny_reason", deny_reason or (safety_status if str(safety_status).startswith("DENY") else "")),
+        ),
         "T_hold_proxy_sec": stage2_proxy.get("T_hold_proxy_sec", ""),
         "b0_merge_n_occ_mean_proxy_veh": stage2_proxy.get("b0_merge_n_occ_mean_proxy_veh", ""),
         "b0_merge_n_occ_max_proxy_veh": stage2_proxy.get("b0_merge_n_occ_max_proxy_veh", ""),
@@ -2529,6 +2755,44 @@ def event_row(
         "active_movement_count": active_movement_count,
         "phase_duration_sec": phase_duration_sec,
         "stage2_hold_status": stage2_hold_status,
+        "Q_ratio": q_ratio,
+        "Q_th_m": q_th_m,
+        "Q_th_merge_m": q_th_merge_m,
+        "T_hold_sec": t_hold_sec,
+        "hold_elapsed_sec": hold_elapsed_sec,
+        "route_intersection_index": movement.route_intersection_index,
+        "L_m": round_float(movement.L_m),
+        "W_m": round_float(movement.W_m),
+        "intersection_index": stage3_context.get("intersection_index", movement.route_intersection_index),
+        "junction_id": stage3_context.get("junction_id", movement.tls_id),
+        "is_ahead_of_ev": stage3_context.get("is_ahead_of_ev", ""),
+        "is_i_merge": stage3_context.get("is_i_merge", movement.is_merge),
+        "L": stage3_context.get("L", round_float(movement.L_m)),
+        "W": stage3_context.get("W", round_float(movement.W_m)),
+        "Lq": stage3_context.get("Lq", metrics.queue_m_proxy if metrics else ""),
+        "stage3_measurement_scale": stage3_context.get("stage3_measurement_scale", ""),
+        "scaled_Lq_case_b_m": stage3_context.get("scaled_Lq_case_b_m", ""),
+        "tau": stage3_context.get("tau", ""),
+        "tau_times_L": stage3_context.get("tau_times_L", ""),
+        "case_type": stage3_context.get("case_type", ""),
+        "downstream_index": stage3_context.get("downstream_index", ""),
+        "gate_target": stage3_context.get("gate_target", ""),
+        "tE_gate_target": stage3_context.get("tE_gate_target", ""),
+        "delta_T_thr": stage3_context.get("delta_T_thr", ""),
+        "gate_result": stage3_context.get("gate_result", ""),
+        "ge": stage3_context.get("ge", ""),
+        "tQ": stage3_context.get("tQ", tQ_sec),
+        "t_lead": stage3_context.get("t_lead", ""),
+        "G_ext": stage3_context.get("G_ext", ""),
+        "preemption_state": stage3_context.get("preemption_state", ""),
+        "processing_order": stage3_context.get("processing_order", ""),
+        "Lq_i": stage3_context.get("Lq_i", ""),
+        "TA_down": stage3_context.get("TA_down", ""),
+        "tQ_i": stage3_context.get("tQ_i", ""),
+        "Gm_sec": round_float(movement.Gm_sec),
+        "Y_sec": round_float(movement.Y_sec),
+        "R_sec": round_float(movement.R_sec),
+        "green_dur_sec": green_dur_sec,
         "monitor_local_fill_mean": monitor_local_fill_mean,
         "monitor_speed_mean_kmh": monitor_speed_mean_kmh,
         "monitor_waiting_mean": monitor_waiting_mean,
@@ -2574,16 +2838,25 @@ class B4RuntimeController:
     params: B4MvpParams = field(default_factory=B4ThetaParams)
     run_id: str = ""
     repeat_id: int = 1
+    stage2_measurement_scale: float = 1.0
+    stage3_measurement_scale: float = 1.0
     edge_lengths: dict[str, float] = field(default_factory=load_edge_lengths)
     events: list[dict[str, Any]] = field(default_factory=list)
     stats: B4ControllerStats = field(default_factory=B4ControllerStats)
+    phases_by_tls: dict[str, list[dict[str, Any]]] = field(default_factory=lambda: tl_logic_details(B04_NET))
     stage2_hold_active: bool = False
     stage2_completed: bool = False
     stage2_hold_start: float | None = None
     stage2_previous_phase: int | None = None
     active_controls: dict[str, ActiveControl] = field(default_factory=dict)
+    pending_stage3_requests: dict[str, float] = field(default_factory=dict)
     last_tls_action_at: dict[str, float] = field(default_factory=dict)
     queue_unique_lanes: tuple[str, ...] = field(default_factory=tuple)
+    pedestrian_min_green_by_tls: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.pedestrian_min_green_by_tls:
+            self.pedestrian_min_green_by_tls = self.stage1.pedestrian_min_green_by_tls()
 
     def stage3_queue_lanes(self) -> tuple[str, ...]:
         if not self.queue_unique_lanes:
@@ -2596,9 +2869,11 @@ class B4RuntimeController:
 
     def case_b_tau(self, candidate: B4CaseBCandidate) -> float:
         param_tau = safe_float(getattr(self.params, "tau", candidate.tau_default), candidate.tau_default)
-        if isinstance(self.params, B4ThetaParams):
-            return param_tau
-        return max(candidate.tau_default, param_tau)
+        return clamp_float(param_tau, EVTSP_TAU_LOWER, EVTSP_TAU_UPPER)
+
+    def scaled_stage3_case_b_queue_m(self, metric: MovementRuntimeMetrics) -> float:
+        scale = max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)
+        return metric.queue_m_proxy * scale
 
     def case_b_segment_metrics_from_snapshots(
         self,
@@ -2634,13 +2909,15 @@ class B4RuntimeController:
     ) -> str:
         if not candidate.mapped or candidate.L_b0_m <= 0.0:
             return "not_case_b"
+        if metric.movement.is_merge:
+            return "not_case_b"
         if segment_metric is not None and segment_metric.queue_confidence > QUEUE_STALE_CONFIDENCE and segment_metric.queue_m_proxy > 0.0:
             return "runtime_tau_segment" if segment_metric.fill >= self.case_b_tau(candidate) else "not_case_b"
         runtime_queue_available = metric.queue_confidence > QUEUE_STALE_CONFIDENCE and metric.queue_m_proxy > 0.0
         if runtime_queue_available:
             fill_ratio = metric.queue_m_proxy / max(candidate.L_b0_m, 0.001)
             return "runtime_tau_movement" if fill_ratio >= self.case_b_tau(candidate) else "not_case_b"
-        return "b0_prior" if candidate.case_b_prior_risk or candidate.segment_fill_B0 >= self.case_b_tau(candidate) else "not_case_b"
+        return "not_case_b"
 
     def active_case_b_candidate(
         self,
@@ -2705,6 +2982,176 @@ class B4RuntimeController:
             ordered.append(metric)
             seen.add(movement_id)
         return ordered[:max_active]
+
+    def stage3_ahead_metrics(self, metrics: list[MovementRuntimeMetrics], ev_state: EVState) -> list[MovementRuntimeMetrics]:
+        return sorted(
+            (
+                metric
+                for metric in metrics
+                if metric.movement.controllable
+                and metric.movement.route_order_index >= ev_state.route_index
+                and not metric.movement.is_merge
+                and metric.movement.route_intersection_index != self.stage1.i_merge
+            ),
+            key=lambda metric: metric.movement.route_intersection_index,
+        )
+
+    def stage3_case_plan(
+        self,
+        metric: MovementRuntimeMetrics,
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+    ) -> Stage3CasePlan:
+        movement = metric.movement
+        tau = clamp_float(safe_float(getattr(self.params, "tau", EVTSP_DEFAULT_TAU), EVTSP_DEFAULT_TAU), EVTSP_TAU_LOWER, EVTSP_TAU_UPPER)
+        is_case_b = (
+            not movement.is_merge
+            and movement.route_intersection_index != self.stage1.i_merge
+            and self.scaled_stage3_case_b_queue_m(metric) >= tau * movement.L_m
+        )
+        if not is_case_b:
+            return Stage3CasePlan(
+                case_type="caseA",
+                source_metric=metric,
+                processing_metrics=(metric,),
+                gate_metric=metric,
+                processing_order=str(movement.route_intersection_index),
+            )
+        downstream_index = movement.route_intersection_index + 1
+        downstream_metric = next(
+            (
+                candidate
+                for candidate in metrics_by_id.values()
+                if candidate.movement.route_intersection_index == downstream_index
+                and candidate.movement.controllable
+                and not candidate.movement.is_merge
+                and candidate.movement.route_intersection_index != self.stage1.i_merge
+            ),
+            None,
+        )
+        if downstream_metric is None:
+            return Stage3CasePlan(
+                case_type="caseA_boundary",
+                source_metric=metric,
+                processing_metrics=(metric,),
+                gate_metric=metric,
+                downstream_index=downstream_index,
+                processing_order=str(movement.route_intersection_index),
+            )
+        return Stage3CasePlan(
+            case_type="caseB",
+            source_metric=metric,
+            processing_metrics=(downstream_metric, metric),
+            gate_metric=downstream_metric,
+            downstream_index=downstream_index,
+            processing_order=f"{downstream_metric.movement.route_intersection_index},{movement.route_intersection_index}",
+        )
+
+    def stage3_case_plans(
+        self,
+        ahead_metrics: list[MovementRuntimeMetrics],
+        metrics_by_id: dict[str, MovementRuntimeMetrics],
+    ) -> list[Stage3CasePlan]:
+        plans: list[Stage3CasePlan] = []
+        planned: set[str] = set()
+        for metric in ahead_metrics:
+            if metric.movement.movement_id in planned:
+                continue
+            plan = self.stage3_case_plan(metric, metrics_by_id)
+            plans.append(plan)
+            for processing_metric in plan.processing_metrics:
+                planned.add(processing_metric.movement.movement_id)
+        return plans
+
+    def stage3_gate_tE(self, plan: Stage3CasePlan, ev_distances: dict[str, float | str]) -> float | str:
+        gate_distance = ev_distances.get(plan.gate_metric.movement.movement_id, "")
+        if gate_distance == "":
+            return ""
+        return round_float(max(float(gate_distance), 0.0) / TA_EV_SPEED_MPS)
+
+    def stage3_ta_for_plan(
+        self,
+        plan: Stage3CasePlan,
+        metric: MovementRuntimeMetrics,
+        ev_distances: dict[str, float | str],
+        previous_phase: int | None = None,
+    ) -> tuple[TAProxyMetrics, CaseBEvaluation, float]:
+        base_ta = self.metric_ta(metric, ev_distances, previous_phase)
+        if plan.case_type != "caseB":
+            return base_ta, CaseBEvaluation(TA_case="caseA"), base_ta.TA_proxy_sec
+        upstream_metric = plan.source_metric
+        downstream_metric = plan.gate_metric
+        downstream_ta = self.metric_ta(downstream_metric, ev_distances)
+        upstream_ta = self.metric_ta(upstream_metric, ev_distances)
+        effective_ta = downstream_ta.TA_proxy_sec - upstream_ta.tQ_sec
+        case_b = CaseBEvaluation(
+            case_b_source="runtime_tau_adjacency",
+            TA_case="caseB_downstream_first",
+            TA_upstream_sec=round_float(upstream_ta.TA_proxy_sec),
+            TA_bottleneck_sec=round_float(downstream_ta.TA_proxy_sec),
+            effective_TA_proxy_sec=round_float(effective_ta),
+            case_b_mapping_status="adjacent_i_plus_1",
+            case_b_segment_id=f"i{upstream_metric.movement.route_intersection_index}_down{downstream_metric.movement.route_intersection_index}",
+            case_b_segment_queue_m_proxy=round_float(self.scaled_stage3_case_b_queue_m(upstream_metric)),
+            case_b_segment_fill=round_float(self.scaled_stage3_case_b_queue_m(upstream_metric) / max(upstream_metric.movement.L_m, 0.001)),
+            case_b_same_tls_policy="downstream_first",
+        )
+        return base_ta, case_b, round_float(effective_ta)
+
+    def stage3_log_context(
+        self,
+        *,
+        plan: Stage3CasePlan,
+        metric: MovementRuntimeMetrics,
+        ev_state: EVState,
+        gate_tE: float | str,
+        gate_result: str,
+        previous_phase: int | None,
+        ta: TAProxyMetrics,
+        case_b: CaseBEvaluation,
+        ta_proxy_sec: float | str,
+        preemption_state: str,
+        action: str,
+        safety_status: str = "",
+        deny_reason: str = "",
+    ) -> dict[str, Any]:
+        movement = metric.movement
+        tau = clamp_float(safe_float(getattr(self.params, "tau", EVTSP_DEFAULT_TAU), EVTSP_DEFAULT_TAU), EVTSP_TAU_LOWER, EVTSP_TAU_UPPER)
+        elapsed_green = self.elapsed_green_sec(movement.tls_id) if previous_phase == movement.selected_green_phase else 0.0
+        upstream_metric = plan.source_metric
+        downstream_metric = plan.gate_metric
+        return {
+            "intersection_index": movement.route_intersection_index,
+            "junction_id": movement.tls_id,
+            "is_ahead_of_ev": movement.route_order_index >= ev_state.route_index,
+            "is_i_merge": movement.is_merge or movement.route_intersection_index == self.stage1.i_merge,
+            "L": round_float(movement.L_m),
+            "W": round_float(movement.W_m),
+            "Lq": round_float(metric.queue_m_proxy),
+            "stage3_measurement_scale": round_float(max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)),
+            "scaled_Lq_case_b_m": round_float(self.scaled_stage3_case_b_queue_m(metric)),
+            "tau": round_float(tau),
+            "tau_times_L": round_float(tau * movement.L_m),
+            "case_type": plan.case_type,
+            "downstream_index": plan.downstream_index,
+            "gate_target": plan.gate_metric.movement.route_intersection_index,
+            "tE_gate_target": gate_tE,
+            "delta_T_thr": safe_float(getattr(self.params, "delta_T_thr", 0.0), 0.0),
+            "gate_result": gate_result,
+            "ge": round_float(elapsed_green),
+            "tQ": ta.tQ_sec,
+            "t_lead": theta_ta_lead_sec(self.params),
+            "G_ext": safe_float(getattr(self.params, "G_ext", 0.0), 0.0),
+            "SafetyGate_result": safety_status,
+            "deny_reason": deny_reason,
+            "preemption_state": preemption_state,
+            "action": action,
+            "processing_order": plan.processing_order,
+            "Lq_i": round_float(upstream_metric.queue_m_proxy) if plan.case_type == "caseB" else "",
+            "TA_down": case_b.TA_bottleneck_sec if plan.case_type == "caseB" else "",
+            "tQ_i": self.metric_ta(upstream_metric, {upstream_metric.movement.movement_id: 0.0}).tQ_sec if plan.case_type == "caseB" else "",
+            "TA_formula": "TA = TA_down - tQ_i" if plan.case_type == "caseB" else "TA = tE - tS - tQ",
+            "TA": ta_proxy_sec,
+        }
 
     def apply_original_tau_stage3_trigger(
         self,
@@ -2809,18 +3256,26 @@ class B4RuntimeController:
         if previous_phase is None:
             previous_phase = self.get_tls_phase(movement.tls_id)
         ev_distance = ev_distances.get(movement.movement_id, "")
-        queue_confidence = metric.queue_confidence if metric.queue_confidence > 0.0 else QUEUE_PROXY_CONFIDENCE
-        return compute_ta_proxy(
-            ev_distance_m=float(ev_distance) if ev_distance != "" else 0.0,
-            queue_m_proxy=metric.queue_m_proxy,
-            lane_count=movement.lane_count,
-            previous_phase=previous_phase,
-            target_phase=movement.selected_green_phase,
-            queue_confidence=queue_confidence,
-            queue_method=metric.queue_method or "lane_proxy",
-            b0_tQ_hist_sec=movement.tQ_hist_b0_sec,
-            b0_queue_veh=movement.q_max_b0_proxy_veh,
-            eta_buffer_alpha=safe_float(getattr(self.params, "alpha", 1.0), 1.0),
+        t_e = max(float(ev_distance) if ev_distance != "" else 0.0, 0.0) / TA_EV_SPEED_MPS
+        elapsed_green = self.elapsed_green_sec(movement.tls_id) if previous_phase == movement.selected_green_phase else 0.0
+        t_s = movement.Y_sec + movement.R_sec + max(0.0, movement.Gm_sec - elapsed_green)
+        runtime_queue_available = metric.queue_m_proxy > 0.0 and metric.queue_confidence > QUEUE_STALE_CONFIDENCE
+        used_b0_fallback = False
+        if not runtime_queue_available and movement.tQ_hist_b0_sec > 0.0:
+            t_q = movement.tQ_hist_b0_sec
+            used_b0_fallback = True
+        else:
+            t_q = compute_tQ_sec(metric.queue_m_proxy, movement.lane_count)
+        ta_proxy = t_e - t_s - t_q
+        return TAProxyMetrics(
+            tE_sec=round_float(t_e),
+            tS_sec=round_float(t_s),
+            tQ_sec=round_float(t_q),
+            TA_proxy_sec=round_float(ta_proxy),
+            ta_triggered=ta_proxy <= theta_ta_lead_sec(self.params),
+            queue_source=queue_source_from_method(metric.queue_method or "lane_proxy", metric.queue_confidence, used_b0_fallback),
+            tS_source="evtsp_safety_clearance",
+            queue_m_used=round_float(metric.queue_m_proxy),
         )
 
     def case_b_evaluation(
@@ -2843,19 +3298,15 @@ class B4RuntimeController:
             upstream_ta = base_ta
             bottleneck_ta = self.metric_ta(bottleneck_metric, ev_distances)
             ta_case = "caseB_upstream"
-            effective_ta = upstream_ta.TA_proxy_sec
+            effective_ta = bottleneck_ta.TA_proxy_sec - upstream_ta.tQ_sec
         elif metric.movement.movement_id == candidate.bottleneck_movement_id:
             upstream_ta = self.metric_ta(upstream_metric, ev_distances)
             bottleneck_ta = base_ta
-            ta_case = "caseB_bottleneck"
-            effective_ta = upstream_ta.TA_proxy_sec - (
-                bottleneck_ta.tS_sec + bottleneck_ta.tQ_sec - candidate.L_b0_m / TA_EV_SPEED_MPS
-            )
+            ta_case = "caseB_downstream"
+            effective_ta = bottleneck_ta.TA_proxy_sec
         else:
             return CaseBEvaluation()
-        ta_bottleneck = upstream_ta.TA_proxy_sec - (
-            bottleneck_ta.tS_sec + bottleneck_ta.tQ_sec - candidate.L_b0_m / TA_EV_SPEED_MPS
-        )
+        ta_bottleneck = bottleneck_ta.TA_proxy_sec
         segment_metric = segment_metrics_by_id.get(candidate.segment_id)
         same_tls_policy = ""
         if candidate.same_tls_chain and upstream_metric.movement.selected_green_phase != bottleneck_metric.movement.selected_green_phase:
@@ -2943,32 +3394,72 @@ class B4RuntimeController:
             return True
         return ev_state.edge_id == self.stage1.departure.mainline_target_edge
 
-    def should_start_stage2_hold(self, now: float, stage2_proxy: dict[str, Any]) -> bool:
-        departure = self.stage1.departure
-        earliest_control_time = self.stage1.ev_depart_sec - departure.dispatch_lead_time_sec
-        if now < earliest_control_time:
-            return False
-        q_trig = safe_float(getattr(self.params, "Q_trig", 0.0), 0.0)
-        if q_trig > 0.0 and stage2_proxy:
-            if safe_float(stage2_proxy.get("Lq_merge_m"), 0.0) < q_trig:
-                return False
-        if not self.stage1.stage2_merge_hold.runtime_control_uses_formula_directly:
-            return True
+    def distance_to_merge_m(self, ev_state: EVState) -> float | None:
+        if not ev_state.present:
+            return None
+        merge_index = self.route_index_for_edge(self.stage1.departure.mainline_target_edge)
+        if merge_index < 0:
+            return None
+        current_index = ev_state.route_index if ev_state.route_index >= 0 else self.route_index_for_edge(ev_state.edge_id)
+        if current_index < 0:
+            return None
+        if current_index >= merge_index:
+            return 0.0
+        current_edge = self.stage1.route_edges[current_index]
+        current_length = safe_float(self.edge_lengths.get(current_edge), 0.0)
+        if current_length <= 0.0:
+            return None
+        distance = max(current_length - ev_state.lane_position_m, 0.0)
+        for edge_id in self.stage1.route_edges[current_index + 1 : merge_index]:
+            distance += max(safe_float(self.edge_lengths.get(edge_id), 0.0), 0.0)
+        return round_float(distance)
 
+    def tls_state(self, tls_id: str) -> str:
+        try:
+            return str(self.traci.trafficlight.getRedYellowGreenState(tls_id))
+        except Exception:
+            return self.phase_state(tls_id, self.get_tls_phase(tls_id))
+
+    def stage2_proxy_with_signal_context(
+        self,
+        stage2_proxy: dict[str, Any],
+        tls_id: str,
+        *,
+        action: str = "",
+        safety_status: str = "",
+        deny_reason: str = "",
+    ) -> dict[str, Any]:
+        proxy = dict(stage2_proxy)
+        current_phase = self.get_tls_phase(tls_id)
+        proxy.update({
+            "current_phase": current_phase,
+            "current_state": self.tls_state(tls_id),
+            "ped_state": "configured_min_green" if safe_float(self.pedestrian_min_green_by_tls.get(tls_id), 0.0) > 0.0 else "no_ped_min_green_configured",
+            "SafetyGate_result": safety_status,
+            "action": action,
+            "deny_reason": deny_reason or (safety_status if str(safety_status).startswith("DENY") else ""),
+        })
+        return proxy
+
+    def should_start_stage2_hold(self, now: float, stage2_proxy: dict[str, Any]) -> bool:
+        params = self.stage1.stage2_merge_hold
+        dispatch_detect_time = self.stage1.ev_depart_sec - params.t_dispatch_delay_sec
+        if now < dispatch_detect_time:
+            return False
+        q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
+        q_th_merge = q_ratio * params.L_merge_m
+        if safe_float(stage2_proxy.get("Lq_merge_m"), 0.0) < q_th_merge:
+            return False
         t_hold = safe_float(
             stage2_proxy.get("T_hold_proxy_sec"),
-            self.stage1.stage2_merge_hold.tE_merge_sec - self.stage1.stage2_merge_hold.tS_merge_sec,
+            params.tE_merge_sec - params.tS_merge_sec,
         )
-        if t_hold <= 0.0:
-            return True
-
-        formula_control_lead = min(t_hold, departure.dispatch_lead_time_sec)
-        return now >= self.stage1.ev_depart_sec - formula_control_lead
+        return t_hold <= 0.0
 
     def should_release_stage2_hold_by_max(self, now: float) -> bool:
         if not self.stage2_hold_active or self.stage2_hold_start is None:
             return False
-        hold_max = safe_float(getattr(self.params, "hold_max", DEFAULT_MAX_HOLD_SEC), DEFAULT_MAX_HOLD_SEC)
+        hold_max = safe_float(getattr(self.params, "hold_max", self.stage1.stage2_merge_hold.HOLD_MAX_sec), self.stage1.stage2_merge_hold.HOLD_MAX_sec)
         return hold_max > 0.0 and now - self.stage2_hold_start >= hold_max
 
     def handle_stage2(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:
@@ -2979,13 +3470,27 @@ class B4RuntimeController:
             self.stage2_completed = True
             return []
 
-        should_watch_merge = now >= self.stage1.ev_depart_sec - departure.dispatch_lead_time_sec
+        dispatch_detect_time = self.stage1.ev_depart_sec - self.stage1.stage2_merge_hold.t_dispatch_delay_sec
+        should_watch_merge = now >= dispatch_detect_time
         merged = self.ev_has_merged(ev_state)
         if merged and not self.stage2_hold_active:
             self.stage2_completed = True
             return []
 
-        stage2_proxy = stage2_merge_hold_proxy_snapshot(self.traci, self.stage1) if should_watch_merge or self.stage2_hold_active else {}
+        distance_to_merge_m = self.distance_to_merge_m(ev_state)
+        stage2_proxy = (
+            stage2_merge_hold_proxy_snapshot(
+                self.traci,
+                self.stage1,
+                now=now,
+                ev_state=ev_state,
+                distance_to_merge_m=distance_to_merge_m,
+                merged=merged,
+                measurement_scale=self.stage2_measurement_scale,
+            )
+            if should_watch_merge or self.stage2_hold_active
+            else {}
+        )
         should_start_hold = (
             should_watch_merge
             and not merged
@@ -2995,38 +3500,93 @@ class B4RuntimeController:
         events = []
         if should_start_hold:
             previous_phase = self.get_tls_phase(departure.merge_control_tls)
-            self.set_tls_phase(departure.merge_control_tls, departure.background_inflow_red_hold_phase, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
+            stage2_proxy = self.stage2_proxy_with_signal_context(stage2_proxy, departure.merge_control_tls, action="RED_HOLD")
+            applied, safety_status, applied_phase, applied_duration = self.apply_tls_request(
+                departure.merge_control_tls,
+                departure.background_inflow_red_hold_phase,
+                DEFAULT_STAGE2_HOLD_REFRESH_SEC,
+                "RED_HOLD",
+                now,
+            )
+            stage2_proxy = {
+                **stage2_proxy,
+                "SafetyGate_result": safety_status,
+                "action": "DENIED_BY_SAFETY" if not applied and safety_status != "REQUIRE_CLEARANCE" else "RED_HOLD",
+                "deny_reason": safety_status if str(safety_status).startswith("DENY") else "",
+            }
+            if not applied and safety_status != "REQUIRE_CLEARANCE":
+                events.append(event_row(
+                    time=now,
+                    stage="stage2",
+                    action_type="entry_hold_denied",
+                    tls_id=departure.merge_control_tls,
+                    target_phase=departure.background_inflow_red_hold_phase,
+                    previous_phase=previous_phase,
+                    ev_state=ev_state,
+                    control_mode="departure_merge_hold",
+                    safety_status=safety_status,
+                    trigger_reason="evtsp_merge_hold",
+                    stage2_hold_status="denied",
+                    stage2_action="DENIED_BY_SAFETY",
+                    deny_reason=safety_status,
+                    q_ratio=safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO),
+                    q_th_merge_m=round_float(safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO) * self.stage1.stage2_merge_hold.L_merge_m),
+                    t_hold_sec=stage2_proxy.get("T_hold_proxy_sec", ""),
+                    stage2_proxy=stage2_proxy,
+                    run_id=self.run_id,
+                    parameter_id=self.params.parameter_id,
+                    repeat_id=self.repeat_id,
+                ))
+                return events
             self.stage2_hold_active = True
             self.stage2_hold_start = now
             self.stage2_previous_phase = previous_phase
             self.stats.stage2_hold_count += 1
-            self.stats.signal_burden_sec += DEFAULT_STAGE2_HOLD_REFRESH_SEC
+            self.stats.signal_burden_sec += applied_duration
             events.append(event_row(
                 time=now,
                 stage="stage2",
-                action_type="entry_hold",
+                action_type="entry_hold" if applied else "entry_hold_clearance",
                 tls_id=departure.merge_control_tls,
-                target_phase=departure.background_inflow_red_hold_phase,
+                target_phase=applied_phase if applied_phase is not None else departure.background_inflow_red_hold_phase,
                 previous_phase=previous_phase,
                 ev_state=ev_state,
                 control_mode="departure_merge_hold",
-                safety_status="ev_release_uncontrolled_warn",
-                trigger_reason="T_hold_proxy_direct" if self.stage1.stage2_merge_hold.runtime_control_uses_formula_directly else "dispatch_lead_time_or_ev_premerge",
-                phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
+                safety_status=safety_status,
+                trigger_reason="evtsp_merge_hold",
+                phase_duration_sec=applied_duration,
                 stage2_hold_status="hold_active",
+                stage2_action="RED_HOLD",
+                q_ratio=safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO),
+                q_th_merge_m=round_float(safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO) * self.stage1.stage2_merge_hold.L_merge_m),
+                t_hold_sec=stage2_proxy.get("T_hold_proxy_sec", ""),
+                hold_elapsed_sec=0.0,
                 stage2_proxy=stage2_proxy,
                 run_id=self.run_id,
                 parameter_id=self.params.parameter_id,
                 repeat_id=self.repeat_id,
             ))
         elif self.stage2_hold_active and not merged and not self.should_release_stage2_hold_by_max(now):
-            hold_max = safe_float(getattr(self.params, "hold_max", DEFAULT_MAX_HOLD_SEC), DEFAULT_MAX_HOLD_SEC)
+            hold_max = safe_float(getattr(self.params, "hold_max", self.stage1.stage2_merge_hold.HOLD_MAX_sec), self.stage1.stage2_merge_hold.HOLD_MAX_sec)
             elapsed = max(now - (self.stage2_hold_start or now), 0.0)
             remaining = max(hold_max - elapsed, DEFAULT_STEP_SEC) if hold_max > 0.0 else DEFAULT_STAGE2_HOLD_REFRESH_SEC
             self.set_tls_duration(departure.merge_control_tls, min(DEFAULT_STAGE2_HOLD_REFRESH_SEC, remaining))
         elif self.stage2_hold_active and (merged or self.should_release_stage2_hold_by_max(now)):
             previous_phase = self.get_tls_phase(departure.merge_control_tls)
-            self.set_tls_phase(departure.merge_control_tls, departure.background_inflow_open_phase, DEFAULT_STAGE2_HOLD_REFRESH_SEC)
+            stage2_proxy = self.stage2_proxy_with_signal_context(stage2_proxy, departure.merge_control_tls, action="RELEASE")
+            applied, safety_status, applied_phase, applied_duration = self.apply_tls_request(
+                departure.merge_control_tls,
+                departure.background_inflow_open_phase,
+                DEFAULT_STAGE2_HOLD_REFRESH_SEC,
+                "GREEN",
+                now,
+            )
+            stage2_proxy = {
+                **stage2_proxy,
+                "SafetyGate_result": safety_status,
+                "action": "RELEASE",
+                "deny_reason": safety_status if str(safety_status).startswith("DENY") else "",
+            }
             hold_total = max(now - (self.stage2_hold_start or now), 0.0)
             self.stage2_hold_active = False
             self.stage2_completed = merged
@@ -3040,14 +3600,20 @@ class B4RuntimeController:
                 stage="stage2",
                 action_type="entry_hold_release",
                 tls_id=departure.merge_control_tls,
-                target_phase=departure.background_inflow_open_phase,
+                target_phase=applied_phase if applied_phase is not None else departure.background_inflow_open_phase,
                 previous_phase=previous_phase,
                 ev_state=ev_state,
                 control_mode="departure_merge_hold",
-                safety_status="ev_release_uncontrolled_warn",
+                safety_status=safety_status if applied or safety_status == "REQUIRE_CLEARANCE" else f"release_{safety_status}",
                 trigger_reason=trigger_reason,
-                phase_duration_sec=DEFAULT_STAGE2_HOLD_REFRESH_SEC,
+                phase_duration_sec=applied_duration,
                 stage2_hold_status="released",
+                stage2_action="RELEASE",
+                deny_reason=safety_status if str(safety_status).startswith("DENY") else "",
+                q_ratio=safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO),
+                q_th_merge_m=round_float(safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO) * self.stage1.stage2_merge_hold.L_merge_m),
+                t_hold_sec=stage2_proxy.get("T_hold_proxy_sec", ""),
+                hold_elapsed_sec=hold_total,
                 stage2_proxy=stage2_proxy,
                 run_id=self.run_id,
                 parameter_id=self.params.parameter_id,
@@ -3056,10 +3622,15 @@ class B4RuntimeController:
         return events
 
     def handle_stage3(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:
-        if not ev_state.present or not self.ev_has_merged(ev_state):
+        if now < self.stage1.ev_depart_sec or ev_state.arrived or not ev_state.present:
             return []
         events: list[dict[str, Any]] = []
         events.extend(self.restore_passed_or_expired_controls(now, ev_state))
+        self.pending_stage3_requests = {
+            movement_id: requested_at
+            for movement_id, requested_at in self.pending_stage3_requests.items()
+            if now - requested_at < DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC
+        }
         runtime_thresholds = theta_runtime_thresholds(self.stage1.thresholds, self.params)
         if movement_runtime_metrics is not DEFAULT_MOVEMENT_RUNTIME_METRICS:
             movement_metrics = [
@@ -3096,63 +3667,80 @@ class B4RuntimeController:
             self.stats.queue_runtime_call_mode = QUEUE_RUNTIME_CALL_MODE
             if self.stage1.queue_calibration_priors:
                 self.stats.queue_calibration_source = QUEUE_CALIBRATION_SOURCE
-        movement_metrics = self.apply_original_tau_stage3_trigger(movement_metrics, original_tau_metrics, case_b_segment_metrics)
         self.stats.observe_queue_metrics(movement_metrics, tls_estimates)
         metrics_by_id = {metric.movement.movement_id: metric for metric in movement_metrics}
-        selected = order_stage3_candidates(
-            movement_metrics,
-            ev_state.route_index,
-            self.stage1.max_active_movements,
-            safe_int(getattr(self.params, "d_up", self.stage1.max_active_movements), self.stage1.max_active_movements),
-        )
-        selected = self.order_case_b_candidates(
-            selected,
-            metrics_by_id,
-            ev_state.route_index,
-            self.stage1.max_active_movements,
-            case_b_segment_metrics,
-        )
+        selected = self.stage3_ahead_metrics(movement_metrics, ev_state)
+        plans = self.stage3_case_plans(selected, metrics_by_id)
         new_stage3_action_count = 0
         max_new_stage3_actions = self.stage3_max_new_actions_per_step()
         active_tls_ids = {control.tls_id for control in self.active_controls.values()}
-        for metric in selected:
-            movement = metric.movement
-            if len(self.active_controls) >= self.stage1.max_active_movements:
-                break
-            if new_stage3_action_count >= max_new_stage3_actions:
-                break
-            if movement.tls_id == self.stage1.departure.merge_control_tls and self.stage2_hold_active:
-                continue
-            if movement.movement_id in self.active_controls:
-                continue
-            previous_phase = self.get_tls_phase(movement.tls_id)
-            ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(ev_state, movement))
-            ta = self.metric_ta(metric, ev_distances, previous_phase)
-            case_b = self.case_b_evaluation(metric, metrics_by_id, ev_distances, ta, case_b_segment_metrics)
-            event_case_b_source = self.event_case_b_source(metric, case_b)
-            ta_proxy_sec = (
-                ta.TA_proxy_sec
-                if case_b.effective_TA_proxy_sec is None
-                else case_b.effective_TA_proxy_sec
-            )
-            active_count = len(self.active_controls)
-            delta_gate_open = self.stage3_delta_gate_open(ta.tE_sec)
-            theta_ta_triggered = delta_gate_open and ta_proxy_sec <= theta_ta_lead_sec(self.params)
-            if self.same_tls_case_b_deferred(metric, metrics_by_id, case_b_segment_metrics):
+        for plan in plans:
+            gate_tE = self.stage3_gate_tE(plan, ev_distances)
+            delta_gate_open = self.stage3_delta_gate_open(gate_tE)
+            for metric in plan.processing_metrics:
+                movement = metric.movement
+                if len(self.active_controls) >= self.stage1.max_active_movements:
+                    break
+                if new_stage3_action_count >= max_new_stage3_actions:
+                    break
+                if movement.is_merge or movement.route_intersection_index == self.stage1.i_merge:
+                    continue
+                if movement.tls_id == self.stage1.departure.merge_control_tls and self.stage2_hold_active:
+                    continue
+                if movement.movement_id in self.active_controls or movement.movement_id in self.pending_stage3_requests:
+                    continue
+                if movement.tls_id in active_tls_ids:
+                    continue
+                if not self.can_act_on_tls(movement.tls_id, now):
+                    continue
+                previous_phase = self.get_tls_phase(movement.tls_id)
+                ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(ev_state, movement))
+                ta, case_b, ta_proxy_sec = self.stage3_ta_for_plan(plan, metric, ev_distances, previous_phase)
+                event_case_b_source = self.event_case_b_source(metric, case_b)
+                theta_ta_triggered = delta_gate_open and ta_proxy_sec <= theta_ta_lead_sec(self.params)
+                q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
+                q_th_m = q_ratio * movement.L_m
+                gate_result = "PASS" if delta_gate_open else "CONTINUE_TOO_FAR"
+                selection_action = "CASE_B_SELECTED" if plan.case_type == "caseB" else "CASE_A_SELECTED"
+                stage3_context = self.stage3_log_context(
+                    plan=plan,
+                    metric=metric,
+                    ev_state=ev_state,
+                    gate_tE=gate_tE,
+                    gate_result=gate_result,
+                    previous_phase=previous_phase,
+                    ta=ta,
+                    case_b=case_b,
+                    ta_proxy_sec=ta_proxy_sec,
+                    preemption_state="IDLE",
+                    action="CONTINUE_TOO_FAR" if not delta_gate_open else selection_action,
+                )
                 events.append(event_row(
                     time=now,
                     stage="stage3",
-                    action_type="case_b_same_tls_deferred",
+                    action_type="trigger_evaluation",
                     movement=movement,
                     metrics=metric,
                     target_phase=movement.selected_green_phase,
                     previous_phase=previous_phase,
                     ev_state=ev_state,
                     ev_distance_m=round_float(ev_distance),
-                    control_mode="case_b_same_tls_deferred",
-                    safety_status="case_b_same_tls_deferred",
-                    trigger_reason="case_b_same_tls_deferred",
-                    active_movement_count=active_count,
+                    control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
+                    safety_status=(
+                        "ta_ready"
+                        if theta_ta_triggered
+                        else "delta_T_gate_closed"
+                        if not delta_gate_open
+                        else "ta_not_due"
+                    ),
+                    trigger_reason=(
+                        selection_action
+                        if theta_ta_triggered
+                        else "CONTINUE_TOO_FAR"
+                        if not delta_gate_open
+                        else "TA_proxy_gt_t_lead"
+                    ),
+                    active_movement_count=len(self.active_controls),
                     run_id=self.run_id,
                     parameter_id=self.params.parameter_id,
                     repeat_id=self.repeat_id,
@@ -3172,130 +3760,163 @@ class B4RuntimeController:
                     case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
                     case_b_segment_fill=case_b.case_b_segment_fill,
                     case_b_same_tls_policy=case_b.case_b_same_tls_policy,
+                    q_ratio=q_ratio,
+                    q_th_m=round_float(q_th_m),
+                    stage3_context=stage3_context,
                 ))
-                continue
-            if movement.tls_id in active_tls_ids:
-                continue
-            if not self.can_act_on_tls(movement.tls_id, now):
-                continue
-            events.append(event_row(
-                time=now,
-                stage="stage3",
-                action_type="trigger_evaluation",
-                movement=movement,
-                metrics=metric,
-                target_phase=movement.selected_green_phase,
-                previous_phase=previous_phase,
-                ev_state=ev_state,
-                ev_distance_m=round_float(ev_distance),
-                control_mode=metric.control_mode,
-                safety_status=(
-                    "ta_ready"
-                    if theta_ta_triggered
-                    else "delta_T_gate_closed"
-                    if not delta_gate_open
-                    else "ta_not_due"
-                ),
-                trigger_reason=(
-                    metric.trigger_reason
-                    if theta_ta_triggered
-                    else f"{metric.trigger_reason}+delta_T_thr_gate"
-                    if not delta_gate_open
-                    else f"{metric.trigger_reason}+TA_proxy_gt_t_lead"
-                ),
-                active_movement_count=active_count,
-                run_id=self.run_id,
-                parameter_id=self.params.parameter_id,
-                repeat_id=self.repeat_id,
-                tE_sec=ta.tE_sec,
-                tS_sec=ta.tS_sec,
-                tQ_sec=ta.tQ_sec,
-                TA_proxy_sec=ta_proxy_sec,
-                ta_triggered=theta_ta_triggered,
-                queue_source=ta.queue_source,
-                case_b_source=event_case_b_source,
-                tS_source=ta.tS_source,
-                TA_case=case_b.TA_case,
-                TA_upstream_sec=case_b.TA_upstream_sec,
-                TA_bottleneck_sec=case_b.TA_bottleneck_sec,
-                case_b_mapping_status=case_b.case_b_mapping_status,
-                case_b_segment_id=case_b.case_b_segment_id,
-                case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
-                case_b_segment_fill=case_b.case_b_segment_fill,
-                case_b_same_tls_policy=case_b.case_b_same_tls_policy,
-            ))
-            if isinstance(ev_distance, (int, float)) and ev_distance > self.stage3_control_distance_m():
-                continue
-            if not delta_gate_open:
-                continue
-            if not theta_ta_triggered:
-                continue
-            duration = self.target_phase_duration(ta.tE_sec)
-            if duration <= 0.0:
-                continue
-            stage3_hold_budget = self.stage3_hold_budget_sec()
-            if self.stage3_hold_budget_enforced() and stage3_hold_budget <= 0.0:
-                continue
-            if self.stage3_hold_budget_enforced():
-                first_deadline_sec = max(DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC, min(duration, stage3_hold_budget))
-            else:
-                first_deadline_sec = DEFAULT_MAX_HOLD_SEC
-            self.set_tls_phase(movement.tls_id, movement.selected_green_phase, duration)
-            self.last_tls_action_at[movement.tls_id] = now
-            self.active_controls[movement.movement_id] = ActiveControl(
-                movement_id=movement.movement_id,
-                tls_id=movement.tls_id,
-                previous_phase=previous_phase,
-                target_phase=movement.selected_green_phase,
-                started_at=now,
-                deadline=now + first_deadline_sec,
-                route_order_index=movement.route_order_index,
-            )
-            new_stage3_action_count += 1
-            active_tls_ids.add(movement.tls_id)
-            self.stats.stage3_preemption_count += 1
-            self.stats.signal_burden_sec += duration
-            if metric.trigger_reason in {"local_fill", "local_fill_and_low_speed"}:
-                self.stats.trigger_local_fill_count += 1
-            if metric.trigger_reason in {"low_speed", "local_fill_and_low_speed"}:
-                self.stats.trigger_speed_count += 1
-            if metric.bottleneck_risk:
-                self.stats.bottleneck_mode_count += 1
-            events.append(event_row(
-                time=now,
-                stage="stage3",
-                action_type="phase_change_target_green",
-                movement=movement,
-                metrics=metric,
-                target_phase=movement.selected_green_phase,
-                previous_phase=previous_phase,
-                ev_state=ev_state,
-                ev_distance_m=round_float(ev_distance),
-                control_mode=metric.control_mode,
-                safety_status="stage1_selected_phase_mvp",
-                trigger_reason=metric.trigger_reason,
-                phase_duration_sec=round_float(duration),
-                active_movement_count=len(self.active_controls),
-                run_id=self.run_id,
-                parameter_id=self.params.parameter_id,
-                repeat_id=self.repeat_id,
-                tE_sec=ta.tE_sec,
-                tS_sec=ta.tS_sec,
-                tQ_sec=ta.tQ_sec,
-                TA_proxy_sec=ta_proxy_sec,
-                ta_triggered=theta_ta_triggered,
-                queue_source=ta.queue_source,
-                case_b_source=event_case_b_source,
-                tS_source=ta.tS_source,
-                TA_case=case_b.TA_case,
-                TA_upstream_sec=case_b.TA_upstream_sec,
-                TA_bottleneck_sec=case_b.TA_bottleneck_sec,
-                case_b_mapping_status=case_b.case_b_mapping_status,
-                case_b_segment_id=case_b.case_b_segment_id,
-                case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
-                case_b_segment_fill=case_b.case_b_segment_fill,
-                case_b_same_tls_policy=case_b.case_b_same_tls_policy,
-            ))
+                if not delta_gate_open or not theta_ta_triggered:
+                    continue
+                duration = self.target_phase_duration(movement, ta.tS_sec, ev_distance)
+                if duration <= 0.0:
+                    continue
+                stage3_hold_budget = self.stage3_hold_budget_sec()
+                if self.stage3_hold_budget_enforced() and stage3_hold_budget <= 0.0:
+                    continue
+                if self.stage3_hold_budget_enforced():
+                    first_deadline_sec = max(DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC, min(duration, stage3_hold_budget))
+                else:
+                    first_deadline_sec = DEFAULT_MAX_HOLD_SEC
+                applied, safety_status, applied_phase, applied_duration = self.apply_tls_request(
+                    movement.tls_id,
+                    movement.selected_green_phase,
+                    duration,
+                    "GREEN",
+                    now,
+                )
+                if not applied:
+                    preemption_state = "REQUESTED" if safety_status == "REQUIRE_CLEARANCE" else "IDLE"
+                    if safety_status == "REQUIRE_CLEARANCE":
+                        self.pending_stage3_requests[movement.movement_id] = now
+                    stage3_context = self.stage3_log_context(
+                        plan=plan,
+                        metric=metric,
+                        ev_state=ev_state,
+                        gate_tE=gate_tE,
+                        gate_result=gate_result,
+                        previous_phase=previous_phase,
+                        ta=ta,
+                        case_b=case_b,
+                        ta_proxy_sec=ta_proxy_sec,
+                        preemption_state=preemption_state,
+                        action="GREEN_REQUEST" if safety_status == "REQUIRE_CLEARANCE" else "DENIED_BY_SAFETY",
+                        safety_status=safety_status,
+                        deny_reason=safety_status if str(safety_status).startswith("DENY") else "",
+                    )
+                    events.append(event_row(
+                        time=now,
+                        stage="stage3",
+                        action_type="phase_change_target_green_deferred" if safety_status == "REQUIRE_CLEARANCE" else "phase_change_target_green_denied",
+                        movement=movement,
+                        metrics=metric,
+                        target_phase=applied_phase if applied_phase is not None else movement.selected_green_phase,
+                        previous_phase=previous_phase,
+                        ev_state=ev_state,
+                        ev_distance_m=round_float(ev_distance),
+                        control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
+                        safety_status=safety_status,
+                        trigger_reason=metric.trigger_reason or selection_action,
+                        phase_duration_sec=applied_duration,
+                        active_movement_count=len(self.active_controls),
+                        run_id=self.run_id,
+                        parameter_id=self.params.parameter_id,
+                        repeat_id=self.repeat_id,
+                        tE_sec=ta.tE_sec,
+                        tS_sec=ta.tS_sec,
+                        tQ_sec=ta.tQ_sec,
+                        TA_proxy_sec=ta_proxy_sec,
+                        ta_triggered=theta_ta_triggered,
+                        queue_source=ta.queue_source,
+                        case_b_source=event_case_b_source,
+                        tS_source=ta.tS_source,
+                        TA_case=case_b.TA_case,
+                        TA_upstream_sec=case_b.TA_upstream_sec,
+                        TA_bottleneck_sec=case_b.TA_bottleneck_sec,
+                        case_b_mapping_status=case_b.case_b_mapping_status,
+                        case_b_segment_id=case_b.case_b_segment_id,
+                        case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
+                        case_b_segment_fill=case_b.case_b_segment_fill,
+                        case_b_same_tls_policy=case_b.case_b_same_tls_policy,
+                        q_ratio=q_ratio,
+                        q_th_m=round_float(q_th_m),
+                        green_dur_sec=duration,
+                        stage3_context=stage3_context,
+                    ))
+                    if safety_status == "REQUIRE_CLEARANCE":
+                        self.stats.signal_burden_sec += applied_duration
+                    continue
+                self.active_controls[movement.movement_id] = ActiveControl(
+                    movement_id=movement.movement_id,
+                    tls_id=movement.tls_id,
+                    previous_phase=previous_phase,
+                    target_phase=movement.selected_green_phase,
+                    started_at=now,
+                    deadline=now + first_deadline_sec,
+                    route_order_index=movement.route_order_index,
+                )
+                self.pending_stage3_requests.pop(movement.movement_id, None)
+                new_stage3_action_count += 1
+                active_tls_ids.add(movement.tls_id)
+                self.stats.stage3_preemption_count += 1
+                self.stats.signal_burden_sec += applied_duration
+                if metric.trigger_reason in {"local_fill", "local_fill_and_low_speed"}:
+                    self.stats.trigger_local_fill_count += 1
+                if metric.trigger_reason in {"low_speed", "local_fill_and_low_speed"}:
+                    self.stats.trigger_speed_count += 1
+                if plan.case_type == "caseB":
+                    self.stats.bottleneck_mode_count += 1
+                stage3_context = self.stage3_log_context(
+                    plan=plan,
+                    metric=metric,
+                    ev_state=ev_state,
+                    gate_tE=gate_tE,
+                    gate_result=gate_result,
+                    previous_phase=previous_phase,
+                    ta=ta,
+                    case_b=case_b,
+                    ta_proxy_sec=ta_proxy_sec,
+                    preemption_state="ACTIVE",
+                    action="GREEN_ACTIVE",
+                    safety_status=safety_status,
+                )
+                events.append(event_row(
+                    time=now,
+                    stage="stage3",
+                    action_type="phase_change_target_green",
+                    movement=movement,
+                    metrics=metric,
+                    target_phase=movement.selected_green_phase,
+                    previous_phase=previous_phase,
+                    ev_state=ev_state,
+                    ev_distance_m=round_float(ev_distance),
+                    control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
+                    safety_status=safety_status,
+                    trigger_reason=metric.trigger_reason or selection_action,
+                    phase_duration_sec=round_float(applied_duration),
+                    active_movement_count=len(self.active_controls),
+                    run_id=self.run_id,
+                    parameter_id=self.params.parameter_id,
+                    repeat_id=self.repeat_id,
+                    tE_sec=ta.tE_sec,
+                    tS_sec=ta.tS_sec,
+                    tQ_sec=ta.tQ_sec,
+                    TA_proxy_sec=ta_proxy_sec,
+                    ta_triggered=theta_ta_triggered,
+                    queue_source=ta.queue_source,
+                    case_b_source=event_case_b_source,
+                    tS_source=ta.tS_source,
+                    TA_case=case_b.TA_case,
+                    TA_upstream_sec=case_b.TA_upstream_sec,
+                    TA_bottleneck_sec=case_b.TA_bottleneck_sec,
+                    case_b_mapping_status=case_b.case_b_mapping_status,
+                    case_b_segment_id=case_b.case_b_segment_id,
+                    case_b_segment_queue_m_proxy=case_b.case_b_segment_queue_m_proxy,
+                    case_b_segment_fill=case_b.case_b_segment_fill,
+                    case_b_same_tls_policy=case_b.case_b_same_tls_policy,
+                    q_ratio=q_ratio,
+                    q_th_m=round_float(q_th_m),
+                    green_dur_sec=duration,
+                    stage3_context=stage3_context,
+                ))
         return events
 
     def restore_passed_or_expired_controls(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:
@@ -3535,10 +4156,11 @@ class B4RuntimeController:
             return True
         return safe_float(t_e_eff, float("inf")) <= delta_t
 
-    def target_phase_duration(self, t_e: float | str) -> float:
-        if t_e == "":
-            return DEFAULT_PHASE_BUFFER_SEC
-        return max(float(t_e) + safe_float(getattr(self.params, "G_ext", 0.0), 0.0), DEFAULT_PHASE_BUFFER_SEC)
+    def target_phase_duration(self, movement: B4Movement, t_s: float | str, ev_distance: float | str) -> float:
+        distance = float(ev_distance) if ev_distance != "" else 0.0
+        t_pass = (max(distance, 0.0) + movement.W_m + EVTSP_EV_LENGTH_M) / TA_EV_SPEED_MPS
+        duration = safe_float(t_s, DEFAULT_PHASE_BUFFER_SEC) + t_pass + safe_float(getattr(self.params, "G_ext", 0.0), 0.0)
+        return int(round(max(movement.Gm_sec, duration)))
 
     def can_act_on_tls(self, tls_id: str, now: float) -> bool:
         return now - self.last_tls_action_at.get(tls_id, -9999.0) >= DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC
@@ -3548,6 +4170,104 @@ class B4RuntimeController:
             return int(self.traci.trafficlight.getPhase(tls_id))
         except Exception:
             return -1
+
+    def elapsed_green_sec(self, tls_id: str) -> float:
+        for method_name in ("getSpentDuration", "getPhaseDuration"):
+            try:
+                method = getattr(self.traci.trafficlight, method_name)
+                return max(float(method(tls_id)), 0.0)
+            except Exception:
+                continue
+        return 0.0
+
+    def phase_state(self, tls_id: str, phase_index: int) -> str:
+        phases = self.phases_by_tls.get(tls_id, [])
+        for phase in phases:
+            if safe_int(phase.get("phase_index"), -1) == phase_index:
+                return str(phase.get("state", ""))
+        return ""
+
+    def phase_duration(self, tls_id: str, phase_index: int, default: float = DEFAULT_PHASE_BUFFER_SEC) -> float:
+        phases = self.phases_by_tls.get(tls_id, [])
+        for phase in phases:
+            if safe_int(phase.get("phase_index"), -1) == phase_index:
+                return max(safe_float(phase.get("duration"), default), DEFAULT_STEP_SEC)
+        return default
+
+    def phase_has_green(self, tls_id: str, phase_index: int) -> bool:
+        state = self.phase_state(tls_id, phase_index)
+        return any(token in state for token in ("G", "g"))
+
+    def phase_is_clearance(self, tls_id: str, phase_index: int) -> bool:
+        state = self.phase_state(tls_id, phase_index)
+        if not state:
+            return False
+        return "y" in state.lower() or not any(token in state for token in ("G", "g"))
+
+    def find_clearance_phase(self, tls_id: str, current_phase: int, target_phase: int) -> int | None:
+        phases = self.phases_by_tls.get(tls_id, [])
+        if not phases:
+            return None
+        phase_indices = [safe_int(phase.get("phase_index"), index) for index, phase in enumerate(phases)]
+        if current_phase not in phase_indices or target_phase not in phase_indices:
+            candidates = phase_indices
+        else:
+            start = phase_indices.index(current_phase)
+            stop = phase_indices.index(target_phase)
+            if start < stop:
+                candidates = phase_indices[start + 1 : stop + 1]
+            else:
+                candidates = phase_indices[start + 1 :] + phase_indices[: stop + 1]
+        for phase_index in candidates:
+            if phase_index != target_phase and self.phase_is_clearance(tls_id, phase_index):
+                return phase_index
+        for phase_index in phase_indices:
+            if phase_index != target_phase and self.phase_is_clearance(tls_id, phase_index):
+                return phase_index
+        return None
+
+    def safety_gate(self, tls_id: str, target_phase: int, action: str, now: float) -> dict[str, Any]:
+        if not tls_id:
+            return {"status": "DENY_MISSING_TLS"}
+        if not self.can_act_on_tls(tls_id, now):
+            return {"status": "DENY_MIN_ACTION_INTERVAL"}
+        current_phase = self.get_tls_phase(tls_id)
+        if current_phase == target_phase:
+            return {"status": "ALLOW", "phase": target_phase}
+        elapsed = self.elapsed_green_sec(tls_id)
+        ped_min_green = safe_float(self.pedestrian_min_green_by_tls.get(tls_id), 0.0)
+        if action in {"GREEN", "RED_HOLD"} and ped_min_green > 0.0 and self.phase_has_green(tls_id, current_phase) and elapsed < ped_min_green:
+            return {"status": "DENY_PEDESTRIAN_MIN_GREEN"}
+        if self.phase_is_clearance(tls_id, current_phase) and elapsed < self.phase_duration(tls_id, current_phase):
+            return {"status": "DENY_CLEARANCE_INCOMPLETE"}
+        if action in {"GREEN", "RED_HOLD"} and self.phase_has_green(tls_id, current_phase):
+            clearance_phase = self.find_clearance_phase(tls_id, current_phase, target_phase)
+            if clearance_phase is None:
+                return {"status": "DENY_CLEARANCE_UNAVAILABLE"}
+            return {
+                "status": "REQUIRE_CLEARANCE",
+                "phase": clearance_phase,
+                "duration": self.phase_duration(tls_id, clearance_phase),
+            }
+        return {"status": "ALLOW", "phase": target_phase}
+
+    def apply_tls_request(self, tls_id: str, target_phase: int, duration: float, action: str, now: float) -> tuple[bool, str, int | None, float]:
+        gate = self.safety_gate(tls_id, target_phase, action, now)
+        status = str(gate.get("status", "DENY"))
+        if status == "ALLOW":
+            phase = safe_int(gate.get("phase"), target_phase)
+            self.set_tls_phase(tls_id, phase, duration)
+            self.last_tls_action_at[tls_id] = now
+            return True, status, phase, duration
+        if status == "REQUIRE_CLEARANCE":
+            phase = safe_int(gate.get("phase"), -1)
+            clearance_duration = safe_float(gate.get("duration"), DEFAULT_PHASE_BUFFER_SEC)
+            if phase < 0:
+                return False, "DENY_CLEARANCE_UNAVAILABLE", None, 0.0
+            self.set_tls_phase(tls_id, phase, clearance_duration)
+            self.last_tls_action_at[tls_id] = now
+            return False, status, phase, clearance_duration
+        return False, status, None, 0.0
 
     def set_tls_phase(self, tls_id: str, phase: int, duration: float) -> None:
         try:
@@ -3573,7 +4293,15 @@ def run_b4_traci_loop(
 ) -> tuple[list[dict[str, Any]], B4ControllerStats, B4RuntimeMonitor]:
     stage1 = stage1 or B4Stage1Inputs.load()
     phase_config = phase_config or B4RuntimePhaseConfig.bo_smoke()
-    controller = B4RuntimeController(traci=traci, stage1=stage1, params=params or B4MvpParams(), run_id=run_id, repeat_id=repeat_id)
+    controller = B4RuntimeController(
+        traci=traci,
+        stage1=stage1,
+        params=params or B4MvpParams(),
+        run_id=run_id,
+        repeat_id=repeat_id,
+        stage2_measurement_scale=phase_config.stage2_measurement_scale,
+        stage3_measurement_scale=phase_config.stage3_measurement_scale,
+    )
     monitor = B4RuntimeMonitor(traci=traci, stage1=stage1, config=phase_config, run_id=run_id, repeat_id=repeat_id, mode=B4_MODE)
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()

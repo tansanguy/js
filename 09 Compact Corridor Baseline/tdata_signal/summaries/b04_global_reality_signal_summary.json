@@ -1,28 +1,35 @@
 {
   "schema": "compact_v9_b04_global_reality_signal.v1",
-  "generated_at": "2026-06-05T12:52:58.062263+00:00",
+  "generated_at": "2026-06-07T01:53:52.153521+00:00",
   "claim_scope": "all TLS get A008/API-informed plausible timing; not exact field reproduction",
   "timing_snapshots": [
+    "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210137.jsonl",
     "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210517.jsonl",
     "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210751.jsonl",
-    "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210833.jsonl"
+    "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210833.jsonl",
+    "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260607_013939.jsonl"
   ],
   "mapping_csv": "09 Compact Corridor Baseline/tdata_signal/global_tls_a008_itst_mapping.csv",
   "profiles_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_signal_profiles.csv",
-  "tls_count": 63,
-  "mainroad_preserved_count": 16,
-  "direct_api_count": 13,
-  "nearest_fallback_count": 34,
-  "average_fallback_count": 0,
-  "timing_record_itst_count": 2107,
+  "tls_count": 66,
+  "mainroad_profile_count": 18,
+  "mainroad_preserved_count": 0,
+  "virtual_preserved_count": 1,
+  "direct_api_count": 12,
+  "nearest_fallback_count": 0,
+  "average_fallback_count": 35,
+  "timing_record_itst_count": 2439,
   "profile_average": {
-    "cycle_sec": 107,
-    "main_green_sec": 71,
+    "cycle_sec": 92,
+    "main_green_sec": 58,
     "yellow_sec": 3
   },
-  "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired.net.xml",
-  "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_mild.net.xml",
-  "applied_tls_count": 63,
+  "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml",
+  "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "applied_tls_count": 66,
   "single_phase_repaired_count": 1,
-  "applied_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_applied_signal_profiles.csv"
+  "applied_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_applied_signal_profiles.csv",
+  "tls_state_normalization_csv": "09 Compact Corridor Baseline/tdata_signal/b04_global_reality_tls_state_normalization.csv",
+  "normalized_phase_state_count": 35,
+  "normalized_tls_count": 6
 }

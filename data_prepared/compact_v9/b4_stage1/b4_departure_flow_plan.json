@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_departure_flow_plan.v1",
-  "generated_at": "2026-06-06T07:27:20.218488+00:00",
+  "generated_at": "2026-06-06T16:02:37.717198+00:00",
   "fire_station_start_edge": "420331801#1",
   "fire_station_start_lane": "420331801#1_0",
   "departure_edge": "420331801#1",
@@ -43,10 +43,10 @@
     "-174870621#8_2"
   ],
   "merge_zone_length_m": 138.9,
-  "dispatch_lead_time_sec": 35.0,
+  "dispatch_lead_time_sec": 45.0,
   "dispatch_lead_time_range_sec": [
-    30.0,
-    40.0
+    45.0,
+    45.0
   ],
   "validation_status": "WARN",
   "validation": {
