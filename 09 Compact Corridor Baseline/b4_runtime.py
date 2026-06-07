@@ -4283,6 +4283,113 @@ class B4RuntimeController:
             raise B4RuntimeError(f"tls_duration_set_failed:{tls_id}") from exc
 
 
+def ev_signal_link_map(
+    net_file: Path = B04_NET,
+    route_xml: Path = B04_FIRETRUCK_ROUTE_XML,
+) -> dict[str, list[dict[str, Any]]]:
+    """Map each on-route TLS to the EV movements it controls, with stop-line geo.
+
+    Returns ``{tls_id: [{"link": int, "lat": float, "lon": float}, ...]}`` — one
+    entry per consecutive route edge pair the EV traverses under that TLS. One
+    runtime TLS can control SEVERAL on-route stop-lines (e.g. a ``joinedS_…``
+    junction the route passes through twice); recording each link + its stop-line
+    position lets the dumper emit a per-movement colour and the visualization
+    match each geojson light to the right movement instead of dropping it.
+    """
+    import sumolib  # local import; only needed for the dump path
+
+    net = sumolib.net.readNet(str(net_file))
+    root = ET.parse(str(route_xml)).getroot()
+    route_el = root.find(".//route")
+    edges = route_el.get("edges").split() if route_el is not None else []
+    link_map: dict[str, list[dict[str, Any]]] = {}
+    for i in range(len(edges) - 1):
+        try:
+            e_from = net.getEdge(edges[i])
+        except Exception:
+            continue
+        to_id = edges[i + 1]
+        conn = None
+        conn_lane = None
+        for lane in e_from.getLanes():
+            for c in lane.getOutgoing():
+                if c.getTo().getID() == to_id:
+                    conn, conn_lane = c, lane
+                    break
+            if conn:
+                break
+        if conn is None:
+            continue
+        tls_id = conn.getTLSID()
+        link = conn.getTLLinkIndex()
+        if not tls_id or link is None or link < 0:
+            continue
+        x, y = conn_lane.getShape()[-1]  # stop-line end of the EV's lane
+        lon, lat = net.convertXY2LonLat(x, y)
+        entries = link_map.setdefault(tls_id, [])
+        if not any(e["link"] == link for e in entries):
+            entries.append({"link": link, "lat": round(lat, 6), "lon": round(lon, 6)})
+    return link_map
+
+
+# SUMO RYG state char -> visualization state. Yellow is its own colour; the EV
+# faces 'G'/'g' (green, with/without priority) or 'r'/'R' (red).
+def _ryg_to_state(ch: str) -> str:
+    if ch in ("G", "g"):
+        return "green"
+    if ch in ("y", "Y"):
+        return "yellow"
+    return "red"  # 'r', 'R', 'o', anything else => not-go
+
+
+class TlsStateDumper:
+    """Record the EV-facing signal colour of every on-route MOVEMENT each step.
+
+    Writes change-compressed rows ``time,tls_id,link_index,lat,lon,ryg_char,
+    state`` so the visualization can replay the real per-light timeline. The unit
+    is (tls_id, link_index), not just tls_id: one runtime TLS can control several
+    on-route stop-lines, and each must drive its own geojson icon (otherwise the
+    extra stop-lines, e.g. a joinedS_ junction the route crosses twice, show no
+    signal at all). A row is emitted only when that movement's colour flips.
+    """
+
+    def __init__(self, traci: Any, link_map: dict[str, list[dict[str, Any]]], out_path: Path):
+        self.traci = traci
+        self.out_path = Path(out_path)
+        self._last: dict[tuple[str, int], str] = {}
+        self._rows: list[tuple[float, str, int, float, float, str, str]] = []
+        # Resolve which TLS ids actually exist in this run once.
+        try:
+            live = set(traci.trafficlight.getIDList())
+        except Exception:
+            live = set()
+        self._active = {tid: entries for tid, entries in link_map.items() if tid in live}
+
+    def step(self, now: float) -> None:
+        for tid, entries in self._active.items():
+            try:
+                state = self.traci.trafficlight.getRedYellowGreenState(tid)
+            except Exception:
+                continue
+            for e in entries:
+                link = e["link"]
+                if link >= len(state):
+                    continue
+                ch = state[link]
+                viz = _ryg_to_state(ch)
+                key = (tid, link)
+                if self._last.get(key) != viz:
+                    self._rows.append((round(now, 1), tid, link, e["lat"], e["lon"], ch, viz))
+                    self._last[key] = viz
+
+    def write(self) -> None:
+        self.out_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.out_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["time", "tls_id", "link_index", "lat", "lon", "ryg_char", "state"])
+            writer.writerows(self._rows)
+
+
 def run_b4_traci_loop(
     traci: Any,
     stage1: B4Stage1Inputs | None = None,
@@ -4290,6 +4397,7 @@ def run_b4_traci_loop(
     repeat_id: int = 1,
     params: B4MvpParams | None = None,
     phase_config: B4RuntimePhaseConfig | None = None,
+    tls_dump_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], B4ControllerStats, B4RuntimeMonitor]:
     stage1 = stage1 or B4Stage1Inputs.load()
     phase_config = phase_config or B4RuntimePhaseConfig.bo_smoke()
@@ -4303,16 +4411,22 @@ def run_b4_traci_loop(
         stage3_measurement_scale=phase_config.stage3_measurement_scale,
     )
     monitor = B4RuntimeMonitor(traci=traci, stage1=stage1, config=phase_config, run_id=run_id, repeat_id=repeat_id, mode=B4_MODE)
+    dumper = TlsStateDumper(traci, ev_signal_link_map(), tls_dump_path) if tls_dump_path else None
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         events = controller.step()
         monitor.update_signal_context(events)
-        monitor_events, should_stop = monitor.observe(float(traci.simulation.getTime()), controller.ev_state())
+        now = float(traci.simulation.getTime())
+        if dumper is not None:
+            dumper.step(now)
+        monitor_events, should_stop = monitor.observe(now, controller.ev_state())
         for event in monitor_events:
             controller.events.append(event)
             controller.stats.signal_event_count += 1
         if should_stop:
             break
+    if dumper is not None:
+        dumper.write()
     return controller.events, controller.stats, monitor
 
 
@@ -4322,14 +4436,18 @@ def run_b04_traci_loop(
     run_id: str = "",
     repeat_id: int = 1,
     phase_config: B4RuntimePhaseConfig | None = None,
+    tls_dump_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], B4RuntimeMonitor]:
     stage1 = stage1 or B4Stage1Inputs.load()
     phase_config = phase_config or B4RuntimePhaseConfig.bo_smoke()
     monitor = B4RuntimeMonitor(traci=traci, stage1=stage1, config=phase_config, run_id=run_id, repeat_id=repeat_id, mode=B04_MODE)
+    dumper = TlsStateDumper(traci, ev_signal_link_map(), tls_dump_path) if tls_dump_path else None
     events: list[dict[str, Any]] = []
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         now = float(traci.simulation.getTime())
+        if dumper is not None:
+            dumper.step(now)
         monitor_events, should_stop = monitor.observe(now, ev_state_from_traci(traci, stage1))
         events.extend(monitor_events)
         if should_stop:
@@ -4338,4 +4456,6 @@ def run_b04_traci_loop(
             monitor.set_termination("hard_max_sim_time", now)
             events.append(monitor.diagnostic_event(now, "early_termination", ev_state_from_traci(traci, stage1), termination_reason="hard_max_sim_time"))
             break
+    if dumper is not None:
+        dumper.write()
     return events, monitor

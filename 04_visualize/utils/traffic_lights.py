@@ -100,6 +100,85 @@ def project_to_route(tls: dict[str, Any], emergency: list[dict[str, Any]]) -> tu
     return best_d, best_s
 
 
+# --- Real B4 control history (signal_events.csv) -------------------------------
+# action_type -> what it does to the EV-facing signal. The B4 runtime logs an
+# evaluation/control event row per decision; only a subset actually changes the
+# light. We translate those into a green/off timeline anchored on the light.
+CONTROL_GREEN_ACTIONS = {
+    "phase_change_target_green",   # switch the EV approach to green
+    "extend_target_green",         # hold the green longer for the EV
+    "return_to_target_green",      # come back to the EV green after a flush
+    "entry_hold_release",          # release the fire-station entry hold -> go
+}
+CONTROL_END_ACTIONS = {
+    "restore_previous_phase",      # control window done, hand back to baseline
+    "entry_hold",                  # holding (red) the entry until safe
+}
+# Flush actions briefly serve a cross/blocking movement; we treat them as a
+# short non-EV (red-ish) blip but keep them "controlled" so the icon stays lit.
+CONTROL_FLUSH_ACTIONS = {
+    "downstream_flush_same_tls",
+    "same_lane_blocker_flush",
+}
+CONTROL_ACTIONS = CONTROL_GREEN_ACTIONS | CONTROL_END_ACTIONS | CONTROL_FLUSH_ACTIONS
+
+
+def control_state_timeline(events: list[dict[str, Any]], anchor: float) -> list[list[Any]]:
+    """Build a [t_rel, state] timeline for ONE light from its real control events.
+
+    ``events`` are the signal_events.csv rows for a single tls_id (any order),
+    each a dict with ``time`` and ``action_type``. ``anchor`` is the emergency
+    departure time, so ``t_rel = time - anchor`` matches the animation clock.
+
+    State semantics:
+      * ``green`` while the B4 runtime is holding/extending the EV phase,
+      * ``red``   during a flush of a conflicting movement (still controlled),
+      * ``off``   before the first control event and after it is restored.
+    """
+    rows = sorted(
+        ((float(e["time"]) - anchor, e.get("action_type", "")) for e in events),
+        key=lambda r: r[0],
+    )
+    timeline: list[list[Any]] = []
+    last = None
+    for t_rel, action in rows:
+        if action in CONTROL_GREEN_ACTIONS:
+            state = STATE_GREEN
+        elif action in CONTROL_FLUSH_ACTIONS:
+            state = STATE_RED
+        elif action in CONTROL_END_ACTIONS:
+            # entry_hold is a red hold; restore_previous_phase ends control.
+            state = STATE_RED if action == "entry_hold" else STATE_OFF
+        else:
+            continue
+        if state != last:
+            timeline.append([round(t_rel, 2), state])
+            last = state
+    if not timeline:
+        return [[0.0, STATE_OFF]]
+    return timeline
+
+
+def tls_dump_timeline(events: list[dict[str, Any]], anchor: float) -> list[list[Any]]:
+    """Build a [t_rel, state] timeline from a real per-step TLS state dump.
+
+    ``events`` are tls_states.csv rows for ONE light: dicts with ``time`` and a
+    pre-resolved ``state`` (green/red/yellow = the EV-facing signal colour SUMO
+    actually showed). We just re-anchor the time to the EV clock; the dump is
+    already change-compressed so no extra de-duplication is needed.
+    """
+    rows = sorted(
+        ((float(e["time"]) - anchor, e.get("state", STATE_OFF)) for e in events),
+        key=lambda r: r[0],
+    )
+    timeline = [[round(t, 2), s] for t, s in rows]
+    if not timeline or timeline[0][0] > 0:
+        # show the first known colour from t=0 so the icon is never blank at start
+        first = timeline[0][1] if timeline else STATE_OFF
+        timeline.insert(0, [0.0, first])
+    return timeline
+
+
 def approximate_state_timeline(
     emergency: list[dict[str, Any]],
     s_tls: float,
@@ -138,22 +217,79 @@ def augment_doc_with_tls(
     approach_m: float = APPROACH_M,
     exit_m: float = EXIT_M,
     stop_speed_kmh: float = STOP_SPEED_KMH,
+    control_history: dict[str, dict[str, Any]] | None = None,
+    control_modes: tuple[str, ...] = (),
+    control_match_m: float = 80.0,
 ) -> dict[str, Any]:
     """Inject ``traffic_lights`` (positions) and per-mode ``tls_states`` into doc.
 
     ``doc`` must already contain ``modes[*].emergency`` (with ``dist_m`` and
     ``speed_kmh``). Lights farther than ``route_buffer_m`` from every mode's route
     are dropped. Returns a small summary for logging.
+
+    If ``control_history`` is given, the listed ``control_modes`` use the REAL B4
+    control timeline (from signal_events.csv) instead of the motion proxy. The
+    history is keyed by the runtime tls_id and carries its own ``lat``/``lon`` so
+    it can be matched to the on-route geojson lights by nearest position (the two
+    id namespaces differ: ``joinedS_…`` runtime TLS vs ``cluster_…`` geojson
+    junctions). Lights without a control match fall back to the proxy.
     """
     points = load_tls_points(geojson_path)
     modes = list(doc.get("modes", {}).keys())
+    control_history = control_history or {}
+
+    # Normalise to per-mode history: {mode: {runtime_tls_id: info}}.
+    # Back-compat: a flat {tls_id: info} + control_modes applies to those modes.
+    if control_history and not all(isinstance(v, dict) and "events" not in v for v in control_history.values()):
+        per_mode_history = {m: control_history for m in control_modes}
+    else:
+        per_mode_history = control_history  # already {mode: {...}}
+
+    def match_to_geo(history: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        """Position-match each runtime TLS to its nearest on-route geojson light."""
+        by_geo: dict[str, dict[str, Any]] = {}
+        for rt_id, info in history.items():
+            clat, clon = info.get("lat"), info.get("lon")
+            if clat is None or clon is None:
+                continue
+            best_id, best_d = None, math.inf
+            for tls in points:
+                d = meters_between(clat, clon, tls["lat"], tls["lon"])
+                if d < best_d:
+                    best_d, best_id = d, tls["tls_id"]
+            if best_id is not None and best_d <= control_match_m:
+                prev = by_geo.get(best_id)
+                if prev is None or best_d < prev["dist_m"]:
+                    by_geo[best_id] = {
+                        "events": info.get("events", []),
+                        "kind": info.get("kind", "control_events"),
+                        "runtime_tls_id": rt_id,
+                        "dist_m": round(best_d, 1),
+                    }
+        return by_geo
+
+    # geojson_tls_id -> matched control info, per mode.
+    control_by_geo: dict[str, dict[str, dict[str, Any]]] = {
+        m: match_to_geo(per_mode_history.get(m, {})) for m in modes
+    }
+
+    # In real-dump mode, lights with no dump match are NOT signal controllers in
+    # the sim (node-only 'traffic_light' artifacts or junctions merged into an
+    # adjacent TLS). Show them as off rather than the motion proxy, which would
+    # reintroduce the EV-speed-shadow flicker the dump exists to remove.
+    dump_mode_per: dict[str, bool] = {
+        m: any(info.get("kind") == "tls_dump" for info in control_by_geo[m].values())
+        for m in modes
+    }
 
     kept: list[dict[str, Any]] = []
     states: dict[str, dict[str, list[list[Any]]]] = {m: {} for m in modes}
+    control_used: dict[str, int] = {m: 0 for m in modes}
 
     for tls in points:
         s_m: dict[str, float | None] = {}
         near_any = False
+        any_controlled = False
         for m in modes:
             emergency = doc["modes"][m].get("emergency", [])
             if not emergency:
@@ -163,20 +299,37 @@ def augment_doc_with_tls(
             if d_min <= route_buffer_m:
                 s_m[m] = round(s, 2)
                 near_any = True
-                states[m][tls["tls_id"]] = approximate_state_timeline(
-                    emergency, s,
-                    approach_m=approach_m, exit_m=exit_m, stop_speed_kmh=stop_speed_kmh,
-                )
+                ctl = control_by_geo[m].get(tls["tls_id"])
+                if ctl is not None:
+                    any_controlled = True
+                    anchor = doc["modes"][m].get("depart_time_sec", 0.0)
+                    if ctl.get("kind") == "tls_dump":
+                        states[m][tls["tls_id"]] = tls_dump_timeline(ctl["events"], anchor)
+                    else:
+                        states[m][tls["tls_id"]] = control_state_timeline(ctl["events"], anchor)
+                    control_used[m] += 1
+                elif dump_mode_per[m]:
+                    states[m][tls["tls_id"]] = [[0.0, STATE_OFF]]
+                else:
+                    states[m][tls["tls_id"]] = approximate_state_timeline(
+                        emergency, s,
+                        approach_m=approach_m, exit_m=exit_m, stop_speed_kmh=stop_speed_kmh,
+                    )
             else:
                 s_m[m] = None
         if near_any:
-            kept.append({**tls, "s_m": s_m})
+            kept.append({**tls, "s_m": s_m, "controlled": any_controlled})
 
     doc["traffic_lights"] = kept
     for m in modes:
         doc["modes"][m]["tls_states"] = states[m]
+    has_dump = any(
+        info.get("kind") == "tls_dump"
+        for mode_map in control_by_geo.values() for info in mode_map.values()
+    )
     doc.setdefault("meta", {})["tls_approx"] = {
-        "method": "motion_speed_proxy",
+        "method": "real_tls_dump" if has_dump else ("b4_control_history" if control_history else "motion_speed_proxy"),
+        "control_matched": {m: len(control_by_geo[m]) for m in modes},
         "route_buffer_m": route_buffer_m,
         "approach_m": approach_m,
         "exit_m": exit_m,
@@ -187,4 +340,6 @@ def augment_doc_with_tls(
         "tls_total": len(points),
         "tls_kept": len(kept),
         "per_mode": {m: len(states[m]) for m in modes},
+        "control_used": control_used,
+        "control_matched": {m: len(control_by_geo[m]) for m in modes},
     }

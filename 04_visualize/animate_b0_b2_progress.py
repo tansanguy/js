@@ -10,6 +10,7 @@ Run with no args to use the mock fixtures, or pass real run directories:
 """
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -24,8 +25,93 @@ from extract_emergency_fcd import (
 from config import SEOUL_STATION_ROUTE_ID, SEOUL_STATION_ROUTE_LENGTH_M
 from utils import parse_fcd
 from utils.animation_builder import build_animated_dual_map_html
-from utils.traffic_lights import augment_doc_with_tls, DEFAULT_ROUTE_TLS_GEOJSON
+from utils.traffic_lights import (
+    augment_doc_with_tls,
+    DEFAULT_ROUTE_TLS_GEOJSON,
+    CONTROL_ACTIONS,
+)
 from utils.road_network import augment_doc_with_lanes, DEFAULT_LANES_GEOJSON
+
+
+def build_control_history(signals_csv: Path, net_file: Path) -> dict[str, dict[str, object]]:
+    """Group real B4 control events by runtime tls_id, with net coordinates.
+
+    Returns ``{tls_id: {"events": [{"time","action_type"}...], "lat","lon"}}``
+    for the lights the B4 runtime actually controlled (CONTROL_ACTIONS rows).
+    The coordinates come from the SUMO net (the runtime tls_id is a TLS id there)
+    so traffic_lights.augment_doc_with_tls can position-match them onto the
+    on-route geojson lights, whose ids live in a different namespace.
+    """
+    if not signals_csv or not Path(signals_csv).exists():
+        return {}
+    grouped: dict[str, list[dict[str, str]]] = {}
+    with Path(signals_csv).open("r", encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("action_type") not in CONTROL_ACTIONS:
+                continue
+            tid = (row.get("tls_id") or "").strip()
+            if not tid:
+                continue
+            grouped.setdefault(tid, []).append(
+                {"time": row.get("time", ""), "action_type": row.get("action_type", "")}
+            )
+    if not grouped:
+        return {}
+
+    import sumolib  # local import; only needed for the real-history path
+
+    net = sumolib.net.readNet(str(net_file))
+    history: dict[str, dict[str, object]] = {}
+    for tid, events in grouped.items():
+        try:
+            tls = net.getTLS(tid)
+        except KeyError:
+            continue
+        xs, ys = [], []
+        for conn in tls.getConnections():
+            x, y = conn[0].getShape()[-1]  # stop-line end of each controlled lane
+            xs.append(x)
+            ys.append(y)
+        if not xs:
+            continue
+        lon, lat = net.convertXY2LonLat(sum(xs) / len(xs), sum(ys) / len(ys))
+        history[tid] = {"events": events, "lat": round(lat, 6), "lon": round(lon, 6)}
+    return history
+
+
+def build_tls_dump_history(tls_csv: Path, net_file: Path | None = None) -> dict[str, dict[str, object]]:
+    """Load the real per-step TLS state dump (tls_states.csv).
+
+    Returns ``{key: {"events": [{"time","state"}...], "kind": "tls_dump",
+    "lat","lon"}}`` — the authoritative EV-facing signal-colour timeline for every
+    on-route MOVEMENT the simulation recorded. The unit is (tls_id, link_index),
+    not tls_id, because one runtime TLS can control several on-route stop-lines
+    (a junction the route crosses twice); each gets its own stop-line lat/lon
+    (recorded by the dumper) so it matches the correct geojson icon downstream.
+    ``net_file`` is unused now (the dump carries coordinates) but kept for
+    signature stability.
+    """
+    if not tls_csv or not Path(tls_csv).exists():
+        return {}
+    grouped: dict[str, dict[str, object]] = {}
+    with Path(tls_csv).open("r", encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            tid = (row.get("tls_id") or "").strip()
+            if not tid:
+                continue
+            link = (row.get("link_index") or "0").strip()
+            key = f"{tid}#{link}"
+            entry = grouped.get(key)
+            if entry is None:
+                try:
+                    lat = float(row.get("lat", "")); lon = float(row.get("lon", ""))
+                except (TypeError, ValueError):
+                    lat = lon = None
+                entry = {"events": [], "kind": "tls_dump", "lat": lat, "lon": lon}
+                grouped[key] = entry
+            entry["events"].append({"time": row.get("time", ""), "state": row.get("state", "")})
+    # Drop any movement we could not geolocate (no coords in the dump).
+    return {k: v for k, v in grouped.items() if v.get("lat") is not None}
 
 
 def main() -> None:
@@ -39,10 +125,31 @@ def main() -> None:
                              "(authoritative corridor subset from export_route_tls.py)")
     parser.add_argument("--route-buffer-m", type=float, default=60.0)
     parser.add_argument("--stop-speed-kmh", type=float, default=5.0)
+    parser.add_argument("--approach-m", type=float, default=45.0,
+                        help="Activate a TLS icon when the EV is within this many "
+                             "metres ahead of it. Increase to light up the next / "
+                             "next-next signals the B4 algorithm controls downstream.")
+    parser.add_argument("--exit-m", type=float, default=15.0,
+                        help="Keep a TLS icon active until the EV is this many "
+                             "metres past it.")
     parser.add_argument("--edges-geojson", type=Path, default=DEFAULT_LANES_GEOJSON,
                         help="Per-lane geometry drawn as parallel lanes under the vehicles")
     parser.add_argument("--lane-buffer-m", type=float, default=200.0,
                         help="Keep lanes within this distance of the route")
+    parser.add_argument("--net-file", type=Path, default=None,
+                        help="SUMO net for the B2/B4 run. Required with "
+                             "--b2-control-history to position-match runtime TLS ids.")
+    parser.add_argument("--b2-control-history", action="store_true",
+                        help="Use the REAL B4 control timeline from --b2-signals for "
+                             "the B2 (B4) lights instead of the motion proxy. The B0 "
+                             "(B04) lights always use the proxy (no control there).")
+    parser.add_argument("--b0-tls-states", type=Path, default=None,
+                        help="Real per-step TLS state dump (tls_states.csv) for the "
+                             "B0/B04 run. When given, ALL on-route lights replay the "
+                             "actual SUMO signal colours instead of the motion proxy.")
+    parser.add_argument("--b2-tls-states", type=Path, default=None,
+                        help="Real per-step TLS state dump (tls_states.csv) for the "
+                             "B2/B4 run. Authoritative signal timeline for every light.")
     parser.add_argument("--json-output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_animation.json")
     parser.add_argument("--output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_progress_animation.html")
     parser.add_argument(
@@ -70,9 +177,28 @@ def main() -> None:
         },
         "modes": {"B0": b0_payload, "B2": b2_payload},
     }
+    # Real per-step TLS state dump (preferred) -> per-mode history.
+    # Falls back to B4 control-event history, then to the motion proxy.
+    control_history: dict[str, dict[str, object]] = {}
+    control_modes: tuple[str, ...] = ()
+    if args.b0_tls_states or args.b2_tls_states:
+        if args.net_file is None:
+            parser.error("--b0-tls-states/--b2-tls-states require --net-file")
+        control_history = {
+            "B0": build_tls_dump_history(args.b0_tls_states, args.net_file) if args.b0_tls_states else {},
+            "B2": build_tls_dump_history(args.b2_tls_states, args.net_file) if args.b2_tls_states else {},
+        }
+    elif args.b2_control_history:
+        if args.net_file is None:
+            parser.error("--b2-control-history requires --net-file")
+        control_history = build_control_history(args.b2_signals, args.net_file)
+        control_modes = ("B2",)
+
     tls_summary = augment_doc_with_tls(
         doc, args.tls_geojson,
         route_buffer_m=args.route_buffer_m, stop_speed_kmh=args.stop_speed_kmh,
+        approach_m=args.approach_m, exit_m=args.exit_m,
+        control_history=control_history, control_modes=control_modes,
     )
     lanes_summary = augment_doc_with_lanes(doc, args.edges_geojson, buffer_m=args.lane_buffer_m)
 
@@ -88,6 +214,9 @@ def main() -> None:
               f"avg={p['avg_speed_kmh']} km/h, bg_snaps={len(p['background'])}{extra}")
     print(f"  TLS: {tls_summary['tls_kept']}/{tls_summary['tls_total']} on route, "
           f"states {tls_summary['per_mode']}")
+    if args.b0_tls_states or args.b2_tls_states or args.b2_control_history:
+        print(f"  signal source: {doc['meta']['tls_approx']['method']}, "
+              f"matched {tls_summary['control_matched']}, used {tls_summary['control_used']}")
     print(f"  lanes: {lanes_summary['lanes_kept']} road edges near route")
 
 

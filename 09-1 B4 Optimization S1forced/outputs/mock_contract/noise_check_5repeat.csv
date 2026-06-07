@@ -1,0 +1,6 @@
+repeat,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,final_status
+1,noise_reference_theta,21,80,32,0.0,0.75,184.67,116.82,1963.52,PASS
+2,noise_reference_theta,21,80,32,0.0,0.75,184.75,116.84,1964.34,PASS
+3,noise_reference_theta,21,80,32,0.0,0.75,180.56,115.80,1921.40,PASS
+4,noise_reference_theta,21,80,32,0.0,0.75,180.03,115.66,1915.96,PASS
+5,noise_reference_theta,21,80,32,0.0,0.75,184.67,116.82,1963.52,PASS

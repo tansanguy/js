@@ -1,0 +1,16 @@
+{
+  "schema": "compact_v9_B4_noise_check.v1",
+  "theta": {
+    "t_lead": 21,
+    "delta_T_thr": 80,
+    "G_ext": 32,
+    "Q_ratio": 0.0,
+    "tau": 0.75,
+    "parameter_id": "noise_reference_theta"
+  },
+  "repeat_count": 5,
+  "score_mean": 1945.748,
+  "score_std": 24.786592,
+  "score_range": 48.38,
+  "policy_note": "This artifact records the actual 5-repeat noise check. It must not be described as a 30-repeat experiment."
+}

@@ -1,0 +1,6 @@
+weight_ratio,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,is_knee
+1:1,bo_r04_001_tl55_dt157_ge36_qr82_tau85,55,157,36,0.82,0.85,60.00,117.04,177.04,True
+5:1,bo_r04_001_tl55_dt157_ge36_qr82_tau85,55,157,36,0.82,0.85,60.00,117.04,417.04,False
+10:1,bo_r04_001_tl55_dt157_ge36_qr82_tau85,55,157,36,0.82,0.85,60.00,117.04,717.04,False
+15:1,bo_r04_001_tl55_dt157_ge36_qr82_tau85,55,157,36,0.82,0.85,60.00,117.04,1017.04,False
+20:1,bo_r04_001_tl55_dt157_ge36_qr82_tau85,55,157,36,0.82,0.85,60.00,117.04,1317.04,False
