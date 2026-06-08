@@ -220,6 +220,8 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "downstream_index",
     "gate_target",
     "tE_gate_target",
+    "tS_gate_sec",
+    "tE_gate_effective_sec",
     "delta_T_thr",
     "gate_result",
     "ge",
@@ -2759,6 +2761,8 @@ def event_row(
         "downstream_index": stage3_context.get("downstream_index", ""),
         "gate_target": stage3_context.get("gate_target", ""),
         "tE_gate_target": stage3_context.get("tE_gate_target", ""),
+        "tS_gate_sec": stage3_context.get("tS_gate_sec", ""),
+        "tE_gate_effective_sec": stage3_context.get("tE_gate_effective_sec", ""),
         "delta_T_thr": stage3_context.get("delta_T_thr", ""),
         "gate_result": stage3_context.get("gate_result", ""),
         "ge": stage3_context.get("ge", ""),
@@ -3095,6 +3099,19 @@ class B4RuntimeController:
             return ""
         return round_float(max(float(gate_distance), 0.0) / TA_EV_SPEED_MPS)
 
+    def stage3_gate_effective_tE(self, plan: Stage3CasePlan, ev_distances: dict[str, float | str]) -> tuple[float | str, float | str]:
+        gate_t_e = self.stage3_gate_tE(plan, ev_distances)
+        if gate_t_e == "":
+            return "", ""
+        gate_movement = plan.gate_metric.movement
+        transition_loss = self.stage2_effective_transition_loss_sec(
+            self.traci.simulation.getTime(),
+            gate_movement.tls_id,
+            gate_movement.selected_green_phase,
+        )
+        effective_t_e = max(safe_float(gate_t_e, 0.0) - transition_loss, 0.0)
+        return round_float(effective_t_e), round_float(transition_loss)
+
     def stage3_ta_for_plan(
         self,
         plan: Stage3CasePlan,
@@ -3131,6 +3148,8 @@ class B4RuntimeController:
         metric: MovementRuntimeMetrics,
         ev_state: EVState,
         gate_tE: float | str,
+        gate_effective_tE: float | str,
+        gate_tS: float | str,
         gate_result: str,
         previous_phase: int | None,
         ta: TAProxyMetrics,
@@ -3162,6 +3181,8 @@ class B4RuntimeController:
             "downstream_index": plan.downstream_index,
             "gate_target": plan.gate_metric.movement.route_intersection_index,
             "tE_gate_target": gate_tE,
+            "tS_gate_sec": gate_tS,
+            "tE_gate_effective_sec": gate_effective_tE,
             "delta_T_thr": safe_float(getattr(self.params, "delta_T_thr", 0.0), 0.0),
             "gate_result": gate_result,
             "ge": round_float(elapsed_green),
@@ -3961,7 +3982,8 @@ class B4RuntimeController:
         active_tls_ids = {control.tls_id for control in self.active_controls.values()}
         for plan in plans:
             gate_tE = self.stage3_gate_tE(plan, ev_distances)
-            delta_gate_open = self.stage3_delta_gate_open(gate_tE)
+            gate_effective_tE, gate_tS = self.stage3_gate_effective_tE(plan, ev_distances)
+            delta_gate_open = self.stage3_delta_gate_open(gate_effective_tE)
             for metric in plan.processing_metrics:
                 movement = metric.movement
                 if len(self.active_controls) >= self.stage1.max_active_movements:
@@ -3992,6 +4014,8 @@ class B4RuntimeController:
                     metric=metric,
                     ev_state=ev_state,
                     gate_tE=gate_tE,
+                    gate_effective_tE=gate_effective_tE,
+                    gate_tS=gate_tS,
                     gate_result=gate_result,
                     previous_phase=previous_phase,
                     ta=ta,
@@ -4077,6 +4101,8 @@ class B4RuntimeController:
                         metric=metric,
                         ev_state=ev_state,
                         gate_tE=gate_tE,
+                        gate_effective_tE=gate_effective_tE,
+                        gate_tS=gate_tS,
                         gate_result=gate_result,
                         previous_phase=previous_phase,
                         ta=ta,
@@ -4154,6 +4180,8 @@ class B4RuntimeController:
                     metric=metric,
                     ev_state=ev_state,
                     gate_tE=gate_tE,
+                    gate_effective_tE=gate_effective_tE,
+                    gate_tS=gate_tS,
                     gate_result=gate_result,
                     previous_phase=previous_phase,
                     ta=ta,

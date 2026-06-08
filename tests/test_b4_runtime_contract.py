@@ -1610,6 +1610,40 @@ class B4RuntimeContractTest(unittest.TestCase):
         finally:
             self.runtime.movement_runtime_metrics = original
 
+    def test_stage3_delta_gate_uses_clearance_aware_effective_eta(self):
+        movement = self.first_stage3_movement()
+        metric = self.metric(movement)
+        plan = self.runtime.Stage3CasePlan(
+            case_type="caseA",
+            source_metric=metric,
+            processing_metrics=(metric,),
+            gate_metric=metric,
+            processing_order=str(movement.route_intersection_index),
+        )
+        traci = FakeTraci()
+        traci.trafficlight.phases[movement.tls_id] = movement.selected_red_phase
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(delta_T_thr=24.0),
+            run_id="contract",
+        )
+        transition_loss = controller.stage2_effective_transition_loss_sec(
+            traci.simulation.getTime(),
+            movement.tls_id,
+            movement.selected_green_phase,
+        )
+        raw_t_e = transition_loss + 20.0
+        ev_distances = {movement.movement_id: raw_t_e * self.runtime.TA_EV_SPEED_MPS}
+
+        effective_t_e, gate_t_s = controller.stage3_gate_effective_tE(plan, ev_distances)
+
+        self.assertGreater(raw_t_e, 24.0)
+        self.assertEqual(gate_t_s, self.runtime.round_float(transition_loss))
+        self.assertAlmostEqual(float(effective_t_e), 20.0)
+        self.assertFalse(controller.stage3_delta_gate_open(raw_t_e))
+        self.assertTrue(controller.stage3_delta_gate_open(effective_t_e))
+
     def test_stage3_skips_tls_owned_by_stage2_hold(self):
         base_movement = self.first_stage3_movement()
         merge_owned_movement = replace(base_movement, tls_id=self.stage1.departure.merge_control_tls)
