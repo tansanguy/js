@@ -625,7 +625,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertFalse(controller.stage2_hold_clearance_pending)
         self.assertEqual(controller.stats.stage2_hold_count, 1)
 
-    def test_stage2_can_start_new_hold_after_departure_before_merge(self):
+    def test_stage2_does_not_start_new_hold_after_departure_before_merge(self):
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -658,13 +658,8 @@ class B4RuntimeContractTest(unittest.TestCase):
         traci.simulation.time = self.stage1.ev_depart_sec + 1.0
         events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
 
-        self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["action_type"], "entry_hold_clearance")
-        self.assertEqual(events[0]["safety_status"], "REQUIRE_CLEARANCE")
-        self.assertEqual(events[0]["EV_NotDeparted"], False)
-        self.assertEqual(events[0]["EV_Departed"], True)
-        self.assertEqual(events[0]["EV_MergePassed"], False)
-        self.assertTrue(controller.stage2_hold_clearance_pending)
+        self.assertEqual(events, [])
+        self.assertFalse(controller.stage2_hold_clearance_pending)
         self.assertFalse(controller.stage2_hold_active)
 
     def test_stage2_does_not_start_new_hold_after_merge_pass(self):

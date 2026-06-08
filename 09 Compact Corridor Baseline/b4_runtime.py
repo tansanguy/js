@@ -3375,6 +3375,8 @@ class B4RuntimeController:
         dispatch_detect_time = self.stage1.ev_depart_sec - params.t_dispatch_delay_sec
         if now < dispatch_detect_time:
             return False
+        if now >= self.stage1.ev_depart_sec:
+            return False
         if bool(stage2_proxy.get("EV_MergePassed", False)):
             return False
         if not (bool(stage2_proxy.get("EV_NotDeparted", False)) or bool(stage2_proxy.get("EV_Departed", False))):
