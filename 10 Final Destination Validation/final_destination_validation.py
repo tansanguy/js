@@ -85,6 +85,7 @@ THETA_FIELDS = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
 PHASE_SCREENING = "screening"
 PHASE_FINAL = "final"
 PHASE_ALL = "all"
+STAGE1_REBUILD_POLICY = "per_repeat_for_10_final_validation"
 
 
 def _manifest_path(key: str, fallback: Path) -> Path:
@@ -565,6 +566,17 @@ def deterministic_departures(
     return departures
 
 
+def repeat_artifact_paths(candidate: dict[str, Any], run_root: Path, repeat_idx: int) -> dict[str, Path]:
+    route_id = str(candidate["route_id"])
+    repeat_text = f"repeat_{repeat_idx:03d}"
+    route_root = run_root / route_id / "routes"
+    return {
+        "route_xml": route_root / f"firetruck_depart_{repeat_idx:03d}.rou.xml",
+        "route_csv": route_root / f"firetruck_depart_{repeat_idx:03d}.csv",
+        "stage1_dir": run_root / route_id / "stage1" / repeat_text,
+    }
+
+
 def planned_task_rows(
     candidates: list[dict[str, Any]],
     departures_by_route: dict[str, list[float]],
@@ -590,6 +602,7 @@ def planned_task_rows(
         })
         for repeat_idx, depart in enumerate(departures_by_route[route_id], start=1):
             repeat_text = f"repeat_{repeat_idx:03d}"
+            repeat_paths = repeat_artifact_paths(candidate, run_root, repeat_idx)
             for mode in [B04_MODE, B4_MODE]:
                 rows.append({
                     "phase": phase,
@@ -599,8 +612,8 @@ def planned_task_rows(
                     "repeat_id": repeat_text,
                     "emergency_depart": depart,
                     "run_dir": rel(run_root / route_id / mode / repeat_text),
-                    "route_xml": route_xml,
-                    "stage1_dir": stage1_dir,
+                    "route_xml": rel(repeat_paths["route_xml"]),
+                    "stage1_dir": rel(repeat_paths["stage1_dir"]),
                 })
     return rows
 
@@ -967,42 +980,60 @@ def configure_stage1_source(stage1_module: Any, args: argparse.Namespace) -> dic
     }
 
 
-def build_route_stage1(args: argparse.Namespace, candidate: dict[str, Any]) -> dict[str, Any]:
+def build_route_stage1(
+    args: argparse.Namespace,
+    candidate: dict[str, Any],
+    *,
+    route_xml: Path | None = None,
+    route_csv: Path | None = None,
+    stage1_dir: Path | None = None,
+    depart: float = 600.0,
+    repeat_id: str | int = "reference",
+    phase: str = "",
+) -> dict[str, Any]:
     stage1_module = load_stage1_module()
     source_provenance = configure_stage1_source(stage1_module, args)
-    write_firetruck_route_artifacts(candidate, Path(candidate["route_xml"]), Path(candidate["route_csv"]), 600.0)
+    route_xml = Path(route_xml or candidate["route_xml"])
+    route_csv = Path(route_csv or candidate["route_csv"])
+    stage1_dir = Path(stage1_dir or candidate["stage1_dir"])
+    write_firetruck_route_artifacts(candidate, route_xml, route_csv, depart)
     summary = stage1_module.build_b4_stage1(
-        stage1_dir=Path(candidate["stage1_dir"]),
-        firetruck_route_xml=Path(candidate["route_xml"]),
-        firetruck_route_csv=Path(candidate["route_csv"]),
-        review_html=Path(candidate["stage1_dir"]) / "b4_stage1_review.html",
+        stage1_dir=stage1_dir,
+        firetruck_route_xml=route_xml,
+        firetruck_route_csv=route_csv,
+        review_html=stage1_dir / "b4_stage1_review.html",
     )
-    summary_path = Path(candidate["stage1_dir"]) / "b4_stage1_summary.json"
-    runtime_index_path = Path(candidate["stage1_dir"]) / "b4_runtime_index.json"
+    summary_path = stage1_dir / "b4_stage1_summary.json"
+    runtime_index_path = stage1_dir / "b4_runtime_index.json"
     for path in [summary_path, runtime_index_path]:
         payload = read_json(path)
         payload["allow_runtime_input_override"] = True
+        payload["stage1_rebuild_policy"] = STAGE1_REBUILD_POLICY
         payload["runtime_input_provenance"] = {
             **source_provenance,
             "net_file": rel(args.net),
             "background_route": rel(args.background_route),
-            "route_xml": rel(Path(candidate["route_xml"])),
-            "route_csv": rel(Path(candidate["route_csv"])),
+            "route_xml": rel(route_xml),
+            "route_csv": rel(route_csv),
+            "ev_depart_sec": float(depart),
+            "repeat_id": str(repeat_id),
+            "phase": phase,
+            "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
         }
         if path == summary_path:
             artifacts = dict(payload.get("input_artifacts", {}))
             artifacts.update({
                 "b04_net": rel(args.net),
                 "background_route": rel(args.background_route),
-                "firetruck_route_xml": rel(Path(candidate["route_xml"])),
-                "firetruck_route_csv": rel(Path(candidate["route_csv"])),
+                "firetruck_route_xml": rel(route_xml),
+                "firetruck_route_csv": rel(route_csv),
                 "primary_run_summary": source_provenance["primary_run_summary"],
                 "segment_speed_recall": source_provenance["segment_speed_recall"],
                 "b4_queue_measurement_diagnostics": source_provenance["queue_measurement_diagnostics"],
             })
             payload["input_artifacts"] = artifacts
         write_json(path, payload)
-    return summary
+    return read_json(summary_path) if summary_path.is_file() else summary
 
 
 def phase_for_depart(base_phase: B4RuntimePhaseConfig, depart: float) -> B4RuntimePhaseConfig:
@@ -1049,9 +1080,22 @@ def run_candidate(
     include_reference: bool = True,
     repeat_workers: int = 1,
 ) -> list[dict[str, Any]]:
-    stage1_summary = build_route_stage1(args, candidate)
+    phase = run_root.name
     base_route_xml = Path(candidate["route_xml"])
     stage1_dir = Path(candidate["stage1_dir"])
+    if include_reference or not (stage1_dir / "b4_runtime_index.json").is_file():
+        stage1_summary = build_route_stage1(
+            args,
+            candidate,
+            route_xml=base_route_xml,
+            route_csv=Path(candidate["route_csv"]),
+            stage1_dir=stage1_dir,
+            depart=600.0,
+            repeat_id="reference",
+            phase=phase,
+        )
+    else:
+        stage1_summary = read_json(stage1_dir / "b4_stage1_summary.json")
     base_phase = B4RuntimePhaseConfig.bo_smoke()
     if args.hard_max_sim_time is not None:
         base_phase = replace(base_phase, hard_max_sim_time=float(args.hard_max_sim_time))
@@ -1080,7 +1124,9 @@ def run_candidate(
             background_route=Path(""),
             firetruck_route=base_route_xml,
         )
-        rows.append(enrich_row(b004_result_row(b004_task, stage1, free_reference, base_phase), candidate, ""))
+        b004_row = b004_result_row(b004_task, stage1, free_reference, base_phase)
+        b004_row["stage1_dir"] = rel(stage1_dir)
+        rows.append(enrich_row(b004_row, candidate, ""))
     repeat_jobs = [(repeat_idx, depart) for repeat_idx, depart in enumerate(departures, start=repeat_offset + 1)]
     if repeat_workers > 1 and len(repeat_jobs) > 1:
         ensure_worker_imports()
@@ -1095,7 +1141,6 @@ def run_candidate(
                         depart,
                         params,
                         run_root,
-                        stage1_dir,
                         free_reference,
                         free_rows_by_id,
                         base_phase,
@@ -1116,7 +1161,6 @@ def run_candidate(
                     depart,
                     params,
                     run_root,
-                    stage1_dir,
                     free_reference,
                     free_rows_by_id,
                     base_phase,
@@ -1134,14 +1178,25 @@ def run_repeat_pair(
     depart: float,
     params: B4ThetaParams,
     run_root: Path,
-    stage1_dir: Path,
     free_reference: dict[str, Any],
     free_rows_by_id: dict[str, dict[str, str]],
     base_phase: B4RuntimePhaseConfig,
 ) -> list[dict[str, Any]]:
-    repeat_route_xml = run_root / candidate["route_id"] / "routes" / f"firetruck_depart_{repeat_idx:03d}.rou.xml"
-    write_firetruck_route_xml_artifact(candidate, repeat_route_xml, depart)
-    repeat_stage1 = B4Stage1Inputs.load(stage1_dir, route_xml=repeat_route_xml)
+    repeat_paths = repeat_artifact_paths(candidate, run_root, repeat_idx)
+    repeat_route_xml = repeat_paths["route_xml"]
+    repeat_route_csv = repeat_paths["route_csv"]
+    repeat_stage1_dir = repeat_paths["stage1_dir"]
+    build_route_stage1(
+        args,
+        candidate,
+        route_xml=repeat_route_xml,
+        route_csv=repeat_route_csv,
+        stage1_dir=repeat_stage1_dir,
+        depart=depart,
+        repeat_id=repeat_idx,
+        phase=run_root.name,
+    )
+    repeat_stage1 = B4Stage1Inputs.load(repeat_stage1_dir, route_xml=repeat_route_xml)
     phase_config = phase_for_depart(base_phase, depart)
     rows: list[dict[str, Any]] = []
     for mode in [B04_MODE, B4_MODE]:
@@ -1180,13 +1235,14 @@ def run_repeat_pair(
                 params=params,
                 emit_tls_states=getattr(args, "emit_tls_states", False),
             )
+        row["stage1_dir"] = rel(repeat_stage1_dir)
         rows.append(enrich_row(row, candidate, depart))
     return rows
 
 
-def run_repeat_pair_worker(payload: tuple[argparse.Namespace, dict[str, Any], int, float, B4ThetaParams, Path, Path, dict[str, Any], dict[str, dict[str, str]], B4RuntimePhaseConfig]) -> list[dict[str, Any]]:
-    args, candidate, repeat_idx, depart, params, run_root, stage1_dir, free_reference, free_rows_by_id, base_phase = payload
-    return run_repeat_pair(args, candidate, repeat_idx, depart, params, run_root, stage1_dir, free_reference, free_rows_by_id, base_phase)
+def run_repeat_pair_worker(payload: tuple[argparse.Namespace, dict[str, Any], int, float, B4ThetaParams, Path, dict[str, Any], dict[str, dict[str, str]], B4RuntimePhaseConfig]) -> list[dict[str, Any]]:
+    args, candidate, repeat_idx, depart, params, run_root, free_reference, free_rows_by_id, base_phase = payload
+    return run_repeat_pair(args, candidate, repeat_idx, depart, params, run_root, free_reference, free_rows_by_id, base_phase)
 
 
 def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path, int, bool, int]) -> dict[str, Any]:
@@ -1703,6 +1759,7 @@ def write_task_manifest(
             "task_count": len(task_manifest_rows),
             "depart_min": args.depart_min,
             "depart_max": args.depart_max,
+            "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
             "adaptive_repeats": {
                 "enabled_for_final_phase": not args.disable_adaptive_repeats,
                 "pilot_repeats": args.pilot_repeats,
@@ -2026,6 +2083,7 @@ def run_validation_phase(
         "run_id": args.run_id,
         "phase": phase,
         "selection": selected_candidates,
+        "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
         "routes": [
             {
                 key: candidate[key]

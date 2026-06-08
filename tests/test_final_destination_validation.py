@@ -91,6 +91,15 @@ class FinalDestinationValidationTest(unittest.TestCase):
         self.assertEqual(sum(row["mode"] == self.module.B04_MODE for row in rows), 30)
         self.assertEqual(sum(row["mode"] == self.module.B4_MODE for row in rows), 30)
         self.assertEqual({row["phase"] for row in rows}, {self.module.PHASE_FINAL})
+        repeat_rows = [row for row in rows if row["mode"] in {self.module.B04_MODE, self.module.B4_MODE}]
+        repeat_stage1_dirs = {row["stage1_dir"] for row in repeat_rows}
+        repeat_route_xmls = {row["route_xml"] for row in repeat_rows}
+        self.assertEqual(len(repeat_stage1_dirs), 30)
+        self.assertEqual(len(repeat_route_xmls), 30)
+        self.assertIn("runs/tmp_final_validation/FINAL_DEST_A/stage1/repeat_001", repeat_stage1_dirs)
+        self.assertIn("runs/tmp_final_validation/FINAL_DEST_A/routes/firetruck_depart_001.rou.xml", repeat_route_xmls)
+        self.assertEqual(rows[0]["stage1_dir"], "stage1")
+        self.assertEqual(rows[0]["route_xml"], "route.xml")
 
     def test_screening_and_final_task_counts_match_protocol(self):
         candidates = [
@@ -105,6 +114,185 @@ class FinalDestinationValidationTest(unittest.TestCase):
         final_departures = {candidate["route_id"]: [550.0 + index for index in range(30)] for candidate in final_candidates}
         final_rows = self.module.planned_task_rows(final_candidates, final_departures, PROJECT_ROOT / "runs/tmp_final", phase=self.module.PHASE_FINAL)
         self.assertEqual(len(final_rows), 3 * 61)
+
+    def test_run_candidate_rebuilds_stage1_for_each_repeat(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            candidate = {
+                "candidate_rank": 1,
+                "route_id": "FINAL_DEST_A",
+                "source_route_id": "ER_ACC_A",
+                "target_edge_id": "edgeA",
+                "selected_policy": "unit",
+                "mainroad_length_ratio": "0.8",
+                "legacy_spine_length_ratio": "0.7",
+                "route_xml": root / "inputs/FINAL_DEST_A/firetruck_route_depart_600.rou.xml",
+                "route_csv": root / "inputs/FINAL_DEST_A/firetruck_route.csv",
+                "stage1_dir": root / "inputs/stage1/FINAL_DEST_A",
+                "route_edges": ["edge0", "edge1"],
+                "route_edge_count": 2,
+                "route_length_m": 100.0,
+                "start_edge_id": "edge0",
+                "merge_edge_id": "edge1",
+            }
+            args = self.module.parse_args(["--run-id", "unit_stage1_rebuild"])
+            params = self.module.B4ThetaParams.from_row({"parameter_id": "theta"})
+            calls = []
+
+            class FakeStage1:
+                def __init__(self, stage1_dir, route_xml):
+                    self.stage1_dir = Path(stage1_dir)
+                    self.route_xml = Path(route_xml)
+
+            original_build = self.module.build_route_stage1
+            original_load = self.module.B4Stage1Inputs.load
+            original_free = self.module.build_b004_free_reference
+            original_b004 = self.module.b004_result_row
+            original_b04 = self.module.run_b04_task
+            original_b4 = self.module.run_b4_task
+
+            def fake_build(args_, candidate_, **kwargs):
+                calls.append({key: kwargs[key] for key in ["route_xml", "route_csv", "stage1_dir", "depart", "repeat_id", "phase"]})
+                return {"stage1_rebuild_policy": self.module.STAGE1_REBUILD_POLICY}
+
+            def fake_load(stage1_dir, route_xml):
+                return FakeStage1(stage1_dir, route_xml)
+
+            def fake_result(task, stage1, *args_, **kwargs):
+                return {
+                    "mode": task.mode,
+                    "repeat_id": str(task.repeat_id),
+                    "T_actual_EMV_sec": "200",
+                    "T_free_EMV_sec": "100",
+                    "D_E_sec": "100",
+                    "D_G_sec": "10",
+                    "objective_score": "100",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                    "stage1_dir": self.module.rel(stage1.stage1_dir),
+                }
+
+            try:
+                self.module.build_route_stage1 = fake_build
+                self.module.B4Stage1Inputs.load = staticmethod(fake_load)
+                self.module.build_b004_free_reference = lambda *args_, **kwargs: {}
+                self.module.b004_result_row = fake_result
+                self.module.run_b04_task = fake_result
+                self.module.run_b4_task = fake_result
+
+                rows = self.module.run_candidate(
+                    args,
+                    candidate,
+                    [601.0, 602.0, 603.0],
+                    params,
+                    root / "runs/unit/final",
+                    root / "metrics/unit/final",
+                )
+            finally:
+                self.module.build_route_stage1 = original_build
+                self.module.B4Stage1Inputs.load = original_load
+                self.module.build_b004_free_reference = original_free
+                self.module.b004_result_row = original_b004
+                self.module.run_b04_task = original_b04
+                self.module.run_b4_task = original_b4
+
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(calls[0]["repeat_id"], "reference")
+        repeat_calls = calls[1:]
+        self.assertEqual([call["repeat_id"] for call in repeat_calls], [1, 2, 3])
+        self.assertEqual(len({call["stage1_dir"] for call in repeat_calls}), 3)
+        self.assertTrue(all("stage1/repeat_" in call["stage1_dir"].as_posix() for call in repeat_calls))
+        self.assertEqual(sum(row["mode"] == self.module.B004_MODE for row in rows), 1)
+        self.assertEqual(sum(row["mode"] == self.module.B04_MODE for row in rows), 3)
+        self.assertEqual(sum(row["mode"] == self.module.B4_MODE for row in rows), 3)
+        b4_stage1_dirs = {row["stage1_dir"] for row in rows if row["mode"] == self.module.B4_MODE}
+        self.assertEqual(len(b4_stage1_dirs), 3)
+
+    def test_run_candidate_adaptive_offset_builds_only_new_repeat_stage1(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stage1_dir = root / "inputs/stage1/FINAL_DEST_A"
+            stage1_dir.mkdir(parents=True)
+            (stage1_dir / "b4_runtime_index.json").write_text("{}", encoding="utf-8")
+            (stage1_dir / "b4_stage1_summary.json").write_text("{}", encoding="utf-8")
+            candidate = {
+                "candidate_rank": 1,
+                "route_id": "FINAL_DEST_A",
+                "source_route_id": "ER_ACC_A",
+                "target_edge_id": "edgeA",
+                "selected_policy": "unit",
+                "mainroad_length_ratio": "0.8",
+                "legacy_spine_length_ratio": "0.7",
+                "route_xml": root / "inputs/FINAL_DEST_A/firetruck_route_depart_600.rou.xml",
+                "route_csv": root / "inputs/FINAL_DEST_A/firetruck_route.csv",
+                "stage1_dir": stage1_dir,
+                "route_edges": ["edge0", "edge1"],
+                "route_edge_count": 2,
+                "route_length_m": 100.0,
+                "start_edge_id": "edge0",
+                "merge_edge_id": "edge1",
+            }
+            args = self.module.parse_args(["--run-id", "unit_stage1_offset"])
+            params = self.module.B4ThetaParams.from_row({"parameter_id": "theta"})
+            calls = []
+
+            class FakeStage1:
+                def __init__(self, stage1_dir, route_xml):
+                    self.stage1_dir = Path(stage1_dir)
+                    self.route_xml = Path(route_xml)
+
+            original_build = self.module.build_route_stage1
+            original_load = self.module.B4Stage1Inputs.load
+            original_free = self.module.build_b004_free_reference
+            original_b04 = self.module.run_b04_task
+            original_b4 = self.module.run_b4_task
+
+            def fake_build(args_, candidate_, **kwargs):
+                calls.append({key: kwargs[key] for key in ["stage1_dir", "repeat_id"]})
+                return {}
+
+            def fake_result(task, stage1, *args_, **kwargs):
+                return {
+                    "mode": task.mode,
+                    "repeat_id": str(task.repeat_id),
+                    "T_actual_EMV_sec": "200",
+                    "D_E_sec": "100",
+                    "D_G_sec": "10",
+                    "objective_score": "100",
+                    "final_status": "PASS",
+                    "emergency_arrived": "True",
+                    "emergency_teleport": "False",
+                    "stage1_dir": self.module.rel(stage1.stage1_dir),
+                }
+
+            try:
+                self.module.build_route_stage1 = fake_build
+                self.module.B4Stage1Inputs.load = staticmethod(lambda stage1_dir, route_xml: FakeStage1(stage1_dir, route_xml))
+                self.module.build_b004_free_reference = lambda *args_, **kwargs: {}
+                self.module.run_b04_task = fake_result
+                self.module.run_b4_task = fake_result
+
+                rows = self.module.run_candidate(
+                    args,
+                    candidate,
+                    [611.0, 612.0],
+                    params,
+                    root / "runs/unit/final",
+                    root / "metrics/unit/final",
+                    repeat_offset=2,
+                    include_reference=False,
+                )
+            finally:
+                self.module.build_route_stage1 = original_build
+                self.module.B4Stage1Inputs.load = original_load
+                self.module.build_b004_free_reference = original_free
+                self.module.run_b04_task = original_b04
+                self.module.run_b4_task = original_b4
+
+        self.assertEqual([call["repeat_id"] for call in calls], [3, 4])
+        self.assertTrue(all(f"repeat_{call['repeat_id']:03d}" in call["stage1_dir"].as_posix() for call in calls))
+        self.assertEqual({row["repeat_id"] for row in rows}, {"3", "4"})
 
     def test_adaptive_repeats_enabled_only_for_final_pilot_runs(self):
         args = self.module.parse_args(["--phase", "final", "--repeats", "30"])
