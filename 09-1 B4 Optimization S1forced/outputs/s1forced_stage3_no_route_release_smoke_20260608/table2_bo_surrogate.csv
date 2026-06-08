@@ -1,0 +1,1 @@
+method,seed,round,round_theta_index,theta_per_round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,best_so_far,surrogate_mean,surrogate_ci_low,surrogate_ci_high,raw_ei_acquisition,acquisition,essi_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score

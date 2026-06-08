@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_s1forced_preflight.v1",
-  "generated_at": "2026-06-08T02:16:04.743504+00:00",
+  "generated_at": "2026-06-08T02:57:25.605863+00:00",
   "status": "PASS",
   "inputs": {
     "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
@@ -15,11 +15,11 @@
     "Q_ratio",
     "tau"
   ],
-  "rounds_per_seed": 50,
-  "theta_per_round": 6,
-  "theta_evaluations_per_seed_method": 300,
-  "workers": 4,
-  "resume": true,
+  "rounds_per_seed": 3,
+  "theta_per_round": 1,
+  "theta_evaluations_per_seed_method": 3,
+  "workers": 1,
+  "resume": false,
   "active_inputs": {
     "schema": "compact_v9_B04_B4_active_inputs.v1",
     "canonical_profile": "B04_B4_S1_FORCED_OPTIMIZATION",

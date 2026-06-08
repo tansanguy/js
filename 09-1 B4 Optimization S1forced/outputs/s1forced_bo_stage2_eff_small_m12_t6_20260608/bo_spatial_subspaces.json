@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_bo_essi_spatial_subspaces.v1",
-  "generated_at": "2026-06-08T02:16:04.744507+00:00",
+  "generated_at": "2026-06-08T03:34:35.230395+00:00",
   "definition": "Stage1 route movements split by route_order; weights combine controllable movement density and Case B/bottleneck presence.",
   "subspace_count": 6,
   "subspaces": [

@@ -84,6 +84,8 @@ VALID_MODES = {B004_MODE, B04_MODE, B4_MODE, "B0"}
 FREE_TIME_METHOD = "analytic_50kmh"
 VEHICLE_FREE_TIME_METHOD = "analytic_50kmh_V_G_route_based_mainstream_plus_incoming"
 SCORE_FORMULA = "(10/11) * D_E_sec + (1/11) * D_G_sec"
+V_G_UNFINISHED_DELAY_CAP_SEC = 600.0
+V_G_UNFINISHED_ELIGIBILITY_GRACE_SEC = 60.0
 V_G_DEFINITION = "V_G = mainline route edges + all SUMO net incoming edges at mainline TLS; vehicles are included when their route touches any V_G edge."
 
 
@@ -697,6 +699,8 @@ def actual_v_vehicle_metrics(
     free_values: list[float] = []
     arrived_count = 0
     unfinished_count = 0
+    excluded_late_count = 0
+    capped_unfinished_count = 0
     for row in background_tripinfo:
         vehicle_id = row.get("id", "")
         free = free_rows_by_id.get(vehicle_id)
@@ -719,8 +723,15 @@ def actual_v_vehicle_metrics(
         free_time = safe_float(free.get("free_time_sec"), -1.0)
         if free_time < 0.0:
             continue
+        latest_eligible_depart = float(simulation_end_sec) - free_time - V_G_UNFINISHED_ELIGIBILITY_GRACE_SEC
+        if depart > latest_eligible_depart:
+            excluded_late_count += 1
+            continue
         censored_duration = max(float(simulation_end_sec) - depart, 0.0)
-        actual_values.append(max(censored_duration, free_time))
+        capped_delay = min(max(censored_duration - free_time, 0.0), V_G_UNFINISHED_DELAY_CAP_SEC)
+        if censored_duration - free_time > capped_delay:
+            capped_unfinished_count += 1
+        actual_values.append(free_time + capped_delay)
         free_values.append(free_time)
         unfinished_count += 1
     actual_mean = round(sum(actual_values) / len(actual_values), 6) if actual_values else ""
@@ -733,7 +744,9 @@ def actual_v_vehicle_metrics(
         "D_G_sec": D_G_sec,
         "V_G_arrived_vehicle_count": arrived_count,
         "V_G_unfinished_vehicle_count": unfinished_count,
-        "D_G_unfinished_policy": "unfinished_V_G_duration_censored_at_simulation_end",
+        "V_G_late_excluded_vehicle_count": excluded_late_count,
+        "V_G_capped_unfinished_vehicle_count": capped_unfinished_count,
+        "D_G_unfinished_policy": f"eligible_unfinished_censored_delay_capped_at_{int(V_G_UNFINISHED_DELAY_CAP_SEC)}s_excluding_depart_after_eval_end_minus_free_time_minus_{int(V_G_UNFINISHED_ELIGIBILITY_GRACE_SEC)}s",
     }
 
 

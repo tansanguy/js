@@ -1,0 +1,4 @@
+input_method,input_seed,input_round,input_parameter_id,input_t_lead,input_delta_T_thr,input_G_ext,input_Q_ratio,input_tau,output_D_E_sec,output_D_G_sec,weight_E,weight_G,weight_ratio,score,measured_T_free_EMV_sec,measured_T_actual_EMV_sec,measured_D_E_sec,measured_D_G_sec,measured_general_mean_travel_time_sec,stage2_on_count,stage3_on_count
+Random Search,20260607,1,rs_r01_001_tl48_dt220_ge9_qr22_tau77,48,220,9,0.22,0.77,372.92,374.99,0.91,0.09,10:1,373.11,219.08016,592.0,372.91984,374.989568,178.292829,0,78
+Random Search,20260607,2,rs_r02_001_tl30_dt8_ge26_qr51_tau79,30,8,26,0.51,0.79,180.92,422.00,0.91,0.09,10:1,202.84,219.08016,400.0,180.91984,421.995381,160.573604,0,17
+Random Search,20260607,3,rs_r03_001_tl91_dt34_ge11_qr77_tau83,91,34,11,0.77,0.83,235.92,397.61,0.91,0.09,10:1,250.62,219.08016,455.0,235.91984,397.612517,169.095672,0,46

@@ -418,7 +418,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(hold_events[0]["tls_id"], "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
         self.assertEqual(hold_events[0]["target_phase"], 1)
         self.assertEqual(hold_events[0]["safety_status"], "REQUIRE_CLEARANCE")
-        self.assertEqual(hold_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
+        self.assertTrue(str(hold_events[0]["stage2_measurement_source"]).startswith("SUMO_B04_AD_B0_laneData_edgeData_proxy"))
         self.assertEqual(float(hold_events[0]["L_merge_m"]), 50.0)
         self.assertIn("T_hold_proxy_sec", hold_events[0])
         self.assertIn("n_occ_runtime_veh", hold_events[0])
@@ -471,7 +471,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertTrue(controller.stage2_hold_active)
         self.assertTrue(controller.stage2_release_clearance_pending)
         self.assertEqual(controller.stats.stage2_release_count, 0)
-        self.assertEqual(release_events[0]["stage2_measurement_source"], "SUMO_B04_AD_B0_laneData_edgeData_proxy")
+        self.assertTrue(str(release_events[0]["stage2_measurement_source"]).startswith("SUMO_B04_AD_B0_laneData_edgeData_proxy"))
         self.assertEqual(traci.trafficlight.phases["COMPACT_V9_FIRE_STATION_ENTRY_TLS"], 1)
 
         traci.simulation.time += 10
@@ -488,6 +488,108 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(controller.stats.stage2_release_count, 1)
 
         traci.vehicle.vehicles.clear()
+
+    def test_stage2_effective_transition_loss_opens_hold_candidate_without_bypassing_safety(self):
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(Q_ratio=0.0),
+            run_id="contract",
+        )
+        traci.trafficlight.getSpentDuration = lambda _tls_id: 0.0
+        merge_lanes = list(self.stage1.departure.merge_zone_lanes)
+        vehicle_ids = [f"merge_bg_{index}" for index in range(13)]
+        for index, vehicle_id in enumerate(vehicle_ids):
+            traci.vehicle.vehicles[vehicle_id] = {
+                "edge": "merge",
+                "lane": merge_lanes[index % max(len(merge_lanes), 1)] if merge_lanes else "merge_0",
+                "route_index": 0,
+                "lane_position": 0.0,
+                "speed": 0.0,
+            }
+        for index, lane_id in enumerate(merge_lanes):
+            traci.lane.set_lane(lane_id, vehicle_ids[index::max(len(merge_lanes), 1)], speed_mps=0.0, occupancy=90.0, length=50.0)
+
+        traci.simulation.time = self.stage1.ev_depart_sec - 12.0
+        events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["action_type"], "entry_hold_clearance")
+        self.assertEqual(events[0]["safety_status"], "REQUIRE_CLEARANCE")
+        self.assertLessEqual(float(events[0]["T_hold_proxy_sec"]), 0.0)
+        self.assertGreater(float(events[0]["tS_merge_sec"]), self.stage1.stage2_merge_hold.tS_merge_sec)
+        self.assertFalse(controller.stage2_hold_active)
+
+    def test_stage2_gate_inputs_use_short_rolling_max(self):
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        base_proxy = {
+            "Lq_merge_m": 30.0,
+            "scaled_Lq_merge_m": 30.0,
+            "n_occ_runtime_veh": 6.0,
+            "scaled_n_occ_runtime_veh": 6.0,
+            "s_vph": 9000.0,
+            "time_to_merge_sec": 10.0,
+            "stage2_measurement_source": "SUMO_B04_AD_B0_laneData_edgeData_proxy",
+        }
+
+        controller.stage2_proxy_with_effective_gate_inputs(100.0, base_proxy)
+        smoothed = controller.stage2_proxy_with_effective_gate_inputs(101.0, {**base_proxy, "Lq_merge_m": 0.0, "n_occ_runtime_veh": 0.0})
+
+        self.assertEqual(float(smoothed["Lq_merge_m"]), 30.0)
+        self.assertEqual(float(smoothed["n_occ_runtime_veh"]), 6.0)
+        self.assertAlmostEqual(float(smoothed["n_queue_from_Lq_proxy_veh"]), 30.0 / self.runtime.TA_HEADWAY_M, places=6)
+        self.assertAlmostEqual(float(smoothed["n_blocking_proxy_veh"]), 6.0, places=6)
+
+    def test_stage2_space_deficit_opens_hold_even_when_t_hold_is_positive(self):
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(Q_ratio=0.19),
+            run_id="contract",
+        )
+        proxy = {
+            "EV_NotDeparted": True,
+            "Lq_merge_m": 45.0,
+            "scaled_Lq_merge_m": 45.0,
+            "n_occ_runtime_veh": 3.0,
+            "scaled_n_occ_runtime_veh": 3.0,
+            "s_vph": 9000.0,
+            "time_to_merge_sec": 10.0,
+            "stage2_measurement_source": "SUMO_B04_AD_B0_laneData_edgeData_proxy",
+        }
+
+        adjusted = controller.stage2_proxy_with_effective_gate_inputs(self.stage1.ev_depart_sec - 1.0, proxy)
+
+        self.assertGreater(float(adjusted["T_hold_proxy_sec"]), 0.0)
+        self.assertTrue(adjusted["merge_space_deficit"])
+        self.assertAlmostEqual(float(adjusted["n_queue_from_Lq_proxy_veh"]), 45.0 / self.runtime.TA_HEADWAY_M, places=6)
+        self.assertTrue(controller.should_start_stage2_hold(self.stage1.ev_depart_sec - 1.0, adjusted))
+
+    def test_stage2_hold_clearance_pending_can_complete_after_departure_before_merge(self):
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(Q_ratio=0.0),
+            run_id="contract",
+        )
+        tls_id = self.stage1.departure.merge_control_tls
+        traci.trafficlight.phases[tls_id] = self.stage1.departure.background_inflow_red_hold_phase
+        controller.stage2_hold_clearance_pending = True
+        controller.stage2_hold_clearance_start = self.stage1.ev_depart_sec - 1.0
+        traci.simulation.time = self.stage1.ev_depart_sec + 0.5
+
+        events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["action_type"], "entry_hold")
+        self.assertEqual(events[0]["safety_status"], "ALLOW")
+        self.assertTrue(controller.stage2_hold_active)
+        self.assertFalse(controller.stage2_hold_clearance_pending)
+        self.assertEqual(controller.stats.stage2_hold_count, 1)
 
     def test_stage2_does_not_start_new_hold_after_ev_departure_time(self):
         traci = FakeTraci()
@@ -1758,6 +1860,8 @@ class B4RuntimeContractTest(unittest.TestCase):
             "emergency_tripinfo_found",
             "D_E_sec",
             "V_G_vehicle_count",
+            "V_G_late_excluded_vehicle_count",
+            "V_G_capped_unfinished_vehicle_count",
             "D_G_sec",
         ]:
             self.assertIn(field, self.runtime.EXPERIMENT_RESULT_FIELDS)
@@ -1969,8 +2073,40 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.assertEqual(metrics["V_G_vehicle_count"], 2)
             self.assertEqual(metrics["V_G_arrived_vehicle_count"], 1)
             self.assertEqual(metrics["V_G_unfinished_vehicle_count"], 1)
+            self.assertEqual(metrics["V_G_late_excluded_vehicle_count"], 0)
+            self.assertEqual(metrics["V_G_capped_unfinished_vehicle_count"], 0)
+            self.assertIn("capped_at_600s", metrics["D_G_unfinished_policy"])
             self.assertAlmostEqual(metrics["T_G_actual_mean_sec"], 75.0)
             self.assertAlmostEqual(metrics["D_G_sec"], 65.0)
+
+    def test_d_g_caps_eligible_unfinished_v_g_delay_and_excludes_late_departures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            route_file = Path(tmp) / "toy.rou.xml"
+            route_file.write_text(
+                """<routes>
+  <route id="r_vg" edges="main_a main_b"/>
+  <vehicle id="veh_arrived" route="r_vg" depart="0"/>
+  <vehicle id="veh_unfinished" route="r_vg" depart="0"/>
+  <vehicle id="veh_late" route="r_vg" depart="1970"/>
+</routes>""",
+                encoding="utf-8",
+            )
+            tripinfo_rows = [{"id": "veh_arrived", "duration": "50"}]
+            free_rows = {
+                "veh_arrived": {"vehicle_id": "veh_arrived", "free_time_sec": "10"},
+                "veh_unfinished": {"vehicle_id": "veh_unfinished", "free_time_sec": "10"},
+                "veh_late": {"vehicle_id": "veh_late", "free_time_sec": "10"},
+            }
+
+            metrics = self.runner.actual_v_vehicle_metrics(tripinfo_rows, free_rows, route_file, 2000.0)
+
+            self.assertEqual(metrics["V_G_vehicle_count"], 2)
+            self.assertEqual(metrics["V_G_arrived_vehicle_count"], 1)
+            self.assertEqual(metrics["V_G_unfinished_vehicle_count"], 1)
+            self.assertEqual(metrics["V_G_late_excluded_vehicle_count"], 1)
+            self.assertEqual(metrics["V_G_capped_unfinished_vehicle_count"], 1)
+            self.assertAlmostEqual(metrics["T_G_actual_mean_sec"], 330.0)
+            self.assertAlmostEqual(metrics["D_G_sec"], 320.0)
 
 
 if __name__ == "__main__":

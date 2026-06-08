@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -48,6 +49,7 @@ LOW_SPEED_MPS = 2.0
 HALTING_SPEED_MPS = 0.1
 DEFAULT_STEP_SEC = 1.0
 DEFAULT_STAGE2_HOLD_REFRESH_SEC = 5.0
+DEFAULT_STAGE2_GATE_HISTORY_SEC = 3.0
 DEFAULT_PHASE_BUFFER_SEC = 5.0
 DEFAULT_MAX_HOLD_SEC = 14.0
 DEFAULT_NEAR_HOLD_DISTANCE_M = 250.0
@@ -163,6 +165,10 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "n_occ_runtime_veh",
     "scaled_n_occ_runtime_veh",
     "n_excess_proxy_veh",
+    "n_queue_from_Lq_proxy_veh",
+    "n_blocking_proxy_veh",
+    "merge_space_deficit_threshold_m",
+    "merge_space_deficit",
     "t_clear_proxy_sec",
     "time_to_merge_sec",
     "time_to_merge_source",
@@ -311,6 +317,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "V_G_vehicle_count",
     "V_G_arrived_vehicle_count",
     "V_G_unfinished_vehicle_count",
+    "V_G_late_excluded_vehicle_count",
+    "V_G_capped_unfinished_vehicle_count",
     "D_G_unfinished_policy",
     "T_G_actual_mean_sec",
     "T_G_free_mean_sec",
@@ -2693,6 +2701,10 @@ def event_row(
         "n_occ_runtime_veh": stage2_proxy.get("n_occ_runtime_veh", ""),
         "scaled_n_occ_runtime_veh": stage2_proxy.get("scaled_n_occ_runtime_veh", ""),
         "n_excess_proxy_veh": stage2_proxy.get("n_excess_proxy_veh", ""),
+        "n_queue_from_Lq_proxy_veh": stage2_proxy.get("n_queue_from_Lq_proxy_veh", ""),
+        "n_blocking_proxy_veh": stage2_proxy.get("n_blocking_proxy_veh", ""),
+        "merge_space_deficit_threshold_m": stage2_proxy.get("merge_space_deficit_threshold_m", ""),
+        "merge_space_deficit": stage2_proxy.get("merge_space_deficit", ""),
         "t_clear_proxy_sec": stage2_proxy.get("t_clear_proxy_sec", ""),
         "time_to_merge_sec": stage2_proxy.get("time_to_merge_sec", ""),
         "time_to_merge_source": stage2_proxy.get("time_to_merge_source", ""),
@@ -2806,7 +2818,9 @@ class B4RuntimeController:
     stage2_hold_clearance_pending: bool = False
     stage2_release_clearance_pending: bool = False
     stage2_hold_start: float | None = None
+    stage2_hold_clearance_start: float | None = None
     stage2_previous_phase: int | None = None
+    stage2_gate_history: list[dict[str, float]] = field(default_factory=list)
     active_controls: dict[str, ActiveControl] = field(default_factory=dict)
     pending_stage3_requests: dict[str, float] = field(default_factory=dict)
     last_tls_action_at: dict[str, float] = field(default_factory=dict)
@@ -3371,7 +3385,74 @@ class B4RuntimeController:
             stage2_proxy.get("T_hold_proxy_sec"),
             params.tE_merge_sec - params.tS_merge_sec,
         )
-        return t_hold <= 0.0
+        return t_hold <= 0.0 or bool(stage2_proxy.get("merge_space_deficit", False))
+
+    def stage2_effective_transition_loss_sec(self, now: float, tls_id: str, target_phase: int) -> float:
+        params = self.stage1.stage2_merge_hold
+        base_loss = safe_float(params.tS_merge_sec, DEFAULT_PHASE_BUFFER_SEC)
+        if not tls_id:
+            return base_loss
+        current_phase = self.get_tls_phase(tls_id)
+        if current_phase == target_phase:
+            return base_loss
+        elapsed = self.elapsed_green_sec(tls_id)
+        action_wait = max(DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC - (now - self.last_tls_action_at.get(tls_id, -9999.0)), 0.0)
+        ped_wait = 0.0
+        if self.phase_has_green(tls_id, current_phase):
+            ped_min_green = safe_float(self.pedestrian_min_green_by_tls.get(tls_id), 0.0)
+            ped_wait = max(ped_min_green - elapsed, 0.0)
+        clearance_wait = 0.0
+        if self.phase_is_clearance(tls_id, current_phase):
+            clearance_wait = max(self.phase_duration(tls_id, current_phase) - elapsed, 0.0)
+        elif self.phase_has_green(tls_id, current_phase):
+            clearance_phase = self.find_clearance_phase(tls_id, current_phase, target_phase)
+            if clearance_phase is not None:
+                clearance_wait = self.phase_duration(tls_id, clearance_phase)
+        return round_float(base_loss + action_wait + ped_wait + clearance_wait)
+
+    def stage2_proxy_with_effective_gate_inputs(self, now: float, stage2_proxy: dict[str, Any]) -> dict[str, Any]:
+        if not stage2_proxy:
+            return stage2_proxy
+        proxy = dict(stage2_proxy)
+        params = self.stage1.stage2_merge_hold
+        self.stage2_gate_history.append({
+            "time": float(now),
+            "Lq_merge_m": safe_float(proxy.get("Lq_merge_m"), 0.0),
+            "n_occ_runtime_veh": safe_float(proxy.get("n_occ_runtime_veh"), 0.0),
+        })
+        window_start = float(now) - DEFAULT_STAGE2_GATE_HISTORY_SEC
+        self.stage2_gate_history = [item for item in self.stage2_gate_history if item["time"] >= window_start]
+        if self.stage2_gate_history:
+            proxy["Lq_merge_m"] = round_float(max(item["Lq_merge_m"] for item in self.stage2_gate_history))
+            proxy["scaled_Lq_merge_m"] = proxy["Lq_merge_m"]
+            proxy["n_occ_runtime_veh"] = round_float(max(item["n_occ_runtime_veh"] for item in self.stage2_gate_history))
+            proxy["scaled_n_occ_runtime_veh"] = proxy["n_occ_runtime_veh"]
+        lq_merge_m = safe_float(proxy.get("Lq_merge_m"), 0.0)
+        n_occ = safe_float(proxy.get("n_occ_runtime_veh"), 0.0)
+        merge_capacity_without_ev = max(params.C_merge_proxy_veh - params.n_need_proxy_veh, 0.0)
+        n_queue_from_lq = lq_merge_m / max(TA_HEADWAY_M, 0.1)
+        n_blocking = max(n_occ, n_queue_from_lq)
+        n_excess = max(0.0, n_blocking - merge_capacity_without_ev)
+        merge_space_deficit_threshold_m = max(params.L_merge_m - params.n_need_proxy_veh * TA_HEADWAY_M, 0.0)
+        merge_space_deficit = lq_merge_m >= merge_space_deficit_threshold_m
+        s_vph = safe_float(proxy.get("s_vph"), TA_SATURATION_FLOW_VPH_PER_LANE)
+        t_clear = n_excess * 3600.0 / max(s_vph, 1.0)
+        t_s_eff = self.stage2_effective_transition_loss_sec(
+            now,
+            self.stage1.departure.merge_control_tls,
+            self.stage1.departure.background_inflow_red_hold_phase,
+        )
+        time_to_merge = safe_float(proxy.get("time_to_merge_sec"), params.tE_merge_sec)
+        proxy["n_excess_proxy_veh"] = round_float(n_excess)
+        proxy["n_queue_from_Lq_proxy_veh"] = round_float(n_queue_from_lq)
+        proxy["n_blocking_proxy_veh"] = round_float(n_blocking)
+        proxy["merge_space_deficit_threshold_m"] = round_float(merge_space_deficit_threshold_m)
+        proxy["merge_space_deficit"] = merge_space_deficit
+        proxy["t_clear_proxy_sec"] = round_float(t_clear)
+        proxy["tS_merge_sec"] = round_float(t_s_eff)
+        proxy["T_hold_proxy_sec"] = round_float(time_to_merge - t_clear - t_s_eff)
+        proxy["stage2_measurement_source"] = f"{proxy.get('stage2_measurement_source', B4_PRIMARY_LANE_DATA_SOURCE)};rolling_max_{int(DEFAULT_STAGE2_GATE_HISTORY_SEC)}s;tS_eff;Lq_space_deficit"
+        return proxy
 
     def should_release_stage2_hold_by_max(self, now: float) -> bool:
         if not self.stage2_hold_active or self.stage2_hold_start is None:
@@ -3408,7 +3489,41 @@ class B4RuntimeController:
             if should_watch_merge or self.stage2_hold_active or self.stage2_hold_clearance_pending or self.stage2_release_clearance_pending
             else {}
         )
+        stage2_proxy = self.stage2_proxy_with_effective_gate_inputs(now, stage2_proxy)
         events = []
+        if os.environ.get("B4_DEBUG_STAGE2_GATE") and should_watch_merge:
+            params = self.stage1.stage2_merge_hold
+            q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
+            q_th_merge = q_ratio * params.L_merge_m
+            t_hold = safe_float(stage2_proxy.get("T_hold_proxy_sec"), params.tE_merge_sec - params.tS_merge_sec)
+            if now >= self.stage1.ev_depart_sec:
+                gate_reason = "blocked_after_ev_depart_sec"
+            elif not bool(stage2_proxy.get("EV_NotDeparted", False)):
+                gate_reason = "blocked_ev_not_departed_false"
+            elif safe_float(stage2_proxy.get("Lq_merge_m"), 0.0) < q_th_merge:
+                gate_reason = "blocked_queue_below_threshold"
+            elif t_hold > 0.0 and not bool(stage2_proxy.get("merge_space_deficit", False)):
+                gate_reason = "blocked_t_hold_positive"
+            else:
+                gate_reason = "would_start_hold"
+            events.append(event_row(
+                time=now,
+                stage="stage2",
+                action_type="stage2_gate_debug",
+                tls_id=departure.merge_control_tls,
+                ev_state=ev_state,
+                control_mode="departure_merge_hold",
+                trigger_reason=gate_reason,
+                q_ratio=q_ratio,
+                q_th_merge_m=round_float(q_th_merge),
+                t_hold_sec=round_float(t_hold),
+                stage2_hold_status="debug",
+                stage2_action="GATE_CHECK",
+                stage2_proxy=stage2_proxy,
+                run_id=self.run_id,
+                parameter_id=self.params.parameter_id,
+                repeat_id=self.repeat_id,
+            ))
 
         if self.stage2_release_clearance_pending:
             previous_phase = self.get_tls_phase(departure.merge_control_tls)
@@ -3515,10 +3630,14 @@ class B4RuntimeController:
         if self.stage2_hold_clearance_pending:
             if merged:
                 self.stage2_hold_clearance_pending = False
+                self.stage2_hold_clearance_start = None
                 self.stage2_completed = True
                 return []
-            if not should_watch_merge or not self.should_start_stage2_hold(now, stage2_proxy):
+            hold_clearance_elapsed = max(now - (self.stage2_hold_clearance_start or now), 0.0)
+            hold_max = safe_float(getattr(self.params, "hold_max", self.stage1.stage2_merge_hold.HOLD_MAX_sec), self.stage1.stage2_merge_hold.HOLD_MAX_sec)
+            if not should_watch_merge or (hold_max > 0.0 and hold_clearance_elapsed >= hold_max):
                 self.stage2_hold_clearance_pending = False
+                self.stage2_hold_clearance_start = None
                 previous_phase = self.get_tls_phase(departure.merge_control_tls)
                 stage2_proxy = self.stage2_proxy_with_signal_context(stage2_proxy, departure.merge_control_tls, action="CANCEL_HOLD")
                 events.append(event_row(
@@ -3531,12 +3650,13 @@ class B4RuntimeController:
                     ev_state=ev_state,
                     control_mode="departure_merge_hold",
                     safety_status="CANCEL_CONDITION_CLEARED",
-                    trigger_reason="hold_condition_cleared_during_clearance",
+                    trigger_reason="hold_clearance_timeout" if hold_max > 0.0 and hold_clearance_elapsed >= hold_max else "hold_condition_cleared_during_clearance",
                     stage2_hold_status="cancelled",
                     stage2_action="CANCEL_HOLD",
                     q_ratio=safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO),
                     q_th_merge_m=round_float(safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO) * self.stage1.stage2_merge_hold.L_merge_m),
                     t_hold_sec=stage2_proxy.get("T_hold_proxy_sec", ""),
+                    hold_elapsed_sec=hold_clearance_elapsed,
                     stage2_proxy=stage2_proxy,
                     run_id=self.run_id,
                     parameter_id=self.params.parameter_id,
@@ -3560,6 +3680,7 @@ class B4RuntimeController:
             }
             if applied:
                 self.stage2_hold_clearance_pending = False
+                self.stage2_hold_clearance_start = None
                 self.stage2_hold_active = True
                 self.stage2_hold_start = now
                 self.stats.stage2_hold_count += 1
@@ -3616,6 +3737,7 @@ class B4RuntimeController:
             if safety_status in {"DENY_MIN_ACTION_INTERVAL", "DENY_CLEARANCE_INCOMPLETE"}:
                 return []
             self.stage2_hold_clearance_pending = False
+            self.stage2_hold_clearance_start = None
             events.append(event_row(
                 time=now,
                 stage="stage2",
@@ -3695,6 +3817,7 @@ class B4RuntimeController:
                 self.stats.signal_burden_sec += applied_duration
             else:
                 self.stage2_hold_clearance_pending = True
+                self.stage2_hold_clearance_start = now
                 self.stage2_previous_phase = previous_phase
                 self.stats.signal_burden_sec += applied_duration
             events.append(event_row(
