@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_stage2_merge_hold_params.v1",
-  "generated_at": "2026-06-07T22:02:58.298803+00:00",
+  "generated_at": "2026-06-08T02:57:06.610469+00:00",
   "algorithm": "B4",
   "primary_candidate": "B04_ad_stage23_trigger",
   "merge_hold_policy": "EVTSP dispatch-delay merge space hold",

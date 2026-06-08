@@ -62,6 +62,11 @@ class B4ThetaRuntimeTest(unittest.TestCase):
         self.assertNotIn("alpha", params.as_result_fields())
         self.assertNotIn("Q_trig", params.as_result_fields())
 
+    def test_mvp_default_uses_stage1_hold_max_contract(self):
+        params = self.runtime.B4MvpParams()
+
+        self.assertEqual(params.hold_max, 14.0)
+
     def test_green_only_csv_tls_keep_missing_red_phase_as_none(self):
         green_only = {
             movement.tls_id: movement
@@ -308,6 +313,25 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         finally:
             self.bo.expected_improvement_candidates = original_ei
             self.bo.default_route_subspaces = original_subspaces
+
+    def test_hold_failure_nearby_candidate_reduces_acquisition(self):
+        bounds = {
+            "t_lead": {"lower": 0, "upper": 100},
+            "delta_T_thr": {"lower": 0, "upper": 100},
+            "G_ext": {"lower": 0, "upper": 50},
+            "Q_ratio": {"lower": 0.0, "upper": 1.0},
+            "tau": {"lower": 0.70, "upper": 0.90},
+        }
+        observations = [
+            {"mode": self.bo.B4_MODE, "t_lead": 30, "delta_T_thr": 28, "G_ext": 30, "Q_ratio": 0.19, "tau": 0.81, "score_sec": 94.0, "bo_score_sec": 94.0, "D_G_sec": 120.0, "stage2_hold_count": 1},
+            {"mode": self.bo.B4_MODE, "t_lead": 32, "delta_T_thr": 24, "G_ext": 33, "Q_ratio": 0.18, "tau": 0.80, "score_sec": 345.0, "bo_score_sec": 345.0, "D_G_sec": 1946.0, "stage2_hold_count": 0},
+        ]
+        aggregated = self.bo.aggregate_observations(observations)
+        near_failure = {"t_lead": 32, "delta_T_thr": 24, "G_ext": 33, "Q_ratio": 0.18, "tau": 0.80}
+        far_from_failure = {"t_lead": 100, "delta_T_thr": 100, "G_ext": 0, "Q_ratio": 1.0, "tau": 0.90}
+
+        self.assertLess(self.bo.hold_feasibility_multiplier(near_failure, aggregated, bounds), 0.1)
+        self.assertLess(self.bo.hold_feasibility_multiplier(far_from_failure, aggregated, bounds), 0.5)
 
     def test_output_prefix_and_resume_latest_reuse_run_id(self):
         with tempfile.TemporaryDirectory() as tmp:

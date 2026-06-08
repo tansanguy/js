@@ -49,13 +49,11 @@ HALTING_SPEED_MPS = 0.1
 DEFAULT_STEP_SEC = 1.0
 DEFAULT_STAGE2_HOLD_REFRESH_SEC = 5.0
 DEFAULT_PHASE_BUFFER_SEC = 5.0
-DEFAULT_MAX_HOLD_SEC = 30.0
+DEFAULT_MAX_HOLD_SEC = 14.0
 DEFAULT_NEAR_HOLD_DISTANCE_M = 250.0
 DEFAULT_STAGE3_CONTROL_DISTANCE_M = 250.0
 DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M = 80.0
 DEFAULT_STAGE3_MAX_CONTROL_DISTANCE_M = 1000.0
-DEFAULT_EV_ROUTE_RELEASE_LOOKAHEAD_M = 250.0
-DEFAULT_EV_ROUTE_RELEASE_DURATION_SEC = 20.0
 DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC = 2.0
 DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC = 10.0
 EMPTY_APPROACH_SPEED_KMH = 999.0
@@ -311,6 +309,9 @@ EXPERIMENT_RESULT_FIELDS = [
     "T_free_EMV_sec",
     "D_E_sec",
     "V_G_vehicle_count",
+    "V_G_arrived_vehicle_count",
+    "V_G_unfinished_vehicle_count",
+    "D_G_unfinished_policy",
     "T_G_actual_mean_sec",
     "T_G_free_mean_sec",
     "D_G_sec",
@@ -2237,7 +2238,7 @@ def stage2_time_to_merge(
     if now is None:
         return params.tE_merge_sec, "fallback_tE_merge_no_time"
     if ev_state is None or (not ev_state.present and now < stage1.ev_depart_sec):
-        return max(stage1.ev_depart_sec - now, 0.0) + params.tE_merge_sec, "pre_departure_dispatch_plus_tE_merge"
+        return params.tE_merge_sec, "evtsp_fixed_tE_merge_pre_departure"
     if ev_state.arrived:
         return 0.0, "ev_arrived"
     if ev_state.present and distance_to_merge_m is not None:
@@ -2842,42 +2843,6 @@ class B4RuntimeController:
     def phase_covers_green_links(self, tls_id: str, phase_index: int, link_indices: tuple[int, ...]) -> bool:
         return bool(link_indices) and self.phase_green_link_count(tls_id, phase_index, link_indices) == len(link_indices)
 
-    def ev_route_green_phase_for_movement(self, movement: B4Movement) -> tuple[int | None, str]:
-        """Resolve an EV-route green phase from live tlLogic, not only Stage1 controllability."""
-        if not movement.tls_id:
-            return None, "missing_tls"
-        link_indices = movement.ev_route_link_indices or movement.link_indices
-        if not link_indices:
-            return None, "missing_ev_route_link_index"
-        explicit_candidates = []
-        if movement.ev_route_phase is not None:
-            explicit_candidates.append(("stage1_ev_route_phase", movement.ev_route_phase))
-        explicit_candidates.append(("stage1_selected_green_phase", movement.selected_green_phase))
-        if movement.full_through_phase is not None:
-            explicit_candidates.append(("stage1_full_through_phase", movement.full_through_phase))
-        seen: set[int] = set()
-        for source, phase_index in explicit_candidates:
-            if phase_index in seen:
-                continue
-            seen.add(phase_index)
-            if self.phase_covers_green_links(movement.tls_id, phase_index, link_indices):
-                return phase_index, source
-        best_phase: int | None = None
-        best_count = 0
-        for phase in self.phases_by_tls.get(movement.tls_id, []):
-            phase_index = safe_int(phase.get("phase_index"), -1)
-            if phase_index < 0:
-                continue
-            green_count = self.phase_green_link_count(movement.tls_id, phase_index, link_indices)
-            if green_count == len(link_indices):
-                return phase_index, "runtime_tlLogic_ev_link_green"
-            if green_count > best_count:
-                best_phase = phase_index
-                best_count = green_count
-        if best_phase is not None and best_count > 0:
-            return best_phase, "runtime_tlLogic_partial_ev_link_green"
-        return None, "no_green_phase_for_ev_route_link"
-
     def scaled_stage3_case_b_queue_m(self, metric: MovementRuntimeMetrics) -> float:
         scale = max(safe_float(self.stage3_measurement_scale, 1.0), 0.0)
         case_b_queue_m = safe_float(metric.case_b_queue_m_proxy, 0.0)
@@ -3393,6 +3358,10 @@ class B4RuntimeController:
         params = self.stage1.stage2_merge_hold
         dispatch_detect_time = self.stage1.ev_depart_sec - params.t_dispatch_delay_sec
         if now < dispatch_detect_time:
+            return False
+        if now >= self.stage1.ev_depart_sec:
+            return False
+        if not bool(stage2_proxy.get("EV_NotDeparted", False)):
             return False
         q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
         q_th_merge = q_ratio * params.L_merge_m
@@ -4106,168 +4075,6 @@ class B4RuntimeController:
                     green_dur_sec=duration,
                     stage3_context=stage3_context,
                 ))
-        events.extend(self.ensure_ev_route_green_release(now, ev_state, movement_metrics, metrics_by_id))
-        return events
-
-    def ensure_ev_route_green_release(
-        self,
-        now: float,
-        ev_state: EVState,
-        movement_metrics: list[MovementRuntimeMetrics],
-        metrics_by_id: dict[str, MovementRuntimeMetrics],
-    ) -> list[dict[str, Any]]:
-        """Keep the EV's actual route link green without forcing Stage2 HOLD.
-
-        Stage2 controls the Sindang-side inflow.  This helper separately opens
-        the EV's own from_edge->to_edge link when it is close enough, including
-        merge-owned or Stage1 non-controllable route links that still have a
-        valid green phase in the SUMO tlLogic.
-        """
-        if ev_state.route_index < 0:
-            return []
-        events: list[dict[str, Any]] = []
-        active_tls_ids = {control.tls_id for control in self.active_controls.values()}
-        available_slots = max(self.stage1.max_active_movements - len(self.active_controls), 0)
-        if available_slots <= 0:
-            return []
-        lookahead_m = max(DEFAULT_EV_ROUTE_RELEASE_LOOKAHEAD_M, self.stage3_control_distance_m())
-        candidates: list[tuple[float, MovementRuntimeMetrics, int, str]] = []
-        for metric in movement_metrics:
-            movement = metric.movement
-            needs_route_release = (
-                movement.is_merge
-                or movement.route_intersection_index == self.stage1.i_merge
-                or not movement.controllable
-            )
-            if not needs_route_release:
-                continue
-            if not movement.controllable and any(
-                other.controllable
-                and other.tls_id == movement.tls_id
-                and ev_state.route_index <= other.route_order_index < movement.route_order_index
-                for other in self.stage1.movements
-            ):
-                continue
-            if movement.route_order_index < ev_state.route_index:
-                continue
-            if not movement.tls_id or movement.movement_id in self.active_controls or movement.movement_id in self.pending_stage3_requests:
-                continue
-            if movement.tls_id == self.stage1.departure.merge_control_tls and self.stage2_hold_active:
-                continue
-            target_phase, phase_source = self.ev_route_green_phase_for_movement(movement)
-            if target_phase is None:
-                continue
-            ev_distance = self.ev_distance_to_movement(ev_state, movement)
-            if ev_distance == "" or safe_float(ev_distance, lookahead_m + 1.0) > lookahead_m:
-                continue
-            candidates.append((safe_float(ev_distance), metric, target_phase, phase_source))
-        candidates.sort(key=lambda item: (item[0], item[1].movement.route_order_index, item[1].movement.route_intersection_index))
-        touched_tls: set[str] = set()
-        for ev_distance, metric, target_phase, phase_source in candidates:
-            if len(touched_tls) >= available_slots:
-                break
-            movement = metric.movement
-            if movement.tls_id in touched_tls or movement.tls_id in active_tls_ids:
-                continue
-            if not self.can_act_on_tls(movement.tls_id, now):
-                continue
-            previous_phase = self.get_tls_phase(movement.tls_id)
-            t_e_sec = round_float(max(ev_distance, 0.0) / TA_EV_SPEED_MPS)
-            duration = round_float(max(
-                DEFAULT_EV_ROUTE_RELEASE_DURATION_SEC,
-                min(
-                    DEFAULT_MAX_HOLD_SEC,
-                    t_e_sec + movement.W_m / TA_EV_SPEED_MPS + safe_float(getattr(self.params, "G_ext", 0.0), 0.0),
-                ),
-            ))
-            applied, safety_status, applied_phase, applied_duration = self.apply_tls_request(
-                movement.tls_id,
-                target_phase,
-                duration,
-                "GREEN",
-                now,
-            )
-            action_type = (
-                "ev_route_green_release"
-                if applied
-                else "ev_route_green_release_deferred"
-                if safety_status == "REQUIRE_CLEARANCE"
-                else "ev_route_green_release_denied"
-            )
-            preemption_state = "ACTIVE" if applied else ("REQUESTED" if safety_status == "REQUIRE_CLEARANCE" else "IDLE")
-            if applied:
-                self.active_controls[movement.movement_id] = ActiveControl(
-                    movement_id=movement.movement_id,
-                    tls_id=movement.tls_id,
-                    previous_phase=previous_phase,
-                    target_phase=target_phase,
-                    started_at=now,
-                    deadline=now + max(DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC, applied_duration),
-                    route_order_index=movement.route_order_index,
-                )
-                self.stats.stage3_preemption_count += 1
-                self.stats.signal_burden_sec += applied_duration
-                active_tls_ids.add(movement.tls_id)
-            elif safety_status == "REQUIRE_CLEARANCE":
-                self.pending_stage3_requests[movement.movement_id] = now
-                self.stats.signal_burden_sec += applied_duration
-            stage3_context = {
-                "intersection_index": movement.route_intersection_index,
-                "junction_id": movement.tls_id,
-                "is_ahead_of_ev": movement.route_order_index >= ev_state.route_index,
-                "is_i_merge": movement.is_merge or movement.route_intersection_index == self.stage1.i_merge,
-                "L": round_float(movement.L_m),
-                "W": round_float(movement.W_m),
-                "Lq": round_float(metric.queue_m_proxy),
-                "gate_target": movement.route_intersection_index,
-                "tE_gate_target": t_e_sec,
-                "delta_T_thr": safe_float(getattr(self.params, "delta_T_thr", 0.0), 0.0),
-                "gate_result": "EV_ROUTE_RELEASE",
-                "ge": self.elapsed_green_sec(movement.tls_id) if previous_phase == target_phase else 0.0,
-                "tQ": "",
-                "t_lead": theta_ta_lead_sec(self.params),
-                "G_ext": safe_float(getattr(self.params, "G_ext", 0.0), 0.0),
-                "SafetyGate_result": safety_status,
-                "deny_reason": safety_status if str(safety_status).startswith("DENY") else "",
-                "preemption_state": preemption_state,
-                "action": "GREEN_ACTIVE" if applied else ("GREEN_REQUEST" if safety_status == "REQUIRE_CLEARANCE" else "DENIED_BY_SAFETY"),
-                "processing_order": f"ev_route:{movement.route_order_index}",
-                "TA_formula": "EV route release uses direct route linkIndex green phase lookup",
-                "TA": "",
-            }
-            events.append(event_row(
-                time=now,
-                stage="stage3",
-                action_type=action_type,
-                movement=movement,
-                metrics=metric,
-                target_phase=applied_phase if applied_phase is not None else target_phase,
-                previous_phase=previous_phase,
-                ev_state=ev_state,
-                ev_distance_m=round_float(ev_distance),
-                control_mode="ev_route_green_release",
-                safety_status=safety_status,
-                trigger_reason=phase_source,
-                phase_duration_sec=applied_duration,
-                active_movement_count=len(self.active_controls),
-                run_id=self.run_id,
-                parameter_id=self.params.parameter_id,
-                repeat_id=self.repeat_id,
-                tE_sec=t_e_sec,
-                tS_sec="",
-                tQ_sec="",
-                TA_proxy_sec="",
-                ta_triggered=True,
-                queue_source=metric.queue_method,
-                case_b_source="not_case_b",
-                tS_source="ev_route_link_green_lookup",
-                TA_case="ev_route_release",
-                q_ratio=safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO),
-                q_th_m=round_float(safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO) * movement.L_m),
-                green_dur_sec=duration,
-                stage3_context=stage3_context,
-            ))
-            touched_tls.add(movement.tls_id)
         return events
 
     def restore_passed_or_expired_controls(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:

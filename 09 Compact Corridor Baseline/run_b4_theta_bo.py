@@ -69,6 +69,13 @@ DEFAULT_EI_CANDIDATE_COUNT = 600
 DEFAULT_LOCAL_EI_CANDIDATE_FRACTION = 0.45
 GP_LENGTH_SCALE_BOUNDS = (0.08, 2.5)
 GP_NOISE_LEVEL = 1.0e-4
+GP_TARGET_CAP_ABOVE_BEST_SEC = 120.0
+HOLD_FAILURE_D_G_THRESHOLD_SEC = 1_000.0
+HOLD_FAILURE_DISTANCE_RADIUS = 0.28
+HOLD_FAILURE_MIN_ACQ_MULTIPLIER = 0.01
+HOLD_FAILURE_EXCLUDE_MULTIPLIER = 0.85
+HOLD_GOOD_D_G_THRESHOLD_SEC = 500.0
+HOLD_GOOD_DISTANCE_RADIUS = 0.34
 DEFAULT_SUBSPACE_COUNT = 6
 DEFAULT_SPC_WINDOW = 5
 DEFAULT_SPC_ALPHA = 0.30
@@ -411,17 +418,29 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "tau": key[4],
             "bo_scores": [],
             "score_values": [],
+            "d_g_values": [],
+            "stage2_hold_counts": [],
             "repeat_count": 0,
         })
         entry["bo_scores"].append(safe_float(row.get("bo_score_sec")))
         entry["score_values"].append(safe_float(row.get("score_sec")))
+        if row.get("D_G_sec", "") != "":
+            entry["d_g_values"].append(safe_float(row.get("D_G_sec"), 0.0))
+        if row.get("stage2_hold_count", "") != "":
+            entry["stage2_hold_counts"].append(safe_float(row.get("stage2_hold_count"), 0.0))
         entry["repeat_count"] += 1
     aggregated: list[dict[str, Any]] = []
     for entry in grouped.values():
         bo_scores = entry.pop("bo_scores")
         score_values = entry.pop("score_values")
+        d_g_values = entry.pop("d_g_values")
+        hold_counts = entry.pop("stage2_hold_counts")
         entry["bo_score_sec"] = sum(bo_scores) / len(bo_scores)
         entry["score_sec"] = sum(score_values) / len(score_values)
+        if d_g_values:
+            entry["D_G_sec"] = sum(d_g_values) / len(d_g_values)
+        if hold_counts:
+            entry["stage2_hold_count"] = sum(hold_counts) / len(hold_counts)
         aggregated.append(entry)
     return sorted(aggregated, key=lambda row: (float(row["bo_score_sec"]), theta_key(row)))
 
@@ -447,6 +466,72 @@ def theta_feature_vector(row: dict[str, Any], bounds: dict[str, Any]) -> list[fl
         scale_continuous("Q_ratio"),
         scale_continuous("tau"),
     ]
+
+
+def clipped_bo_targets(scores: Any) -> Any:
+    try:
+        import numpy as np  # type: ignore
+    except Exception:
+        return scores
+    if len(scores) == 0:
+        return scores
+    best = float(np.min(scores))
+    cap = best + GP_TARGET_CAP_ABOVE_BEST_SEC
+    return np.minimum(scores, cap)
+
+
+def hold_delay_failure_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in observations
+        if (
+            row.get("stage2_hold_count", "") != ""
+            and safe_float(row.get("stage2_hold_count"), 0.0) <= 0.0
+            and safe_float(row.get("D_G_sec"), 0.0) >= HOLD_FAILURE_D_G_THRESHOLD_SEC
+        )
+    ]
+
+
+def hold_good_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in observations
+        if (
+            row.get("stage2_hold_count", "") != ""
+            and safe_float(row.get("stage2_hold_count"), 0.0) > 0.0
+            and safe_float(row.get("D_G_sec"), float("inf")) <= HOLD_GOOD_D_G_THRESHOLD_SEC
+        )
+    ]
+
+
+def nearest_theta_distance(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
+    candidate_vector = theta_feature_vector(candidate, bounds)
+    return min(
+        math.sqrt(sum((left - right) ** 2 for left, right in zip(candidate_vector, theta_feature_vector(row, bounds))))
+        for row in observations
+    )
+
+
+def hold_feasibility_multiplier(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
+    failures = hold_delay_failure_observations(observations)
+    if not failures:
+        return 1.0
+    nearest_failure = nearest_theta_distance(candidate, failures, bounds)
+    if nearest_failure >= HOLD_FAILURE_DISTANCE_RADIUS:
+        failure_multiplier = 1.0
+    else:
+        ratio = max(0.0, nearest_failure / HOLD_FAILURE_DISTANCE_RADIUS)
+        failure_multiplier = HOLD_FAILURE_MIN_ACQ_MULTIPLIER + (1.0 - HOLD_FAILURE_MIN_ACQ_MULTIPLIER) * ratio
+
+    good = hold_good_observations(observations)
+    if not good:
+        return failure_multiplier
+    nearest_good = nearest_theta_distance(candidate, good, bounds)
+    if nearest_good <= HOLD_GOOD_DISTANCE_RADIUS:
+        good_multiplier = 1.0
+    else:
+        good_multiplier = max(HOLD_FAILURE_MIN_ACQ_MULTIPLIER, HOLD_GOOD_DISTANCE_RADIUS / max(nearest_good, HOLD_GOOD_DISTANCE_RADIUS))
+    return min(failure_multiplier, good_multiplier)
 
 
 def random_theta_candidates(
@@ -531,11 +616,12 @@ def expected_improvement_candidates(
 
     x_train = np.array([theta_feature_vector(row, bounds) for row in aggregated], dtype=float)
     y_raw = np.array([float(row["bo_score_sec"]) for row in aggregated], dtype=float)
-    y_mean = float(np.mean(y_raw))
-    y_std = float(np.std(y_raw))
+    y_model = clipped_bo_targets(y_raw) if hold_delay_failure_observations(aggregated) else y_raw
+    y_mean = float(np.mean(y_model))
+    y_std = float(np.std(y_model))
     if not math.isfinite(y_std) or y_std < 1.0e-9:
         y_std = 1.0
-    y_train = (y_raw - y_mean) / y_std
+    y_train = (y_model - y_mean) / y_std
     kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(
         length_scale=[0.35] * x_train.shape[1],
         length_scale_bounds=GP_LENGTH_SCALE_BOUNDS,
@@ -566,8 +652,20 @@ def expected_improvement_candidates(
     ei_scaled = improvement * norm.cdf(z) + sigma * norm.pdf(z)
     ei_sec = np.maximum(ei_scaled, 0.0) * y_std
     ranked: list[dict[str, Any]] = []
+    filtered_ranked: list[dict[str, Any]] = []
     for row, ei in zip(candidates, ei_sec):
-        ranked.append({**row, "acquisition": float(ei)})
+        feasibility = hold_feasibility_multiplier(row, aggregated, bounds)
+        candidate = {
+            **row,
+            "raw_acquisition": float(ei),
+            "hold_feasibility": float(feasibility),
+            "acquisition": float(ei) * feasibility,
+        }
+        ranked.append(candidate)
+        if feasibility >= HOLD_FAILURE_EXCLUDE_MULTIPLIER:
+            filtered_ranked.append(candidate)
+    if filtered_ranked:
+        ranked = filtered_ranked
     ranked.sort(key=lambda row: (-safe_float(row.get("acquisition")), theta_key(row)))
     return ranked
 

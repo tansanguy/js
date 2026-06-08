@@ -454,11 +454,11 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                     "measured_T_actual_EMV_sec",
                     "measured_D_E_sec",
                     "measured_D_G_sec",
-                    "measured_general_mean_travel_time_sec",
-                    "stage2_on_count",
-                    "stage3_on_count",
-                ],
-            )
+                "measured_general_mean_travel_time_sec",
+                "stage2_on_count",
+                "stage3_on_count",
+            ],
+        )
             subspaces = self.runner.read_json(run_dir / "bo_spatial_subspaces.json")
             self.assertEqual(subspaces["subspace_count"], 6)
             self.assertTrue(all(0.0 <= float(row["weight"]) <= 1.0 for row in subspaces["subspaces"]))
@@ -536,6 +536,36 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
             self.assertEqual(float(essi_ranked[0]["t_lead"]), 1.0)
             self.assertAlmostEqual(float(essi_ranked[0]["essi_acquisition"]), 0.0)
             self.assertAlmostEqual(float(essi_ranked[1]["essi_acquisition"]), 8.0)
+        finally:
+            self.runner.theta_bo.expected_improvement_candidates = original_ei
+            self.runner.bo_spatial_subspaces = original_subspaces
+            self.runner.essi_activation_values = original_activation
+
+    def test_bo_records_raw_ei_before_feasibility_penalty(self):
+        original_ei = self.runner.theta_bo.expected_improvement_candidates
+        original_subspaces = self.runner.bo_spatial_subspaces
+        original_activation = self.runner.essi_activation_values
+        bounds = {
+            "t_lead": {"lower": 0, "upper": 10},
+            "delta_T_thr": {"lower": 0, "upper": 100},
+            "G_ext": {"lower": 0, "upper": 10},
+            "Q_ratio": {"lower": 0.0, "upper": 1.0},
+            "tau": {"lower": 0.70, "upper": 0.90},
+        }
+        candidates = [
+            {"t_lead": 1, "delta_T_thr": 50, "G_ext": 1, "Q_ratio": 0.1, "tau": 0.72, "raw_acquisition": 20.0, "acquisition": 5.0},
+            {"t_lead": 9, "delta_T_thr": 50, "G_ext": 9, "Q_ratio": 0.9, "tau": 0.88, "raw_acquisition": 8.0, "acquisition": 8.0},
+        ]
+        try:
+            self.runner.theta_bo.expected_improvement_candidates = lambda *args, **kwargs: candidates
+            self.runner.bo_spatial_subspaces = lambda _stage1: [{"subspace": index + 1, "weight": 1.0} for index in range(6)]
+            self.runner.essi_activation_values = lambda theta, _bounds, _subspaces: [0.0 for _ in range(6)]
+
+            ranked = self.runner.essi_improvement_candidates([], bounds, object(), 1, set(), 10)
+
+            self.assertEqual(float(ranked[0]["t_lead"]), 9.0)
+            self.assertAlmostEqual(float(ranked[1]["raw_ei_acquisition"]), 20.0)
+            self.assertLess(float(ranked[1]["acquisition"]), float(ranked[1]["raw_ei_acquisition"]))
         finally:
             self.runner.theta_bo.expected_improvement_candidates = original_ei
             self.runner.bo_spatial_subspaces = original_subspaces

@@ -426,20 +426,23 @@ def essi_fields_for_candidate(
     bounds: dict[str, Any],
     subspaces: list[dict[str, Any]],
     gp_improvement: float,
+    selection_improvement: float | None = None,
 ) -> dict[str, Any]:
     activations = essi_activation_values(theta, bounds, subspaces)
     while len(activations) < theta_bo.DEFAULT_SUBSPACE_COUNT:
         activations.append(0.0)
-    essi_values = [max(0.0, gp_improvement) * value for value in activations[: theta_bo.DEFAULT_SUBSPACE_COUNT]]
+    raw_improvement = max(0.0, gp_improvement)
+    selection_base = max(0.0, selection_improvement if selection_improvement is not None else gp_improvement)
+    essi_values = [selection_base * value for value in activations[: theta_bo.DEFAULT_SUBSPACE_COUNT]]
     spatial_activation = max(activations) if activations else 0.0
     dominant_index = (max(range(len(activations)), key=lambda idx: activations[idx]) + 1) if activations else ""
     essi_max = max(essi_values) if essi_values else 0.0
     essi_mean = sum(essi_values) / len(essi_values) if essi_values else 0.0
-    selection_acquisition = max(0.0, gp_improvement) * (
+    selection_acquisition = selection_base * (
         (1.0 - ESSI_BLEND_WEIGHT) + ESSI_BLEND_WEIGHT * (ESSI_ACTIVATION_FLOOR + (1.0 - ESSI_ACTIVATION_FLOOR) * spatial_activation)
     )
     fields: dict[str, Any] = {
-        "raw_ei_acquisition": sec(gp_improvement),
+        "raw_ei_acquisition": sec(raw_improvement),
         "acquisition": sec(selection_acquisition),
         "essi_acquisition": sec(essi_max),
         "essi_max": sec(essi_max),
@@ -474,8 +477,9 @@ def essi_improvement_candidates(
         if key in seen:
             continue
         seen.add(key)
-        gp_improvement = safe_float(item.get("acquisition"), 0.0)
-        essi = essi_fields_for_candidate(theta, bounds, subspaces, gp_improvement)
+        raw_gp_improvement = safe_float(item.get("raw_acquisition"), safe_float(item.get("acquisition"), 0.0))
+        selection_improvement = safe_float(item.get("acquisition"), raw_gp_improvement)
+        essi = essi_fields_for_candidate(theta, bounds, subspaces, raw_gp_improvement, selection_improvement)
         out.append({**theta, **essi})
     if not out:
         raise B4OptimizationError("gp_essi_unavailable:no_unique_candidates")
@@ -765,9 +769,13 @@ def surrogate_prediction(observations: list[dict[str, Any]], theta: dict[str, An
 
     x_train = np.array([vector_from_theta(row, bounds) for row in observations], dtype=float)
     y_train = np.array([safe_float(row.get("score")) for row in observations], dtype=float)
-    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(nu=2.5) + WhiteKernel(noise_level=1.0e-6, noise_level_bounds="fixed")
+    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(
+        length_scale=[0.35] * x_train.shape[1],
+        length_scale_bounds=theta_bo.GP_LENGTH_SCALE_BOUNDS,
+        nu=2.5,
+    ) + WhiteKernel(noise_level=theta_bo.GP_NOISE_LEVEL, noise_level_bounds="fixed")
     try:
-        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True, random_state=0, alpha=1.0e-8, n_restarts_optimizer=0)
+        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True, random_state=0, alpha=theta_bo.GP_NOISE_LEVEL, n_restarts_optimizer=0)
         gp.fit(x_train, y_train)
         mu, std = gp.predict(np.array([vector_from_theta(theta, bounds)], dtype=float), return_std=True)
     except Exception:
@@ -797,6 +805,8 @@ def bo_learning_observation(row: dict[str, Any]) -> dict[str, Any] | None:
         "score_sec": row["score"],
         "bo_score_sec": row["score"],
         "score": row["score"],
+        "D_G_sec": row.get("D_G_sec", ""),
+        "stage2_hold_count": row.get("stage2_hold_count", ""),
     }
 
 
@@ -1207,9 +1217,13 @@ def build_bo_gp_slice_table(rows: list[dict[str, Any]], bounds: dict[str, Any], 
     best = min(observations, key=lambda row: safe_float(row.get("score"), float("inf")))
     x_train = np.array([vector_from_theta(row, bounds) for row in observations], dtype=float)
     y_train = np.array([safe_float(row.get("score")) for row in observations], dtype=float)
-    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(nu=2.5) + WhiteKernel(noise_level=1.0e-6, noise_level_bounds="fixed")
+    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(
+        length_scale=[0.35] * x_train.shape[1],
+        length_scale_bounds=theta_bo.GP_LENGTH_SCALE_BOUNDS,
+        nu=2.5,
+    ) + WhiteKernel(noise_level=theta_bo.GP_NOISE_LEVEL, noise_level_bounds="fixed")
     try:
-        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True, random_state=0, alpha=1.0e-8, n_restarts_optimizer=0)
+        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True, random_state=0, alpha=theta_bo.GP_NOISE_LEVEL, n_restarts_optimizer=0)
         gp.fit(x_train, y_train)
     except Exception:
         return []

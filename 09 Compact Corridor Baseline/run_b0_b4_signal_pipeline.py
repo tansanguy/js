@@ -680,9 +680,23 @@ def objective_score(D_E_sec: float, D_G_sec: float) -> float:
     return round((W_E / total_weight) * D_E_sec + (W_G / total_weight) * D_G_sec, 6)
 
 
-def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_rows_by_id: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def actual_v_vehicle_metrics(
+    background_tripinfo: list[dict[str, Any]],
+    free_rows_by_id: dict[str, dict[str, Any]],
+    background_route: Path,
+    simulation_end_sec: float,
+) -> dict[str, Any]:
+    arrived_by_id = {str(row.get("id", "")): row for row in background_tripinfo if row.get("id")}
+    _routes, vehicles = parse_route_file(background_route)
+    depart_by_id = {
+        str(vehicle.get("id", "")): safe_float(vehicle.get("depart"), 0.0)
+        for vehicle in vehicles
+        if vehicle.get("id") and vehicle.get("id") != EV_ID
+    }
     actual_values: list[float] = []
     free_values: list[float] = []
+    arrived_count = 0
+    unfinished_count = 0
     for row in background_tripinfo:
         vehicle_id = row.get("id", "")
         free = free_rows_by_id.get(vehicle_id)
@@ -693,6 +707,22 @@ def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_row
         if duration >= 0 and free_time >= 0:
             actual_values.append(duration)
             free_values.append(free_time)
+            arrived_count += 1
+    for vehicle_id, free in free_rows_by_id.items():
+        if vehicle_id in arrived_by_id:
+            continue
+        depart = depart_by_id.get(vehicle_id)
+        if depart is None:
+            continue
+        if depart > float(simulation_end_sec):
+            continue
+        free_time = safe_float(free.get("free_time_sec"), -1.0)
+        if free_time < 0.0:
+            continue
+        censored_duration = max(float(simulation_end_sec) - depart, 0.0)
+        actual_values.append(max(censored_duration, free_time))
+        free_values.append(free_time)
+        unfinished_count += 1
     actual_mean = round(sum(actual_values) / len(actual_values), 6) if actual_values else ""
     free_mean = round(sum(free_values) / len(free_values), 6) if free_values else ""
     D_G_sec = round(actual_mean - free_mean, 6) if actual_values and free_values else ""
@@ -701,6 +731,9 @@ def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_row
         "T_G_actual_mean_sec": actual_mean,
         "T_G_free_mean_sec": free_mean,
         "D_G_sec": D_G_sec,
+        "V_G_arrived_vehicle_count": arrived_count,
+        "V_G_unfinished_vehicle_count": unfinished_count,
+        "D_G_unfinished_policy": "unfinished_V_G_duration_censored_at_simulation_end",
     }
 
 
@@ -893,7 +926,7 @@ def summarize_task(
     t_actual_emv = safe_float(emergency.get("duration"), 0.0) if emergency else 0.0
     t_free_emv = safe_float(free_reference.get("T_free_EMV_sec"), 0.0)
     D_E_sec = round(t_actual_emv - t_free_emv, 6) if emergency else ""
-    veh_metrics = actual_v_vehicle_metrics(background, free_rows_by_id)
+    veh_metrics = actual_v_vehicle_metrics(background, free_rows_by_id, task.background_route, phase_config.hard_max_sim_time)
     D_G_sec = veh_metrics["D_G_sec"] if veh_metrics["D_G_sec"] != "" else 0.0
     score = objective_score(safe_float(D_E_sec), safe_float(D_G_sec)) if emergency else ""
     row.update({
