@@ -85,6 +85,8 @@ THETA_FIELDS = ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]
 PHASE_SCREENING = "screening"
 PHASE_FINAL = "final"
 PHASE_ALL = "all"
+VALIDATION_MODE_STANDARD = "standard"
+VALIDATION_MODE_ROBUST_THETA_SELECTION = "robust-theta-selection"
 STAGE1_REBUILD_POLICY = "per_repeat_for_10_final_validation"
 
 
@@ -232,6 +234,71 @@ TASK_FIELDS = [
     "run_dir",
     "route_xml",
     "stage1_dir",
+]
+
+ROBUST_THETA_CANDIDATE_FIELDS = [
+    "theta_rank",
+    "source_row_index",
+    "method",
+    "seed",
+    "round",
+    "round_theta_index",
+    "parameter_id",
+    *THETA_FIELDS,
+    "source_score",
+    "source_D_E_sec",
+    "source_D_G_sec",
+    "source_final_status",
+    "source_failure_reason",
+    "selection_reason",
+    "nearest_selected_distance",
+]
+
+ROBUST_THETA_SUMMARY_FIELDS = [
+    "theta_rank",
+    "parameter_id",
+    *THETA_FIELDS,
+    "route_id",
+    "departures",
+    "repeat_count",
+    "stuck_count",
+    "fail_count",
+    "arrival_rate",
+    "teleport_count",
+    "mean_D_E_sec",
+    "mean_D_G_sec",
+    "mean_score",
+    "mean_B4_vs_B04_D_E_improvement_sec",
+    "stage2_hold_mean",
+    "stage3_preemption_mean",
+    "survivor_status",
+    "survivor_reason",
+    "mini_batch_output_root",
+    "mini_batch_run_root",
+]
+
+ROBUST_FINAL_RANKING_FIELDS = [
+    "final_rank",
+    "theta_rank",
+    "parameter_id",
+    *THETA_FIELDS,
+    "route_id",
+    "run_id",
+    "selected_route_runs_csv",
+    "relative_error_sufficiency_csv",
+    "repeat_count",
+    "stuck_count",
+    "fail_count",
+    "arrival_rate",
+    "teleport_count",
+    "mean_D_E_sec",
+    "mean_D_G_sec",
+    "mean_score",
+    "mean_B4_vs_B04_D_E_improvement_sec",
+    "relative_error_pass",
+    "relative_error_statuses",
+    "selection_status",
+    "selection_reason",
 ]
 
 
@@ -687,6 +754,241 @@ def load_final_b4_params(
         "theta_source_smoke_warning": is_smoke_theta_source(provenance, rows),
     })
     return params, provenance
+
+
+def safe_id(value: Any, fallback: str = "theta") -> str:
+    text = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in str(value))
+    text = "_".join(part for part in text.split("_") if part)
+    return text[:120] or fallback
+
+
+def clone_args(args: argparse.Namespace, **overrides: Any) -> argparse.Namespace:
+    payload = dict(vars(args))
+    payload.update(overrides)
+    return argparse.Namespace(**payload)
+
+
+def theta_sort_score(row: dict[str, str]) -> tuple[float, float, float]:
+    penalty = safe_float(row.get("penalty"), 0.0)
+    return (
+        safe_float(row.get("score"), float("inf")) + penalty,
+        safe_float(row.get("D_E_sec"), float("inf")),
+        safe_float(row.get("D_G_sec"), float("inf")),
+    )
+
+
+def theta_identity(row: dict[str, Any]) -> tuple[float, float, float, float, float]:
+    return tuple(round(safe_float(row.get(field)), 6) for field in THETA_FIELDS)  # type: ignore[return-value]
+
+
+def normalized_theta_distance(left: dict[str, Any], right: dict[str, Any]) -> float:
+    ranges = {
+        "t_lead": (0.0, 122.0),
+        "delta_T_thr": (0.0, 244.0),
+        "G_ext": (0.0, 50.0),
+        "Q_ratio": (0.0, 1.0),
+        "tau": (0.70, 0.90),
+    }
+    total = 0.0
+    for field, (lower, upper) in ranges.items():
+        width = max(upper - lower, 1.0)
+        delta = (safe_float(left.get(field)) - safe_float(right.get(field))) / width
+        total += delta * delta
+    return math.sqrt(total)
+
+
+def select_robust_theta_candidates(
+    rows: list[dict[str, str]],
+    *,
+    method_filter: str,
+    limit: int,
+    diversity_min_distance: float,
+) -> list[dict[str, Any]]:
+    method_filter = method_filter.strip()
+    eligible: list[dict[str, Any]] = []
+    seen: set[tuple[float, float, float, float, float]] = set()
+    for row_index, row in enumerate(rows, start=1):
+        if row.get("final_status") != "PASS":
+            continue
+        if method_filter != "ALL" and row.get("method") != method_filter:
+            continue
+        if any(row.get(field) in {"", None} for field in THETA_FIELDS):
+            continue
+        key = theta_identity(row)
+        if key in seen:
+            continue
+        seen.add(key)
+        eligible.append({
+            "source_row_index": row_index,
+            "method": row.get("method", ""),
+            "seed": row.get("seed", ""),
+            "round": row.get("round", ""),
+            "round_theta_index": row.get("round_theta_index", ""),
+            "parameter_id": row.get("parameter_id") or f"theta_row_{row_index:04d}",
+            **{field: row.get(field, "") for field in THETA_FIELDS},
+            "source_score": row.get("score", ""),
+            "source_D_E_sec": row.get("D_E_sec", ""),
+            "source_D_G_sec": row.get("D_G_sec", ""),
+            "source_final_status": row.get("final_status", ""),
+            "source_failure_reason": row.get("failure_reason", ""),
+            "_sort_score": theta_sort_score(row),
+        })
+    eligible.sort(key=lambda row: row["_sort_score"])
+    selected: list[dict[str, Any]] = []
+    deferred: list[tuple[dict[str, Any], float]] = []
+    for row in eligible:
+        nearest = min((normalized_theta_distance(row, other) for other in selected), default=float("inf"))
+        if nearest >= diversity_min_distance or len(selected) < max(1, limit // 3):
+            row = dict(row)
+            row["selection_reason"] = "score_ranked_diverse_pass_bo_candidate"
+            row["nearest_selected_distance"] = "" if math.isinf(nearest) else sec(nearest)
+            selected.append(row)
+            if len(selected) >= limit:
+                break
+        else:
+            deferred.append((row, nearest))
+    if len(selected) < limit:
+        for row, nearest in deferred:
+            row = dict(row)
+            row["selection_reason"] = "score_ranked_fill_after_diversity_pass"
+            row["nearest_selected_distance"] = sec(nearest)
+            selected.append(row)
+            if len(selected) >= limit:
+                break
+    for index, row in enumerate(selected, start=1):
+        row["theta_rank"] = index
+        row.pop("_sort_score", None)
+    return selected
+
+
+def robust_theta_params(row: dict[str, Any]) -> B4ThetaParams:
+    return B4ThetaParams.from_row({
+        "parameter_id": safe_id(row.get("parameter_id") or f"robust_theta_{row.get('theta_rank', '')}"),
+        **{field: row.get(field, "") for field in THETA_FIELDS},
+    })
+
+
+def robust_summary_from_rows(
+    theta_row: dict[str, Any],
+    route_id: str,
+    route_rows: list[dict[str, Any]],
+    departures: list[float],
+    *,
+    output_root: Path,
+    run_root: Path,
+) -> dict[str, Any]:
+    b4_rows = [row for row in route_rows if row.get("mode") == B4_MODE]
+    d_e_values = [safe_float(row.get("D_E_sec")) for row in b4_rows if row.get("D_E_sec") not in {"", None}]
+    d_g_values = [safe_float(row.get("D_G_sec")) for row in b4_rows if row.get("D_G_sec") not in {"", None}]
+    score_values = [
+        safe_float(objective_score_from_row(row, W_E, W_G))
+        for row in b4_rows
+        if objective_score_from_row(row, W_E, W_G) not in {"", None}
+    ]
+    improvement_values: list[float] = []
+    for _repeat, b04, b4 in paired_repeat_rows(route_rows):
+        b04_time = t_emv(b04)
+        b4_time = t_emv(b4)
+        if b04_time is not None and b4_time is not None:
+            improvement_values.append(b04_time - b4_time)
+    stage2_values = [safe_float(row.get("stage2_hold_count")) for row in b4_rows if row.get("stage2_hold_count") not in {"", None}]
+    stage3_values = [safe_float(row.get("stage3_preemption_count")) for row in b4_rows if row.get("stage3_preemption_count") not in {"", None}]
+    repeat_count = len(b4_rows)
+    stuck_count = sum(str(row.get("failure_reason", "")).strip() == "emergency_stuck" for row in b4_rows)
+    fail_count = sum(row.get("final_status") != "PASS" or bool_cell(row.get("failed")) for row in b4_rows)
+    teleport_count = sum(bool_cell(row.get("emergency_teleport")) for row in b4_rows)
+    arrival_rate = sum(bool_cell(row.get("emergency_arrived")) for row in b4_rows) / repeat_count if repeat_count else 0.0
+    survivor = stuck_count == 0 and fail_count == 0 and teleport_count == 0 and arrival_rate == 1.0 and repeat_count == len(departures)
+    reason = "stuck_free_full_arrival_mini_batch" if survivor else "mini_batch_failed_stuck_fail_teleport_or_arrival_gate"
+    return {
+        "theta_rank": theta_row.get("theta_rank", ""),
+        "parameter_id": theta_row.get("parameter_id", ""),
+        **{field: theta_row.get(field, "") for field in THETA_FIELDS},
+        "route_id": route_id,
+        "departures": ";".join(str(value) for value in departures),
+        "repeat_count": repeat_count,
+        "stuck_count": stuck_count,
+        "fail_count": fail_count,
+        "arrival_rate": sec(arrival_rate),
+        "teleport_count": teleport_count,
+        "mean_D_E_sec": sec(mean(d_e_values)),
+        "mean_D_G_sec": sec(mean(d_g_values)),
+        "mean_score": sec(mean(score_values)),
+        "mean_B4_vs_B04_D_E_improvement_sec": sec(mean(improvement_values)),
+        "stage2_hold_mean": sec(mean(stage2_values)),
+        "stage3_preemption_mean": sec(mean(stage3_values)),
+        "survivor_status": "SURVIVOR" if survivor else "REJECTED",
+        "survivor_reason": reason,
+        "mini_batch_output_root": rel(output_root),
+        "mini_batch_run_root": rel(run_root),
+    }
+
+
+def robust_summary_sort_key(row: dict[str, Any]) -> tuple[int, int, int, float, float]:
+    return (
+        0 if row.get("survivor_status") == "SURVIVOR" else 1,
+        int(safe_float(row.get("stuck_count"))),
+        int(safe_float(row.get("fail_count"))),
+        -safe_float(row.get("arrival_rate")),
+        safe_float(row.get("mean_score"), float("inf")),
+    )
+
+
+def relative_error_all_pass(rows: list[dict[str, Any]]) -> tuple[bool, str]:
+    if not rows:
+        return False, ""
+    statuses = [str(row.get("status", "")) for row in rows]
+    return all(status == "PASS" for status in statuses), ";".join(statuses)
+
+
+def final_ranking_row(
+    final_rank: int,
+    theta_row: dict[str, Any],
+    route_id: str,
+    child_run_id: str,
+    output_root: Path,
+) -> dict[str, Any]:
+    route_rows = read_csv(output_root / "selected_route_runs.csv")
+    relative_rows = read_csv(output_root / "relative_error_sufficiency.csv")
+    summary = robust_summary_from_rows(
+        theta_row,
+        route_id,
+        route_rows,
+        [],
+        output_root=output_root,
+        run_root=PROJECT_ROOT / "runs",
+    )
+    relative_pass, relative_statuses = relative_error_all_pass(relative_rows)
+    stable = (
+        int(safe_float(summary.get("stuck_count"))) == 0
+        and int(safe_float(summary.get("fail_count"))) == 0
+        and safe_float(summary.get("arrival_rate")) == 1.0
+        and int(safe_float(summary.get("teleport_count"))) == 0
+        and relative_pass
+    )
+    return {
+        "final_rank": final_rank,
+        "theta_rank": theta_row.get("theta_rank", ""),
+        "parameter_id": theta_row.get("parameter_id", ""),
+        **{field: theta_row.get(field, "") for field in THETA_FIELDS},
+        "route_id": route_id,
+        "run_id": child_run_id,
+        "selected_route_runs_csv": rel(output_root / "selected_route_runs.csv"),
+        "relative_error_sufficiency_csv": rel(output_root / "relative_error_sufficiency.csv"),
+        "repeat_count": summary["repeat_count"],
+        "stuck_count": summary["stuck_count"],
+        "fail_count": summary["fail_count"],
+        "arrival_rate": summary["arrival_rate"],
+        "teleport_count": summary["teleport_count"],
+        "mean_D_E_sec": summary["mean_D_E_sec"],
+        "mean_D_G_sec": summary["mean_D_G_sec"],
+        "mean_score": summary["mean_score"],
+        "mean_B4_vs_B04_D_E_improvement_sec": summary["mean_B4_vs_B04_D_E_improvement_sec"],
+        "relative_error_pass": str(relative_pass),
+        "relative_error_statuses": relative_statuses,
+        "selection_status": "FINAL_SELECTED" if stable else "FINAL_DIAGNOSTIC",
+        "selection_reason": "stuck_free_relative_error_pass_min_score" if stable else "failed_stability_or_relative_error_gate",
+    }
 
 
 def load_stage1_module() -> Any:
@@ -1268,6 +1570,30 @@ def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any],
     }
 
 
+def run_robust_mini_batch_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], dict[str, Any], list[float], Path, Path, int]) -> dict[str, Any]:
+    index, args, candidate, theta_row, departures, run_root, output_root, repeat_workers = payload
+    params = robust_theta_params(theta_row)
+    result = run_candidate_worker((index, args, candidate, departures, params, run_root, output_root, 0, True, repeat_workers))
+    route_rows = result["route_rows"]
+    write_csv(output_root / "route_runs.csv", route_rows, RUN_FIELDS)
+    write_csv(output_root / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
+    summary = robust_summary_from_rows(
+        theta_row,
+        str(candidate["route_id"]),
+        route_rows,
+        departures,
+        output_root=output_root,
+        run_root=run_root,
+    )
+    write_json(output_root / "mini_batch_summary.json", {"summary": summary, "theta": theta_row})
+    return {
+        "index": index,
+        "theta_row": theta_row,
+        "summary": summary,
+        "route_rows": route_rows,
+    }
+
+
 def t_emv(row: dict[str, Any]) -> float | None:
     value = row.get("T_actual_EMV_sec")
     if row.get("mode") == B004_MODE and value in {"", None}:
@@ -1539,6 +1865,25 @@ def validate_args(args: argparse.Namespace) -> None:
         raise FinalDestinationValidationError("depart_min_must_be_lte_depart_max")
     if args.workers < 1:
         raise FinalDestinationValidationError("workers_must_be_positive")
+    if args.validation_mode == VALIDATION_MODE_ROBUST_THETA_SELECTION:
+        if args.theta_all_evaluations is None:
+            raise FinalDestinationValidationError("robust_theta_selection_requires_theta_all_evaluations")
+        if args.robust_candidate_count < 1:
+            raise FinalDestinationValidationError("robust_candidate_count_must_be_positive")
+        if args.robust_mini_batch_repeats < 1:
+            raise FinalDestinationValidationError("robust_mini_batch_repeats_must_be_positive")
+        if args.robust_survivor_count < 1:
+            raise FinalDestinationValidationError("robust_survivor_count_must_be_positive")
+        if args.robust_final_top_k < 1:
+            raise FinalDestinationValidationError("robust_final_top_k_must_be_positive")
+        if args.robust_theta_workers < 1:
+            raise FinalDestinationValidationError("robust_theta_workers_must_be_positive")
+        if args.robust_repeat_workers < 0:
+            raise FinalDestinationValidationError("robust_repeat_workers_must_be_nonnegative")
+        if args.robust_theta_workers > 1 and args.robust_repeat_workers > 1:
+            raise FinalDestinationValidationError("robust_repeat_workers_must_be_1_when_theta_workers_gt_1")
+        if args.robust_repeat_workers > 0 and args.robust_theta_workers * args.robust_repeat_workers > args.workers:
+            raise FinalDestinationValidationError("robust_theta_workers_times_repeat_workers_must_not_exceed_workers")
     if not args.dry_run and shutil.which(args.sumo_binary or "sumo") is None:
         raise FinalDestinationValidationError("missing_executable:sumo")
     args.run_id = args.run_id or default_run_id()
@@ -2162,7 +2507,223 @@ def selected_route_ids_from_args_or_screening(args: argparse.Namespace) -> list[
     return [str(row["route_id"]) for row in selected]
 
 
+def run_robust_theta_selection(args: argparse.Namespace) -> dict[str, Any]:
+    validate_args(args)
+    if args.theta_all_evaluations is None:
+        raise FinalDestinationValidationError("robust_theta_selection_requires_theta_all_evaluations")
+    output_root = args.metrics_root / args.run_id / "robust_selection"
+    run_root = args.run_root / args.run_id / "robust_selection"
+    output_root.mkdir(parents=True, exist_ok=True)
+    base_run_root = args.run_root / args.run_id
+    base_candidates = build_candidate_routes(args, base_run_root / "inputs" / "candidate_catalog")
+    selected_route_ids = selected_route_ids_from_args_or_screening(args)
+    if not selected_route_ids:
+        raise FinalDestinationValidationError("robust_theta_selection_requires_selected_route")
+    route_id = selected_route_ids[0]
+    candidates = clone_candidates_for_phase(base_candidates, [route_id], base_run_root / "inputs" / "robust_selection")
+    if not candidates:
+        raise FinalDestinationValidationError(f"robust_route_not_found:{route_id}")
+    candidate = candidates[0]
+    theta_rows = read_csv(Path(args.theta_all_evaluations))
+    theta_candidates = select_robust_theta_candidates(
+        theta_rows,
+        method_filter=args.theta_method,
+        limit=args.robust_candidate_count,
+        diversity_min_distance=args.robust_diversity_min_distance,
+    )
+    if not theta_candidates:
+        raise FinalDestinationValidationError("no_robust_theta_candidates_after_filter")
+    write_csv(output_root / "robust_theta_candidates.csv", theta_candidates, ROBUST_THETA_CANDIDATE_FIELDS)
+    departures = deterministic_departures(
+        seed=args.seed,
+        route_id=route_id,
+        repeats=args.robust_mini_batch_repeats,
+        depart_min=args.depart_min,
+        depart_max=args.depart_max,
+    )
+    plan_payload = {
+        "schema": "compact_v9_final_destination_robust_theta_plan.v1",
+        "generated_at": utc_now(),
+        "run_id": args.run_id,
+        "route_id": route_id,
+        "theta_all_evaluations": rel(Path(args.theta_all_evaluations)),
+        "theta_method": args.theta_method,
+        "candidate_count": len(theta_candidates),
+        "mini_batch_repeats": args.robust_mini_batch_repeats,
+        "mini_batch_departures": departures,
+        "survivor_count": args.robust_survivor_count,
+        "final_top_k": args.robust_final_top_k,
+        "workers": args.workers,
+        "theta_workers": args.robust_theta_workers,
+        "repeat_workers": args.robust_repeat_workers,
+        "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
+    }
+    write_json(output_root / "robust_theta_plan.json", plan_payload)
+    if args.dry_run:
+        write_csv(output_root / "mini_batch_theta_summary.csv", [], ROBUST_THETA_SUMMARY_FIELDS)
+        result = {
+            "schema": "compact_v9_final_destination_robust_theta_selection.v1",
+            "generated_at": utc_now(),
+            "run_id": args.run_id,
+            "status": "dry_run_no_execution",
+            "route_id": route_id,
+            "outputs": {
+                "robust_theta_candidates_csv": rel(output_root / "robust_theta_candidates.csv"),
+                "robust_theta_plan_json": rel(output_root / "robust_theta_plan.json"),
+            },
+        }
+        write_json(output_root / "robust_selection_summary.json", result)
+        return result
+
+    theta_worker_count = min(max(1, args.robust_theta_workers), len(theta_candidates), max(1, args.workers))
+    if args.robust_repeat_workers > 0:
+        repeat_workers = max(1, args.robust_repeat_workers)
+    elif theta_worker_count > 1:
+        repeat_workers = 1
+    else:
+        repeat_workers = max(1, args.workers)
+    mini_payloads = []
+    for index, theta_row in enumerate(theta_candidates):
+        theta_id = f"theta_{int(theta_row['theta_rank']):03d}_{safe_id(theta_row.get('parameter_id'))}"
+        mini_payloads.append((
+            index,
+            args,
+            candidate,
+            theta_row,
+            departures,
+            run_root / "mini_batch" / theta_id,
+            output_root / "mini_batch" / theta_id,
+            repeat_workers,
+        ))
+    completed: dict[int, dict[str, Any]] = {}
+
+    def write_mini_partials() -> None:
+        ordered = [completed[index] for index in sorted(completed)]
+        summary_rows = [item["summary"] for item in ordered]
+        write_csv(output_root / "mini_batch_theta_summary.partial.csv", summary_rows, ROBUST_THETA_SUMMARY_FIELDS)
+
+    if theta_worker_count == 1:
+        for payload in mini_payloads:
+            result = run_robust_mini_batch_worker(payload)
+            completed[int(result["index"])] = result
+            write_mini_partials()
+    else:
+        ensure_worker_imports()
+        with ProcessPoolExecutor(max_workers=theta_worker_count, initializer=ensure_worker_imports) as executor:
+            futures = [executor.submit(run_robust_mini_batch_worker, payload) for payload in mini_payloads]
+            for future in as_completed(futures):
+                result = future.result()
+                completed[int(result["index"])] = result
+                write_mini_partials()
+
+    mini_results = [completed[index] for index in sorted(completed)]
+    mini_summary_rows = [result["summary"] for result in mini_results]
+    write_csv(output_root / "mini_batch_theta_summary.csv", mini_summary_rows, ROBUST_THETA_SUMMARY_FIELDS)
+    survivor_rows = [row for row in sorted(mini_summary_rows, key=robust_summary_sort_key) if row.get("survivor_status") == "SURVIVOR"]
+    selected_for_final = survivor_rows[:min(args.robust_survivor_count, args.robust_final_top_k)]
+    fallback_used = False
+    if not selected_for_final:
+        fallback_used = True
+        selected_for_final = sorted(mini_summary_rows, key=robust_summary_sort_key)[:args.robust_final_top_k]
+    theta_by_rank = {int(safe_float(row.get("theta_rank"))): row for row in theta_candidates}
+    selected_theta_rows = [theta_by_rank[int(safe_float(row.get("theta_rank")))] for row in selected_for_final]
+    write_csv(output_root / "survivor_ranking.csv", sorted(mini_summary_rows, key=robust_summary_sort_key), ROBUST_THETA_SUMMARY_FIELDS)
+
+    final_ranking_rows: list[dict[str, Any]] = []
+    final_results: list[dict[str, Any]] = []
+    for final_index, theta_row in enumerate(selected_theta_rows, start=1):
+        params = robust_theta_params(theta_row)
+        child_run_id = f"{args.run_id}/robust_final/top_{final_index:02d}_{safe_id(params.parameter_id)}"
+        child_args = clone_args(args, run_id=child_run_id, final_selection_count=1)
+        child_base_root = child_args.run_root / child_args.run_id
+        child_candidates = clone_candidates_for_phase(
+            base_candidates,
+            [route_id],
+            child_base_root / "inputs" / PHASE_FINAL,
+        )
+        params_provenance = {
+            "schema": "compact_v9_final_destination_robust_theta_lock.v1",
+            "theta_all_evaluations_csv": rel(Path(args.theta_all_evaluations)),
+            "theta_selection_policy": "robust_mini_batch_survivor_top5",
+            "theta_method_filter": args.theta_method,
+            "selected_method": theta_row.get("method", ""),
+            "selected_seed": theta_row.get("seed", ""),
+            "selected_round": theta_row.get("round", ""),
+            "selected_score": theta_row.get("source_score", ""),
+            "decision_variables_fixed": {field: params.as_result_fields()[field] for field in THETA_FIELDS},
+            "bo_enabled": False,
+            "bayesian_optimization_executed_by_final_validation": False,
+            "robust_parent_run_id": args.run_id,
+            "robust_theta_rank": theta_row.get("theta_rank", ""),
+            "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
+        }
+        final_result = run_validation_phase(
+            child_args,
+            phase=PHASE_FINAL,
+            candidates=child_candidates,
+            repeats=args.repeats,
+            params=params,
+            params_provenance=params_provenance,
+        )
+        final_results.append(final_result)
+        child_output_root = child_args.metrics_root / child_args.run_id / PHASE_FINAL
+        final_ranking_rows.append(final_ranking_row(final_index, theta_row, route_id, child_run_id, child_output_root))
+        write_csv(output_root / "final_theta_ranking.partial.csv", final_ranking_rows, ROBUST_FINAL_RANKING_FIELDS)
+
+    final_ranking_rows = sorted(
+        final_ranking_rows,
+        key=lambda row: (
+            0 if row.get("selection_status") == "FINAL_SELECTED" else 1,
+            int(safe_float(row.get("stuck_count"))),
+            int(safe_float(row.get("fail_count"))),
+            -safe_float(row.get("arrival_rate")),
+            0 if row.get("relative_error_pass") == "True" else 1,
+            safe_float(row.get("mean_score"), float("inf")),
+            -safe_float(row.get("mean_B4_vs_B04_D_E_improvement_sec")),
+            safe_float(row.get("mean_D_G_sec"), float("inf")),
+        ),
+    )
+    for index, row in enumerate(final_ranking_rows, start=1):
+        row["final_rank"] = index
+    write_csv(output_root / "final_theta_ranking.csv", final_ranking_rows, ROBUST_FINAL_RANKING_FIELDS)
+    selected_final = final_ranking_rows[0] if final_ranking_rows else {}
+    result = {
+        "schema": "compact_v9_final_destination_robust_theta_selection.v1",
+        "generated_at": utc_now(),
+        "run_id": args.run_id,
+        "status": "complete",
+        "route_id": route_id,
+        "fallback_used_due_to_no_survivor": fallback_used,
+        "mini_batch": {
+            "theta_candidate_count": len(theta_candidates),
+            "repeat_count": args.robust_mini_batch_repeats,
+            "departures": departures,
+            "survivor_count": len(survivor_rows),
+        },
+        "final_validation": {
+            "top_k": len(final_ranking_rows),
+            "repeats": args.repeats,
+            "adaptive_max_repeats": args.adaptive_max_repeats,
+            "results": final_results,
+        },
+        "selected_final_theta": selected_final,
+        "outputs": {
+            "robust_theta_candidates_csv": rel(output_root / "robust_theta_candidates.csv"),
+            "robust_theta_plan_json": rel(output_root / "robust_theta_plan.json"),
+            "mini_batch_theta_summary_csv": rel(output_root / "mini_batch_theta_summary.csv"),
+            "survivor_ranking_csv": rel(output_root / "survivor_ranking.csv"),
+            "final_theta_ranking_csv": rel(output_root / "final_theta_ranking.csv"),
+            "robust_selection_summary_json": rel(output_root / "robust_selection_summary.json"),
+        },
+    }
+    write_json(output_root / "robust_selection_summary.json", result)
+    write_json(args.metrics_root / "latest.json", result)
+    return result
+
+
 def run_validation(args: argparse.Namespace) -> dict[str, Any]:
+    if args.validation_mode == VALIDATION_MODE_ROBUST_THETA_SELECTION:
+        return run_robust_theta_selection(args)
     validate_args(args)
     params, params_provenance = load_final_b4_params(
         theta_latest=args.theta_latest,
@@ -2239,6 +2800,7 @@ def run_validation(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Compact V9 final destination validation.")
+    parser.add_argument("--validation-mode", choices=[VALIDATION_MODE_STANDARD, VALIDATION_MODE_ROBUST_THETA_SELECTION], default=VALIDATION_MODE_STANDARD)
     parser.add_argument("--phase", choices=[PHASE_SCREENING, PHASE_FINAL, PHASE_ALL], default=PHASE_ALL)
     parser.add_argument("--routes-csv", type=Path, default=DEFAULT_ROUTES_CSV)
     parser.add_argument("--net", type=Path, default=DEFAULT_NET)
@@ -2264,6 +2826,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--depart-max", type=float, default=DEFAULT_DEPART_MAX)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
+    parser.add_argument("--robust-candidate-count", type=int, default=24)
+    parser.add_argument("--robust-mini-batch-repeats", type=int, default=6)
+    parser.add_argument("--robust-survivor-count", type=int, default=5)
+    parser.add_argument("--robust-final-top-k", type=int, default=5)
+    parser.add_argument("--robust-diversity-min-distance", type=float, default=0.08)
+    parser.add_argument("--robust-theta-workers", type=int, default=2)
+    parser.add_argument("--robust-repeat-workers", type=int, default=0, help="Repeat workers per theta in robust mini-batch. 0 auto-splits --workers across theta workers.")
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
     parser.add_argument("--metrics-root", type=Path, default=DEFAULT_METRICS_ROOT)

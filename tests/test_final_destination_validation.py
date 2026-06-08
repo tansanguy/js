@@ -304,6 +304,64 @@ class FinalDestinationValidationTest(unittest.TestCase):
         disabled_args = self.module.parse_args(["--phase", "final", "--repeats", "30", "--disable-adaptive-repeats"])
         self.assertFalse(self.module.adaptive_final_repeats_enabled(disabled_args, self.module.PHASE_FINAL, disabled_args.repeats))
 
+    def test_select_robust_theta_candidates_filters_dedupes_and_keeps_diversity(self):
+        rows = [
+            {"method": "BO", "seed": "1", "round": "1", "round_theta_index": "1", "parameter_id": "a", "t_lead": "94", "delta_T_thr": "24", "G_ext": "15", "Q_ratio": "0.28", "tau": "0.79", "score": "220", "D_E_sec": "195", "D_G_sec": "466", "final_status": "PASS"},
+            {"method": "BO", "seed": "1", "round": "2", "round_theta_index": "1", "parameter_id": "a_dup", "t_lead": "94", "delta_T_thr": "24", "G_ext": "15", "Q_ratio": "0.28", "tau": "0.79", "score": "219", "D_E_sec": "195", "D_G_sec": "466", "final_status": "PASS"},
+            {"method": "BO", "seed": "1", "round": "3", "round_theta_index": "1", "parameter_id": "fail", "t_lead": "20", "delta_T_thr": "10", "G_ext": "30", "Q_ratio": "0.40", "tau": "0.85", "score": "100", "D_E_sec": "100", "D_G_sec": "400", "final_status": "FAIL"},
+            {"method": "BO", "seed": "1", "round": "4", "round_theta_index": "1", "parameter_id": "b", "t_lead": "24", "delta_T_thr": "14", "G_ext": "23", "Q_ratio": "0.36", "tau": "0.86", "score": "240", "D_E_sec": "220", "D_G_sec": "472", "final_status": "PASS"},
+            {"method": "Random Search", "seed": "2", "round": "1", "round_theta_index": "1", "parameter_id": "rs", "t_lead": "10", "delta_T_thr": "10", "G_ext": "10", "Q_ratio": "0.10", "tau": "0.75", "score": "1", "D_E_sec": "1", "D_G_sec": "1", "final_status": "PASS"},
+        ]
+
+        selected = self.module.select_robust_theta_candidates(rows, method_filter="BO", limit=3, diversity_min_distance=0.08)
+
+        self.assertEqual([row["parameter_id"] for row in selected], ["a", "b"])
+        self.assertEqual([row["theta_rank"] for row in selected], [1, 2])
+        self.assertTrue(all(row["source_final_status"] == "PASS" for row in selected))
+
+    def test_robust_summary_requires_zero_stuck_and_full_arrival(self):
+        theta = {"theta_rank": 1, "parameter_id": "theta", "t_lead": "94", "delta_T_thr": "24", "G_ext": "15", "Q_ratio": "0.28", "tau": "0.79"}
+        rows = [
+            {"mode": self.module.B04_MODE, "repeat_id": "1", "T_actual_EMV_sec": "320", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False"},
+            {"mode": self.module.B4_MODE, "repeat_id": "1", "T_actual_EMV_sec": "250", "D_E_sec": "120", "D_G_sec": "500", "objective_score": "154.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "stage2_hold_count": "1", "stage3_preemption_count": "12"},
+            {"mode": self.module.B04_MODE, "repeat_id": "2", "T_actual_EMV_sec": "330", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False"},
+            {"mode": self.module.B4_MODE, "repeat_id": "2", "D_G_sec": "510", "final_status": "FAIL", "failure_reason": "emergency_stuck", "emergency_arrived": "False", "emergency_teleport": "False", "stage2_hold_count": "0", "stage3_preemption_count": "10"},
+        ]
+
+        summary = self.module.robust_summary_from_rows(theta, "FINAL_DEST_A", rows, [600.0, 620.0], output_root=PROJECT_ROOT / "metrics/tmp", run_root=PROJECT_ROOT / "runs/tmp")
+
+        self.assertEqual(summary["stuck_count"], 1)
+        self.assertEqual(summary["fail_count"], 1)
+        self.assertEqual(summary["survivor_status"], "REJECTED")
+        self.assertEqual(summary["mean_D_G_sec"], "505.000000")
+
+    def test_validate_args_rejects_nested_robust_process_parallelism(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            theta_csv = Path(tmp) / "all_evaluations.csv"
+            theta_csv.write_text(
+                "method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,score,final_status\n"
+                "BO,1,1,a,94,24,15,0.28,0.79,220,PASS\n",
+                encoding="utf-8",
+            )
+            args = self.module.parse_args([
+                "--validation-mode",
+                self.module.VALIDATION_MODE_ROBUST_THETA_SELECTION,
+                "--dry-run",
+                "--theta-all-evaluations",
+                str(theta_csv),
+                "--selected-routes",
+                "FINAL_DEST_A",
+                "--workers",
+                "8",
+                "--robust-theta-workers",
+                "2",
+                "--robust-repeat-workers",
+                "2",
+            ])
+
+            with self.assertRaisesRegex(self.module.FinalDestinationValidationError, "robust_repeat_workers_must_be_1"):
+                self.module.validate_args(args)
+
     def test_average_rows_are_exactly_three_modes(self):
         rows = [
             {"mode": self.module.B004_MODE, "T_free_EMV_sec": "100", "D_E_sec": "0", "objective_score": "0", "emergency_arrived": "True", "emergency_teleport": "False"},
