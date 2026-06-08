@@ -862,28 +862,9 @@ def clone_candidates_for_phase(candidates: list[dict[str, Any]], route_ids: list
     return assign_candidate_artifact_paths(selected, input_root)
 
 
-def write_firetruck_route_artifacts(candidate: dict[str, Any], route_xml: Path, route_csv: Path, depart: float) -> None:
+def write_firetruck_route_xml_artifact(candidate: dict[str, Any], route_xml: Path, depart: float) -> None:
     route_xml.parent.mkdir(parents=True, exist_ok=True)
-    route_csv.parent.mkdir(parents=True, exist_ok=True)
     edges_text = " ".join(candidate["route_edges"])
-    row = {
-        "route_id": candidate["route_id"],
-        "scenario_id": candidate["source_route_id"],
-        "target_edge_id": candidate["target_edge_id"],
-        "selected_policy": candidate["selected_policy"],
-        "route_edges": edges_text,
-        "route_edge_count": candidate["route_edge_count"],
-        "route_length_m": candidate["route_length_m"],
-        "start_edge_id": candidate["start_edge_id"],
-        "merge_edge_id": candidate["merge_edge_id"],
-        "mainroad_length_ratio": candidate["mainroad_length_ratio"],
-        "legacy_spine_length_ratio": candidate["legacy_spine_length_ratio"],
-    }
-    write_csv(route_csv, [row], [
-        "route_id", "scenario_id", "target_edge_id", "selected_policy", "route_edges",
-        "route_edge_count", "route_length_m", "start_edge_id", "merge_edge_id",
-        "mainroad_length_ratio", "legacy_spine_length_ratio",
-    ])
     root = ET.Element("routes")
     ET.SubElement(
         root,
@@ -921,6 +902,30 @@ def write_firetruck_route_artifacts(candidate: dict[str, Any], route_xml: Path, 
     )
     ET.indent(root, space="    ")
     ET.ElementTree(root).write(route_xml, encoding="utf-8", xml_declaration=True)
+
+
+def write_firetruck_route_artifacts(candidate: dict[str, Any], route_xml: Path, route_csv: Path, depart: float) -> None:
+    route_csv.parent.mkdir(parents=True, exist_ok=True)
+    edges_text = " ".join(candidate["route_edges"])
+    row = {
+        "route_id": candidate["route_id"],
+        "scenario_id": candidate["source_route_id"],
+        "target_edge_id": candidate["target_edge_id"],
+        "selected_policy": candidate["selected_policy"],
+        "route_edges": edges_text,
+        "route_edge_count": candidate["route_edge_count"],
+        "route_length_m": candidate["route_length_m"],
+        "start_edge_id": candidate["start_edge_id"],
+        "merge_edge_id": candidate["merge_edge_id"],
+        "mainroad_length_ratio": candidate["mainroad_length_ratio"],
+        "legacy_spine_length_ratio": candidate["legacy_spine_length_ratio"],
+    }
+    write_csv(route_csv, [row], [
+        "route_id", "scenario_id", "target_edge_id", "selected_policy", "route_edges",
+        "route_edge_count", "route_length_m", "start_edge_id", "merge_edge_id",
+        "mainroad_length_ratio", "legacy_spine_length_ratio",
+    ])
+    write_firetruck_route_xml_artifact(candidate, route_xml, depart)
 
 
 def project_path(value: str) -> Path:
@@ -1042,6 +1047,7 @@ def run_candidate(
     *,
     repeat_offset: int = 0,
     include_reference: bool = True,
+    repeat_workers: int = 1,
 ) -> list[dict[str, Any]]:
     stage1_summary = build_route_stage1(args, candidate)
     base_route_xml = Path(candidate["route_xml"])
@@ -1075,55 +1081,116 @@ def run_candidate(
             firetruck_route=base_route_xml,
         )
         rows.append(enrich_row(b004_result_row(b004_task, stage1, free_reference, base_phase), candidate, ""))
-    for repeat_idx, depart in enumerate(departures, start=repeat_offset + 1):
-        repeat_route_xml = run_root / candidate["route_id"] / "routes" / f"firetruck_depart_{repeat_idx:03d}.rou.xml"
-        write_firetruck_route_artifacts(candidate, repeat_route_xml, Path(candidate["route_csv"]), depart)
-        repeat_stage1 = B4Stage1Inputs.load(stage1_dir, route_xml=repeat_route_xml)
-        phase_config = phase_for_depart(base_phase, depart)
-        for mode in [B04_MODE, B4_MODE]:
-            leaf = "no_control" if mode == B04_MODE else params.parameter_id
-            task = B4RunTask(
-                run_id=args.run_id,
-                mode=mode,
-                parameter_id=leaf,
-                repeat_id=repeat_idx,
-                seed=args.seed,
-                run_dir=run_root / candidate["route_id"] / mode / leaf / f"repeat_{repeat_idx:03d}",
-                net_file=args.net,
-                background_route=args.background_route,
-                firetruck_route=repeat_route_xml,
+    repeat_jobs = [(repeat_idx, depart) for repeat_idx, depart in enumerate(departures, start=repeat_offset + 1)]
+    if repeat_workers > 1 and len(repeat_jobs) > 1:
+        ensure_worker_imports()
+        with ProcessPoolExecutor(max_workers=min(repeat_workers, len(repeat_jobs)), initializer=ensure_worker_imports) as executor:
+            futures = [
+                executor.submit(
+                    run_repeat_pair_worker,
+                    (
+                        args,
+                        candidate,
+                        repeat_idx,
+                        depart,
+                        params,
+                        run_root,
+                        stage1_dir,
+                        free_reference,
+                        free_rows_by_id,
+                        base_phase,
+                    ),
+                )
+                for repeat_idx, depart in repeat_jobs
+            ]
+            repeat_results = [future.result() for future in as_completed(futures)]
+        for repeat_rows in sorted(repeat_results, key=lambda item: int(safe_float(item[0].get("repeat_id"), 0.0)) if item else 0):
+            rows.extend(repeat_rows)
+    else:
+        for repeat_idx, depart in repeat_jobs:
+            rows.extend(
+                run_repeat_pair(
+                    args,
+                    candidate,
+                    repeat_idx,
+                    depart,
+                    params,
+                    run_root,
+                    stage1_dir,
+                    free_reference,
+                    free_rows_by_id,
+                    base_phase,
+                )
             )
-            if mode == B04_MODE:
-                row = run_b04_task(
-                    task,
-                    repeat_stage1,
-                    phase_config,
-                    free_reference,
-                    free_rows_by_id,
-                    args.sumo_binary,
-                    args.emit_fcd,
-                    emit_tls_states=getattr(args, "emit_tls_states", False),
-                )
-            else:
-                row = run_b4_task(
-                    task,
-                    repeat_stage1,
-                    phase_config,
-                    free_reference,
-                    free_rows_by_id,
-                    args.sumo_binary,
-                    args.emit_fcd,
-                    params=params,
-                    emit_tls_states=getattr(args, "emit_tls_states", False),
-                )
-            rows.append(enrich_row(row, candidate, depart))
     stage1_summary_path = metrics_root / candidate["route_id"] / "stage1_summary_snapshot.json"
     write_json(stage1_summary_path, stage1_summary)
     return rows
 
 
-def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path, int, bool]) -> dict[str, Any]:
-    index, args, candidate, departures, params, run_root, output_root, repeat_offset, include_reference = payload
+def run_repeat_pair(
+    args: argparse.Namespace,
+    candidate: dict[str, Any],
+    repeat_idx: int,
+    depart: float,
+    params: B4ThetaParams,
+    run_root: Path,
+    stage1_dir: Path,
+    free_reference: dict[str, Any],
+    free_rows_by_id: dict[str, dict[str, str]],
+    base_phase: B4RuntimePhaseConfig,
+) -> list[dict[str, Any]]:
+    repeat_route_xml = run_root / candidate["route_id"] / "routes" / f"firetruck_depart_{repeat_idx:03d}.rou.xml"
+    write_firetruck_route_xml_artifact(candidate, repeat_route_xml, depart)
+    repeat_stage1 = B4Stage1Inputs.load(stage1_dir, route_xml=repeat_route_xml)
+    phase_config = phase_for_depart(base_phase, depart)
+    rows: list[dict[str, Any]] = []
+    for mode in [B04_MODE, B4_MODE]:
+        leaf = "no_control" if mode == B04_MODE else params.parameter_id
+        task = B4RunTask(
+            run_id=args.run_id,
+            mode=mode,
+            parameter_id=leaf,
+            repeat_id=repeat_idx,
+            seed=args.seed,
+            run_dir=run_root / candidate["route_id"] / mode / leaf / f"repeat_{repeat_idx:03d}",
+            net_file=args.net,
+            background_route=args.background_route,
+            firetruck_route=repeat_route_xml,
+        )
+        if mode == B04_MODE:
+            row = run_b04_task(
+                task,
+                repeat_stage1,
+                phase_config,
+                free_reference,
+                free_rows_by_id,
+                args.sumo_binary,
+                args.emit_fcd,
+                emit_tls_states=getattr(args, "emit_tls_states", False),
+            )
+        else:
+            row = run_b4_task(
+                task,
+                repeat_stage1,
+                phase_config,
+                free_reference,
+                free_rows_by_id,
+                args.sumo_binary,
+                args.emit_fcd,
+                params=params,
+                emit_tls_states=getattr(args, "emit_tls_states", False),
+            )
+        rows.append(enrich_row(row, candidate, depart))
+    return rows
+
+
+def run_repeat_pair_worker(payload: tuple[argparse.Namespace, dict[str, Any], int, float, B4ThetaParams, Path, Path, dict[str, Any], dict[str, dict[str, str]], B4RuntimePhaseConfig]) -> list[dict[str, Any]]:
+    args, candidate, repeat_idx, depart, params, run_root, stage1_dir, free_reference, free_rows_by_id, base_phase = payload
+    return run_repeat_pair(args, candidate, repeat_idx, depart, params, run_root, stage1_dir, free_reference, free_rows_by_id, base_phase)
+
+
+def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path, int, bool, int]) -> dict[str, Any]:
+    index, args, candidate, departures, params, run_root, output_root, repeat_offset, include_reference, repeat_workers = payload
     route_rows = run_candidate(
         args,
         candidate,
@@ -1133,6 +1200,7 @@ def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any],
         output_root,
         repeat_offset=repeat_offset,
         include_reference=include_reference,
+        repeat_workers=repeat_workers,
     )
     route_id = str(candidate["route_id"])
     return {
@@ -1746,7 +1814,7 @@ def run_validation_phase(
     max_workers = min(args.workers, len(runnable_candidates)) if runnable_candidates else 1
     if max_workers == 1:
         for index, candidate in enumerate(runnable_candidates):
-            result = run_candidate_worker((index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True))
+            result = run_candidate_worker((index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True, args.workers))
             completed_results[index] = result
             write_csv(output_root / result["route_id"] / "route_runs.csv", result["route_rows"], RUN_FIELDS)
             write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
@@ -1757,7 +1825,7 @@ def run_validation_phase(
             futures = [
                 executor.submit(
                     run_candidate_worker,
-                    (index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True),
+                    (index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True, 1),
                 )
                 for index, candidate in enumerate(runnable_candidates)
             ]
@@ -1832,6 +1900,7 @@ def run_validation_phase(
                     depart_max=args.depart_max,
                 )
                 extra_departures = departures_by_route[route_id][current_count:target_count]
+                repeat_worker_count = args.workers if len(additions) == 1 else 1
                 extra_payloads.append((
                     index_by_route[route_id],
                     args,
@@ -1842,6 +1911,7 @@ def run_validation_phase(
                     output_root,
                     current_count,
                     False,
+                    repeat_worker_count,
                 ))
             extra_workers = min(args.workers, len(extra_payloads)) if extra_payloads else 1
             if extra_workers == 1:
