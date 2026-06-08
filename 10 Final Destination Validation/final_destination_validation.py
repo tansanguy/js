@@ -1552,14 +1552,18 @@ def dry_run_selected_rows(candidate_rows: list[dict[str, Any]], limit: int) -> l
 
 
 def mark_selected_candidate_rows(candidate_rows: list[dict[str, Any]], selected_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    rank_by_route = {str(row.get("route_id")): row.get("selection_rank", "") for row in selected_rows}
-    selected_ids = set(rank_by_route)
+    selected_by_route = {str(row.get("route_id")): row for row in selected_rows}
     updated = []
     for row in candidate_rows:
         out = dict(row)
-        if out.get("route_id") in selected_ids:
-            out["selection_rank"] = rank_by_route[str(out.get("route_id"))]
-            out["selection_status"] = "SELECTED"
+        selected = selected_by_route.get(str(out.get("route_id")))
+        if selected is not None:
+            out["selection_rank"] = selected.get("selection_rank", "")
+            if selected.get("selection_status") == "CANDIDATE":
+                out["selection_status"] = "SELECTED"
+            else:
+                out["selection_status"] = selected.get("selection_status", out.get("selection_status", ""))
+                out["selection_reason"] = selected.get("selection_reason", out.get("selection_reason", ""))
         updated.append(out)
     return updated
 

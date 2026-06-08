@@ -319,6 +319,47 @@ class FinalDestinationValidationTest(unittest.TestCase):
         self.assertEqual([row["route_id"] for row in selected], ["C", "A"])
         self.assertEqual([row["selection_rank"] for row in selected], [1, 2])
 
+    def test_mark_selected_preserves_fallback_failure_status(self):
+        rows = [
+            {
+                "candidate_rank": "1",
+                "route_id": "A",
+                "selection_status": "EXCLUDED",
+                "selection_reason": "excluded_due_to_failure_teleport_arrival_or_comparison_gap",
+                "presentation_fit_score": "10",
+            }
+        ]
+        selected = self.module.select_final_candidates(rows, limit=1)
+        marked = self.module.mark_selected_candidate_rows(rows, selected)
+
+        self.assertEqual(marked[0]["selection_rank"], 1)
+        self.assertEqual(marked[0]["selection_status"], "FALLBACK_NO_ELIGIBLE")
+        self.assertEqual(
+            marked[0]["selection_reason"],
+            "all_candidates_failed_or_excluded; selected_best_available_for_diagnostics",
+        )
+
+    def test_mark_selected_promotes_valid_candidate_to_selected(self):
+        rows = [
+            {
+                "candidate_rank": "1",
+                "route_id": "A",
+                "selection_status": "CANDIDATE",
+                "selection_reason": "valid_b4_improvement_with_actual_intervention",
+                "B4_vs_B04_D_E_improvement_sec": "30",
+                "B04_D_E_mean_sec": "50",
+                "intervention_mean": "2",
+                "mainroad_length_ratio": "0.8",
+                "legacy_spine_length_ratio": "0.7",
+            }
+        ]
+        selected = self.module.select_final_candidates(rows, limit=1)
+        marked = self.module.mark_selected_candidate_rows(rows, selected)
+
+        self.assertEqual(marked[0]["selection_rank"], 1)
+        self.assertEqual(marked[0]["selection_status"], "SELECTED")
+        self.assertEqual(marked[0]["selection_reason"], "valid_b4_improvement_with_actual_intervention")
+
 
 if __name__ == "__main__":
     unittest.main()
