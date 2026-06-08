@@ -56,6 +56,7 @@ DEFAULT_NEAR_HOLD_DISTANCE_M = 250.0
 DEFAULT_STAGE3_CONTROL_DISTANCE_M = 250.0
 DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M = 80.0
 DEFAULT_STAGE3_MAX_CONTROL_DISTANCE_M = 1000.0
+DEFAULT_STAGE3_PRE_DEPART_MARGIN_SEC = 60.0
 DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC = 2.0
 DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC = 10.0
 DEFAULT_STAGE2_MEASUREMENT_SCALE = 1.10
@@ -3929,11 +3930,52 @@ class B4RuntimeController:
             ))
         return events
 
+    def stage3_control_ev_state(self, now: float, ev_state: EVState) -> EVState:
+        if ev_state.present:
+            return ev_state
+        if ev_state.arrived or now >= self.stage1.ev_depart_sec or not isinstance(self.params, B4ThetaParams):
+            return ev_state
+        start_edge = self.stage1.route_edges[0] if self.stage1.route_edges else ""
+        return EVState(
+            present=False,
+            departed=False,
+            arrived=False,
+            vehicle_id=self.stage1.ev_id,
+            edge_id=start_edge,
+            lane_id="",
+            route_index=0,
+            lane_position_m=0.0,
+            speed_mps=TA_EV_SPEED_MPS,
+            speed_kmh=TA_EV_SPEED_MPS * 3.6,
+        )
+
+    def stage3_ev_distances(self, now: float, ev_state: EVState) -> dict[str, float]:
+        depart_wait_m = max(self.stage1.ev_depart_sec - now, 0.0) * TA_EV_SPEED_MPS if not ev_state.present else 0.0
+        return {
+            movement.movement_id: round_float(self.ev_distance_to_movement(ev_state, movement) + depart_wait_m)
+            for movement in self.stage1.movements
+        }
+
+    def stage3_pre_depart_window_sec(self) -> float:
+        if not isinstance(self.params, B4ThetaParams):
+            return 0.0
+        return max(
+            safe_float(getattr(self.params, "delta_T_thr", 0.0), 0.0),
+            theta_ta_lead_sec(self.params),
+        ) + DEFAULT_STAGE3_PRE_DEPART_MARGIN_SEC
+
     def handle_stage3(self, now: float, ev_state: EVState) -> list[dict[str, Any]]:
-        if now < self.stage1.ev_depart_sec or ev_state.arrived or not ev_state.present:
+        if ev_state.arrived:
+            return []
+        if now < self.stage1.ev_depart_sec and self.stage1.ev_depart_sec - now > self.stage3_pre_depart_window_sec():
+            return []
+        stage3_ev_state = self.stage3_control_ev_state(now, ev_state)
+        if not stage3_ev_state.present and stage3_ev_state.route_index < 0:
+            return []
+        if now < self.stage1.ev_depart_sec and not isinstance(self.params, B4ThetaParams):
             return []
         events: list[dict[str, Any]] = []
-        events.extend(self.restore_passed_or_expired_controls(now, ev_state))
+        events.extend(self.restore_passed_or_expired_controls(now, stage3_ev_state))
         self.pending_stage3_requests = {
             movement_id: requested_at
             for movement_id, requested_at in self.pending_stage3_requests.items()
@@ -3947,14 +3989,14 @@ class B4RuntimeController:
             ]
             tls_estimates: dict[str, TlsQueueEstimate] = {}
             case_b_segment_metrics: dict[str, CaseBSegmentRuntimeMetrics] = {}
-            ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
+            ev_distances = self.stage3_ev_distances(now, stage3_ev_state)
         else:
             queue_lanes = self.stage3_queue_lanes()
             lane_snapshots = sample_lane_snapshots(self.traci, queue_lanes, now)
             tls_estimates = tls_queue_estimates_from_snapshots(self.stage1.movements, lane_snapshots, now)
             case_b_segment_metrics = self.case_b_segment_metrics_from_snapshots(lane_snapshots, now)
             exact_cache: dict[str, dict[str, Any]] = {}
-            ev_distances = {movement.movement_id: self.ev_distance_to_movement(ev_state, movement) for movement in self.stage1.movements}
+            ev_distances = self.stage3_ev_distances(now, stage3_ev_state)
             movement_metrics = [
                 movement_runtime_metrics_from_snapshots(
                     self.traci,
@@ -3975,7 +4017,7 @@ class B4RuntimeController:
                 self.stats.queue_calibration_source = QUEUE_CALIBRATION_SOURCE
         self.stats.observe_queue_metrics(movement_metrics, tls_estimates)
         metrics_by_id = {metric.movement.movement_id: metric for metric in movement_metrics}
-        selected = self.stage3_ahead_metrics(movement_metrics, ev_state)
+        selected = self.stage3_ahead_metrics(movement_metrics, stage3_ev_state)
         plans = self.stage3_case_plans(selected, metrics_by_id)
         new_stage3_action_count = 0
         max_new_stage3_actions = self.stage3_max_new_actions_per_step()
@@ -4001,7 +4043,7 @@ class B4RuntimeController:
                 if not self.can_act_on_tls(movement.tls_id, now):
                     continue
                 previous_phase = self.get_tls_phase(movement.tls_id)
-                ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(ev_state, movement))
+                ev_distance = ev_distances.get(movement.movement_id, self.ev_distance_to_movement(stage3_ev_state, movement))
                 ta, case_b, ta_proxy_sec = self.stage3_ta_for_plan(plan, metric, ev_distances, previous_phase)
                 event_case_b_source = self.event_case_b_source(metric, case_b)
                 theta_ta_triggered = delta_gate_open and ta_proxy_sec <= theta_ta_lead_sec(self.params)
@@ -4012,7 +4054,7 @@ class B4RuntimeController:
                 stage3_context = self.stage3_log_context(
                     plan=plan,
                     metric=metric,
-                    ev_state=ev_state,
+                    ev_state=stage3_ev_state,
                     gate_tE=gate_tE,
                     gate_effective_tE=gate_effective_tE,
                     gate_tS=gate_tS,
@@ -4032,7 +4074,7 @@ class B4RuntimeController:
                     metrics=metric,
                     target_phase=movement.selected_green_phase,
                     previous_phase=previous_phase,
-                    ev_state=ev_state,
+                    ev_state=stage3_ev_state,
                     ev_distance_m=round_float(ev_distance),
                     control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
                     safety_status=(
@@ -4099,7 +4141,7 @@ class B4RuntimeController:
                     stage3_context = self.stage3_log_context(
                         plan=plan,
                         metric=metric,
-                        ev_state=ev_state,
+                        ev_state=stage3_ev_state,
                         gate_tE=gate_tE,
                         gate_effective_tE=gate_effective_tE,
                         gate_tS=gate_tS,
@@ -4121,7 +4163,7 @@ class B4RuntimeController:
                         metrics=metric,
                         target_phase=applied_phase if applied_phase is not None else movement.selected_green_phase,
                         previous_phase=previous_phase,
-                        ev_state=ev_state,
+                        ev_state=stage3_ev_state,
                         ev_distance_m=round_float(ev_distance),
                         control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
                         safety_status=safety_status,
@@ -4178,7 +4220,7 @@ class B4RuntimeController:
                 stage3_context = self.stage3_log_context(
                     plan=plan,
                     metric=metric,
-                    ev_state=ev_state,
+                    ev_state=stage3_ev_state,
                     gate_tE=gate_tE,
                     gate_effective_tE=gate_effective_tE,
                     gate_tS=gate_tS,
@@ -4199,7 +4241,7 @@ class B4RuntimeController:
                     metrics=metric,
                     target_phase=movement.selected_green_phase,
                     previous_phase=previous_phase,
-                    ev_state=ev_state,
+                    ev_state=stage3_ev_state,
                     ev_distance_m=round_float(ev_distance),
                     control_mode="case_b_downstream_first" if plan.case_type == "caseB" else "case_a_preemption",
                     safety_status=safety_status,

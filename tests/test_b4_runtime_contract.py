@@ -716,10 +716,67 @@ class B4RuntimeContractTest(unittest.TestCase):
     def test_stage3_noops_before_ev_departure(self):
         traci = FakeTraci()
         traci.simulation.time = self.stage1.ev_depart_sec - 1.0
-        controller = self.runtime.B4RuntimeController(traci=traci, stage1=self.stage1, run_id="contract")
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(),
+            run_id="contract",
+        )
         events = controller.handle_stage3(traci.simulation.time, controller.ev_state())
         self.assertEqual(events, [])
         self.assertEqual(traci.trafficlight.actions, [])
+
+    def test_stage3_theta_pre_depart_distances_include_depart_wait(self):
+        traci = FakeTraci()
+        now = self.stage1.ev_depart_sec - 20.0
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(delta_T_thr=999.0, t_lead=999.0),
+            run_id="contract",
+        )
+        predicted = controller.stage3_control_ev_state(now, controller.ev_state())
+        movement = self.first_stage3_movement()
+
+        distances = controller.stage3_ev_distances(now, predicted)
+
+        base_distance = controller.ev_distance_to_movement(predicted, movement)
+        self.assertFalse(predicted.present)
+        self.assertEqual(predicted.route_index, 0)
+        self.assertAlmostEqual(
+            distances[movement.movement_id],
+            self.runtime.round_float(base_distance + 20.0 * self.runtime.TA_EV_SPEED_MPS),
+        )
+
+    def test_stage3_theta_can_preclear_before_ev_departure(self):
+        movement = self.first_stage3_movement()
+        traci = FakeTraci()
+        traci.simulation.time = self.stage1.ev_depart_sec - 10.0
+        traci.trafficlight.phases[movement.tls_id] = movement.selected_green_phase
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4ThetaParams(delta_T_thr=999.0, t_lead=999.0),
+            run_id="contract",
+        )
+        original = self.runtime.movement_runtime_metrics
+
+        def fake_metrics(_traci, candidate_movement, _thresholds):
+            return self.metric(candidate_movement, candidate=(candidate_movement == movement))
+
+        self.runtime.movement_runtime_metrics = fake_metrics
+        try:
+            events = controller.handle_stage3(traci.simulation.time, controller.ev_state())
+        finally:
+            self.runtime.movement_runtime_metrics = original
+
+        active_events = [event for event in events if event["action_type"] == "phase_change_target_green"]
+        self.assertEqual(len(active_events), 1)
+        self.assertEqual(active_events[0]["movement_id"], movement.movement_id)
+        self.assertFalse(active_events[0]["EV_Departed"])
+        self.assertTrue(active_events[0]["EV_NotDeparted"])
+        self.assertGreater(float(active_events[0]["tE_gate_target"]), 10.0)
+        self.assertIn(movement.movement_id, controller.active_controls)
 
     def test_stage3_skips_i_merge_owner_without_route_release_escape_hatch(self):
         merge_movement = next(movement for movement in self.stage1.movements if movement.is_merge)
