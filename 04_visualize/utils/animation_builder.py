@@ -49,13 +49,13 @@ _TEMPLATE = r"""<!doctype html>
   .tag .nextsig{font-variant-numeric:tabular-nums;font-weight:700;}
   /* signal-light icons (placed at real TLS positions, recoloured per state) */
   .tlwrap{background:transparent;border:0;}
-  .tl{display:flex;flex-direction:column;gap:1px;padding:2px;background:#0b1220;border:1px solid #fde047;border-radius:3px;line-height:0;box-shadow:0 0 0 2px rgba(253,224,71,.7);}
-  .tl i{width:7px;height:7px;border-radius:50%;background:#1f2937;display:block;}
-  .tlwrap[data-state="red"] .tl i.r{background:#ef4444;box-shadow:0 0 7px #ef4444;}
-  .tlwrap[data-state="yellow"] .tl i.y{background:#f59e0b;box-shadow:0 0 7px #f59e0b;}
-  .tlwrap[data-state="green"] .tl i.g{background:#22c55e;box-shadow:0 0 7px #22c55e;}
+  .tl{display:flex;flex-direction:column;gap:2px;padding:3px;background:#0b1220;border:1px solid #475569;border-radius:4px;line-height:0;}
+  .tl i{width:11px;height:11px;border-radius:50%;background:#1f2937;display:block;}
+  .tlwrap[data-state="red"] .tl i.r{background:#ff0000;box-shadow:0 0 10px #ff0000,0 0 4px #ff0000;}
+  .tlwrap[data-state="yellow"] .tl i.y{background:#ffd400;box-shadow:0 0 10px #ffd400,0 0 4px #ffd400;}
+  .tlwrap[data-state="green"] .tl i.g{background:#00e000;box-shadow:0 0 10px #00e000,0 0 4px #00e000;}
   .tlwrap[data-state="off"]{opacity:.4;}
-  .tlwrap.next .tl{border-color:#fde047;box-shadow:0 0 0 2px rgba(253,224,71,.7);}
+  .tlwrap.next .tl{border-color:#fde047;box-shadow:0 0 0 3px rgba(253,224,71,.85);}
   .siglegend{display:flex;gap:12px;font-size:12px;color:#cbd5e1;align-items:center;}
   .siglegend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
   .bottom{display:grid;grid-template-columns:340px 1fr;gap:0;height:200px;background:#0b1220;}
@@ -85,9 +85,9 @@ _TEMPLATE = r"""<!doctype html>
       </span>
     </div>
     <div class="siglegend">
-      <span><i style="background:#ef4444"></i>정지신호</span>
-      <span><i style="background:#22c55e"></i>통과신호</span>
-      <span><i style="background:#6b7280"></i>비활성</span>
+      <span><i style="background:#ff0000"></i>정지신호</span>
+      <span><i style="background:#ffd400"></i>주의(황)</span>
+      <span><i style="background:#00e000"></i>통과신호</span>
     </div>
   </header>
   <div class="maps">
@@ -185,7 +185,7 @@ function Panel(mode){
   const tlsStates=p.tls_states||{};
   const tlMarkers=(DATA.traffic_lights||[]).map(t=>({
     el:L.marker([t.lat,t.lon],{interactive:false,keyboard:false,
-      icon:L.divIcon({className:"tlwrap",iconSize:[15,29],iconAnchor:[7,14],
+      icon:L.divIcon({className:"tlwrap",iconSize:[23,44],iconAnchor:[11,22],
         html:'<div class="tl"><i class="r"></i><i class="y"></i><i class="g"></i></div>'})}).addTo(map),
     states:tlsStates[t.tls_id]||[[0,"off"]],
     s:(t.s_m&&t.s_m[mode]!=null)?t.s_m[mode]:null}));
