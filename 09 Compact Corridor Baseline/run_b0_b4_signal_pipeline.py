@@ -44,6 +44,8 @@ from b4_runtime import (  # noqa: E402
     B4ThetaParams,
     B4_PARAMETER_ID,
     B4_PRIMARY_CANDIDATE,
+    DEFAULT_STAGE2_MEASUREMENT_SCALE,
+    DEFAULT_STAGE3_MEASUREMENT_SCALE,
     B4RuntimePhaseConfig,
     EV_ID,
     EXPERIMENT_RESULT_FIELDS,
@@ -1675,8 +1677,8 @@ def run_pipeline(
     hard_max_sim_time: float | None = None,
     b4_params: B4MvpParams | None = None,
     stage1_dir: Path | None = DEFAULT_STAGE1_DIR,
-    b4_stage2_measurement_scale: float = 1.0,
-    b4_stage3_measurement_scale: float = 1.5,
+    b4_stage2_measurement_scale: float = DEFAULT_STAGE2_MEASUREMENT_SCALE,
+    b4_stage3_measurement_scale: float = DEFAULT_STAGE3_MEASUREMENT_SCALE,
     b4_stage2_synthetic_demand: bool = False,
 ) -> dict[str, Any]:
     net_file = net_file if net_file.is_absolute() else (PROJECT_ROOT / net_file)
@@ -1793,8 +1795,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--b4-d-up", type=int, default=None, help="Fixed lookahead/action-budget override; not a screened decision variable.")
     parser.add_argument("--b4-tau-scale", type=float, default=None, help="Deprecated legacy alias; ignored by EVTSP runtime.")
     parser.add_argument("--b4-tau-numerator-gamma", type=float, default=None, help="Deprecated legacy alias; ignored by EVTSP runtime.")
-    parser.add_argument("--b4-stage2-measurement-scale", type=float, default=1.0, help="Verification-only scale applied to Stage2 merge queue/occupancy measurements.")
-    parser.add_argument("--b4-stage3-measurement-scale", type=float, default=1.5, help="Scale applied to Stage3 Case B queue measurements.")
+    parser.add_argument("--b4-stage2-measurement-scale", type=float, default=DEFAULT_STAGE2_MEASUREMENT_SCALE, help="Verification-only scale applied to Stage2 merge queue/occupancy measurements.")
+    parser.add_argument("--b4-stage3-measurement-scale", type=float, default=DEFAULT_STAGE3_MEASUREMENT_SCALE, help="Scale applied to Stage3 Case B queue measurements.")
     parser.add_argument("--b4-stage2-synthetic-demand", action="store_true", help="Verification-only merge-zone demand used to make Stage2 measurements nonzero.")
     parser.add_argument("--b4-theta", action="store_true", help="Compatibility flag; B4ThetaParams is now the default B4 runtime.")
     args = parser.parse_args(argv)

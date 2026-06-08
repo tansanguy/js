@@ -58,6 +58,8 @@ DEFAULT_STAGE3_MIN_CONTROL_DISTANCE_M = 80.0
 DEFAULT_STAGE3_MAX_CONTROL_DISTANCE_M = 1000.0
 DEFAULT_MIN_TLS_ACTION_INTERVAL_SEC = 2.0
 DEFAULT_SAME_LANE_BLOCKER_FLUSH_SEC = 10.0
+DEFAULT_STAGE2_MEASUREMENT_SCALE = 1.10
+DEFAULT_STAGE3_MEASUREMENT_SCALE = 1.65
 EMPTY_APPROACH_SPEED_KMH = 999.0
 FREE_FLOW_SPEED_KMH = 50.0
 TAU_SPEED_FREEFLOW_KMH = FREE_FLOW_SPEED_KMH
@@ -67,7 +69,7 @@ QUEUE_EXACT_CONFIDENCE = 0.85
 QUEUE_STALE_CONFIDENCE = 0.25
 QUEUE_CALIBRATION_MIN = 0.5
 QUEUE_CALIBRATION_MAX = 2.0
-QUEUE_LOCAL_EXACT_FILL_TRIGGER = 0.35
+QUEUE_LOCAL_EXACT_FILL_TRIGGER = 0.30
 QUEUE_RUNTIME_CALL_MODE = "unique_lane_snapshot"
 QUEUE_CALIBRATION_SOURCE = "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv"
 W_E = 10.0
@@ -474,8 +476,8 @@ class B4RuntimePhaseConfig:
     ev_stuck_speed_kmh: float = 1.0
     ev_stuck_duration_sec: float = 120.0
     objective_includes_recovery: bool = False
-    stage2_measurement_scale: float = 1.0
-    stage3_measurement_scale: float = 1.5
+    stage2_measurement_scale: float = DEFAULT_STAGE2_MEASUREMENT_SCALE
+    stage3_measurement_scale: float = DEFAULT_STAGE3_MEASUREMENT_SCALE
     stage2_synthetic_demand: bool = False
 
     @classmethod
@@ -2807,8 +2809,8 @@ class B4RuntimeController:
     params: B4MvpParams = field(default_factory=B4ThetaParams)
     run_id: str = ""
     repeat_id: int = 1
-    stage2_measurement_scale: float = 1.0
-    stage3_measurement_scale: float = 1.5
+    stage2_measurement_scale: float = DEFAULT_STAGE2_MEASUREMENT_SCALE
+    stage3_measurement_scale: float = DEFAULT_STAGE3_MEASUREMENT_SCALE
     edge_lengths: dict[str, float] = field(default_factory=load_edge_lengths)
     events: list[dict[str, Any]] = field(default_factory=list)
     stats: B4ControllerStats = field(default_factory=B4ControllerStats)
@@ -3373,9 +3375,9 @@ class B4RuntimeController:
         dispatch_detect_time = self.stage1.ev_depart_sec - params.t_dispatch_delay_sec
         if now < dispatch_detect_time:
             return False
-        if now >= self.stage1.ev_depart_sec:
+        if bool(stage2_proxy.get("EV_MergePassed", False)):
             return False
-        if not bool(stage2_proxy.get("EV_NotDeparted", False)):
+        if not (bool(stage2_proxy.get("EV_NotDeparted", False)) or bool(stage2_proxy.get("EV_Departed", False))):
             return False
         q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
         q_th_merge = q_ratio * params.L_merge_m
@@ -3496,10 +3498,10 @@ class B4RuntimeController:
             q_ratio = safe_float(getattr(self.params, "Q_ratio", EVTSP_DEFAULT_Q_RATIO), EVTSP_DEFAULT_Q_RATIO)
             q_th_merge = q_ratio * params.L_merge_m
             t_hold = safe_float(stage2_proxy.get("T_hold_proxy_sec"), params.tE_merge_sec - params.tS_merge_sec)
-            if now >= self.stage1.ev_depart_sec:
-                gate_reason = "blocked_after_ev_depart_sec"
-            elif not bool(stage2_proxy.get("EV_NotDeparted", False)):
-                gate_reason = "blocked_ev_not_departed_false"
+            if bool(stage2_proxy.get("EV_MergePassed", False)):
+                gate_reason = "blocked_merge_passed"
+            elif not (bool(stage2_proxy.get("EV_NotDeparted", False)) or bool(stage2_proxy.get("EV_Departed", False))):
+                gate_reason = "blocked_ev_state_not_eligible"
             elif safe_float(stage2_proxy.get("Lq_merge_m"), 0.0) < q_th_merge:
                 gate_reason = "blocked_queue_below_threshold"
             elif t_hold > 0.0 and not bool(stage2_proxy.get("merge_space_deficit", False)):

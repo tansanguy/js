@@ -259,6 +259,40 @@ class B4RuntimeContractTest(unittest.TestCase):
         proposal = json.loads((PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced/b4_control_queue_threshold_proposal.json").read_text(encoding="utf-8"))
         self.assertEqual(proposal["primary_control_fill_metric"], "stopline_local_fill_100m")
 
+    def test_queue_exact_tail_starts_at_30_percent_local_fill(self):
+        movement = self.first_stage3_movement()
+
+        def estimate_with_occupancy(occupancy: float):
+            traci = FakeTraci()
+            lane_id = movement.local_storage_lanes[0]
+            traci.vehicle.vehicles["tail_vehicle"] = {
+                "edge": movement.from_edge,
+                "lane": lane_id,
+                "route_index": movement.route_order_index,
+                "lane_position": 10.0,
+                "speed": 1.0,
+                "waiting": 4.0,
+                "timeLoss": 2.0,
+            }
+            traci.lane.set_lane(lane_id, ["tail_vehicle"], speed_mps=5.0, occupancy=occupancy, length=100.0)
+            snapshots = self.runtime.sample_lane_snapshots(traci, movement.local_storage_lanes, 100.0)
+            estimate, _local, _corridor, _approach, _case_b_queue_m = self.runtime.estimate_movement_queue_from_snapshots(
+                traci,
+                movement,
+                snapshots,
+                100.0,
+                ev_distance_m=self.runtime.DEFAULT_STAGE3_CONTROL_DISTANCE_M + 1.0,
+            )
+            return estimate
+
+        below = estimate_with_occupancy(29.0)
+        at = estimate_with_occupancy(30.0)
+
+        self.assertEqual(below.method, "lane_proxy")
+        self.assertAlmostEqual(below.queue_m_est, 29.0)
+        self.assertEqual(at.method, "local_exact")
+        self.assertAlmostEqual(at.queue_m_est, 90.0)
+
     def test_stage2_time_to_merge_uses_fixed_evtsp_merge_time_before_departure(self):
         ev_state = self.runtime.EVState(False, False, False, self.stage1.ev_id)
         dispatch_detect_time = self.stage1.ev_depart_sec - self.stage1.stage2_merge_hold.t_dispatch_delay_sec
@@ -591,7 +625,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertFalse(controller.stage2_hold_clearance_pending)
         self.assertEqual(controller.stats.stage2_hold_count, 1)
 
-    def test_stage2_does_not_start_new_hold_after_ev_departure_time(self):
+    def test_stage2_can_start_new_hold_after_departure_before_merge(self):
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -613,14 +647,62 @@ class B4RuntimeContractTest(unittest.TestCase):
         for index, lane_id in enumerate(merge_lanes):
             traci.lane.set_lane(lane_id, vehicle_ids[index::max(len(merge_lanes), 1)], speed_mps=0.0, occupancy=90.0, length=50.0)
 
+        first_edge = self.stage1.route_edges[0]
+        traci.vehicle.vehicles[self.stage1.ev_id] = {
+            "edge": first_edge,
+            "lane": f"{first_edge}_0",
+            "route_index": 0,
+            "lane_position": 1.0,
+            "speed": 8.0,
+        }
         traci.simulation.time = self.stage1.ev_depart_sec + 1.0
+        events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["action_type"], "entry_hold_clearance")
+        self.assertEqual(events[0]["safety_status"], "REQUIRE_CLEARANCE")
+        self.assertEqual(events[0]["EV_NotDeparted"], False)
+        self.assertEqual(events[0]["EV_Departed"], True)
+        self.assertEqual(events[0]["EV_MergePassed"], False)
+        self.assertTrue(controller.stage2_hold_clearance_pending)
+        self.assertFalse(controller.stage2_hold_active)
+
+    def test_stage2_does_not_start_new_hold_after_merge_pass(self):
+        traci = FakeTraci()
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=self.stage1,
+            params=self.runtime.B4MvpParams(Q_ratio=0.0),
+            run_id="contract",
+        )
+        merge_lanes = list(self.stage1.departure.merge_zone_lanes)
+        vehicle_ids = [f"post_merge_bg_{index}" for index in range(20)]
+        for index, vehicle_id in enumerate(vehicle_ids):
+            traci.vehicle.vehicles[vehicle_id] = {
+                "edge": "merge",
+                "lane": merge_lanes[index % max(len(merge_lanes), 1)] if merge_lanes else "merge_0",
+                "route_index": 0,
+                "lane_position": 0.0,
+                "speed": 0.0,
+            }
+        for index, lane_id in enumerate(merge_lanes):
+            traci.lane.set_lane(lane_id, vehicle_ids[index::max(len(merge_lanes), 1)], speed_mps=0.0, occupancy=90.0, length=50.0)
+        target_edge = self.stage1.departure.mainline_target_edge
+        traci.vehicle.vehicles[self.stage1.ev_id] = {
+            "edge": target_edge,
+            "lane": f"{target_edge}_0",
+            "route_index": self.stage1.route_edges.index(target_edge),
+            "lane_position": 1.0,
+            "speed": 8.0,
+        }
+        traci.simulation.time = self.stage1.ev_depart_sec + 1.0
+
         events = controller.handle_stage2(traci.simulation.time, controller.ev_state())
 
         self.assertEqual(events, [])
         self.assertFalse(controller.stage2_hold_active)
         self.assertFalse(controller.stage2_hold_clearance_pending)
-        traci.simulation.time += 500
-        self.assertEqual(controller.handle_stage2(traci.simulation.time, controller.ev_state()), [])
+        self.assertTrue(controller.stage2_completed)
 
     def test_stage3_ordering_caps_active_movements_and_keeps_nearest_ahead_first(self):
         all_candidate_metrics = [self.metric(movement) for movement in self.stage1.movements]
@@ -1839,8 +1921,8 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(config.pre_ev_reference_window, (540.0, 600.0))
         self.assertEqual(config.hard_max_sim_time, 1800.0)
         self.assertEqual(config.ev_stuck_duration_sec, 120.0)
-        self.assertEqual(config.stage2_measurement_scale, 1.0)
-        self.assertEqual(config.stage3_measurement_scale, 1.5)
+        self.assertEqual(config.stage2_measurement_scale, 1.10)
+        self.assertEqual(config.stage3_measurement_scale, 1.65)
         self.assertFalse(config.stage2_synthetic_demand)
         for field in [
             "phase",
