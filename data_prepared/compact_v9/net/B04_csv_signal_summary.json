@@ -1,19 +1,22 @@
 {
   "schema": "compact_v9_B04_csv_boundary_signals.v1",
-  "generated_at": "2026-06-07T06:33:03.091262+00:00",
+  "generated_at": "2026-06-08T04:38:09.415920+00:00",
   "source_net": "data_prepared/compact_v9/net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml",
   "output_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "reference_csv": "toegye_ro_mainstream_segments_english.csv",
   "mapping_csv": "data_prepared/compact_v9/map/B04_toegye_segment_edge_mapping.csv",
   "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
-  "candidate_point_count": 18,
-  "route_candidate_count": 16,
-  "created_tls_count": 13,
+  "candidate_point_count": 17,
+  "raw_candidate_point_count": 18,
+  "duplicate_signal_collapse_count": 1,
+  "duplicate_signal_collapse_csv": "data_prepared/compact_v9/net/mainroad_duplicate_signal_collapse.csv",
+  "route_candidate_count": 15,
+  "created_tls_count": 12,
   "existing_tls_count": 3,
   "skipped_candidate_count": 0,
   "signal_type_counts": {
     "intersection_signal": 8,
-    "straight_signal": 10
+    "straight_signal": 9
   },
   "position_policy": "Signal placement uses the reference CSV signal coordinate. A008 points are reserved for timing/provenance only.",
   "straight_signal_policy": "Straight signals control only mainline through/same-direction connections at the CSV stopline; side-road/intersection phases are not inferred.",

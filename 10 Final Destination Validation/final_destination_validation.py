@@ -264,6 +264,48 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     temp.replace(path)
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def validate_active_inputs(args: argparse.Namespace) -> dict[str, Any]:
+    if not DEFAULT_ACTIVE_INPUTS.is_file():
+        return {"status": "SKIP", "reason": "active_inputs_missing"}
+    payload = read_json(DEFAULT_ACTIVE_INPUTS)
+    expected_paths = {
+        "net_file": Path(args.net),
+        "background_route": Path(args.background_route),
+        "stage1_dir": Path(args.base_stage1_dir),
+    }
+    for key, path in expected_paths.items():
+        manifest_value = payload.get(key)
+        if not manifest_value:
+            raise FinalDestinationValidationError(f"active_inputs_missing_{key}")
+        if rel(project_path(str(manifest_value))) != rel(path):
+            raise FinalDestinationValidationError(f"active_inputs_{key}_mismatch:{manifest_value} != {rel(path)}")
+    hash_audit: dict[str, str] = {}
+    for path_key, hash_key in {
+        "net_file": "net_file_sha256",
+        "background_route": "background_route_sha256",
+    }.items():
+        manifest_hash = str(payload.get(hash_key, ""))
+        if not manifest_hash:
+            continue
+        actual_hash = sha256_file(expected_paths[path_key])
+        hash_audit[hash_key] = actual_hash
+        if actual_hash != manifest_hash:
+            raise FinalDestinationValidationError(f"active_inputs_{hash_key}_mismatch:{actual_hash} != {manifest_hash}")
+    return {
+        "status": "PASS",
+        "active_inputs": rel(DEFAULT_ACTIVE_INPUTS),
+        "hashes": hash_audit,
+    }
+
+
 def bool_cell(value: Any) -> bool:
     return value is True or str(value).strip().lower() in {"true", "1", "yes", "y"}
 
@@ -1166,6 +1208,7 @@ def validate_args(args: argparse.Namespace) -> None:
     if not args.dry_run and shutil.which(args.sumo_binary or "sumo") is None:
         raise FinalDestinationValidationError("missing_executable:sumo")
     args.run_id = args.run_id or default_run_id()
+    args.active_inputs_audit = validate_active_inputs(args)
 
 
 def departures_for_candidates(args: argparse.Namespace, candidates: list[dict[str, Any]], repeats: int) -> dict[str, list[float]]:
@@ -1352,6 +1395,7 @@ def write_task_manifest(
                 "background_route": rel(args.background_route),
                 "base_stage1_dir": rel(args.base_stage1_dir),
                 "mainroad_mapping": rel(args.mainroad_mapping),
+                "active_inputs_audit": args.active_inputs_audit,
             },
             "candidate_count": len(candidates),
             "runnable_candidate_count": sum(candidate.get("precheck_status", "PASS") == "PASS" for candidate in candidates),
@@ -1603,6 +1647,7 @@ def run_validation(args: argparse.Namespace) -> dict[str, Any]:
             "background_route": rel(args.background_route),
             "base_stage1_dir": rel(args.base_stage1_dir),
             "mainroad_mapping": rel(args.mainroad_mapping),
+            "active_inputs_audit": args.active_inputs_audit,
         },
         "bo_enabled": False,
         "bayesian_optimization_executed_by_final_validation": False,

@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_demand_candidate.v1",
-  "generated_at": "2026-06-07T15:07:34.950723+00:00",
+  "generated_at": "2026-06-08T05:33:51.009741+00:00",
   "candidate": "B04_ac_main_through_rebalanced",
   "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ac_main_through_rebalanced.rou.xml",
   "settings": {
@@ -35,47 +35,47 @@
   },
   "vehicle_count": 1302,
   "route_count": 118,
-  "unique_source_count": 68,
+  "unique_source_count": 75,
   "top_sources": [
     [
-      "-174870621#0",
-      145
-    ],
-    [
-      "619147740",
-      144
-    ],
-    [
-      "219696191#1",
-      140
-    ],
-    [
       "619147739#0",
-      119
-    ],
-    [
-      "-381802847#0",
-      83
-    ],
-    [
-      "578313748#0",
-      72
+      73
     ],
     [
       "218915133#2",
       62
     ],
     [
-      "619147739#1",
+      "619147739#3",
+      58
+    ],
+    [
+      "619147739#5",
+      58
+    ],
+    [
+      "-381802847#0",
+      47
+    ],
+    [
+      "781983103#2",
+      47
+    ],
+    [
+      "619147739#2",
       46
     ],
     [
-      "781985786#7",
-      34
+      "619147739#4",
+      46
     ],
     [
-      "-180368918#6",
-      25
+      "619147739#6",
+      46
+    ],
+    [
+      "781983103#1",
+      46
     ]
   ],
   "top_templates": [
@@ -162,8 +162,7 @@
         "main_through_share_ok": true,
         "off_main_share_ok": true,
         "terminal_sink_ok": true,
-        "top_source_ok": true,
-        "top_sink_ok": true
+        "top_source_ok": true
       },
       {
         "feeder_share_downbound": 0.42,
@@ -176,8 +175,7 @@
         "main_through_share_ok": true,
         "off_main_share_ok": true,
         "terminal_sink_ok": true,
-        "top_source_ok": true,
-        "top_sink_ok": true
+        "top_source_ok": true
       }
     ],
     "final_acceptance": {
@@ -191,8 +189,7 @@
       "main_through_share_ok": true,
       "off_main_share_ok": true,
       "terminal_sink_ok": true,
-      "top_source_ok": true,
-      "top_sink_ok": true
+      "top_source_ok": true
     }
   }
 }

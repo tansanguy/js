@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_b0_manifest.v1",
-  "generated_at": "2026-06-07T12:20:27+00:00",
+  "generated_at": "2026-06-08T04:56:44.988964+00:00",
   "baseline_name": "B04",
   "mode": "B0",
   "parameter_id": "no_control",
@@ -8,7 +8,7 @@
   "green18_source_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
   "canonical_signal_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
   "canonical_profile": "B04_B4_S1_FORCED_OPTIMIZATION",
-  "active_net_sha256": "f9b5bee540b7cb39d2f08359c43e9d300ff93693913cf08fc159f3baf23e9371",
+  "active_net_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
   "firetruck_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
   "reference_csv_abs": "/Users/junlee/Desktop/js/toegye_ro_mainstream_segments_english.csv",
   "emergency_depart_sec": 600.0,
@@ -19,7 +19,7 @@
   "route_internal_lane_alignment_audit_csv": "09 Compact Corridor Baseline/tdata_signal/route_internal_lane_alignment_audit.csv",
   "route_tls_projection_audit_csv": "09 Compact Corridor Baseline/tdata_signal/route_tls_projection_audit.csv",
   "csv_signal_candidate_summary": "data_prepared/compact_v9/net/B04_csv_signal_summary.json",
-  "csv_signal_created_tls_count": 13,
+  "csv_signal_created_tls_count": 12,
   "csv_signal_existing_tls_count": 3,
   "csv_signal_forced_tls_count": 2,
   "terminal_egress_tuning": {
@@ -56,54 +56,26 @@
   },
   "firetruck_route_priority": {
     "policy": "firetruck_route_uncontrolled_minor_connections_promoted",
-    "status": "UPDATED",
+    "status": "NOOP",
     "route_edge_count": 61,
-    "updated_connection_count": 3,
-    "updated_connections": [
-      {
-        "from": "180445419",
-        "to": "347237859#0",
-        "fromLane": "0",
-        "toLane": "0",
-        "via": ":1908148227_2_0",
-        "state_before": "m",
-        "state_after": "M"
-      },
-      {
-        "from": "180445419",
-        "to": "347237859#0",
-        "fromLane": "1",
-        "toLane": "1",
-        "via": ":1908148227_2_1",
-        "state_before": "m",
-        "state_after": "M"
-      },
-      {
-        "from": "420331801#1",
-        "to": "-174870621#8",
-        "fromLane": "0",
-        "toLane": "2",
-        "via": ":cluster_3849737606_8401234720_8496719924_12_0",
-        "state_before": "m",
-        "state_after": "M"
-      }
-    ]
+    "updated_connection_count": 0,
+    "updated_connections": []
   },
   "policy_ko": "B04/B4 active baseline은 S1-forced global reality 신호망을 canonical net으로 채택합니다. green18은 과거 생성 단계 입력으로만 남기고 runtime/검증 기본 active net으로 쓰지 않습니다.",
   "selected_candidate": "B04_ad_stage23_trigger",
   "selection_summary": {
     "candidate": "B04_ad_stage23_trigger",
     "status": "PASS",
-    "speed_mae_kmh": 4.1,
-    "travel_time_mae_s": 11.244,
+    "speed_mae_kmh": 5.47,
+    "travel_time_mae_s": 14.291,
     "stop_count_excluding_s22": 0,
     "free_count": 0,
     "speed_sanity_fail_count": 0,
     "metric_invalid_count": 0,
     "queue_classification": "physical_queue_congestion",
-    "queue_top10_overlap": 5,
-    "queue_top10_overlap_ratio": 0.5,
-    "dense_segment_direction_count": 42,
+    "queue_top10_overlap": 2,
+    "queue_top10_overlap_ratio": 0.2,
+    "dense_segment_direction_count": 39,
     "od_missing_free_count": 0,
     "od_undercovered_free_count": 0,
     "queue_not_forming_free_count": 0,
@@ -111,11 +83,11 @@
     "sumo_exit_code": 0,
     "emergency_arrived": true,
     "emergency_teleport": false,
-    "background_teleported": 0,
+    "background_teleported": 1,
     "stage23_teleported": 0,
-    "base_background_teleported": 0,
-    "background_arrived": 1688,
-    "background_departed": 1688,
+    "base_background_teleported": 1,
+    "background_arrived": 1616,
+    "background_departed": 1616,
     "background_arrived_ratio": 1.0
   }
 }

@@ -1,33 +1,31 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <net xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.20" junctionCornerDetail="5" limitTurnSpeed="5.50" avoidOverlap="0" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/net_file.xsd">
-    <tlLogic id="CSV_TLS_S01_START_SINDANG_STATION" type="static" programID="GLOBAL_REALITY" offset="98">
-        <phase duration="60" state="GGGGrrrrrGGGGrrrrr" name="mainroad_green_1" /><phase duration="3" state="yyyyrrrrryyyyrrrrr" name="mainroad_yellow_1" /><phase duration="49" state="rrrrgggggrrrrggggg" name="side_green" /><phase duration="3" state="rrrryyyyyrrrryyyyy" name="side_yellow" /></tlLogic>
-    <tlLogic id="CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT" type="static" programID="GLOBAL_REALITY" offset="77">
-        <phase duration="52" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="50" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
-    <tlLogic id="CSV_TLS_S19_S20_SEVERANCE_BUILDING" type="static" programID="GLOBAL_REALITY" offset="66">
-        <phase duration="55" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="64" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
+    <tlLogic id="CSV_TLS_S01_START_SINDANG_STATION" type="static" programID="GLOBAL_REALITY" offset="93">
+        <phase duration="60" state="GGGGrrrrrGGGGrrrrr" name="mainroad_green_1" /><phase duration="3" state="yyyyrrrrryyyyrrrrr" name="mainroad_yellow_1" /><phase duration="54" state="rrrrgggggrrrrggggg" name="side_green" /><phase duration="3" state="rrrryyyyyrrrryyyyy" name="side_yellow" /></tlLogic>
+    <tlLogic id="CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT" type="static" programID="GLOBAL_REALITY" offset="73">
+        <phase duration="54" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="45" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S18_S19_SAMSEON_BUILDING" type="static" programID="GLOBAL_REALITY" offset="54">
-        <phase duration="44" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="60" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
+        <phase duration="46" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="58" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S17_S18_NAMDAEMUN_MARKET" type="static" programID="GLOBAL_REALITY" offset="44">
-        <phase duration="54" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="45" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
+        <phase duration="61" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="43" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE" type="static" programID="GLOBAL_REALITY" offset="39">
-        <phase duration="54" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="50" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
+        <phase duration="56" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="48" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S14_S15_DAYS_HOTEL_FRONT" type="static" programID="GLOBAL_REALITY" offset="20">
-        <phase duration="54" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="45" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
+        <phase duration="61" state="GGG" name="mainroad_green_1" /><phase duration="3" state="yyy" name="mainroad_yellow_1" /><phase duration="43" state="rrr" name="side_green" /><phase duration="3" state="rrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S13_S14_MYEONGDONG_STATION_FRONT" type="static" programID="GLOBAL_REALITY" offset="6">
-        <phase duration="44" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="60" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
+        <phase duration="46" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="58" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S11_S12_TOEGYE_RO_2_GA" type="static" programID="GLOBAL_REALITY" offset="105">
-        <phase duration="55" state="GG" name="mainroad_green_1" /><phase duration="3" state="yy" name="mainroad_yellow_1" /><phase duration="49" state="rr" name="side_green" /><phase duration="3" state="rr" name="side_yellow" /></tlLogic>
+        <phase duration="55" state="GG" name="mainroad_green_1" /><phase duration="3" state="yy" name="mainroad_yellow_1" /><phase duration="54" state="rr" name="side_green" /><phase duration="3" state="rr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S08_S09_TOEGYE_RO_4_GA" type="static" programID="GLOBAL_REALITY" offset="29">
-        <phase duration="59" state="GGrrrrGGGrrr" name="mainroad_green_1" /><phase duration="3" state="yyrrrryyyrrr" name="mainroad_yellow_1" /><phase duration="50" state="rrggggrrrggg" name="side_green" /><phase duration="3" state="rryyyyrrryyy" name="side_yellow" /></tlLogic>
+        <phase duration="61" state="GGrrrrGGGrrr" name="mainroad_green_1" /><phase duration="3" state="yyrrrryyyrrr" name="mainroad_yellow_1" /><phase duration="48" state="rrggggrrrggg" name="side_green" /><phase duration="3" state="rryyyyrrryyy" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S05_S06_GWANGHUI_INTERSECTION" type="static" programID="GLOBAL_REALITY" offset="76">
-        <phase duration="54" state="rrrrrGGrrrrrrrGGGrr" name="mainroad_green_1" /><phase duration="3" state="rrrrryyrrrrrrryyyrr" name="mainroad_yellow_1" /><phase duration="55" state="gggggrrgggggggrrrgg" name="side_green" /><phase duration="3" state="yyyyyrryyyyyyyrrryy" name="side_yellow" /></tlLogic>
+        <phase duration="56" state="rrrrrGGrrrrrrrGGGrr" name="mainroad_green_1" /><phase duration="3" state="rrrrryyrrrrrrryyyrr" name="mainroad_yellow_1" /><phase duration="53" state="gggggrrgggggggrrrgg" name="side_green" /><phase duration="3" state="yyyyyrryyyyyyyrrryy" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S03_S04_TOYOKO_INN_HOTEL_FRONT" type="static" programID="GLOBAL_REALITY" offset="57">
-        <phase duration="54" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="50" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
+        <phase duration="56" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="48" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S02_S03_HANYANG_TECHNICAL_HIGH_SCHOOL_FRONT" type="static" programID="GLOBAL_REALITY" offset="48">
-        <phase duration="44" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="60" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
+        <phase duration="46" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="58" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
     <tlLogic id="CSV_TLS_S01_S02_SEONGDONG_GLOBAL_BUSINESS_HIGH_SCHOOL" type="static" programID="GLOBAL_REALITY" offset="28">
-        <phase duration="49" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="55" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
+        <phase duration="51" state="GGGGGG" name="mainroad_green_1" /><phase duration="3" state="yyyyyy" name="mainroad_yellow_1" /><phase duration="53" state="rrrrrr" name="side_green" /><phase duration="3" state="rrrrrr" name="side_yellow" /></tlLogic>
     <location netOffset="-320639.43,-4156948.57" convBoundary="0.00,0.00,4310.40,3081.13" origBoundary="126.957059,37.535403,127.032428,37.592333" projParameter="+proj=utm +zone=52 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" />
     <edge id=":10253014031_0" function="internal">
         <lane id=":10253014031_0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="0.30" shape="1020.10,1389.23 1020.38,1389.31" />
@@ -15316,8 +15314,8 @@
         <lane id=":5851251703_0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="20.48" shape="446.42,1622.76 427.47,1614.99" />
     </edge>
     <edge id=":5851251703_3" function="internal">
-        <lane id=":5851251703_3_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="10.71" length="19.24" shape="444.22,1585.17 440.60,1588.15 436.41,1589.63 431.65,1589.59 426.33,1588.05" />
-        <lane id=":5851251703_3_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="7.96" length="19.24" shape="442.61,1582.14 441.95,1585.86 439.22,1587.59 434.42,1587.34 427.54,1585.09" />
+        <lane id=":5851251703_3_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="10.71" length="19.24" shape="447.79,1616.56 444.17,1619.54 439.98,1621.02 435.22,1620.98 429.90,1619.44" />
+        <lane id=":5851251703_3_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="7.96" length="19.24" shape="446.18,1613.53 445.52,1617.25 442.79,1618.98 437.99,1618.73 431.11,1616.48" />
     </edge>
     <edge id=":5863541379_0" function="internal">
         <lane id=":5863541379_0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="6.23" length="9.41" shape="2656.36,2210.44 2653.53,2210.08 2651.46,2210.63 2650.16,2212.10 2649.62,2214.49" />
@@ -35649,8 +35647,8 @@
         <lane id="619147736_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="66.91" shape="466.25,1968.48 464.16,1960.97 458.52,1934.65 450.42,1914.18 446.97,1904.47" />
     </edge>
     <edge id="619147737" from="5851251697" to="5851251703" priority="7" type="highway.primary_link" spreadType="center" shape="442.13,1599.02 445.75,1605.00 447.47,1609.63 447.83,1614.11 444.59,1617.74 438.75,1619.39 431.58,1620.13">
-        <lane id="619147737_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="4.16" shape="449.13,1610.34 449.48,1614.66 444.22,1585.17" />
-        <lane id="619147737_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="4.16" shape="446.06,1612.09 442.61,1582.14" />
+        <lane id="619147737_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="4.16" shape="449.13,1610.34 449.48,1614.66 447.79,1616.56" />
+        <lane id="619147737_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="4.16" shape="446.06,1612.09 446.18,1613.53" />
     </edge>
     <edge id="619147738#0" from="5851251703" to="11139302904" priority="12" type="highway.primary" spreadType="center" shape="431.58,1620.13 384.09,1600.67 374.70,1599.78 361.75,1600.43 355.04,1601.17 346.81,1605.05 334.46,1615.02">
         <lane id="619147738#0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="96.11" shape="425.04,1620.91 383.32,1603.81 374.63,1602.99 362.01,1603.62 355.92,1604.29 348.52,1607.78 336.58,1617.42" /><lane id="619147738#0_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="99.54" shape="426.25,1617.95 384.09,1600.67 374.70,1599.78 361.75,1600.43 355.04,1601.17 346.81,1605.05 334.57,1614.93" /><lane id="619147738#0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="13.888889" length="102.99" shape="427.47,1614.99 384.86,1597.53 374.77,1596.57 361.49,1597.24 354.16,1598.05 345.10,1602.32 332.56,1612.44" /></edge>
@@ -37103,13 +37101,13 @@
     <tlLogic id="10299171845" type="static" programID="GLOBAL_REALITY" offset="96">
         <phase duration="50" state="GGGGGGGgrrr" />
         <phase duration="3" state="Gyyyyyyyrrr" />
-        <phase duration="50" state="GrrrrrrrGGG" />
+        <phase duration="49" state="GrrrrrrrGGG" />
         <phase duration="3" state="Grrrrrrryyy" />
     </tlLogic>
     <tlLogic id="11059693772" type="static" programID="GLOBAL_REALITY" offset="25">
         <phase duration="87" state="G" />
         <phase duration="3" state="y" />
-        <phase duration="6" state="r" />
+        <phase duration="5" state="r" />
     </tlLogic>
     <tlLogic id="11203059755" type="static" programID="GLOBAL_REALITY" offset="67">
         <phase duration="119" state="GG" />
@@ -37129,7 +37127,7 @@
     <tlLogic id="1327210743" type="static" programID="GLOBAL_REALITY" offset="95">
         <phase duration="52" state="rrrGGGGGGGg" />
         <phase duration="3" state="rrrGyyyyyyy" />
-        <phase duration="53" state="GGGGrrrrrrr" />
+        <phase duration="52" state="GGGGrrrrrrr" />
         <phase duration="3" state="yyyGrrrrrrr" />
     </tlLogic>
     <tlLogic id="13732389937" type="static" programID="GLOBAL_REALITY" offset="65">
@@ -37154,7 +37152,7 @@
         <phase duration="3" state="yyygrryyyg" />
         <phase duration="8" state="rrrGrrrrrG" />
         <phase duration="3" state="rrryrrrrry" />
-        <phase duration="47" state="rrrrGGGrrr" />
+        <phase duration="46" state="rrrrGGGrrr" />
         <phase duration="3" state="rrrryyGrrr" />
     </tlLogic>
     <tlLogic id="2471514433" type="static" programID="GLOBAL_REALITY" offset="0">
@@ -37176,28 +37174,28 @@
         <phase duration="32" state="GGGGrrrrrrr" />
         <phase duration="3" state="yyyGrrrrrrr" />
     </tlLogic>
-    <tlLogic id="3846495798" type="static" programID="GLOBAL_REALITY" offset="1">
-        <phase duration="45" state="rrrGGGGGGGg" />
+    <tlLogic id="3846495798" type="static" programID="GLOBAL_REALITY" offset="2">
+        <phase duration="44" state="rrrGGGGGGGg" />
         <phase duration="3" state="rrrGyyyyyyy" />
         <phase duration="45" state="GGGGrrrrrrr" />
         <phase duration="3" state="yyyGrrrrrrr" />
     </tlLogic>
     <tlLogic id="3846533327" type="static" programID="GLOBAL_REALITY" offset="18">
-        <phase duration="37" state="GGggrrrrrrrrGGGgrrrr" />
+        <phase duration="35" state="GGggrrrrrrrrGGGgrrrr" />
         <phase duration="3" state="yyyyrrrrrrrryyyyrrrr" />
-        <phase duration="37" state="rrrrGGggrrrrrrrrGGGg" />
+        <phase duration="35" state="rrrrGGggrrrrrrrrGGGg" />
         <phase duration="3" state="rrrryyyyrrrrrrrryyyy" />
-        <phase duration="37" state="rrrrrrrrGGGGGrrrrrrr" />
+        <phase duration="36" state="rrrrrrrrGGGGGrrrrrrr" />
         <phase duration="3" state="rrrrrrrryyyyGrrrrrrr" />
     </tlLogic>
     <tlLogic id="4202879197" type="static" programID="GLOBAL_REALITY" offset="7">
-        <phase duration="36" state="GGggrrrrrrrrGGGgrrrr" />
+        <phase duration="34" state="GGggrrrrrrrrGGGgrrrr" />
         <phase duration="3" state="yyyyrrrrrrrryyyyrrrr" />
-        <phase duration="37" state="rrrrggggrrrrrrrrGGGG" />
+        <phase duration="35" state="rrrrggggrrrrrrrrGGGG" />
         <phase duration="3" state="rrrryyyyrrrrrrrryyyy" />
-        <phase duration="37" state="rrrrrrrrGGGGGrrrrrrr" />
+        <phase duration="35" state="rrrrrrrrGGGGGrrrrrrr" />
         <phase duration="3" state="rrrrrrrryyyyyrrrrrrr" />
-        <phase duration="1" state="rrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr" />
     </tlLogic>
     <tlLogic id="4276317241" type="static" programID="GLOBAL_REALITY" offset="28">
         <phase duration="105" state="G" />
@@ -37205,7 +37203,7 @@
         <phase duration="7" state="r" />
     </tlLogic>
     <tlLogic id="436849185" type="static" programID="GLOBAL_REALITY" offset="62">
-        <phase duration="45" state="GGGGGGrr" />
+        <phase duration="44" state="GGGGGGrr" />
         <phase duration="3" state="GGyyyyrr" />
         <phase duration="45" state="GGrrrrGG" />
         <phase duration="3" state="GGrrrryy" />
@@ -37221,17 +37219,17 @@
         <phase duration="3" state="rrrrrrrrrrrrrryyyyyrrr" />
     </tlLogic>
     <tlLogic id="5161705573" type="static" programID="GLOBAL_REALITY" offset="28">
-        <phase duration="102" state="GG" />
+        <phase duration="101" state="GG" />
         <phase duration="3" state="yy" />
         <phase duration="6" state="rr" />
     </tlLogic>
     <tlLogic id="5172891764" type="static" programID="GLOBAL_REALITY" offset="52">
-        <phase duration="92" state="GG" />
+        <phase duration="91" state="GG" />
         <phase duration="3" state="yy" />
         <phase duration="6" state="rr" />
     </tlLogic>
     <tlLogic id="5172891765" type="static" programID="GLOBAL_REALITY" offset="50">
-        <phase duration="92" state="G" />
+        <phase duration="91" state="G" />
         <phase duration="3" state="y" />
         <phase duration="6" state="r" />
     </tlLogic>
@@ -37243,31 +37241,31 @@
     <tlLogic id="5851251281" type="static" programID="GLOBAL_REALITY" offset="75">
         <phase duration="50" state="GGGGGGrrrrrrrr" />
         <phase duration="3" state="yyyyyyrrrrrrrr" />
-        <phase duration="50" state="rrrrrrGGGGGGGG" />
+        <phase duration="49" state="rrrrrrGGGGGGGG" />
         <phase duration="3" state="rrrrrryyyyyyyy" />
     </tlLogic>
     <tlLogic id="7265413652" type="static" programID="GLOBAL_REALITY" offset="30">
-        <phase duration="102" state="G" />
+        <phase duration="101" state="G" />
         <phase duration="3" state="y" />
         <phase duration="6" state="r" />
     </tlLogic>
     <tlLogic id="7311080426" type="static" programID="GLOBAL_REALITY" offset="55">
-        <phase duration="97" state="GGG" />
+        <phase duration="96" state="GGG" />
         <phase duration="3" state="yyy" />
         <phase duration="6" state="rrr" />
     </tlLogic>
     <tlLogic id="8209566040" type="static" programID="GLOBAL_REALITY" offset="84">
-        <phase duration="102" state="GG" />
+        <phase duration="101" state="GG" />
         <phase duration="3" state="yy" />
         <phase duration="6" state="rr" />
     </tlLogic>
     <tlLogic id="8209566041" type="static" programID="GLOBAL_REALITY" offset="90">
         <phase duration="87" state="GGGG" />
         <phase duration="3" state="yyyy" />
-        <phase duration="6" state="rrrr" />
+        <phase duration="5" state="rrrr" />
     </tlLogic>
-    <tlLogic id="8487751470" type="static" programID="GLOBAL_REALITY" offset="0">
-        <phase duration="45" state="rrrGGGGGGG" />
+    <tlLogic id="8487751470" type="static" programID="GLOBAL_REALITY" offset="1">
+        <phase duration="44" state="rrrGGGGGGG" />
         <phase duration="3" state="rrrGyyyyyy" />
         <phase duration="45" state="GGGGrrrrrr" />
         <phase duration="3" state="yyyGrrrrrr" />
@@ -37278,7 +37276,7 @@
         <phase duration="12" state="rGGGrrr" name="entry_hold" />
     </tlLogic>
     <tlLogic id="cluster_11177413157_11178710207" type="static" programID="GLOBAL_REALITY" offset="27">
-        <phase duration="92" state="GGG" />
+        <phase duration="91" state="GGG" />
         <phase duration="3" state="yyy" />
         <phase duration="6" state="rrr" />
     </tlLogic>
@@ -37303,7 +37301,7 @@
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyrrrrrrr" />
     </tlLogic>
     <tlLogic id="cluster_11347624895_11414286294" type="static" programID="GLOBAL_REALITY" offset="91">
-        <phase duration="22" state="Grrrrrrrrrrrrrrr" />
+        <phase duration="21" state="Grrrrrrrrrrrrrrr" />
         <phase duration="3" state="yrrrrrrrrrrrrrrr" />
         <phase duration="24" state="rrrrrrrrrrrrrGGG" />
         <phase duration="3" state="rrrrrrrrrrrrryyy" />
@@ -37313,13 +37311,13 @@
         <phase duration="3" state="rrrrrrrryyyyyyrr" />
     </tlLogic>
     <tlLogic id="cluster_12785870414_3337522189" type="static" programID="GLOBAL_REALITY" offset="90">
-        <phase duration="48" state="ggGrGGGGG" />
+        <phase duration="47" state="ggGrGGGGG" />
         <phase duration="3" state="yyGrGyyyy" />
         <phase duration="47" state="rrGGGrrrr" />
         <phase duration="3" state="rrGyGrrrr" />
     </tlLogic>
-    <tlLogic id="cluster_1326096615_3849700763" type="static" programID="GLOBAL_REALITY" offset="49">
-        <phase duration="26" state="GGGGggrrrrrrrrGGGGGgrrrrr" />
+    <tlLogic id="cluster_1326096615_3849700763" type="static" programID="GLOBAL_REALITY" offset="50">
+        <phase duration="25" state="GGGGggrrrrrrrrGGGGGgrrrrr" />
         <phase duration="3" state="yyyyggrrrrrrrryyyyygrrrrr" />
         <phase duration="8" state="rrrrGGrrrrrrrrrrrrrGrrrrr" />
         <phase duration="3" state="rrrryyrrrrrrrrrrrrryrrrrr" />
@@ -37332,9 +37330,9 @@
         <phase duration="3" state="rrrrrryyyyyrrrrrrrrrrrrrr" />
     </tlLogic>
     <tlLogic id="cluster_13348293702_13348293703_414685829" type="static" programID="GLOBAL_REALITY" offset="99">
-        <phase duration="50" state="rrrGGGgrrrGGGg" />
+        <phase duration="52" state="rrrGGGgrrrGGGg" />
         <phase duration="3" state="rrryyyyrrryyyy" />
-        <phase duration="49" state="GGgrrrrGGgrrrr" />
+        <phase duration="52" state="GGgrrrrGGgrrrr" />
         <phase duration="3" state="yyyrrrryyyrrrr" />
     </tlLogic>
     <tlLogic id="cluster_2374692784_2374692803" type="static" programID="GLOBAL_REALITY" offset="109">
@@ -37364,8 +37362,8 @@
         <phase duration="3" state="rrrrryyyyyrrrrrrrrrrrrrrrr" />
         <phase duration="2" state="rrrrrrrrrrrrrrrrrrrrrrrrrr" />
     </tlLogic>
-    <tlLogic id="cluster_3846534041_436877431" type="static" programID="GLOBAL_REALITY" offset="11">
-        <phase duration="45" state="GGGgrrrG" />
+    <tlLogic id="cluster_3846534041_436877431" type="static" programID="GLOBAL_REALITY" offset="12">
+        <phase duration="44" state="GGGgrrrG" />
         <phase duration="3" state="yyyyrrrG" />
         <phase duration="45" state="rrrrGGGG" />
         <phase duration="3" state="rrrryyyG" />
@@ -37375,15 +37373,15 @@
         <phase duration="3" state="yyyrrrrr" />
         <phase duration="32" state="rrrrGGGG" />
         <phase duration="3" state="rrrrGyyy" />
-        <phase duration="33" state="rrGGGrrr" />
+        <phase duration="32" state="rrGGGrrr" />
         <phase duration="3" state="rrGyyrrr" />
     </tlLogic>
-    <tlLogic id="joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more" type="static" programID="GLOBAL_REALITY" offset="81">
-        <phase duration="59" state="ggggggggggGGGGGGGGGGggggggggggggggrrrrrrrrrggg" name="mainroad_green_1" /><phase duration="3" state="yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyrrrrrrrrryyy" name="mainroad_yellow_1" /><phase duration="50" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrr" name="side_green" /><phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyyrrr" name="side_yellow" /></tlLogic>
+    <tlLogic id="joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more" type="static" programID="GLOBAL_REALITY" offset="76">
+        <phase duration="56" state="ggggggggggGGGGGGGGGGggggggggggggggrrrrrrrrrggg" name="mainroad_green_1" /><phase duration="3" state="yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyrrrrrrrrryyy" name="mainroad_yellow_1" /><phase duration="53" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrr" name="side_green" /><phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyyrrr" name="side_yellow" /></tlLogic>
     <tlLogic id="joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more" type="static" programID="GLOBAL_REALITY" offset="30">
-        <phase duration="49" state="GrrrrrrgggggggggggrrgGGGGGGGGGrrrrrrr" name="mainroad_green_1" /><phase duration="3" state="Grrrrrryyyyyyyyyyyrryyyyyyyyyyrrrrrrr" name="mainroad_yellow_1" /><phase duration="60" state="GGGggggrrrrrrrrrrrggrrrrrrrrrrGGGGGGG" name="side_green" /><phase duration="3" state="yyyyyyyrrrrrrrrrrryyrrrrrrrrrryyyyyyy" name="side_yellow" /></tlLogic>
-    <tlLogic id="joinedS_11203083989_11203083990_11203083991_11203083992_#1more" type="static" programID="GLOBAL_REALITY" offset="27">
-        <phase duration="55" state="rrrGGGGGGGGGGGGgrrrrGGGGgrrrrr" />
+        <phase duration="51" state="GGGrrgggrrrrrgGGGGgrrrrrrrrrrrrrrrrrr" name="mainroad_green_1" /><phase duration="3" state="yyyrryyyrrrrryyyyyyrrrrrrrrrrrrrrrrrr" name="mainroad_yellow_1" /><phase duration="58" state="GGGggrrrgggggrrrrrrgggggggggggGGGGGGG" name="side_green" /><phase duration="3" state="yyyyyrrryyyyyrrrrrryyyyyyyyyyyyyyyyyy" name="side_yellow" /></tlLogic>
+    <tlLogic id="joinedS_11203083989_11203083990_11203083991_11203083992_#1more" type="static" programID="GLOBAL_REALITY" offset="28">
+        <phase duration="54" state="rrrGGGGGGGGGGGGgrrrrGGGGgrrrrr" />
         <phase duration="3" state="rrrGGGGGyyyyyyyyrrrryyyyyrrrrr" />
         <phase duration="55" state="GGGGGGGGrrrrrrrrGGGgrrrrrGGGGg" />
         <phase duration="3" state="yyyGGGGGrrrrrrrryyyyrrrrryyyyy" />
@@ -37397,15 +37395,15 @@
         <phase duration="3" state="GGrrrrryyyyrrrrryyyy" />
     </tlLogic>
     <tlLogic id="joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more" type="static" programID="GLOBAL_REALITY" offset="72">
-        <phase duration="30" state="GGGGrrrrrGGGGGrgggrrrrrggggr" name="mainroad_green_1" /><phase duration="3" state="yyyyrrrrryyyyyryyyrrrrryyyyr" name="mainroad_yellow_1" /><phase duration="29" state="rrrrrrGGGrrrrrrrrrrrrrrrrrrr" name="mainroad_green_2" /><phase duration="3" state="rrrrrryyyrrrrrrrrrrrrrrrrrrr" name="mainroad_yellow_2" /><phase duration="47" state="GGrrGGrrrrrrrrGrrrGGGGGrrrrg" name="side_green" /><phase duration="3" state="yyrryyrrrrrrrryrrryyyyyrrrry" name="side_yellow" /></tlLogic>
+        <phase duration="31" state="rrrrrrGGGrrrrrrrrrrrrrrrrrrr" name="mainroad_green_1" /><phase duration="3" state="rrrrrryyyrrrrrrrrrrrrrrrrrrr" name="mainroad_yellow_1" /><phase duration="30" state="GGGGrrrrrGGGGGrgggrrrrrggggr" name="mainroad_green_2" /><phase duration="3" state="yyyyrrrrryyyyyryyyrrrrryyyyr" name="mainroad_yellow_2" /><phase duration="45" state="GGrrGGrrrrrrrrGrrrGGGGGrrrrg" name="side_green" /><phase duration="3" state="yyrryyrrrrrrrryrrryyyyyrrrry" name="side_yellow" /></tlLogic>
     <tlLogic id="joinedS_11414286323_cluster_11414286309_7666741014" type="static" programID="GLOBAL_REALITY" offset="89">
-        <phase duration="20" state="Grrrrrrrrrrrrrr" />
+        <phase duration="19" state="Grrrrrrrrrrrrrr" />
         <phase duration="3" state="yrrrrrrrrrrrrrr" />
-        <phase duration="23" state="rrrrrrrrrrrrGGG" />
+        <phase duration="21" state="rrrrrrrrrrrrGGG" />
         <phase duration="3" state="rrrrrrrrrrrryyy" />
-        <phase duration="23" state="GGGGGGGrrrrrrrr" />
+        <phase duration="21" state="GGGGGGGrrrrrrrr" />
         <phase duration="3" state="yyyyyyyrrrrrrrr" />
-        <phase duration="23" state="rrrrrrrGGGGGGrr" />
+        <phase duration="22" state="rrrrrrrGGGGGGrr" />
         <phase duration="3" state="rrrrrrryyyyyyrr" />
     </tlLogic>
     <tlLogic id="joinedS_3846493837_cluster_2515564080_436883154" type="static" programID="GLOBAL_REALITY" offset="14">
@@ -37419,35 +37417,35 @@
     <tlLogic id="joinedS_4276255151_cluster_4276255149_4276255150_4276255152_436839431" type="static" programID="GLOBAL_REALITY" offset="90">
         <phase duration="50" state="GGGgGGrrrr" />
         <phase duration="3" state="GGyyyyrrrr" />
-        <phase duration="50" state="GGrrrrGGGG" />
+        <phase duration="49" state="GGrrrrGGGG" />
         <phase duration="3" state="GGrrrryyyy" />
     </tlLogic>
-    <tlLogic id="joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more" type="static" programID="GLOBAL_REALITY" offset="15">
-        <phase duration="8" state="GGGGGGGGrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrGGGGGrrrrrrgg" />
-        <phase duration="3" state="yyyyyyyyrrrrrrrrrrrrrrrrryyyyyyrrrrrrrrrrrrrrrrrrrrrrryyyyyrrrrrryy" />
-        <phase duration="8" state="rrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGrrrrrGGrrrrrrrrrrGGGrrrrr" />
+    <tlLogic id="joinedS_7121587905_cluster_11203001806_11203001809_11203001810_11203001814_#12more_cluster_11203001812_13639573216_13721232723_13721232725_#1more_cluster_11203001813_13721232726_#1more" type="static" programID="GLOBAL_REALITY" offset="17">
+        <phase duration="7" state="GGGGGGGGrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrGGGGGrrrrrrrr" />
+        <phase duration="3" state="yyyyyyyyrrrrrrrrrrrrrrrrryyyyyyrrrrrrrrrrrrrrrrrrrrrrryyyyyrrrrrrrr" />
+        <phase duration="7" state="rrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGrrrrrGGrrrrrrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrryyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrryyrrrrryyrrrrrrrrrrGGGrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyrrrrrrrrrrrrrrrrrrrGGGrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrGGrrrrrrrrGGrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrGGrrrrrrrrGGrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrryyrrrrrrrrGGrrrrrGGGrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrrGGrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrrrGGGrrrrrGGrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrrryyyrrrrryyrrrrrGGGrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrGGrrrrrrrGGGrrrrrrrGGGrrrrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrGGGGGrrrrrrrrrrrrrrrrrrrGGrrrrrrrGGGrrrrrrrGGGrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrryyyyyrrrrrrrrrrrrrrrrrrryyrrrrrrryyyrrrrrrryyyrrrrr" />
-        <phase duration="8" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGrr" />
+        <phase duration="7" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyrr" />
-        <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGG" />
+        <phase duration="12" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGG" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryy" />
     </tlLogic>
     <tlLogic id="joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more" type="static" programID="GLOBAL_REALITY" offset="5">
-        <phase duration="64" state="GGGGGGGGGgrrrrGGGGgrrrr" name="mainroad_green_1" /><phase duration="3" state="GGGyyyyyyyrrrryyyyyrrrr" name="mainroad_yellow_1" /><phase duration="45" state="GGGrrrrrrrGGGgrrrrrGGGg" name="side_green" /><phase duration="3" state="yyyrrrrrrryyyyrrrrryyyy" name="side_yellow" /></tlLogic>
+        <phase duration="66" state="GGGGGGGGGgrrrrGGGGgrrrr" name="mainroad_green_1" /><phase duration="3" state="GGGyyyyyyyrrrryyyyyrrrr" name="mainroad_yellow_1" /><phase duration="43" state="GGGrrrrrrrGGGgrrrrrGGGg" name="side_green" /><phase duration="3" state="yyyrrrrrrryyyyrrrrryyyy" name="side_yellow" /></tlLogic>
     <junction id="10253014031" type="priority" x="1020.24" y="1389.27" incLanes="37399713#3_0" intLanes=":10253014031_0_0" shape="1019.97,1390.85 1020.80,1387.76 1020.51,1387.69 1019.68,1390.78">
         <request index="0" response="0" foes="0" cont="0" />
     </junction>
@@ -44507,7 +44505,7 @@
         <request index="3" response="00000" foes="00000" cont="0" />
         <request index="4" response="00000" foes="00000" cont="0" />
     </junction>
-    <junction id="5851251703" type="traffic_light" x="434.52" y="1624.80" incLanes="333557072#5_0 333557072#5_1 333557072#5_2 619147737_0 619147737_1" intLanes=":5851251703_0_0 :5851251703_0_1 :5851251703_0_2 :5851251703_3_0 :5851251703_3_1" shape="448.73,1635.81 452.37,1626.92 450.78,1625.85 450.48,1625.19 450.50,1624.46 450.85,1623.63 451.53,1622.74 446.88,1613.99 447.84,1617.64 447.60,1620.22 446.17,1621.71 443.53,1622.12 439.70,1621.44 434.66,1619.66 431.02,1628.55">
+    <junction id="5851251703" type="priority" x="434.52" y="1624.80" incLanes="333557072#5_0 333557072#5_1 333557072#5_2 619147737_0 619147737_1" intLanes=":5851251703_0_0 :5851251703_0_1 :5851251703_0_2 :5851251703_3_0 :5851251703_3_1" shape="448.73,1635.81 452.37,1626.92 450.78,1625.85 450.48,1625.18 450.50,1624.45 450.85,1623.63 451.53,1622.73 446.88,1613.98 447.84,1617.64 447.60,1620.21 446.17,1621.70 443.53,1622.12 439.70,1621.43 434.66,1619.66 431.02,1628.55">
         <request index="0" response="00000" foes="11000" cont="0" />
         <request index="1" response="00000" foes="11000" cont="0" />
         <request index="2" response="00000" foes="11000" cont="0" />
@@ -55672,9 +55670,9 @@
     <connection from="333557072#3" to="333557072#5" fromLane="0" toLane="0" via=":cluster_6111866303_7195225084_2_0" dir="s" state="M" />
     <connection from="333557072#3" to="333557072#5" fromLane="1" toLane="1" via=":cluster_6111866303_7195225084_2_1" dir="s" state="M" />
     <connection from="333557072#3" to="333557072#5" fromLane="2" toLane="2" via=":cluster_6111866303_7195225084_2_2" dir="s" state="M" />
-    <connection from="333557072#5" to="619147738#0" fromLane="0" toLane="0" via=":5851251703_0_0" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="0" />
-    <connection from="333557072#5" to="619147738#0" fromLane="1" toLane="1" via=":5851251703_0_1" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="1" />
-    <connection from="333557072#5" to="619147738#0" fromLane="2" toLane="2" via=":5851251703_0_2" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="2" />
+    <connection from="333557072#5" to="619147738#0" fromLane="0" toLane="0" via=":5851251703_0_0" dir="s" state="M" />
+    <connection from="333557072#5" to="619147738#0" fromLane="1" toLane="1" via=":5851251703_0_1" dir="s" state="M" />
+    <connection from="333557072#5" to="619147738#0" fromLane="2" toLane="2" via=":5851251703_0_2" dir="s" state="M" />
     <connection from="333972428#1" to="-788296723#1" fromLane="0" toLane="0" via=":cluster_11418728538_7370190655_0_0" dir="r" state="M" />
     <connection from="333972428#1" to="-788296723#1" fromLane="0" toLane="1" via=":cluster_11418728538_7370190655_0_1" dir="r" state="M" />
     <connection from="333972428#1" to="333972428#2" fromLane="0" toLane="0" via=":cluster_11418728538_7370190655_2_0" dir="s" state="M" />

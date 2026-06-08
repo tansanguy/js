@@ -13,7 +13,25 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-NET_PATH = PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
+DEFAULT_ACTIVE_INPUTS = PROJECT_ROOT / "configs/compact_v9_B04_B4_active_inputs.json"
+
+
+def _manifest_path(key: str, fallback: Path) -> Path:
+    if not DEFAULT_ACTIVE_INPUTS.is_file():
+        return fallback
+    with DEFAULT_ACTIVE_INPUTS.open("r", encoding="utf-8") as file:
+        payload = json.load(file)
+    value = payload.get(key)
+    if not value:
+        return fallback
+    path = Path(str(value))
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+NET_PATH = _manifest_path(
+    "net_file",
+    PROJECT_ROOT / "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+)
 DRY_RUN_ROOT = PROJECT_ROOT / "runs/compact_v9_final_destination_validation/final_route_plan_dry_run/inputs/screening"
 CANDIDATE_SELECTION_CSV = PROJECT_ROOT / "results/metrics/compact_v9_final_destination_validation/final_route_plan_dry_run/screening/candidate_selection.csv"
 OUTPUT_HTML = PROJECT_ROOT / "results/html/compact_v9_final_destination_route_plan.html"
@@ -125,6 +143,7 @@ def build_payload() -> dict[str, Any]:
         "schema": "compact_v9_final_destination_route_plan_html.v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": {
+            "active_inputs": DEFAULT_ACTIVE_INPUTS.relative_to(PROJECT_ROOT).as_posix(),
             "net": NET_PATH.relative_to(PROJECT_ROOT).as_posix(),
             "candidate_selection_csv": CANDIDATE_SELECTION_CSV.relative_to(PROJECT_ROOT).as_posix(),
             "route_input_root": DRY_RUN_ROOT.relative_to(PROJECT_ROOT).as_posix(),

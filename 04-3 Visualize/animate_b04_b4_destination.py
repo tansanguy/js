@@ -334,10 +334,13 @@ def build_mode_payload(
         elat, elon = ref
         nearby = [
             {
+                "id": str(vehicle.get("id", "")),
                 "lat": round(vehicle["lat"], 6),
                 "lon": round(vehicle["lon"], 6),
                 "speed_kmh": round(safe_float(vehicle.get("speed_kmh")), 2),
                 "angle": round(safe_float(vehicle.get("angle")), 1),
+                "edge": str(vehicle.get("edge", "")),
+                "lane": str(vehicle.get("lane", "")),
             }
             for vehicle in snap["vehicles"]
             if meters_between(elat, elon, vehicle["lat"], vehicle["lon"]) <= bg_radius_m

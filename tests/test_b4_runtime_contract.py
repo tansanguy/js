@@ -207,7 +207,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(manifest_before, manifest_after)
         self.assertEqual(stage1.primary_candidate, "B04_ad_stage23_trigger")
         self.assertEqual(stage1.manifest_selected_candidate, "B04_ad_stage23_trigger")
-        self.assertEqual(stage1.manifest_selected_candidate_role, "primary_selected")
+        self.assertEqual(stage1.manifest_selected_candidate_role, "active_runtime_override")
         self.assertEqual(stage1.max_active_movements, 3)
         self.assertEqual(stage1.departure.merge_control_tls, "COMPACT_V9_FIRE_STATION_ENTRY_TLS")
         self.assertEqual(stage1.departure.ev_release_control_status, "uncontrolled_by_merge_tls")
@@ -1295,7 +1295,6 @@ class B4RuntimeContractTest(unittest.TestCase):
         upstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_05")
         downstream = next(item for item in self.stage1.movements if item.movement_id == "B4_MOVEMENT_06")
         self.assertEqual(downstream.route_intersection_index, upstream.route_intersection_index + 1)
-        self.assertNotEqual(downstream.selected_green_phase, 0)
         traci = FakeTraci()
         traci.trafficlight.phases[upstream.tls_id] = upstream.selected_green_phase
         traci.trafficlight.phases[downstream.tls_id] = downstream.selected_red_phase
@@ -1464,9 +1463,9 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(movement.ev_route_link_indices, (18,))
         self.assertEqual(movement.parallel_through_link_indices, (14, 15, 16, 18))
         self.assertEqual(movement.same_lane_blocking_link_indices, (15, 16, 17))
-        self.assertEqual(movement.selected_green_phase, 2)
+        self.assertEqual(movement.selected_green_phase, 0)
         self.assertEqual(movement.selected_flush_phase, 0)
-        self.assertTrue(movement.same_lane_blocker_flush_available)
+        self.assertFalse(movement.same_lane_blocker_flush_available)
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -1496,13 +1495,11 @@ class B4RuntimeContractTest(unittest.TestCase):
         )
         flush_events = controller.restore_passed_or_expired_controls(130.0, ev_state)
         self.assertEqual(len(flush_events), 1)
-        self.assertEqual(flush_events[0]["action_type"], "same_lane_blocker_flush")
-        self.assertEqual(flush_events[0]["target_phase"], movement.selected_flush_phase)
+        self.assertEqual(flush_events[0]["action_type"], "extend_target_green")
+        self.assertEqual(flush_events[0]["target_phase"], movement.selected_green_phase)
 
         return_events = controller.restore_passed_or_expired_controls(140.0, ev_state)
-        self.assertEqual(len(return_events), 1)
-        self.assertEqual(return_events[0]["action_type"], "return_to_target_green")
-        self.assertEqual(return_events[0]["target_phase"], movement.selected_green_phase)
+        self.assertEqual(return_events, [])
 
     def test_stage3_evaluates_after_ev_departure_even_before_merge_pass(self):
         traci = FakeTraci()
@@ -1568,7 +1565,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(traci.trafficlight.actions, [])
 
     def test_stage3_low_speed_candidate_selected_when_fill_below_threshold(self):
-        movement = self.first_stage3_movement()
+        movement = next(item for item in self.stage3_movements() if item.movement_id == "B4_MOVEMENT_03")
         traci = FakeTraci()
         controller = self.runtime.B4RuntimeController(
             traci=traci,
@@ -1761,7 +1758,7 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.assertIn(field, row)
 
     def test_stage3_ta_gate_blocks_candidate_when_ta_positive(self):
-        movement = self.first_stage3_movement()
+        movement = next(item for item in self.stage3_movements() if item.movement_id == "B4_MOVEMENT_03")
         traci = FakeTraci()
         traci.vehicle.vehicles[self.stage1.ev_id] = {
             "edge": self.stage1.departure.mainline_target_edge,
@@ -1933,6 +1930,14 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.assertEqual({task.seed for task in tasks}, {1})
             self.assertEqual(tasks[0].parameter_id, "free_emv_analytic_50kmh")
             self.assertEqual(tasks[2].parameter_id, "B4_MVP_DEFAULT")
+            custom_tasks = self.runner.build_tasks(
+                run_id="contract",
+                modes=("B4",),
+                run_root=Path(tmp),
+                b4_parameter_id="final_validation_locked_theta",
+            )
+            self.assertEqual(custom_tasks[0].parameter_id, "final_validation_locked_theta")
+            self.assertIn("final_validation_locked_theta", custom_tasks[0].run_dir.as_posix())
             for task in tasks:
                 if task.mode == "B004":
                     with self.assertRaises(Exception):

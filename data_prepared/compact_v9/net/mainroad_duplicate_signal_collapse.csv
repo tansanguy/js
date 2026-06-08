@@ -1,0 +1,2 @@
+kept_boundary_id,kept_intersection_name,kept_signal_type,removed_boundary_id,removed_intersection_name,removed_signal_type,distance_m,policy
+S21_S22,Seoul Square Front,straight_signal,S19_S20,Severance Building,straight_signal,99.503,intersection_first_else_downstream_straight

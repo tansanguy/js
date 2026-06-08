@@ -97,9 +97,9 @@ from_edge,to_edge,via,status,before_length_m,after_length_m,before_midpoint_offs
 333557072#3,333557072#5,:cluster_6111866303_7195225084_2_0,PASS,43.268,44.689,0.009,route_internal_lane_straightened
 333557072#3,333557072#5,:cluster_6111866303_7195225084_2_1,PASS,43.268,44.698,0.006,route_internal_lane_straightened
 333557072#3,333557072#5,:cluster_6111866303_7195225084_2_2,PASS,43.268,44.685,0.01,route_internal_lane_straightened
-333557072#5,619147738#0,:5851251703_0_0,PASS,19.14,20.49,29.9,route_internal_lane_straightened
-333557072#5,619147738#0,:5851251703_0_1,PASS,19.14,20.49,29.9,route_internal_lane_straightened
-333557072#5,619147738#0,:5851251703_0_2,PASS,19.14,20.481,29.9,route_internal_lane_straightened
+333557072#5,619147738#0,:5851251703_0_0,PASS,19.14,20.49,0.005,route_internal_lane_straightened
+333557072#5,619147738#0,:5851251703_0_1,PASS,19.14,20.49,0.005,route_internal_lane_straightened
+333557072#5,619147738#0,:5851251703_0_2,PASS,19.14,20.481,0.002,route_internal_lane_straightened
 347237859#0,347237859#1,:cluster_2087933382_3285441963_1_0,PASS,14.117,14.632,0.536,route_internal_lane_straightened
 347237859#0,347237859#1,:cluster_2087933382_3285441963_1_1,PASS,13.861,14.376,0.527,route_internal_lane_straightened
 347237859#1,347237859#2,:cluster_2753218990_7495868732_0_0,PASS,16.582,13.38,18.658,route_internal_lane_straightened

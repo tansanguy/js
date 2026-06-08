@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_departure_flow_plan.v1",
-  "generated_at": "2026-06-08T02:57:06.238784+00:00",
+  "generated_at": "2026-06-08T04:56:34.295540+00:00",
   "fire_station_start_edge": "420331801#1",
   "fire_station_start_lane": "420331801#1_0 420331801#1_1",
   "departure_edge": "420331801#1",
