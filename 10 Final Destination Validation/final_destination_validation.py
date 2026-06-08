@@ -1594,6 +1594,20 @@ def run_robust_mini_batch_worker(payload: tuple[int, argparse.Namespace, dict[st
     }
 
 
+def clone_candidate_for_robust_theta(
+    candidate: dict[str, Any],
+    *,
+    route_id: str,
+    run_root: Path,
+    theta_id: str,
+) -> dict[str, Any]:
+    return clone_candidates_for_phase(
+        [candidate],
+        [route_id],
+        run_root / "mini_batch" / theta_id / "inputs",
+    )[0]
+
+
 def t_emv(row: dict[str, Any]) -> float | None:
     value = row.get("T_actual_EMV_sec")
     if row.get("mode") == B004_MODE and value in {"", None}:
@@ -2585,10 +2599,16 @@ def run_robust_theta_selection(args: argparse.Namespace) -> dict[str, Any]:
     mini_payloads = []
     for index, theta_row in enumerate(theta_candidates):
         theta_id = f"theta_{int(theta_row['theta_rank']):03d}_{safe_id(theta_row.get('parameter_id'))}"
+        theta_candidate = clone_candidate_for_robust_theta(
+            candidate,
+            route_id=route_id,
+            run_root=run_root,
+            theta_id=theta_id,
+        )
         mini_payloads.append((
             index,
             args,
-            candidate,
+            theta_candidate,
             theta_row,
             departures,
             run_root / "mini_batch" / theta_id,

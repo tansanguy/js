@@ -319,6 +319,34 @@ class FinalDestinationValidationTest(unittest.TestCase):
         self.assertEqual([row["theta_rank"] for row in selected], [1, 2])
         self.assertTrue(all(row["source_final_status"] == "PASS" for row in selected))
 
+    def test_robust_theta_candidate_clone_uses_theta_scoped_inputs(self):
+        candidate = {
+            "route_id": "FINAL_DEST_A",
+            "source_route_id": "SRC_A",
+            "target_edge_id": "edge",
+            "selected_policy": "policy",
+            "route_edges": ["a", "b"],
+            "route_edge_count": 2,
+            "route_length_m": 100.0,
+            "start_edge_id": "a",
+            "merge_edge_id": "a",
+            "mainroad_length_ratio": 0.8,
+            "legacy_spine_length_ratio": 0.7,
+            "route_xml": PROJECT_ROOT / "shared/firetruck_route_depart_600.rou.xml",
+            "route_csv": PROJECT_ROOT / "shared/firetruck_route_depart_600.csv",
+            "stage1_dir": PROJECT_ROOT / "shared/stage1/FINAL_DEST_A",
+        }
+        run_root = PROJECT_ROOT / "runs/robust"
+
+        first = self.module.clone_candidate_for_robust_theta(candidate, route_id="FINAL_DEST_A", run_root=run_root, theta_id="theta_001_a")
+        second = self.module.clone_candidate_for_robust_theta(candidate, route_id="FINAL_DEST_A", run_root=run_root, theta_id="theta_002_b")
+
+        self.assertIn("mini_batch/theta_001_a/inputs/stage1/FINAL_DEST_A", first["stage1_dir"].as_posix())
+        self.assertIn("mini_batch/theta_002_b/inputs/stage1/FINAL_DEST_A", second["stage1_dir"].as_posix())
+        self.assertNotEqual(first["stage1_dir"], second["stage1_dir"])
+        self.assertNotEqual(first["route_xml"], second["route_xml"])
+        self.assertNotEqual(first["route_csv"], second["route_csv"])
+
     def test_robust_summary_requires_zero_stuck_and_full_arrival(self):
         theta = {"theta_rank": 1, "parameter_id": "theta", "t_lead": "94", "delta_T_thr": "24", "G_ext": "15", "Q_ratio": "0.28", "tau": "0.79"}
         rows = [
