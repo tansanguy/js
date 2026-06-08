@@ -176,7 +176,11 @@ def main() -> None:
     parser.add_argument("--b0-fcd", type=Path, default=MOCK_DIR / "fcd_B0.xml")
     parser.add_argument("--b2-fcd", type=Path, default=MOCK_DIR / "fcd_B2.xml")
     parser.add_argument("--b2-signals", type=Path, default=MOCK_DIR / "signal_events_B2.csv")
-    parser.add_argument("--bg-radius-m", type=float, default=250.0)
+    parser.add_argument("--bg-radius-m", type=float, default=600.0,
+                        help="Draw background vehicles within this many metres of "
+                             "the EV. Default 600 fills the follow-camera screen "
+                             "(zoom 17) on laptop/1080p displays; raise it for "
+                             "larger monitors if the screen edges look empty.")
     parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_ROUTE_TLS_GEOJSON,
                         help="On-route TLS positions for the signal-light icons "
                              "(authoritative corridor subset from export_route_tls.py)")

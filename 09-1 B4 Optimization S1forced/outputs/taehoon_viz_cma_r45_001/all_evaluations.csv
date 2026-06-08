@@ -1,0 +1,2 @@
+method,seed,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,score,final_status,emergency_arrived,emergency_teleport
+CMA-ES,20260607,cma_r45_001_tl30_dt27_ge26_qr17_tau83,30,27,26,0.17,0.83,0,PASS,True,False
