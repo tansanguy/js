@@ -48,6 +48,7 @@ STOP_SPEED_KMH = 5.0       # below this inside the zone => red (blocked), else g
 STATE_OFF = "off"
 STATE_RED = "red"
 STATE_GREEN = "green"
+STATE_YELLOW = "yellow"
 
 
 def meters_between(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -274,6 +275,132 @@ def _augment_from_tls_dump(
         "control_used": {m: len(per_mode_history.get(m, {})) for m in modes},
         "control_matched": {m: len(per_mode_history.get(m, {})) for m in modes},
     }
+
+
+def load_static_tls_program(net_file: Path, tls_id: str) -> dict[str, Any] | None:
+    """Read a *static* tlLogic from the SUMO net: phases, cycle, offset.
+
+    Returns ``None`` if the TLS has no tlLogic or no phases. Used to render an
+    on-screen signal the per-step dump did not record (e.g. a cross junction the
+    EV never traverses): a static program is deterministic, so its colour over
+    time is computable from the net alone (no simulation re-run).
+    """
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(str(net_file)).getroot()
+    tl = next((t for t in root.findall("tlLogic") if t.get("id") == tls_id), None)
+    if tl is None:
+        return None
+    phases = [(int(p.get("duration", "0")), p.get("state", "")) for p in tl.findall("phase")]
+    phases = [(d, s) for d, s in phases if s]
+    if not phases:
+        return None
+    return {
+        "phases": phases,
+        "cycle": sum(d for d, _ in phases),
+        "offset": int(float(tl.get("offset") or 0)),
+        "type": tl.get("type", ""),
+        "program_id": tl.get("programID", ""),
+    }
+
+
+def static_tls_position(net_file: Path, tls_id: str, link_index: int | None = None) -> tuple[float, float] | None:
+    """(lat, lon) of a TLS from the net: a link's stop line, else the centroid."""
+    import sumolib
+
+    net = sumolib.net.readNet(str(net_file))
+    try:
+        tls = net.getTLS(tls_id)
+    except KeyError:
+        return None
+    conns = tls.getConnections()
+    if not conns:
+        return None
+    if link_index is not None:
+        sel = [c for c in conns if str(c[2]) == str(link_index)]
+        if sel:
+            x, y = sel[0][0].getShape()[-1]
+            lon, lat = net.convertXY2LonLat(x, y)
+            return round(lat, 6), round(lon, 6)
+    xs = [c[0].getShape()[-1][0] for c in conns]
+    ys = [c[0].getShape()[-1][1] for c in conns]
+    lon, lat = net.convertXY2LonLat(sum(xs) / len(xs), sum(ys) / len(ys))
+    return round(lat, 6), round(lon, 6)
+
+
+def static_state_timeline(
+    program: dict[str, Any], link_index: int, anchor: float, t_max_rel: float, step: float = 1.0
+) -> list[list[Any]]:
+    """Compressed ``[[t_rel, state], ...]`` for one link of a static program.
+
+    SUMO static phase at absolute time ``t`` uses ``(t - offset) % cycle``
+    (validated against the real dump). ``anchor`` is the EV depart time so the
+    timeline shares the animation clock; states are sampled to ``t_max_rel``.
+    """
+    phases, cycle, offset = program["phases"], program["cycle"], program["offset"]
+
+    def char_at(t: float) -> str:
+        tt = (t - offset) % cycle
+        acc = 0
+        for dur, state in phases:
+            if tt < acc + dur:
+                return state[link_index] if link_index < len(state) else "r"
+            acc += dur
+        return phases[-1][1][link_index] if link_index < len(phases[-1][1]) else "r"
+
+    def norm(ch: str) -> str:
+        return STATE_GREEN if ch in "Gg" else (STATE_YELLOW if ch in "yY" else STATE_RED)
+
+    timeline: list[list[Any]] = []
+    last = None
+    t = 0.0
+    while t <= t_max_rel + 1:
+        s = norm(char_at(anchor + t))
+        if s != last:
+            timeline.append([round(t, 2), s])
+            last = s
+        t += step
+    return timeline or [[0.0, STATE_OFF]]
+
+
+def add_static_tls_to_doc(
+    doc: dict[str, Any], net_file: Path, tls_id: str, link_index: int = 0
+) -> dict[str, Any]:
+    """Inject a static (dump-less) TLS into ``doc`` so it renders like the rest.
+
+    Computes the signal's colour timeline per mode from the net's static program
+    and appends a ``traffic_lights`` icon + per-mode ``tls_states`` entry. Returns
+    a small summary; raises B4 nothing (caller validates inputs).
+    """
+    program = load_static_tls_program(net_file, tls_id)
+    if program is None:
+        return {"ok": False, "reason": "no_static_tllogic"}
+    if program["type"] not in ("static", "", None):
+        # actuated/delay-based programs are traffic-dependent; the net cannot
+        # reproduce the simulated colours, so we refuse rather than fake them.
+        return {"ok": False, "reason": f"non_static_type:{program['type']}"}
+    pos = static_tls_position(net_file, tls_id, link_index)
+    if pos is None:
+        return {"ok": False, "reason": "no_position"}
+    lat, lon = pos
+    modes = list(doc.get("modes", {}).keys())
+    for m in modes:
+        anchor = doc["modes"][m].get("depart_time_sec", 0.0)
+        t_max = doc["modes"][m].get("travel_time_sec", 0.0)
+        doc["modes"][m].setdefault("tls_states", {})[tls_id] = static_state_timeline(
+            program, link_index, anchor, t_max
+        )
+    doc.setdefault("traffic_lights", []).append({
+        "tls_id": tls_id,
+        "lat": lat,
+        "lon": lon,
+        "phase_count": len(program["phases"]),
+        "s_m": {m: None for m in modes},
+        "controlled": False,
+        "source": "net_static_program",
+    })
+    return {"ok": True, "tls_id": tls_id, "link_index": link_index,
+            "cycle": program["cycle"], "offset": program["offset"]}
 
 
 def augment_doc_with_tls(

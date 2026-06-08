@@ -49,7 +49,7 @@ _TEMPLATE = r"""<!doctype html>
   .tag .nextsig{font-variant-numeric:tabular-nums;font-weight:700;}
   /* signal-light icons (placed at real TLS positions, recoloured per state) */
   .tlwrap{background:transparent;border:0;}
-  .tl{display:flex;flex-direction:column;gap:1px;padding:2px;background:#0b1220;border:1px solid #475569;border-radius:3px;line-height:0;}
+  .tl{display:flex;flex-direction:column;gap:1px;padding:2px;background:#0b1220;border:1px solid #fde047;border-radius:3px;line-height:0;box-shadow:0 0 0 2px rgba(253,224,71,.7);}
   .tl i{width:7px;height:7px;border-radius:50%;background:#1f2937;display:block;}
   .tlwrap[data-state="red"] .tl i.r{background:#ef4444;box-shadow:0 0 7px #ef4444;}
   .tlwrap[data-state="yellow"] .tl i.y{background:#f59e0b;box-shadow:0 0 7px #f59e0b;}
@@ -189,9 +189,11 @@ function Panel(mode){
         html:'<div class="tl"><i class="r"></i><i class="y"></i><i class="g"></i></div>'})}).addTo(map),
     states:tlsStates[t.tls_id]||[[0,"off"]],
     s:(t.s_m&&t.s_m[mode]!=null)?t.s_m[mode]:null}));
-  // index background snapshots by integer t_rel for quick lookup
-  const bgByT={}; p.background.forEach(s=>bgByT[Math.round(s.t_rel)]=s.vehicles);
-  return {p,map,marker,bgLayer,tlMarkers,bgByT,routeLen:DATA.meta.route_length_m};
+  // index background snapshots by integer t_rel as {id:[lat,lon]} so each
+  // vehicle can be interpolated by id between one-second samples (continuous
+  // motion instead of a per-frame clear/redraw that makes dots blink).
+  const bgByT={}; p.background.forEach(s=>{const mm={};s.vehicles.forEach(v=>{mm[v.id]=[v.lat,v.lon];});bgByT[Math.round(s.t_rel)]=mm;});
+  return {p,map,marker,bgLayer,tlMarkers,bgByT,bgMarkers:{},routeLen:DATA.meta.route_length_m};
 }
 
 function updatePanel(panel,t,mode){
@@ -201,11 +203,19 @@ function updatePanel(panel,t,mode){
   // emergency marker keeps a fixed mode colour now; signal state lives on the lights
   panel.marker.setLatLng(ll).setStyle({fillColor:arrived?"#16a34a":COLORS[mode]});
   panel.map.setView(ll,FOLLOW_ZOOM,{animate:false});
-  // background dots near current snapshot
-  panel.bgLayer.clearLayers();
-  const veh=panel.bgByT[Math.round(t)]||[];
-  veh.forEach(v=>L.circleMarker([v.lat,v.lon],
-    {radius:4.5,color:"#ffffff",weight:1,fillColor:"#0a0a0a",fillOpacity:1}).addTo(panel.bgLayer));
+  // background vehicles: interpolate each by id between the floor/ceil one-second
+  // snapshots and reuse a persistent marker per id, so vehicles glide instead of
+  // blinking. Markers that leave the follow radius are removed; new ones appear.
+  const t0=Math.floor(t),s0=panel.bgByT[t0]||{},s1=panel.bgByT[t0+1]||{},f=t-t0;
+  const pool=panel.bgMarkers,seen={};
+  for(const id in s0){
+    const a=s0[id],b=s1[id];
+    const lat=b?a[0]+(b[0]-a[0])*f:a[0], lon=b?a[1]+(b[1]-a[1])*f:a[1];
+    seen[id]=1;
+    if(pool[id]) pool[id].setLatLng([lat,lon]);
+    else pool[id]=L.circleMarker([lat,lon],{radius:4.5,color:"#ffffff",weight:1,fillColor:"#0a0a0a",fillOpacity:1,interactive:false}).addTo(panel.bgLayer);
+  }
+  for(const id in pool){ if(!seen[id]){ panel.bgLayer.removeLayer(pool[id]); delete pool[id]; } }
   // signal lights: recolour by approximated state; highlight the next light ahead
   let nextS=Infinity,nextEl=null;
   panel.tlMarkers.forEach(tl=>{

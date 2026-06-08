@@ -59,8 +59,14 @@ def _interp_pos(points: list, t: float) -> tuple[float, float]:
     return (points[-1].lat, points[-1].lon)
 
 
-def build_mode_payload(fcd: FcdResult, bg_radius_m: float) -> dict[str, Any]:
-    """Assemble the per-mode payload (emergency series, filtered background, meta)."""
+def build_mode_payload(fcd: FcdResult, bg_radius_m: float, route_len_m: float | None = None) -> dict[str, Any]:
+    """Assemble the per-mode payload (emergency series, filtered background, meta).
+
+    ``route_len_m`` is the authoritative EV route length (e.g. tripinfo
+    ``routeLength``) used to normalise the jittery lat/lon integral so progress %,
+    distance, and avg speed are correct for THIS corridor. Falls back to the
+    legacy Seoul-station constant only when not supplied.
+    """
     em = fcd.emergency
     pts = em.points
     anchor = em.start_time
@@ -82,7 +88,7 @@ def build_mode_payload(fcd: FcdResult, bg_radius_m: float) -> dict[str, Any]:
     # progress % and avg speed match the authoritative experiment metric (the raw
     # lat/lon integral overshoots ~30% from per-step coordinate jitter).
     cum_total = cum_dist[-1] if cum_dist else 0.0
-    route_len = SEOUL_STATION_ROUTE_LENGTH_M
+    route_len = route_len_m if route_len_m else SEOUL_STATION_ROUTE_LENGTH_M
 
     def norm(d: float) -> float:
         return round(d / cum_total * route_len, 2) if cum_total else 0.0
@@ -106,6 +112,7 @@ def build_mode_payload(fcd: FcdResult, bg_radius_m: float) -> dict[str, Any]:
             continue  # no emergency sample this step (e.g. before depart)
         elat, elon = ref
         near = [{
+            "id": v["id"],
             "lat": round(v["lat"], 6),
             "lon": round(v["lon"], 6),
             "speed_kmh": v["speed_kmh"],

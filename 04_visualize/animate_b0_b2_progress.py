@@ -12,6 +12,7 @@ Run with no args to use the mock fixtures, or pass real run directories:
 import argparse
 import csv
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from config import HTML_OUTPUT_DIR
@@ -27,10 +28,32 @@ from utils import parse_fcd
 from utils.animation_builder import build_animated_dual_map_html
 from utils.traffic_lights import (
     augment_doc_with_tls,
+    add_static_tls_to_doc,
     DEFAULT_ROUTE_TLS_GEOJSON,
     CONTROL_ACTIONS,
 )
 from utils.road_network import augment_doc_with_lanes, DEFAULT_LANES_GEOJSON
+
+
+def ev_route_length_m(fcd_path: Path) -> float | None:
+    """Read the EV (emergency_*) routeLength from tripinfo.xml next to the fcd.
+
+    This is the authoritative SUMO route length for the current corridor; using
+    it (instead of a hardcoded constant) keeps progress %, distance, and avg
+    speed correct when the net/route changes (e.g. compact_v9 is ~4076 m, not the
+    legacy 2990 m Seoul corridor). Returns None if no tripinfo is found.
+    """
+    tp = Path(fcd_path).parent / "tripinfo.xml"
+    if not tp.exists():
+        return None
+    try:
+        for _ev, el in ET.iterparse(str(tp), events=("end",)):
+            if el.tag == "tripinfo" and str(el.get("id", "")).startswith("emergency"):
+                rl = el.get("routeLength")
+                return float(rl) if rl not in (None, "") else None
+    except (ET.ParseError, ValueError, OSError):
+        return None
+    return None
 
 
 def build_control_history(signals_csv: Path, net_file: Path) -> dict[str, dict[str, object]]:
@@ -176,11 +199,12 @@ def main() -> None:
     parser.add_argument("--b0-fcd", type=Path, default=MOCK_DIR / "fcd_B0.xml")
     parser.add_argument("--b2-fcd", type=Path, default=MOCK_DIR / "fcd_B2.xml")
     parser.add_argument("--b2-signals", type=Path, default=MOCK_DIR / "signal_events_B2.csv")
-    parser.add_argument("--bg-radius-m", type=float, default=600.0,
+    parser.add_argument("--bg-radius-m", type=float, default=350.0,
                         help="Draw background vehicles within this many metres of "
-                             "the EV. Default 600 fills the follow-camera screen "
-                             "(zoom 17) on laptop/1080p displays; raise it for "
-                             "larger monitors if the screen edges look empty.")
+                             "the EV. 350 covers most of the follow-camera screen "
+                             "(zoom 17) without flooding the opposite carriageway; "
+                             "raise toward 500-600 for fuller edges, lower it if "
+                             "the scene looks too dense.")
     parser.add_argument("--tls-geojson", type=Path, default=DEFAULT_ROUTE_TLS_GEOJSON,
                         help="On-route TLS positions for the signal-light icons "
                              "(authoritative corridor subset from export_route_tls.py)")
@@ -211,6 +235,12 @@ def main() -> None:
     parser.add_argument("--b2-tls-states", type=Path, default=None,
                         help="Real per-step TLS state dump (tls_states.csv) for the "
                              "B2/B4 run. Authoritative signal timeline for every light.")
+    parser.add_argument("--extra-static-tls", action="append", default=[], metavar="TLS_ID[:LINK]",
+                        help="Also render a signal the per-step dump did NOT record "
+                             "(e.g. the merge-junction signal the EV never drives "
+                             "through), using its STATIC program from --net-file. "
+                             "Repeatable. LINK is the controlled-link index whose "
+                             "colour the icon shows (default 0).")
     parser.add_argument("--json-output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_animation.json")
     parser.add_argument("--output", type=Path, default=HTML_OUTPUT_DIR / "b0_b2_progress_animation.html")
     parser.add_argument(
@@ -224,15 +254,18 @@ def main() -> None:
 
     b0 = parse_fcd(args.b0_fcd, mode="B0")
     b2 = parse_fcd(args.b2_fcd, mode="B2")
-    b0_payload = build_mode_payload(b0, args.bg_radius_m)
-    b2_payload = build_mode_payload(b2, args.bg_radius_m)
+    # Authoritative route length from tripinfo (both modes share the EV route);
+    # falls back to the legacy constant only if no tripinfo is present.
+    route_len_m = ev_route_length_m(args.b2_fcd) or ev_route_length_m(args.b0_fcd) or SEOUL_STATION_ROUTE_LENGTH_M
+    b0_payload = build_mode_payload(b0, args.bg_radius_m, route_len_m)
+    b2_payload = build_mode_payload(b2, args.bg_radius_m, route_len_m)
     b2_payload["signal_events"] = load_signal_events(args.b2_signals, b2)
+    print(f"  EV route length: {route_len_m:.1f} m (from tripinfo)")
 
     doc = {
         "meta": {
             "route_id": SEOUL_STATION_ROUTE_ID,
-            "route_length_m": SEOUL_STATION_ROUTE_LENGTH_M,
-            "b2_params": B2_PARAMS,
+            "route_length_m": route_len_m,
             "bg_radius_m": args.bg_radius_m,
             "bounds": _bounds([b0_payload, b2_payload]),
         },
@@ -261,6 +294,20 @@ def main() -> None:
         approach_m=args.approach_m, exit_m=args.exit_m,
         control_history=control_history, control_modes=control_modes,
     )
+
+    # Extra dump-less signals (e.g. the merge-junction the EV never crosses):
+    # render from the net's static program so they cycle like the others.
+    if args.extra_static_tls and args.net_file is None:
+        parser.error("--extra-static-tls requires --net-file")
+    static_added = []
+    for spec in args.extra_static_tls:
+        tid, _, link = spec.partition(":")
+        link_idx = int(link) if link.strip() else 0
+        res = add_static_tls_to_doc(doc, args.net_file, tid.strip(), link_idx)
+        static_added.append(res)
+        status = "ok" if res.get("ok") else f"SKIP({res.get('reason')})"
+        print(f"  extra static TLS {tid.strip()} link {link_idx}: {status}")
+
     lanes_summary = augment_doc_with_lanes(doc, args.edges_geojson, buffer_m=args.lane_buffer_m)
 
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
