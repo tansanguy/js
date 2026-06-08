@@ -49,7 +49,8 @@ DEFAULT_THETA_PER_ROUND = 6
 DEFAULT_WORKERS = 6
 FAILURE_PENALTY_SEC = 1_000_000.0
 ESSI_ACTIVATION_FLOOR = 0.65
-ESSI_BLEND_WEIGHT = 0.15
+ESSI_BLEND_WEIGHT = 0.05
+BO_BATCH_MIN_DISTANCE = 0.055
 METHODS = ["Random Search", "CMA-ES", "BO"]
 METHOD_ALIASES = {
     "random": "Random Search",
@@ -102,6 +103,9 @@ EVALUATION_FIELDS = [
     "surrogate_ci_high",
     "raw_ei_acquisition",
     "acquisition",
+    "bo_selection_strategy",
+    "bo_candidate_source",
+    "bo_plateau_mode",
     *ESSI_FIELDS,
 ]
 CHECKPOINT_FIELDS = [
@@ -125,6 +129,9 @@ BO_SURROGATE_FIELDS = [
     "surrogate_ci_high",
     "raw_ei_acquisition",
     "acquisition",
+    "bo_selection_strategy",
+    "bo_candidate_source",
+    "bo_plateau_mode",
     *ESSI_FIELDS,
 ]
 BO_GP_SLICE_FIELDS = [
@@ -253,6 +260,51 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def project_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def validate_active_inputs(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.active_inputs.is_file():
+        return {"status": "SKIP", "reason": "active_inputs_missing"}
+    active_inputs = read_json(args.active_inputs)
+    expected = {
+        "net_file": rel(args.net_file),
+        "background_route": rel(args.background_route),
+        "stage1_dir": rel(args.stage1_dir),
+    }
+    for key, value in expected.items():
+        if active_inputs.get(key) != value:
+            raise B4OptimizationError(f"active_inputs_{key}_mismatch:{active_inputs.get(key)} != {value}")
+    for key in ["signal_profile_csv", "signal_mapping_csv"]:
+        source = active_inputs.get(key)
+        if source and not project_path(str(source)).is_file():
+            raise B4OptimizationError(f"missing_active_inputs_{key}:{source}")
+    hash_audit: dict[str, str] = {}
+    for path_key, hash_key in {
+        "net_file": "net_file_sha256",
+        "background_route": "background_route_sha256",
+        "firetruck_route": "firetruck_route_sha256",
+    }.items():
+        manifest_hash = str(active_inputs.get(hash_key, ""))
+        manifest_path = active_inputs.get(path_key)
+        if not manifest_hash or not manifest_path:
+            continue
+        path = project_path(str(manifest_path))
+        if not path.is_file():
+            raise B4OptimizationError(f"missing_active_inputs_{path_key}:{manifest_path}")
+        actual_hash = sha256_file(path)
+        hash_audit[hash_key] = actual_hash
+        if actual_hash != manifest_hash:
+            raise B4OptimizationError(f"active_inputs_{hash_key}_mismatch:{actual_hash} != {manifest_hash}")
+    return {
+        "status": "PASS",
+        "active_inputs": rel(args.active_inputs),
+        "hashes": hash_audit,
+    }
 
 
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -480,11 +532,47 @@ def essi_improvement_candidates(
         raw_gp_improvement = safe_float(item.get("raw_acquisition"), safe_float(item.get("acquisition"), 0.0))
         selection_improvement = safe_float(item.get("acquisition"), raw_gp_improvement)
         essi = essi_fields_for_candidate(theta, bounds, subspaces, raw_gp_improvement, selection_improvement)
-        out.append({**theta, **essi})
+        out.append({
+            **theta,
+            "bo_selection_strategy": item.get("bo_selection_strategy", "ei"),
+            "bo_candidate_source": item.get("bo_candidate_source", ""),
+            "bo_plateau_mode": item.get("bo_plateau_mode", ""),
+            "surrogate_acquisition": item.get("surrogate_acquisition", ""),
+            **essi,
+        })
     if not out:
         raise B4OptimizationError("gp_essi_unavailable:no_unique_candidates")
     out.sort(key=lambda row: (-safe_float(row.get("_essi_acquisition_value")), theta_key(row)))
     return out
+
+
+def theta_distance(left: dict[str, Any], right: dict[str, Any], bounds: dict[str, Any]) -> float:
+    left_vector = theta_bo.theta_feature_vector(left, bounds)
+    right_vector = theta_bo.theta_feature_vector(right, bounds)
+    return math.sqrt(sum((lhs - rhs) ** 2 for lhs, rhs in zip(left_vector, right_vector)))
+
+
+def diverse_bo_batch(
+    ranked: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    batch_size: int,
+    min_distance: float = BO_BATCH_MIN_DISTANCE,
+) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen: set[tuple[float, float, float, float, float]] = set()
+    thresholds = [min_distance, min_distance * 0.65, min_distance * 0.35, 0.0]
+    for threshold in thresholds:
+        for row in ranked:
+            key = theta_key(row)
+            if key in seen:
+                continue
+            if threshold > 0.0 and any(theta_distance(row, item, bounds) < threshold for item in selected):
+                continue
+            selected.append(row)
+            seen.add(key)
+            if len(selected) >= batch_size:
+                return selected
+    return selected[:batch_size]
 
 
 def normalize_objective_weights(w_E: float, w_G: float) -> tuple[float, float]:
@@ -586,26 +674,14 @@ def preflight(args: argparse.Namespace) -> dict[str, Any]:
     if runtime_index.get("decision_variables") != ["t_lead", "delta_T_thr", "G_ext", "Q_ratio", "tau"]:
         raise B4OptimizationError("stage1_runtime_index_not_current_five_variable_schema")
 
-    active_inputs: dict[str, Any] = {}
-    if args.active_inputs.is_file():
-        active_inputs = read_json(args.active_inputs)
-        expected = {
-            "net_file": rel(args.net_file),
-            "background_route": rel(args.background_route),
-            "stage1_dir": rel(args.stage1_dir),
-        }
-        for key, value in expected.items():
-            if active_inputs.get(key) != value:
-                raise B4OptimizationError(f"active_inputs_{key}_mismatch:{active_inputs.get(key)} != {value}")
-        for key in ["signal_profile_csv", "signal_mapping_csv"]:
-            source = active_inputs.get(key)
-            if source and not (PROJECT_ROOT / str(source)).is_file():
-                raise B4OptimizationError(f"missing_active_inputs_{key}:{source}")
+    active_inputs = read_json(args.active_inputs) if args.active_inputs.is_file() else {}
+    active_inputs_audit = validate_active_inputs(args)
 
     return {
         "stage1": stage1,
         "bounds": bounds,
         "active_inputs": active_inputs,
+        "active_inputs_audit": active_inputs_audit,
     }
 
 
@@ -801,6 +877,7 @@ def bo_learning_observation(row: dict[str, Any]) -> dict[str, Any] | None:
         return None
     return {
         "mode": B4_MODE,
+        "round": row.get("round", ""),
         **{field: row.get(field, "") for field in THETA_FIELDS},
         "score_sec": row["score"],
         "bo_score_sec": row["score"],
@@ -1049,8 +1126,12 @@ def run_method(
                 batch_fields: list[dict[str, Any]] = [{} for _theta in batch]
             else:
                 ranked = essi_improvement_candidates(observations, bounds, stage1, seed + round_index, existing, args.ei_candidate_count)
-                batch = [theta_bo.clamp_theta(item, bounds) for item in ranked[: args.theta_per_round]]
-                batch_fields = [{field: item.get(field, "") for field in ["raw_ei_acquisition", "acquisition", *ESSI_FIELDS]} for item in ranked[: args.theta_per_round]]
+                selected_ranked = diverse_bo_batch(ranked, bounds, args.theta_per_round)
+                batch = [theta_bo.clamp_theta(item, bounds) for item in selected_ranked]
+                batch_fields = [
+                    {field: item.get(field, "") for field in ["raw_ei_acquisition", "acquisition", "bo_selection_strategy", "bo_candidate_source", "bo_plateau_mode", *ESSI_FIELDS]}
+                    for item in selected_ranked
+                ]
             stop_after_round = False
             for round_theta_index, theta in enumerate(batch, start=1):
                 theta["parameter_id"] = theta_bo.theta_id(f"bo_r{round_index:02d}", round_theta_index, theta)
@@ -1173,6 +1254,9 @@ def build_bo_surrogate_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
             "surrogate_ci_high": row.get("surrogate_ci_high", ""),
             "raw_ei_acquisition": row.get("raw_ei_acquisition", ""),
             "acquisition": row.get("acquisition", ""),
+            "bo_selection_strategy": row.get("bo_selection_strategy", ""),
+            "bo_candidate_source": row.get("bo_candidate_source", ""),
+            "bo_plateau_mode": row.get("bo_plateau_mode", ""),
             **{field: row.get(field, "") for field in ESSI_FIELDS},
         })
     return out
@@ -1490,6 +1574,7 @@ def materialize_visualization_logs(args: argparse.Namespace, solution: dict[str,
 def collect_visualization_info(args: argparse.Namespace) -> dict[str, Any]:
     if not args.run_id:
         raise B4OptimizationError("visualization_run_id_required")
+    active_inputs_audit = validate_active_inputs(args)
     output_dir = args.output_dir / args.run_id
     rows = [dict(row) for row in read_csv_rows(output_dir / "all_evaluations.csv")]
     if not rows:
@@ -1538,6 +1623,7 @@ def collect_visualization_info(args: argparse.Namespace) -> dict[str, Any]:
         "solution": {field: solution.get(field, "") for field in EVALUATION_FIELDS},
         "best_theta": {field: solution.get(field, "") for field in THETA_FIELDS},
         "static_inputs": static_inputs,
+        "active_inputs_audit": active_inputs_audit,
         "paths": {name: rel(path) for name, path in required.items()},
         "materialized_logs": bool(args.materialize_visualization_logs),
         "materialized_b4_row": materialized.get("b4_row", {}),
@@ -1859,6 +1945,7 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "workers": args.workers,
         "resume": args.resume,
         "active_inputs": preflight_payload["active_inputs"],
+        "active_inputs_audit": preflight_payload["active_inputs_audit"],
         "controlled_static_inputs": static_inputs,
     })
     spatial_subspaces = bo_spatial_subspaces(stage1)

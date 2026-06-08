@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -43,6 +44,9 @@ DEFAULT_S1FORCED_POST_BOTTLENECK_DEPART_DELAY_SEC = 900.0
 DEFAULT_EV_SPEED_MPS = 13.9
 FALLBACK_EDGE_LENGTH_M = 50.0
 FALLBACK_ROUTE_SPEED_MPS = 10.0
+CANONICAL_REFERENCE_VEHICLE_COUNT = 1688
+DIRECTION_BALANCE_MIN_SHARE = 0.45
+DIRECTION_BALANCE_MAX_SHARE = 0.55
 SPEED_BAND_TUNING_REMOVE_ROUTE_IDS = {
     "segment_feeder_upbound_S9",
     "segment_feeder_upbound_S15",
@@ -54,19 +58,19 @@ SPEED_BAND_TUNING_REMOVE_ROUTE_IDS = {
     "midcorridor_local_upbound",
 }
 SPEED_BAND_TUNING_ADD_PLAN = {
-    "segment_feeder_upbound_S6": 16,
-    "segment_feeder_upbound_S7": 40,
-    "segment_feeder_upbound_S8": 16,
-    "segment_feeder_upbound_S18": 22,
-    "segment_feeder_upbound_S20": 18,
-    "segment_feeder_upbound_S21": 18,
-    "segment_feeder_upbound_S22": 40,
-    "segment_feeder_downbound_S12": 166,
-    "segment_feeder_downbound_S20": 52,
-    "segment_feeder_downbound_S21": 60,
+    "segment_feeder_upbound_S6": 24,
+    "segment_feeder_upbound_S7": 48,
+    "segment_feeder_upbound_S8": 24,
+    "segment_feeder_upbound_S18": 30,
+    "segment_feeder_upbound_S20": 33,
+    "segment_feeder_upbound_S21": 33,
+    "segment_feeder_upbound_S22": 48,
+    "segment_feeder_downbound_S12": 62,
+    "segment_feeder_downbound_S20": 33,
+    "segment_feeder_downbound_S21": 37,
     "segment_feeder_downbound_S22": 28,
-    "od_repair_downbound_S20_00": 8,
-    "od_repair_downbound_S20_01": 6,
+    "od_repair_downbound_S20_00": 5,
+    "od_repair_downbound_S20_01": 5,
 }
 SPEED_BAND_TUNING_LATE_ADD_PLAN = {
     "band_s15_local_upbound": {
@@ -261,6 +265,173 @@ def sort_vehicle_elements_by_depart(root: ET.Element) -> None:
     root[:] = [*non_vehicles, *vehicles]
 
 
+def stagger_duplicate_route_departures(root: ET.Element, min_headway_sec: float = 0.8) -> dict[str, Any]:
+    buckets: dict[tuple[str, str], list[ET.Element]] = {}
+    for vehicle in root.findall("vehicle"):
+        route_id = str(vehicle.get("route", ""))
+        depart = f"{safe_float(vehicle.get('depart')):.2f}"
+        buckets.setdefault((route_id, depart), []).append(vehicle)
+    changed = 0
+    max_shift = 0.0
+    for (_route_id, depart), vehicles in buckets.items():
+        if len(vehicles) < 2:
+            continue
+        base_depart = safe_float(depart)
+        for index, vehicle in enumerate(sorted(vehicles, key=lambda item: str(item.get("id", "")))):
+            if index == 0:
+                continue
+            shift = index * min_headway_sec
+            vehicle.set("depart", f"{base_depart + shift:.2f}")
+            changed += 1
+            max_shift = max(max_shift, shift)
+    return {
+        "enabled": True,
+        "duplicate_bucket_count": sum(1 for vehicles in buckets.values() if len(vehicles) > 1),
+        "changed_vehicle_count": changed,
+        "min_headway_sec": min_headway_sec,
+        "max_shift_sec": round(max_shift, 3),
+        "policy": "stagger vehicles that share the same route and exact depart time to avoid deterministic junction-collision teleports",
+    }
+
+
+def route_direction(route_id: str) -> str:
+    if "upbound" in route_id:
+        return "upbound"
+    if "downbound" in route_id:
+        return "downbound"
+    if "sideflow" in route_id:
+        return "sideflow"
+    return "other"
+
+
+def direction_vehicle_counts(root: ET.Element) -> dict[str, int]:
+    counts = {"upbound": 0, "downbound": 0, "sideflow": 0, "other": 0}
+    for vehicle in root.findall("vehicle"):
+        direction = route_direction(str(vehicle.get("route", "")))
+        counts[direction] = counts.get(direction, 0) + 1
+    return counts
+
+
+def direction_balance_status(counts: dict[str, int]) -> dict[str, Any]:
+    upbound = counts.get("upbound", 0)
+    downbound = counts.get("downbound", 0)
+    directional_total = upbound + downbound
+    upbound_share = upbound / directional_total if directional_total else 0.0
+    downbound_share = downbound / directional_total if directional_total else 0.0
+    balanced = (
+        directional_total == 0
+        or (
+            DIRECTION_BALANCE_MIN_SHARE <= upbound_share <= DIRECTION_BALANCE_MAX_SHARE
+            and DIRECTION_BALANCE_MIN_SHARE <= downbound_share <= DIRECTION_BALANCE_MAX_SHARE
+        )
+    )
+    return {
+        "status": "PASS" if balanced else "FAIL",
+        "directional_total": directional_total,
+        "upbound_share": round(upbound_share, 6),
+        "downbound_share": round(downbound_share, 6),
+        "min_share": DIRECTION_BALANCE_MIN_SHARE,
+        "max_share": DIRECTION_BALANCE_MAX_SHARE,
+    }
+
+
+def route_priority(route_id: str, direction: str) -> tuple[int, str]:
+    if route_id.startswith(f"mainline_through_{direction}_balanced"):
+        return (0, route_id)
+    if route_id == f"mainline_through_{direction}" or route_id.startswith(f"mainline_through_{direction}_alt"):
+        return (1, route_id)
+    if route_id.startswith(f"segment_feeder_{direction}_"):
+        return (2, route_id)
+    if route_id.startswith(f"midcorridor_local_{direction}"):
+        return (3, route_id)
+    if route_id.startswith(f"od_repair_{direction}_") or route_id.startswith(f"od_queue_{direction}_"):
+        return (4, route_id)
+    return (9, route_id)
+
+
+def route_candidates_by_direction(root: ET.Element, direction: str) -> list[str]:
+    route_ids = [
+        str(route.get("id", ""))
+        for route in root.findall("route")
+        if route_direction(str(route.get("id", ""))) == direction
+        and str(route.get("id", "")) not in SPEED_BAND_TUNING_REMOVE_ROUTE_IDS
+    ]
+    return sorted(route_ids, key=lambda route_id: route_priority(route_id, direction))
+
+
+def rebalance_direction_vehicle_counts(root: ET.Element) -> dict[str, Any]:
+    before = direction_vehicle_counts(root)
+    status_before = direction_balance_status(before)
+    directional_total = before["upbound"] + before["downbound"]
+    if status_before["status"] == "PASS" or directional_total == 0:
+        return {
+            "enabled": True,
+            "changed_vehicle_count": 0,
+            "before": before,
+            "after": before,
+            "before_status": status_before,
+            "after_status": status_before,
+            "policy": "no rebalance needed",
+        }
+
+    under_direction = "upbound" if before["upbound"] < before["downbound"] else "downbound"
+    over_direction = "downbound" if under_direction == "upbound" else "upbound"
+    target_under_count = math.ceil(directional_total * DIRECTION_BALANCE_MIN_SHARE)
+    move_count = max(0, target_under_count - before[under_direction])
+    target_routes = route_candidates_by_direction(root, under_direction)
+    donor_vehicles = [
+        vehicle
+        for vehicle in root.findall("vehicle")
+        if not str(vehicle.get("id", "")).startswith("stage23_")
+        and route_direction(str(vehicle.get("route", ""))) == over_direction
+    ]
+    changed = 0
+    if target_routes:
+        for vehicle in donor_vehicles[:move_count]:
+            vehicle.set("route", target_routes[changed % len(target_routes)])
+            changed += 1
+    after = direction_vehicle_counts(root)
+    return {
+        "enabled": True,
+        "changed_vehicle_count": changed,
+        "under_direction": under_direction,
+        "over_direction": over_direction,
+        "target_routes_used": target_routes[:12],
+        "before": before,
+        "after": after,
+        "before_status": status_before,
+        "after_status": direction_balance_status(after),
+        "policy": "reassign non-stage23 background vehicles from overrepresented direction only until the underrepresented direction reaches the 45:55 balance window",
+    }
+
+
+def route_edges_by_id(root: ET.Element) -> dict[str, list[str]]:
+    return {str(route.get("id", "")): str(route.get("edges", "")).split() for route in root.findall("route")}
+
+
+def mainline_terminal_sinks(route_edges: dict[str, list[str]]) -> dict[str, str]:
+    return {
+        direction: route_edges.get(f"mainline_through_{direction}", [""])[-1]
+        for direction in ("upbound", "downbound")
+        if route_edges.get(f"mainline_through_{direction}")
+    }
+
+
+def mainline_terminal_sink_fail_count(root: ET.Element) -> int:
+    route_edges = route_edges_by_id(root)
+    sinks = mainline_terminal_sinks(route_edges)
+    fail_count = 0
+    for vehicle in root.findall("vehicle"):
+        route_id = str(vehicle.get("route", ""))
+        direction = route_direction(route_id)
+        if direction not in sinks or not route_id.startswith(f"mainline_through_{direction}"):
+            continue
+        edges = route_edges.get(route_id, [])
+        if not edges or edges[-1] != sinks[direction]:
+            fail_count += 1
+    return fail_count
+
+
 def apply_speed_band_tuning(root: ET.Element) -> dict[str, Any]:
     existing_route_ids = {route.get("id", "") for route in root.findall("route")}
     real_b04_tuning_routes = set(SPEED_BAND_TUNING_ADD_PLAN) | (
@@ -333,7 +504,7 @@ def apply_speed_band_tuning(root: ET.Element) -> dict[str, Any]:
             added += 1
     return {
         "enabled": True,
-        "policy": "remove unstable sparse upbound bottleneck routes and add distributed natural-route samples for 5-25km/h S-segment speed-band calibration",
+        "policy": "remove unstable sparse bottleneck routes, add bidirectional natural-route samples, then rely on final route-id direction rebalance",
         "removed_vehicle_count": removed,
         "added_vehicle_count": added,
         "remove_route_ids": sorted(SPEED_BAND_TUNING_REMOVE_ROUTE_IDS),
@@ -554,9 +725,18 @@ def build_stage23_trigger_demand(
         )
 
     speed_band_tuning = apply_speed_band_tuning(root)
+    direction_balance = rebalance_direction_vehicle_counts(root)
+    duplicate_depart_stagger = stagger_duplicate_route_departures(root)
     sort_vehicle_elements_by_depart(root)
     bottleneck_cap_summary.update(bottleneck_vehicle_counts(root, bottleneck_edge=s1forced_bottleneck_edge))
     final_vehicle_count = sum(1 for child in root if child.tag == "vehicle")
+    final_direction_counts = direction_vehicle_counts(root)
+    terminal_sink_fail_count = mainline_terminal_sink_fail_count(root)
+    total_vehicle_delta_pct = (
+        (final_vehicle_count - CANONICAL_REFERENCE_VEHICLE_COUNT) / CANONICAL_REFERENCE_VEHICLE_COUNT * 100.0
+        if CANONICAL_REFERENCE_VEHICLE_COUNT
+        else 0.0
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     tree.write(output, encoding="utf-8", xml_declaration=True)
     summary = {
@@ -568,6 +748,13 @@ def build_stage23_trigger_demand(
         "route_selection_policy": "natural_base_route_template_only_with_s1forced_bottleneck_cap",
         "s1forced_bottleneck_cap": bottleneck_cap_summary,
         "speed_band_tuning": speed_band_tuning,
+        "direction_balance": direction_balance,
+        "duplicate_route_depart_stagger": duplicate_depart_stagger,
+        "direction_vehicle_counts": final_direction_counts,
+        "direction_balance_status": direction_balance_status(final_direction_counts),
+        "mainline_terminal_sink_fail_count": terminal_sink_fail_count,
+        "canonical_reference_vehicle_count": CANONICAL_REFERENCE_VEHICLE_COUNT,
+        "total_vehicle_delta_pct": round(total_vehicle_delta_pct, 6),
         "vehicle_count": final_vehicle_count,
         "stage23_added_count": stage2_count + stage3_count,
         "stage2_route_id": stage2_route["route_id"],

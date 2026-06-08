@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b04_b0_route_geometry_lane_recall.v1",
-  "generated_at": "2026-06-07T12:13:54.048271+00:00",
+  "generated_at": "2026-06-08T04:51:35.042841+00:00",
   "reference_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v13_b_ref_plus5.net.xml",
   "reference_route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
   "current_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
@@ -10,9 +10,9 @@
   "missing_route_edges": [],
   "before_geometry": {
     "point_count": 168.0,
-    "length_m": 4513.835,
+    "length_m": 4499.688,
     "chord_m": 3846.571,
-    "extra_length_m": 667.263,
+    "extra_length_m": 653.117,
     "max_lateral_deviation_m": 272.542
   },
   "reference_geometry": {

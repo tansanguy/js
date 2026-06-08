@@ -1,74 +1,69 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <net xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.20" junctionCornerDetail="5" limitTurnSpeed="5.50" avoidOverlap="0" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/net_file.xsd">
-    <tlLogic id="CSV_TLS_S01_START_SINDANG_STATION" type="static" programID="CSV_S1_START" offset="98">
+    <tlLogic id="CSV_TLS_S01_START_SINDANG_STATION" type="static" programID="CSV_S1_START" offset="93">
         <phase duration="55" state="GGGGrrrrrGGGGrrrrr" name="csv_mainline_green" />
         <phase duration="3" state="yyyyrrrrryyyyrrrrr" name="csv_mainline_yellow" />
         <phase duration="49" state="rrrrgggggrrrrggggg" name="csv_side_green" />
         <phase duration="3" state="rrrryyyyyrrrryyyyy" name="csv_side_yellow" />
     </tlLogic>
-    <tlLogic id="CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT" type="static" programID="CSV_STRAIGHT" offset="77">
-        <phase duration="47" state="GGG" name="terminal_egress_green" />
+    <tlLogic id="CSV_TLS_S21_S22_SEOUL_SQUARE_FRONT" type="static" programID="CSV_STRAIGHT" offset="73">
+        <phase duration="49" state="GGG" name="terminal_egress_green" />
         <phase duration="3" state="yyy" name="terminal_egress_yellow" />
-        <phase duration="53" state="rrr" name="csv_straight_main_red" />
-    </tlLogic>
-    <tlLogic id="CSV_TLS_S19_S20_SEVERANCE_BUILDING" type="static" programID="CSV_STRAIGHT" offset="66">
-        <phase duration="50" state="GGG" name="csv_straight_main_green" />
-        <phase duration="3" state="yyy" name="csv_straight_main_yellow" />
-        <phase duration="67" state="rrr" name="csv_straight_main_red" />
+        <phase duration="48" state="rrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S18_S19_SAMSEON_BUILDING" type="static" programID="CSV_STRAIGHT" offset="54">
-        <phase duration="39" state="GGG" name="csv_straight_main_green" />
+        <phase duration="41" state="GGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyy" name="csv_straight_main_yellow" />
-        <phase duration="63" state="rrr" name="csv_straight_main_red" />
+        <phase duration="61" state="rrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S17_S18_NAMDAEMUN_MARKET" type="static" programID="CSV_STRAIGHT" offset="44">
-        <phase duration="54" state="GGG" name="csv_straight_main_green" />
+        <phase duration="56" state="GGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyy" name="csv_straight_main_yellow" />
-        <phase duration="48" state="rrr" name="csv_straight_main_red" />
+        <phase duration="46" state="rrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S16_S17_SHINSEGAE_DEPARTMENT_STORE" type="static" programID="CSV_STRAIGHT" offset="39">
-        <phase duration="49" state="GGGGGG" name="csv_straight_main_green" />
+        <phase duration="51" state="GGGGGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyyyyy" name="csv_straight_main_yellow" />
-        <phase duration="53" state="rrrrrr" name="csv_straight_main_red" />
+        <phase duration="51" state="rrrrrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S14_S15_DAYS_HOTEL_FRONT" type="static" programID="CSV_STRAIGHT" offset="20">
-        <phase duration="54" state="GGG" name="csv_straight_main_green" />
+        <phase duration="56" state="GGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyy" name="csv_straight_main_yellow" />
-        <phase duration="48" state="rrr" name="csv_straight_main_red" />
+        <phase duration="46" state="rrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S13_S14_MYEONGDONG_STATION_FRONT" type="static" programID="CSV_STRAIGHT" offset="6">
-        <phase duration="39" state="GGGGGG" name="csv_straight_main_green" />
+        <phase duration="41" state="GGGGGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyyyyy" name="csv_straight_main_yellow" />
-        <phase duration="63" state="rrrrrr" name="csv_straight_main_red" />
+        <phase duration="61" state="rrrrrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S11_S12_TOEGYE_RO_2_GA" type="static" programID="TDATA_REALITY_REPAIRED" offset="105">
         <phase duration="55" state="GG" name="reality_main_green" /><phase duration="3" state="yy" name="reality_main_yellow" /><phase duration="49" state="rr" name="reality_side_surrogate_red" /><phase duration="3" state="rr" name="reality_all_red_clearance" /></tlLogic>
     <tlLogic id="CSV_TLS_S08_S09_TOEGYE_RO_4_GA" type="static" programID="CSV_INTERSECTION" offset="29">
-        <phase duration="54" state="GGrrrrGGGrrr" name="csv_mainline_green" />
+        <phase duration="56" state="GGrrrrGGGrrr" name="csv_mainline_green" />
         <phase duration="3" state="yyrrrryyyrrr" name="csv_mainline_yellow" />
-        <phase duration="45" state="rrggggrrrggg" name="csv_side_green" />
+        <phase duration="43" state="rrggggrrrggg" name="csv_side_green" />
         <phase duration="3" state="rryyyyrrryyy" name="csv_side_yellow" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S05_S06_GWANGHUI_INTERSECTION" type="static" programID="CSV_INTERSECTION" offset="76">
-        <phase duration="44" state="rrrrrGGrrrrrrrGGGrr" name="csv_mainline_green" />
+        <phase duration="46" state="rrrrrGGrrrrrrrGGGrr" name="csv_mainline_green" />
         <phase duration="3" state="rrrrryyrrrrrrryyyrr" name="csv_mainline_yellow" />
-        <phase duration="55" state="gggggrrgggggggrrrgg" name="csv_side_green" />
+        <phase duration="53" state="gggggrrgggggggrrrgg" name="csv_side_green" />
         <phase duration="3" state="yyyyyrryyyyyyyrrryy" name="csv_side_yellow" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S03_S04_TOYOKO_INN_HOTEL_FRONT" type="static" programID="CSV_STRAIGHT" offset="57">
-        <phase duration="49" state="GGGGGG" name="csv_straight_main_green" />
+        <phase duration="51" state="GGGGGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyyyyy" name="csv_straight_main_yellow" />
-        <phase duration="53" state="rrrrrr" name="csv_straight_main_red" />
+        <phase duration="51" state="rrrrrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S02_S03_HANYANG_TECHNICAL_HIGH_SCHOOL_FRONT" type="static" programID="CSV_STRAIGHT" offset="48">
-        <phase duration="39" state="GGGGGG" name="csv_straight_main_green" />
+        <phase duration="41" state="GGGGGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyyyyy" name="csv_straight_main_yellow" />
-        <phase duration="63" state="rrrrrr" name="csv_straight_main_red" />
+        <phase duration="61" state="rrrrrr" name="csv_straight_main_red" />
     </tlLogic>
     <tlLogic id="CSV_TLS_S01_S02_SEONGDONG_GLOBAL_BUSINESS_HIGH_SCHOOL" type="static" programID="CSV_STRAIGHT" offset="28">
-        <phase duration="44" state="GGGGGG" name="csv_straight_main_green" />
+        <phase duration="46" state="GGGGGG" name="csv_straight_main_green" />
         <phase duration="3" state="yyyyyy" name="csv_straight_main_yellow" />
-        <phase duration="58" state="rrrrrr" name="csv_straight_main_red" />
+        <phase duration="56" state="rrrrrr" name="csv_straight_main_red" />
     </tlLogic>
     <location netOffset="-320639.43,-4156948.57" convBoundary="0.00,0.00,4310.40,3081.13" origBoundary="126.957059,37.535403,127.032428,37.592333" projParameter="+proj=utm +zone=52 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" />
     <edge id=":10253014031_0" function="internal">
@@ -15353,13 +15348,13 @@
         <lane id=":5851251697_3_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="9.18" length="12.25" shape="440.54,1601.83 442.71,1603.21 444.35,1605.38 445.47,1608.34 446.06,1612.09" />
     </edge>
     <edge id=":5851251703_0" function="internal">
-        <lane id=":5851251703_0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="442.83,1598.27 425.12,1591.01" />
-        <lane id=":5851251703_0_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="444.04,1595.31 426.33,1588.05" />
-        <lane id=":5851251703_0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="445.25,1592.35 427.54,1585.09" />
+        <lane id=":5851251703_0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="446.40,1629.66 428.69,1622.40" />
+        <lane id=":5851251703_0_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="447.61,1626.70 429.90,1619.44" />
+        <lane id=":5851251703_0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="19.14" shape="448.82,1623.74 431.11,1616.48" />
     </edge>
     <edge id=":5851251703_3" function="internal">
-        <lane id=":5851251703_3_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="10.71" length="19.24" shape="444.22,1585.17 440.60,1588.15 436.41,1589.63 431.65,1589.59 426.33,1588.05" />
-        <lane id=":5851251703_3_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="7.96" length="19.24" shape="442.61,1582.14 441.95,1585.86 439.22,1587.59 434.42,1587.34 427.54,1585.09" />
+        <lane id=":5851251703_3_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="10.71" length="19.24" shape="447.79,1616.56 444.17,1619.54 439.98,1621.02 435.22,1620.98 429.90,1619.44" />
+        <lane id=":5851251703_3_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="7.96" length="19.24" shape="446.18,1613.53 445.52,1617.25 442.79,1618.98 437.99,1618.73 431.11,1616.48" />
     </edge>
     <edge id=":5863541379_0" function="internal">
         <lane id=":5863541379_0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="6.23" length="9.41" shape="2656.36,2210.44 2653.53,2210.08 2651.46,2210.63 2650.16,2212.10 2649.62,2214.49" />
@@ -33455,9 +33450,9 @@
         <lane id="333557072#3_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="60.48" shape="612.23,1691.53 592.51,1682.64 556.46,1667.86" />
     </edge>
     <edge id="333557072#5" from="cluster_6111866303_7195225084" to="5851251703" priority="12" type="highway.primary" spreadType="center" shape="527.80,1659.58 431.58,1620.13">
-        <lane id="333557072#5_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="513.99,1657.38 442.83,1598.27" />
-        <lane id="333557072#5_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="515.21,1654.42 444.04,1595.31" />
-        <lane id="333557072#5_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="516.42,1651.46 445.25,1592.35" />
+        <lane id="333557072#5_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="513.99,1657.38 446.40,1629.66" />
+        <lane id="333557072#5_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="515.21,1654.42 447.61,1626.70" />
+        <lane id="333557072#5_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="73.06" shape="516.42,1651.46 448.82,1623.74" />
     </edge>
     <edge id="333972428#1" from="cluster_11418728530_436830304" to="cluster_11418728538_7370190655" priority="11" type="highway.secondary" spreadType="center" shape="865.23,2111.64 834.51,2105.16 817.15,2101.32">
         <lane id="333972428#1_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="31.31" shape="857.42,2113.26 833.83,2108.29 826.76,2106.72" />
@@ -36068,13 +36063,13 @@
         <lane id="619147736_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="66.91" shape="466.25,1968.48 464.16,1960.97 458.52,1934.65 450.42,1914.18 446.97,1904.47" />
     </edge>
     <edge id="619147737" from="5851251697" to="5851251703" priority="7" type="highway.primary_link" spreadType="center" shape="442.13,1599.02 445.75,1605.00 447.47,1609.63 447.83,1614.11 444.59,1617.74 438.75,1619.39 431.58,1620.13">
-        <lane id="619147737_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="22.22" length="4.16" shape="449.13,1610.34 449.48,1614.66 444.22,1585.17" />
-        <lane id="619147737_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="22.22" length="4.16" shape="446.06,1612.09 442.61,1582.14" />
+        <lane id="619147737_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="22.22" length="4.16" shape="449.13,1610.34 449.48,1614.66 447.79,1616.56" />
+        <lane id="619147737_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="22.22" length="4.16" shape="446.06,1612.09 446.18,1613.53" />
     </edge>
     <edge id="619147738#0" from="5851251703" to="11139302904" priority="12" type="highway.primary" spreadType="center" shape="431.58,1620.13 384.09,1600.68 374.70,1599.78 361.75,1600.44 355.04,1601.17 346.81,1605.05 334.46,1615.02">
-        <lane id="619147738#0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" acceleration="1" shape="425.12,1591.01 383.31,1603.82 374.63,1602.99 362.00,1603.63 355.92,1604.29 348.52,1607.78 337.09,1555.40" />
-        <lane id="619147738#0_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" shape="426.33,1588.05 384.09,1600.68 374.70,1599.78 361.75,1600.44 355.04,1601.17 346.81,1605.05 335.08,1552.91" />
-        <lane id="619147738#0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" shape="427.54,1585.09 384.87,1597.54 374.77,1596.57 361.50,1597.25 354.16,1598.05 345.10,1602.32 333.07,1550.42" />
+        <lane id="619147738#0_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" acceleration="1" shape="428.69,1622.40 383.31,1603.82 374.63,1602.99 362.00,1603.63 355.92,1604.29 348.52,1607.78 337.09,1555.40" />
+        <lane id="619147738#0_1" index="1" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" shape="429.90,1619.44 384.09,1600.68 374.70,1599.78 361.75,1600.44 355.04,1601.17 346.81,1605.05 335.08,1552.91" />
+        <lane id="619147738#0_2" index="2" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="103.48" shape="431.11,1616.48 384.87,1597.54 374.77,1596.57 361.50,1597.25 354.16,1598.05 345.10,1602.32 333.07,1550.42" />
     </edge>
     <edge id="619147738#1" from="11139302904" to="5593950670" priority="12" type="highway.primary" spreadType="center" shape="334.46,1615.02 321.39,1625.20 311.05,1632.45">
         <lane id="619147738#1_0" index="0" disallow="tram rail_urban rail rail_electric rail_fast ship container cable_car subway aircraft wheelchair scooter drone" speed="27.78" length="11.58" shape="336.82,1555.61 327.05,1624.85" />
@@ -37951,28 +37946,28 @@
         <phase duration="24" state="rrGGGrrr" />
         <phase duration="6" state="rrGyyrrr" />
     </tlLogic>
-    <tlLogic id="joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more" type="static" programID="0" offset="81">
+    <tlLogic id="joinedS_11139302899_11139302904_11178710208_cluster_11139302901_4704751520_5593950663_5593950669_#1more_#1more" type="static" programID="0" offset="76">
         <phase duration="5" state="GGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="yyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="5" state="rrGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rryyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="5" state="rrrrrGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrryyyyyrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
-        <phase duration="49" state="rrrrrrrrrrGGGGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="46" state="rrrrrrrrrrGGGGGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrrrrrrryyyyyyyyyyrrrrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="5" state="rrrrrrrrrrrrrrrrrrrrGGGGGGGGrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrryyyyyyyyrrrrrrrrrrrrrrrrrr" />
-        <phase duration="4" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrr" />
+        <phase duration="5" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyrrrrrrrrrrrr" />
-        <phase duration="4" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrr" />
+        <phase duration="5" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrr" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyyyyrrr" />
-        <phase duration="4" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGG" />
+        <phase duration="5" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrGGG" />
         <phase duration="3" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryyy" />
     </tlLogic>
     <tlLogic id="joinedS_11203052957_cluster_11203052955_11203052956_11203052960_11203052961_#11more" type="static" programID="0" offset="30">
-        <phase duration="39" state="GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr" />
+        <phase duration="10" state="GrrrrrrrrrrrrrrrrrrrrGGGGGGGGGrrrrrrr" />
         <phase duration="3" state="Grrrrrrrrrrrrrrrrrrrryyyyyyyyyrrrrrrr" />
-        <phase duration="11" state="GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="41" state="GGGrrrrrrrrrrrGGGGrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="yyyrrrrrrrrrrryyyyrrrrrrrrrrrrrrrrrrr" />
         <phase duration="10" state="rrrggGGrrrrrrrrrrrGggrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrryyyyrrrrrrrrrrryyyrrrrrrrrrrrrrrrr" />
@@ -37980,7 +37975,7 @@
         <phase duration="3" state="Grrrrrryyyyyyyrrrrrrrrrrrrrrrrrrrrrrr" />
         <phase duration="10" state="GGGrrrrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGG" />
         <phase duration="3" state="yyyrrrrrrrrrrrrrrrrrrrrrrrrrrryyyyyyy" />
-        <phase duration="10" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="9" state="rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr" />
     </tlLogic>
     <tlLogic id="joinedS_11203083989_11203083990_11203083991_11203083992_#1more" type="static" programID="0" offset="0">
         <phase duration="39" state="rrrGGGGGGGGGGGGgrrrrGGGGgrrrrr" />
@@ -37999,11 +37994,11 @@
     <tlLogic id="joinedS_11346754524_11346754527_7335400049_cluster_11346754525_11346754526_2784736947_414685366_#2more" type="static" programID="0" offset="72">
         <phase duration="25" state="GGGGrrrrrGGGGGrrrrrrrrrrrrrr" />
         <phase duration="3" state="yyyyrrrrryyyyyrrrrrrrrrrrrrr" />
-        <phase duration="24" state="rrrrrrGGGrrrrrrrrrrrrrrrrrrr" />
+        <phase duration="26" state="rrrrrrGGGrrrrrrrrrrrrrrrrrrr" />
         <phase duration="3" state="rrrrrryyyrrrrrrrrrrrrrrrrrrr" />
-        <phase duration="14" state="GGrrGGrrrrrrrrGGGGrrrrrrrrrr" />
+        <phase duration="13" state="GGrrGGrrrrrrrrGGGGrrrrrrrrrr" />
         <phase duration="3" state="GGrrGGrrrrrrrrGyyyrrrrrrrrrr" />
-        <phase duration="14" state="GGrrGGrrrrrrrrGrrrGGGGGrrrrr" />
+        <phase duration="13" state="GGrrGGrrrrrrrrGrrrGGGGGrrrrr" />
         <phase duration="3" state="yyrrGGrrrrrrrrGrrryyyyyrrrrr" />
         <phase duration="13" state="rrrrGGrrrrrrrrGrrrrrrrrGGGGG" />
         <phase duration="3" state="rrrryyrrrrrrrryrrrrrrrryyyyy" />
@@ -38057,9 +38052,9 @@
         <phase duration="6" state="rrrrrrrrrrrrrrrrrrrrrrrrrGGGGGGrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrryy" />
     </tlLogic>
     <tlLogic id="joinedS_7335400058_cluster_13348213189_13348213190_13348213191_4273893706_#1more" type="static" programID="0" offset="5">
-        <phase duration="54" state="GGGGGGGGGgrrrrGGGGgrrrr" />
+        <phase duration="56" state="GGGGGGGGGgrrrrGGGGgrrrr" />
         <phase duration="3" state="GGGyyyyyyyrrrryyyyyrrrr" />
-        <phase duration="45" state="GGGrrrrrrrGGGgrrrrrGGGg" />
+        <phase duration="43" state="GGGrrrrrrrGGGgrrrrrGGGg" />
         <phase duration="3" state="GGGrrrrrrryyyyrrrrryyyy" />
     </tlLogic>
     <junction id="10253014031" type="priority" x="1020.24" y="1389.27" incLanes="37399713#3_0" intLanes=":10253014031_0_0" shape="1019.97,1390.85 1020.80,1387.76 1020.51,1387.69 1019.68,1390.78">
@@ -45121,7 +45116,7 @@
         <request index="3" response="00000" foes="00000" cont="0" />
         <request index="4" response="00000" foes="00000" cont="0" />
     </junction>
-    <junction id="5851251703" type="traffic_light" x="428.01" y="1588.74" incLanes="333557072#5_0 333557072#5_1 333557072#5_2 619147737_0 619147737_1" intLanes=":5851251703_0_0 :5851251703_0_1 :5851251703_0_2 :5851251703_3_0 :5851251703_3_1" shape="442.22,1599.75 445.86,1590.87 444.27,1589.79 443.97,1589.13 443.99,1588.40 444.34,1587.58 445.02,1586.68 440.37,1577.93 441.33,1581.59 441.09,1584.16 439.66,1585.65 437.02,1586.06 433.19,1585.38 428.15,1583.61 424.51,1592.49">
+    <junction id="5851251703" type="priority" x="431.58" y="1620.13" incLanes="333557072#5_0 333557072#5_1 333557072#5_2 619147737_0 619147737_1" intLanes=":5851251703_0_0 :5851251703_0_1 :5851251703_0_2 :5851251703_3_0 :5851251703_3_1" shape="445.79,1631.14 449.43,1622.26 447.84,1621.18 447.54,1620.52 447.56,1619.79 447.91,1618.97 448.59,1618.07 443.94,1609.32 444.90,1612.98 444.66,1615.55 443.23,1617.04 440.59,1617.45 436.76,1616.77 431.72,1615.00 428.08,1623.88">
         <request index="0" response="00000" foes="11000" cont="0" />
         <request index="1" response="00000" foes="11000" cont="0" />
         <request index="2" response="00000" foes="11000" cont="0" />
@@ -54742,8 +54737,8 @@
     <connection from="180368918#8" to="218773868#0" fromLane="0" toLane="0" via=":414685825_5_0" dir="s" state="O" tl="CSV_TLS_S05_S06_GWANGHUI_INTERSECTION" linkIndex="5" />
     <connection from="180368918#8" to="218773868#0" fromLane="1" toLane="1" via=":414685825_5_1" dir="s" state="O" tl="CSV_TLS_S05_S06_GWANGHUI_INTERSECTION" linkIndex="6" />
     <connection from="180368918#8" to="-913009312#10" fromLane="1" toLane="1" via=":414685825_7_0" dir="l" state="o" tl="CSV_TLS_S05_S06_GWANGHUI_INTERSECTION" linkIndex="7" />
-    <connection from="180445419" to="347237859#0" fromLane="0" toLane="0" via=":1908148227_2_0" dir="s" state="M" />
-    <connection from="180445419" to="347237859#0" fromLane="1" toLane="1" via=":1908148227_2_1" dir="s" state="M" />
+    <connection from="180445419" to="347237859#0" fromLane="0" toLane="0" via=":1908148227_2_0" dir="s" state="m" />
+    <connection from="180445419" to="347237859#0" fromLane="1" toLane="1" via=":1908148227_2_1" dir="s" state="m" />
     <connection from="183272309#0" to="-381452166#3" fromLane="0" toLane="0" via=":3846534009_4_0" dir="r" state="M" />
     <connection from="183272309#0" to="183272309#1" fromLane="0" toLane="0" via=":3846534009_5_0" dir="s" state="M" />
     <connection from="183272309#1" to="183272309#2" fromLane="0" toLane="0" via=":8496720002_1_0" dir="s" state="M" />
@@ -56286,9 +56281,9 @@
     <connection from="333557072#3" to="333557072#5" fromLane="0" toLane="0" via=":cluster_6111866303_7195225084_2_0" dir="s" state="M" />
     <connection from="333557072#3" to="333557072#5" fromLane="1" toLane="1" via=":cluster_6111866303_7195225084_2_1" dir="s" state="M" />
     <connection from="333557072#3" to="333557072#5" fromLane="2" toLane="2" via=":cluster_6111866303_7195225084_2_2" dir="s" state="M" />
-    <connection from="333557072#5" to="619147738#0" fromLane="0" toLane="0" via=":5851251703_0_0" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="0" />
-    <connection from="333557072#5" to="619147738#0" fromLane="1" toLane="1" via=":5851251703_0_1" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="1" />
-    <connection from="333557072#5" to="619147738#0" fromLane="2" toLane="2" via=":5851251703_0_2" dir="s" state="O" tl="CSV_TLS_S19_S20_SEVERANCE_BUILDING" linkIndex="2" />
+    <connection from="333557072#5" to="619147738#0" fromLane="0" toLane="0" via=":5851251703_0_0" dir="s" state="M" />
+    <connection from="333557072#5" to="619147738#0" fromLane="1" toLane="1" via=":5851251703_0_1" dir="s" state="M" />
+    <connection from="333557072#5" to="619147738#0" fromLane="2" toLane="2" via=":5851251703_0_2" dir="s" state="M" />
     <connection from="333972428#1" to="-788296723#1" fromLane="0" toLane="0" via=":cluster_11418728538_7370190655_0_0" dir="r" state="M" />
     <connection from="333972428#1" to="-788296723#1" fromLane="0" toLane="1" via=":cluster_11418728538_7370190655_0_1" dir="r" state="M" />
     <connection from="333972428#1" to="333972428#2" fromLane="0" toLane="0" via=":cluster_11418728538_7370190655_2_0" dir="s" state="M" />
@@ -57437,7 +57432,7 @@
     <connection from="420331801#1" to="174870621#9" fromLane="0" toLane="0" uncontrolled="1" via=":cluster_3849737606_8401234720_8496719924_9_0" dir="r" state="m" />
     <connection from="420331801#1" to="-381807698#2" fromLane="0" toLane="0" uncontrolled="1" via=":cluster_3849737606_8401234720_8496719924_10_0" dir="s" state="m" />
     <connection from="420331801#1" to="-381807698#2" fromLane="0" toLane="1" uncontrolled="1" via=":cluster_3849737606_8401234720_8496719924_10_1" dir="s" state="m" />
-    <connection from="420331801#1" to="-174870621#8" fromLane="0" toLane="2" uncontrolled="1" via=":cluster_3849737606_8401234720_8496719924_12_0" dir="l" state="M" />
+    <connection from="420331801#1" to="-174870621#8" fromLane="0" toLane="2" uncontrolled="1" via=":cluster_3849737606_8401234720_8496719924_12_0" dir="l" state="m" />
     <connection from="420331802#0" to="-381452163#5" fromLane="0" toLane="0" via=":3785139872_0_0" dir="r" state="M" />
     <connection from="420331802#0" to="420331802#1" fromLane="0" toLane="0" via=":3785139872_1_0" dir="s" state="M" />
     <connection from="420331802#0" to="-420092889#4" fromLane="0" toLane="0" via=":3785139872_2_0" dir="l" state="m" />

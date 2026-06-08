@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b004_b04_b4_route_comparison_visualization.v1",
-  "generated_at": "2026-06-08T04:02:19.136245+00:00",
+  "generated_at": "2026-06-08T05:34:12.587939+00:00",
   "route_edges": [
     "420331801#1",
     "-174870621#8",
@@ -201,12 +201,6 @@
     },
     {
       "movement_id": "B4_MOVEMENT_15",
-      "mapped": "S19:upbound",
-      "x": "68.72",
-      "y": "673.79"
-    },
-    {
-      "movement_id": "B4_MOVEMENT_16",
       "mapped": "S21:upbound",
       "x": "36.59",
       "y": "698.0"

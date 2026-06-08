@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b04_global_reality_signal.v1",
-  "generated_at": "2026-06-07T12:13:54.320045+00:00",
+  "generated_at": "2026-06-08T04:51:35.350780+00:00",
   "claim_scope": "all TLS get A008/API-informed plausible timing; not exact field reproduction",
   "timing_snapshots": [
     "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210137.jsonl",
@@ -13,8 +13,8 @@
   "mapping_csv": "09 Compact Corridor Baseline/tdata_signal/global_tls_a008_itst_mapping.csv",
   "profiles_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_signal_profiles.csv",
   "demand_stats_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_signal_demand_stats.csv",
-  "tls_count": 66,
-  "mainroad_profile_count": 18,
+  "tls_count": 65,
+  "mainroad_profile_count": 17,
   "mainroad_preserved_count": 0,
   "virtual_preserved_count": 1,
   "direct_api_count": 12,
@@ -22,19 +22,19 @@
   "average_fallback_count": 35,
   "timing_record_itst_count": 2463,
   "profile_average": {
-    "cycle_sec": 106,
+    "cycle_sec": 105,
     "main_green_sec": 52,
     "yellow_sec": 3
   },
   "demand_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
   "demand_source_status": "loaded",
-  "demand_vehicle_weight_total": 1688.0,
-  "demand_matched_transition_total": 6889.0,
+  "demand_vehicle_weight_total": 1608.0,
+  "demand_matched_transition_total": 7423.0,
   "demand_adjusted_tls_count": 28,
   "demand_profile_policy": "mapwide_tls_route_pair_volume_proportional_cycle_and_main_green_adjustment",
   "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml",
   "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
-  "applied_tls_count": 66,
+  "applied_tls_count": 65,
   "single_phase_repaired_count": 1,
   "applied_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_applied_signal_profiles.csv",
   "tls_state_normalization_csv": "09 Compact Corridor Baseline/tdata_signal/b04_global_reality_tls_state_normalization.csv",
@@ -43,14 +43,42 @@
   "duplicate_major_green_normalization_csv": "09 Compact Corridor Baseline/tdata_signal/b04_global_reality_duplicate_major_green_normalization.csv",
   "firetruck_route_priority": {
     "policy": "firetruck_route_uncontrolled_minor_connections_promoted",
-    "status": "NOOP",
+    "status": "UPDATED",
     "route_edge_count": 61,
-    "updated_connection_count": 0,
-    "updated_connections": []
+    "updated_connection_count": 3,
+    "updated_connections": [
+      {
+        "from": "180445419",
+        "to": "347237859#0",
+        "fromLane": "0",
+        "toLane": "0",
+        "via": ":1908148227_2_0",
+        "state_before": "m",
+        "state_after": "M"
+      },
+      {
+        "from": "180445419",
+        "to": "347237859#0",
+        "fromLane": "1",
+        "toLane": "1",
+        "via": ":1908148227_2_1",
+        "state_before": "m",
+        "state_after": "M"
+      },
+      {
+        "from": "420331801#1",
+        "to": "-174870621#8",
+        "fromLane": "0",
+        "toLane": "2",
+        "via": ":cluster_3849737606_8401234720_8496719924_12_0",
+        "state_before": "m",
+        "state_after": "M"
+      }
+    ]
   },
   "route_geometry_recall": {
     "schema": "compact_v9_b04_b0_route_geometry_lane_recall.v1",
-    "generated_at": "2026-06-07T12:13:54.048271+00:00",
+    "generated_at": "2026-06-08T04:51:35.042841+00:00",
     "reference_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v13_b_ref_plus5.net.xml",
     "reference_route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
     "current_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
@@ -60,9 +88,9 @@
     "missing_route_edges": [],
     "before_geometry": {
       "point_count": 168.0,
-      "length_m": 4513.835,
+      "length_m": 4499.688,
       "chord_m": 3846.571,
-      "extra_length_m": 667.263,
+      "extra_length_m": 653.117,
       "max_lateral_deviation_m": 272.542
     },
     "reference_geometry": {
@@ -96,16 +124,16 @@
   },
   "route_tls_projection_csv": "09 Compact Corridor Baseline/tdata_signal/route_tls_projection_audit.csv",
   "route_tls_projection_status": "PASS",
-  "route_tls_projection_row_count": 18,
+  "route_tls_projection_row_count": 17,
   "route_tls_projection_warn_count": 1,
   "route_tls_projection_fail_count": 0,
   "normalized_phase_state_count": 35,
   "normalized_tls_count": 6,
-  "missing_green_repaired_count": 53,
+  "missing_green_repaired_count": 58,
   "missing_green_repaired_tls_count": 3,
   "missing_green_repair_policy": "attach_missing_vehicle_links_to_existing_long_green_phase",
-  "short_green_repaired_count": 5,
-  "short_green_repaired_tls_count": 2,
+  "short_green_repaired_count": 3,
+  "short_green_repaired_tls_count": 1,
   "short_green_min_sec": 6.0,
   "duplicate_major_green_lowered_count": 1,
   "duplicate_major_green_tls_count": 1,

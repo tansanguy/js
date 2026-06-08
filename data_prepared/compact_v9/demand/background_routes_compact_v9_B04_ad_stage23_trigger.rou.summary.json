@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_stage23_trigger_demand.v1",
-  "generated_at": "2026-06-07T09:33:12.181959+00:00",
+  "generated_at": "2026-06-08T04:54:01.581591+00:00",
   "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
   "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
   "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
@@ -18,15 +18,15 @@
     "split_pre_bottleneck_vehicle_count": 0,
     "split_post_bottleneck_vehicle_count": 0,
     "split_dropped_bottleneck_vehicle_count": 0,
-    "final_bottleneck_vehicle_count": 24,
+    "final_bottleneck_vehicle_count": 186,
     "final_stage23_bottleneck_vehicle_count": 24,
-    "final_non_stage23_bottleneck_vehicle_count": 0
+    "final_non_stage23_bottleneck_vehicle_count": 162
   },
   "speed_band_tuning": {
     "enabled": true,
-    "policy": "remove unstable sparse upbound bottleneck routes and add distributed natural-route samples for 5-25km/h S-segment speed-band calibration",
+    "policy": "remove unstable sparse bottleneck routes, add bidirectional natural-route samples, then rely on final route-id direction rebalance",
     "removed_vehicle_count": 3,
-    "added_vehicle_count": 563,
+    "added_vehicle_count": 483,
     "remove_route_ids": [
       "midcorridor_local_upbound",
       "od_queue_upbound_S16_00",
@@ -46,19 +46,19 @@
       ]
     },
     "add_plan": {
-      "segment_feeder_upbound_S6": 16,
-      "segment_feeder_upbound_S7": 40,
-      "segment_feeder_upbound_S8": 16,
-      "segment_feeder_upbound_S18": 22,
-      "segment_feeder_upbound_S20": 18,
-      "segment_feeder_upbound_S21": 18,
-      "segment_feeder_upbound_S22": 40,
-      "segment_feeder_downbound_S12": 166,
-      "segment_feeder_downbound_S20": 52,
-      "segment_feeder_downbound_S21": 60,
+      "segment_feeder_upbound_S6": 24,
+      "segment_feeder_upbound_S7": 48,
+      "segment_feeder_upbound_S8": 24,
+      "segment_feeder_upbound_S18": 30,
+      "segment_feeder_upbound_S20": 33,
+      "segment_feeder_upbound_S21": 33,
+      "segment_feeder_upbound_S22": 48,
+      "segment_feeder_downbound_S12": 62,
+      "segment_feeder_downbound_S20": 33,
+      "segment_feeder_downbound_S21": 37,
       "segment_feeder_downbound_S22": 28,
-      "od_repair_downbound_S20_00": 8,
-      "od_repair_downbound_S20_01": 6
+      "od_repair_downbound_S20_00": 5,
+      "od_repair_downbound_S20_01": 5
     },
     "late_add_plan": {
       "band_s15_local_upbound": {
@@ -85,108 +85,182 @@
       {
         "vehicle_id": "stage23_band_tune_0000",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 457.5
+        "depart": 445.0
       },
       {
         "vehicle_id": "stage23_band_tune_0001",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 534.2
+        "depart": 496.7
       },
       {
         "vehicle_id": "stage23_band_tune_0002",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 610.9
+        "depart": 548.4
       },
       {
         "vehicle_id": "stage23_band_tune_0003",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 687.6
+        "depart": 600.1
       },
       {
         "vehicle_id": "stage23_band_tune_0004",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 764.3
+        "depart": 651.8
       },
       {
         "vehicle_id": "stage23_band_tune_0005",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 841.0
+        "depart": 703.5
       },
       {
         "vehicle_id": "stage23_band_tune_0006",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 917.7
+        "depart": 755.2
       },
       {
         "vehicle_id": "stage23_band_tune_0007",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 982.5
+        "depart": 795.0
       },
       {
         "vehicle_id": "stage23_band_tune_0008",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 1059.2
+        "depart": 846.7
       },
       {
         "vehicle_id": "stage23_band_tune_0009",
         "route_id": "segment_feeder_upbound_S6",
-        "depart": 1135.9
+        "depart": 898.4
       }
     ],
     "late_added_vehicle_preview": [
       {
-        "vehicle_id": "stage23_late_band_tune_0490",
+        "vehicle_id": "stage23_late_band_tune_0410",
         "route_id": "band_s15_local_upbound",
-        "depart": 2300.0
+        "depart": 2305.2
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0491",
+        "vehicle_id": "stage23_late_band_tune_0411",
         "route_id": "band_s15_local_upbound",
-        "depart": 2381.3
+        "depart": 2386.5
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0492",
+        "vehicle_id": "stage23_late_band_tune_0412",
         "route_id": "band_s15_local_upbound",
-        "depart": 2462.6
+        "depart": 2467.8
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0493",
+        "vehicle_id": "stage23_late_band_tune_0413",
         "route_id": "band_s15_local_upbound",
-        "depart": 2543.9
+        "depart": 2540.0
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0494",
+        "vehicle_id": "stage23_late_band_tune_0414",
         "route_id": "band_s15_local_upbound",
-        "depart": 2625.2
+        "depart": 2621.3
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0495",
+        "vehicle_id": "stage23_late_band_tune_0415",
         "route_id": "band_s15_local_upbound",
-        "depart": 2706.5
+        "depart": 2702.6
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0496",
+        "vehicle_id": "stage23_late_band_tune_0416",
         "route_id": "band_s15_local_upbound",
-        "depart": 2787.8
+        "depart": 2783.9
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0497",
+        "vehicle_id": "stage23_late_band_tune_0417",
         "route_id": "band_s15_local_upbound",
-        "depart": 2860.0
+        "depart": 2865.2
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0498",
+        "vehicle_id": "stage23_late_band_tune_0418",
         "route_id": "band_s15_local_upbound",
-        "depart": 2941.3
+        "depart": 2946.5
       },
       {
-        "vehicle_id": "stage23_late_band_tune_0499",
+        "vehicle_id": "stage23_late_band_tune_0419",
         "route_id": "band_s15_local_upbound",
-        "depart": 3022.6
+        "depart": 3027.8
       }
     ]
   },
-  "vehicle_count": 1688,
+  "direction_balance": {
+    "enabled": true,
+    "changed_vehicle_count": 304,
+    "under_direction": "upbound",
+    "over_direction": "downbound",
+    "target_routes_used": [
+      "mainline_through_upbound_balanced00",
+      "mainline_through_upbound_balanced01",
+      "mainline_through_upbound_balanced02",
+      "mainline_through_upbound_balanced03",
+      "mainline_through_upbound_balanced04",
+      "mainline_through_upbound_balanced05",
+      "mainline_through_upbound_balanced06",
+      "mainline_through_upbound_balanced07",
+      "mainline_through_upbound",
+      "mainline_through_upbound_alt00",
+      "mainline_through_upbound_alt01",
+      "mainline_through_upbound_alt02"
+    ],
+    "before": {
+      "upbound": 365,
+      "downbound": 1120,
+      "sideflow": 123,
+      "other": 0
+    },
+    "after": {
+      "upbound": 669,
+      "downbound": 816,
+      "sideflow": 123,
+      "other": 0
+    },
+    "before_status": {
+      "status": "FAIL",
+      "directional_total": 1485,
+      "upbound_share": 0.245791,
+      "downbound_share": 0.754209,
+      "min_share": 0.45,
+      "max_share": 0.55
+    },
+    "after_status": {
+      "status": "PASS",
+      "directional_total": 1485,
+      "upbound_share": 0.450505,
+      "downbound_share": 0.549495,
+      "min_share": 0.45,
+      "max_share": 0.55
+    },
+    "policy": "reassign non-stage23 background vehicles from overrepresented direction only until the underrepresented direction reaches the 45:55 balance window"
+  },
+  "duplicate_route_depart_stagger": {
+    "enabled": true,
+    "duplicate_bucket_count": 27,
+    "changed_vehicle_count": 349,
+    "min_headway_sec": 0.8,
+    "max_shift_sec": 13.6,
+    "policy": "stagger vehicles that share the same route and exact depart time to avoid deterministic junction-collision teleports"
+  },
+  "direction_vehicle_counts": {
+    "upbound": 669,
+    "downbound": 816,
+    "sideflow": 123,
+    "other": 0
+  },
+  "direction_balance_status": {
+    "status": "PASS",
+    "directional_total": 1485,
+    "upbound_share": 0.450505,
+    "downbound_share": 0.549495,
+    "min_share": 0.45,
+    "max_share": 0.55
+  },
+  "mainline_terminal_sink_fail_count": 0,
+  "canonical_reference_vehicle_count": 1688,
+  "total_vehicle_delta_pct": -4.739336,
+  "vehicle_count": 1608,
   "stage23_added_count": 24,
   "stage2_route_id": "segment_feeder_upbound_S1",
   "stage2_edges": [
@@ -216,16 +290,16 @@
   "stage2_route_candidate_count": 4,
   "stage2_vehicle_count": 24,
   "stage2_headway_sec": 2.0,
-  "stage2_ev_target_arrival_sec": 610.861,
-  "stage2_trigger_time_to_target_sec": 4.131,
+  "stage2_ev_target_arrival_sec": 610.736,
+  "stage2_trigger_time_to_target_sec": 4.082,
   "stage2_queue_prebuild_sec": 30.0,
-  "stage2_depart_base_sec": 576.729,
+  "stage2_depart_base_sec": 576.653,
   "stage2_depart_lane": "best",
   "stage2_depart_pos": "random_free",
   "stage2_depart_speed": "max",
   "stage2_depart_window_sec": [
-    576.729,
-    622.729
+    576.653,
+    622.653
   ],
   "stage3_route_id": "midcorridor_local_upbound",
   "stage3_edges": [
@@ -254,20 +328,20 @@
   "stage3_route_rank": 0,
   "stage3_target_index": 3,
   "stage3_base_vehicle_count": 61,
-  "stage3_route_candidate_count": 9,
+  "stage3_route_candidate_count": 10,
   "stage3_vehicle_count": 0,
   "stage3_headway_sec": 12.0,
   "stage3_route_length": 8,
-  "stage3_ev_target_arrival_sec": 746.512,
-  "stage3_trigger_time_to_target_sec": 8.027,
+  "stage3_ev_target_arrival_sec": 746.736,
+  "stage3_trigger_time_to_target_sec": 8.769,
   "stage3_queue_prebuild_sec": 0.0,
-  "stage3_depart_base_sec": 738.486,
+  "stage3_depart_base_sec": 737.967,
   "stage3_depart_lane": "best",
   "stage3_depart_pos": "random_free",
   "stage3_depart_speed": "max",
   "stage3_depart_window_sec": [
-    738.486,
-    738.486
+    737.967,
+    737.967
   ],
   "stage2_route_candidates_top": [
     {
@@ -303,9 +377,15 @@
       "base_vehicle_count": 61
     },
     {
-      "route_id": "mainline_through_upbound_balanced06",
+      "route_id": "mainline_through_upbound_balanced05",
+      "target_index": 43,
+      "downstream_count": 18,
+      "base_vehicle_count": 37
+    },
+    {
+      "route_id": "mainline_through_upbound_balanced02",
       "target_index": 45,
-      "downstream_count": 13,
+      "downstream_count": 18,
       "base_vehicle_count": 37
     },
     {
@@ -318,12 +398,6 @@
       "route_id": "segment_feeder_upbound_S14",
       "target_index": 3,
       "downstream_count": 11,
-      "base_vehicle_count": 1
-    },
-    {
-      "route_id": "segment_feeder_upbound_S12",
-      "target_index": 9,
-      "downstream_count": 7,
       "base_vehicle_count": 1
     }
   ],

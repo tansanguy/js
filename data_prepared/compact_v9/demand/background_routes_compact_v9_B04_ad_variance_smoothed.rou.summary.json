@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_demand_candidate.v1",
-  "generated_at": "2026-06-07T12:25:14.065869+00:00",
+  "generated_at": "2026-06-08T04:39:27.484167+00:00",
   "candidate": "B04_ad_variance_smoothed",
   "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
   "settings": {
@@ -35,47 +35,47 @@
   },
   "vehicle_count": 1488,
   "route_count": 118,
-  "unique_source_count": 59,
+  "unique_source_count": 67,
   "top_sources": [
     [
-      "619147740",
-      184
-    ],
-    [
-      "219696191#1",
-      181
-    ],
-    [
-      "-174870621#0",
-      149
-    ],
-    [
       "619147739#0",
-      134
-    ],
-    [
-      "-381802847#0",
-      89
-    ],
-    [
-      "578313748#0",
       75
+    ],
+    [
+      "619147739#3",
+      73
+    ],
+    [
+      "619147739#5",
+      73
     ],
     [
       "218915133#2",
       62
     ],
     [
-      "619147739#1",
+      "619147739#2",
+      60
+    ],
+    [
+      "619147739#4",
       59
     ],
     [
-      "781985786#7",
-      40
+      "619147739#6",
+      59
     ],
     [
-      "1455497343#2",
-      30
+      "781983103#1",
+      59
+    ],
+    [
+      "781983103#2",
+      59
+    ],
+    [
+      "955312947#1",
+      59
     ]
   ],
   "top_templates": [
@@ -162,8 +162,7 @@
         "main_through_share_ok": true,
         "off_main_share_ok": false,
         "terminal_sink_ok": true,
-        "top_source_ok": true,
-        "top_sink_ok": true
+        "top_source_ok": true
       },
       {
         "feeder_share_downbound": 0.52,
@@ -176,8 +175,7 @@
         "main_through_share_ok": true,
         "off_main_share_ok": false,
         "terminal_sink_ok": true,
-        "top_source_ok": true,
-        "top_sink_ok": true
+        "top_source_ok": true
       },
       {
         "feeder_share_downbound": 0.5,
@@ -190,8 +188,7 @@
         "main_through_share_ok": true,
         "off_main_share_ok": false,
         "terminal_sink_ok": true,
-        "top_source_ok": true,
-        "top_sink_ok": true
+        "top_source_ok": true
       }
     ],
     "final_acceptance": {
@@ -205,8 +202,7 @@
       "main_through_share_ok": true,
       "off_main_share_ok": false,
       "terminal_sink_ok": true,
-      "top_source_ok": true,
-      "top_sink_ok": true
+      "top_source_ok": true
     }
   }
 }

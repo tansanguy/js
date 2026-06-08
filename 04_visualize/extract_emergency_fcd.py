@@ -106,10 +106,13 @@ def build_mode_payload(fcd: FcdResult, bg_radius_m: float) -> dict[str, Any]:
             continue  # no emergency sample this step (e.g. before depart)
         elat, elon = ref
         near = [{
+            "id": v.get("id", ""),
             "lat": round(v["lat"], 6),
             "lon": round(v["lon"], 6),
             "speed_kmh": v["speed_kmh"],
             "angle": v["angle"],
+            "edge": v.get("edge", ""),
+            "lane": v.get("lane", ""),
         } for v in snap["vehicles"]
             if meters_between(elat, elon, v["lat"], v["lon"]) <= bg_radius_m]
         if near:

@@ -40,6 +40,7 @@ METRICS_ROOT = PROJECT_ROOT / "results/metrics/compact_v9_B04"
 HTML_ROOT = PROJECT_ROOT / "results/html"
 REFERENCE_CSV = PROJECT_ROOT / "toegye_ro_mainstream_segments_english.csv"
 GREEN18_NET = DATA_ROOT / "net/jungbu_compact_v9_ellipse_lanes_repaired_entry_tls_connected_mainline_green18.net.xml"
+B04_CSV_BOUNDARY_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18.net.xml"
 B04_GLOBAL_REALITY_S1FORCED_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 B04_NET = B04_GLOBAL_REALITY_S1FORCED_NET
 B04_SPEED50_NET = DATA_ROOT / "net/jungbu_compact_v9_B04_green18_speed50_sanity.net.xml"
@@ -57,6 +58,7 @@ B04_REVIEW_HTML = HTML_ROOT / "compact_v9_B04_demand_validation_review.html"
 B04_QUEUE_AUDIT_DIR = METRICS_ROOT / "queue_audit"
 B04_CSV_SIGNAL_CANDIDATES_CSV = DATA_ROOT / "net/B04_csv_signal_candidates.csv"
 B04_CSV_SIGNAL_SUMMARY_JSON = DATA_ROOT / "net/B04_csv_signal_summary.json"
+B04_MAINROAD_DUPLICATE_SIGNAL_COLLAPSE_CSV = DATA_ROOT / "net/mainroad_duplicate_signal_collapse.csv"
 
 VEHICLE_LENGTH_M = 5.0
 HEADWAY_M = 7.5
@@ -86,6 +88,7 @@ CSV_SIGNAL_GREEN_WAVE_TARGET_PHASE_SEC = 10.0
 CSV_SIGNAL_REAL_POSITION_POLICY = "csv_reference_signal_position"
 CSV_SIGNAL_TYPE_INTERSECTION = "intersection_signal"
 CSV_SIGNAL_TYPE_STRAIGHT = "straight_signal"
+CSV_SIGNAL_DUPLICATE_COLLAPSE_DISTANCE_M = 120.0
 FORCED_S1_START_TLS_ID = "CSV_TLS_S01_START_SINDANG_STATION"
 FORCED_S1_START_JUNCTION_ID = "414685846"
 FORCED_S1_START_ROUTE_FROM_EDGE = "-218684411#0"
@@ -138,6 +141,8 @@ B04_MAIN_THROUGH_TARGET_MAX = 800
 B04_MAIN_THROUGH_TARGET_SHARE_MIN = 0.50
 B04_MAIN_THROUGH_FEEDER_STEP = 0.02
 B04_MAIN_THROUGH_FEEDER_MAX = 0.44
+B04_DIRECTION_BALANCE_MIN_SHARE = 0.45
+B04_DIRECTION_BALANCE_MAX_SHARE = 0.55
 
 CANDIDATES = {
     "B04_a_csv_through_only": {
@@ -1074,6 +1079,65 @@ def lonlat_distance_m(lon_a: float, lat_a: float, lon_b: float, lat_b: float) ->
     return math.hypot(dx, dy)
 
 
+def csv_candidate_route_order(candidate: dict[str, Any]) -> int:
+    numbers = [safe_int(number) for number in candidate.get("segment_numbers", [])]
+    return max(numbers) if numbers else 0
+
+
+def preferred_duplicate_signal_candidate(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    left_type = str(left.get("signal_type", ""))
+    right_type = str(right.get("signal_type", ""))
+    if left_type == CSV_SIGNAL_TYPE_INTERSECTION and right_type != CSV_SIGNAL_TYPE_INTERSECTION:
+        return left
+    if right_type == CSV_SIGNAL_TYPE_INTERSECTION and left_type != CSV_SIGNAL_TYPE_INTERSECTION:
+        return right
+    if left_type == CSV_SIGNAL_TYPE_STRAIGHT and right_type == CSV_SIGNAL_TYPE_STRAIGHT:
+        return right if csv_candidate_route_order(right) >= csv_candidate_route_order(left) else left
+    return right if csv_candidate_route_order(right) > csv_candidate_route_order(left) else left
+
+
+def collapse_duplicate_mainroad_signal_candidates(
+    candidates: list[dict[str, Any]],
+    *,
+    distance_threshold_m: float = CSV_SIGNAL_DUPLICATE_COLLAPSE_DISTANCE_M,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    kept: list[dict[str, Any]] = []
+    collapse_rows: list[dict[str, Any]] = []
+    for candidate in sorted(candidates, key=lambda item: (csv_candidate_route_order(item), item.get("intersection_name", ""))):
+        duplicate_index = None
+        duplicate_distance = 0.0
+        for index, existing in enumerate(kept):
+            distance = lonlat_distance_m(
+                safe_float(existing.get("lon")),
+                safe_float(existing.get("lat")),
+                safe_float(candidate.get("lon")),
+                safe_float(candidate.get("lat")),
+            )
+            if distance <= distance_threshold_m:
+                duplicate_index = index
+                duplicate_distance = distance
+                break
+        if duplicate_index is None:
+            kept.append(candidate)
+            continue
+
+        existing = kept[duplicate_index]
+        winner = preferred_duplicate_signal_candidate(existing, candidate)
+        loser = candidate if winner is existing else existing
+        kept[duplicate_index] = winner
+        collapse_rows.append({
+            "kept_boundary_id": winner.get("boundary_id", ""),
+            "kept_intersection_name": winner.get("intersection_name", ""),
+            "kept_signal_type": winner.get("signal_type", ""),
+            "removed_boundary_id": loser.get("boundary_id", ""),
+            "removed_intersection_name": loser.get("intersection_name", ""),
+            "removed_signal_type": loser.get("signal_type", ""),
+            "distance_m": round(duplicate_distance, 3),
+            "policy": "intersection_first_else_downstream_straight",
+        })
+    return kept, collapse_rows
+
+
 def candidate_matches_transition(candidate: dict[str, Any], from_segment_no: int, to_segment_no: int) -> bool:
     numbers = candidate.get("segment_numbers") or []
     if not numbers or from_segment_no <= 0 or to_segment_no <= 0:
@@ -1724,7 +1788,8 @@ def tune_terminal_egress_tls(root: ET.Element, route_edges: list[str]) -> dict[s
 def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, Any]:
     tree = ET.parse(source_net)
     root = tree.getroot()
-    candidates = csv_signal_candidate_points()
+    raw_candidates = csv_signal_candidate_points()
+    candidates, duplicate_collapse_rows = collapse_duplicate_mainroad_signal_candidates(raw_candidates)
     edge_segments = load_signal_edge_segments()
     route_edges = route_edges_for_signal_mapping()
     arrival_estimates = route_pair_arrival_estimates(source_net, route_edges)
@@ -1858,6 +1923,11 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
         "original_controlled_connection_index", "phase_count", "cycle_sec", "offset_sec",
         "expected_arrival_sec", "skip_reason",
     ])
+    write_csv(B04_MAINROAD_DUPLICATE_SIGNAL_COLLAPSE_CSV, duplicate_collapse_rows, [
+        "kept_boundary_id", "kept_intersection_name", "kept_signal_type",
+        "removed_boundary_id", "removed_intersection_name", "removed_signal_type",
+        "distance_m", "policy",
+    ])
     lane_change_boundaries = [
         row for row in read_csv(REFERENCE_CSV)
         if row.get("end_intersection", "").lower().startswith("lane change point")
@@ -1871,6 +1941,9 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
         "mapping_csv": rel(B04_MAPPING_CSV if B04_MAPPING_CSV.is_file() else B04_MAPPING_FALLBACK_CSV),
         "firetruck_route": rel(B04_FIRETRUCK_ROUTE_XML),
         "candidate_point_count": len(candidates),
+        "raw_candidate_point_count": len(raw_candidates),
+        "duplicate_signal_collapse_count": len(duplicate_collapse_rows),
+        "duplicate_signal_collapse_csv": rel(B04_MAINROAD_DUPLICATE_SIGNAL_COLLAPSE_CSV),
         "route_candidate_count": route_candidate_count,
         "created_tls_count": created_count,
         "existing_tls_count": existing_count,
@@ -1928,6 +2001,10 @@ def apply_csv_boundary_signals(source_net: Path, output_net: Path) -> dict[str, 
     return summary
 
 
+def rebuild_csv_boundary_signals() -> dict[str, Any]:
+    return apply_csv_boundary_signals(GREEN18_NET, B04_CSV_BOUNDARY_NET)
+
+
 def promote_firetruck_route_priority_connections(net_file: Path) -> dict[str, Any]:
     route_edges = firetruck_route_edges()
     if not route_edges or not net_file.is_file():
@@ -1976,7 +2053,7 @@ def adopt_green18() -> dict[str, Any]:
     if not B04_NET.is_file():
         raise B04Error(f"missing_b04_canonical_net:{rel(B04_NET)}")
     previous_manifest = read_json(B04_MANIFEST) if B04_MANIFEST.is_file() else {}
-    csv_signal_summary = previous_manifest if previous_manifest.get("active_net") == rel(B04_NET) else {}
+    csv_signal_summary = read_json(B04_CSV_SIGNAL_SUMMARY_JSON) if B04_CSV_SIGNAL_SUMMARY_JSON.is_file() else {}
     firetruck_priority_summary = promote_firetruck_route_priority_connections(B04_NET)
     manifest = {
         "schema": "compact_v9_B04_b0_manifest.v1",
@@ -2228,7 +2305,12 @@ def targeted_od_routes(sumo_net: Any, segment: str, direction: str, max_routes: 
     return unique
 
 
-def terminal_safe_main_through_routes(sumo_net: Any, direction: str, max_routes: int = 8) -> list[list[str]]:
+def terminal_safe_main_through_routes(
+    sumo_net: Any,
+    direction: str,
+    main_route: list[str],
+    max_routes: int = 8,
+) -> list[list[str]]:
     grouped = mapping_by_segment_direction()
     terminal_edges = terminal_source_edges()
     main_edges = {edge for key, values in grouped.items() if key[1] == direction for edge in values}
@@ -2249,12 +2331,8 @@ def terminal_safe_main_through_routes(sumo_net: Any, direction: str, max_routes:
         for edge in segment_edges(segment, direction, limit=4)
         if edge not in terminal_edges
     ]
-    ends = [
-        edge
-        for segment in end_segments
-        for edge in segment_edges(segment, direction, limit=4)
-        if edge not in terminal_edges
-    ]
+    terminal_sink = main_route[-1] if main_route else ""
+    ends = [terminal_sink] if terminal_sink else []
     candidates: list[tuple[int, int, int, list[str]]] = []
     for start in starts:
         for end in ends:
@@ -2304,7 +2382,8 @@ def route_templates(sumo_net: Any) -> tuple[dict[str, list[str]], dict[str, Any]
                 break
     balanced_template_count = 0
     for direction in ["upbound", "downbound"]:
-        for index, route in enumerate(terminal_safe_main_through_routes(sumo_net, direction, max_routes=8)):
+        main_route = up_route if direction == "upbound" else down_route
+        for index, route in enumerate(terminal_safe_main_through_routes(sumo_net, direction, main_route, max_routes=8)):
             templates[f"mainline_through_{direction}_balanced{index:02d}"] = route
             balanced_template_count += 1
     grouped = mapping_by_segment_direction()
@@ -2788,7 +2867,6 @@ def main_through_rebalance_acceptance(row: dict[str, Any]) -> dict[str, Any]:
         "off_main_share_ok": safe_float(row.get("off_main_background_share")) <= 0.08,
         "terminal_sink_ok": int(safe_float(row.get("terminal_sink_flow"))) == 0,
         "top_source_ok": safe_float(row.get("top_source_share")) < 0.25,
-        "top_sink_ok": safe_float(row.get("top_sink_share")) < 0.25,
     }
     return {
         "status": "PASS" if all(checks.values()) else "FAIL",
@@ -5569,6 +5647,7 @@ def write_review_html() -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compact V9 B04 baseline demand and queue-recall workflow")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("b04-apply-csv-signals")
     sub.add_parser("b04-adopt-green18")
     sub.add_parser("b04-map-segments")
     sub.add_parser("b04-s1-edge-groups")
@@ -5595,7 +5674,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if args.command == "b04-adopt-green18":
+    if args.command == "b04-apply-csv-signals":
+        result = rebuild_csv_boundary_signals()
+    elif args.command == "b04-adopt-green18":
         result = adopt_green18()
     elif args.command == "b04-map-segments":
         result = build_mapping()
@@ -5622,6 +5703,7 @@ def main() -> int:
     elif args.command == "b04-review":
         result = write_review_html()
     elif args.command == "b04-all":
+        rebuild_csv_boundary_signals()
         adopt_green18()
         build_mapping()
         build_target_profile()

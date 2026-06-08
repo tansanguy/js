@@ -1,6 +1,6 @@
 # A008 위치 매칭 T-Data 신호망 검증 요약
 
-작성 시각: 2026-06-07T08:04:45.506015+00:00
+작성 시각: 2026-06-08T04:40:32.928370+00:00
 
 ## 구현 범위
 
@@ -19,8 +19,8 @@ A008_P.csv의 교차로번호를 T-Data API itstId 후보로 사용하고, EPSG:
 
 - skeleton endpoint 수: 23
 - endpoint 자동 확정 수: 21
-- TLS 위치 매칭 수: 18
-- T-Data timing hit 수: 3
+- TLS 위치 매칭 수: 17
+- T-Data timing hit 수: 2
 - T-Data state hit 수: 0
 
 ## B04/B4 결과

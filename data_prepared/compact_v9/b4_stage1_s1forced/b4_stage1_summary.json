@@ -1,12 +1,12 @@
 {
   "schema": "compact_v9_B4_evtsp_stage1_summary.v1",
-  "generated_at": "2026-06-08T02:57:06.717112+00:00",
+  "generated_at": "2026-06-08T04:56:34.690744+00:00",
   "algorithm": "B4",
   "status": "WARN",
   "primary_candidate": "B04_ad_stage23_trigger",
   "measurement_source_candidate": "B04_ad_stage23_trigger",
   "manifest_selected_candidate": "B04_ad_stage23_trigger",
-  "manifest_selected_candidate_role": "primary_selected",
+  "manifest_selected_candidate_role": "active_runtime_override",
   "stage1_audit": {
     "schema": "compact_v9_B4_evtsp_stage1_audit.v1",
     "dispatch_time_rel_sec": 0.0,
@@ -83,7 +83,7 @@
       "619147738#0",
       "619147738#1"
     ],
-    "N": 17,
+    "N": 16,
     "i_merge": 1,
     "merge_movement_id": "B4_MOVEMENT_00",
     "merge_tls_id": "CSV_TLS_S01_S02_SEONGDONG_GLOBAL_BUSINESS_HIGH_SCHOOL",
@@ -175,16 +175,16 @@
     "primary_candidate": "B04_ad_stage23_trigger",
     "measurement_source_candidate": "B04_ad_stage23_trigger",
     "manifest_selected_candidate": "B04_ad_stage23_trigger",
-    "manifest_selected_candidate_role": "primary_selected",
-    "reason": "Stage23 trigger demand is the manifest-selected B04/B4 runtime input and the Stage1 B0 measurement source.",
+    "manifest_selected_candidate_role": "active_runtime_override",
+    "reason": "Stage1 CLI net/background override is active.",
     "metrics": {
       "candidate": "B04_ad_stage23_trigger",
-      "vehicles": 1688,
+      "vehicles": 1608,
       "vehicles_source": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
-      "main_through_flow": 473,
-      "terminal_sink_flow": 140,
-      "top_sink_share": 0.140403,
-      "speed_mae_kmh": 4.1,
+      "main_through_flow": 401,
+      "terminal_sink_flow": 98,
+      "top_sink_share": 0.194652,
+      "speed_mae_kmh": 4.949,
       "free_count": 0,
       "od_undercovered": 0,
       "queue_not_forming": 0,
@@ -206,11 +206,11 @@
     "field_queue_claim": false
   },
   "movement_summary": {
-    "movement_count": 17,
-    "N": 17,
+    "movement_count": 16,
+    "N": 16,
     "i_merge": 1,
-    "controllable_movement_count": 17,
-    "control_candidate_count": 7,
+    "controllable_movement_count": 16,
+    "control_candidate_count": 8,
     "bottleneck_risk_count": 0,
     "case_b_candidate_count": 3,
     "case_b_mapped_count": 3
@@ -273,7 +273,7 @@
     "b4_stage2_b0_merge_hold_params_csv": "data_prepared/compact_v9/b4_stage1_s1forced/b4_stage2_b0_merge_hold_params.csv",
     "b4_runtime_index_json": "data_prepared/compact_v9/b4_stage1_s1forced/b4_runtime_index.json",
     "b4_stage1_summary_json": "data_prepared/compact_v9/b4_stage1_s1forced/b4_stage1_summary.json",
-    "b4_stage1_review_html": "results/html/b4_stage1_review.html"
+    "b4_stage1_review_html": "data_prepared/compact_v9/b4_stage1_s1forced/b4_stage1_review.html"
   },
   "policy_notes": [
     "B4 Stage 1 reads existing B04 B0/no-control artifacts only.",
@@ -285,9 +285,19 @@
     "stopline_local_fill_100m is the primary trigger denominator; corridor_fill_250m is auxiliary bottleneck/spillback evidence.",
     "Case B candidates come from S7/S10/S11 CSV segments; exact mapped movements are preferred, otherwise route-span proxy maps to existing controllable SUMO movements.",
     "linkIndex is a SUMO TLS movement index, not physical storage length.",
-    "B4 runtime consumes this Stage1 directory; use matching net/background route inputs for every B04/B4 comparison."
+    "B4 runtime consumes this Stage1 directory; use matching net/background route inputs for every B04/B4 comparison.",
+    "This Stage1 directory is bound to explicit CLI net/background-route overrides."
   ],
-  "allow_runtime_input_override": false,
+  "allow_runtime_input_override": true,
+  "runtime_input_provenance": {
+    "source": "stage1_cli_input_override",
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+    "source_run_summary": "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/b0_run_summary.json",
+    "edgeData": "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/run/edgeData.xml",
+    "laneData": "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/run/laneData.xml",
+    "tripinfo": "results/metrics/compact_v9_B04/B04_ad_stage23_trigger/run/tripinfo.xml"
+  },
   "provenance_status": "PASS",
-  "provenance_note": "Stage1 uses manifest-selected B04_ad_stage23_trigger inputs and matching B0 measurement artifacts."
+  "provenance_note": "Stage1 was generated with explicit --net-file/--background-route inputs; use matching runtime inputs."
 }

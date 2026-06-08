@@ -153,12 +153,15 @@ def parse_fcd(
                     )
                 )
             elif keep_background:
+                lane_id = veh.get("lane", "")
                 bg_vehicles.append({
                     "id": vid,
                     "lat": lat,
                     "lon": lon,
                     "speed_kmh": round(speed_kmh, 2),
                     "angle": round(_float(veh.get("angle")), 1),
+                    "edge": lane_to_edge(lane_id),
+                    "lane": lane_id,
                 })
 
         if keep_background and bg_vehicles:

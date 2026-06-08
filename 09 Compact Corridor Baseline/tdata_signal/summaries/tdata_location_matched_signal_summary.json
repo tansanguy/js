@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_a008_location_matched_signal.v1",
-  "generated_at": "2026-06-07T08:04:45.437033+00:00",
+  "generated_at": "2026-06-08T04:40:32.857617+00:00",
   "claim_scope": "A008 location-matched T-Data plausible signal network, not exact field reproduction",
   "a008_csv": "A008_P.csv",
   "skeleton_csv": "mainstream_segment_skeleton.csv",
@@ -28,9 +28,9 @@
   "endpoint_count": 23,
   "endpoint_auto_confirmed_count": 21,
   "endpoint_manual_review_count": 2,
-  "tls_mapping_count": 18,
-  "matched_unique_itst_count": 18,
-  "timing_hit_count": 3,
+  "tls_mapping_count": 17,
+  "matched_unique_itst_count": 17,
+  "timing_hit_count": 2,
   "timing_missing_itst_ids": [
     "1105",
     "122",
@@ -50,18 +50,18 @@
   ],
   "fallback_average_policy": "measured_TData_profiles_average_with_route_family_timing",
   "fallback_average": {
-    "cycle_sec": 113,
-    "main_green_sec": 53,
+    "cycle_sec": 110,
+    "main_green_sec": 55,
     "yellow_sec": 3
   },
   "state_hit_count": 0,
   "state_missing_itst_ids": [],
-  "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "input_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "output_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_s1forced.net.xml",
   "active_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
   "legacy_green18_net": "data_prepared/compact_v9/net/jungbu_compact_v9_B04_green18.net.xml",
   "active_net_overwritten": false,
   "active_backup": "",
-  "applied_tls_count": 18,
+  "applied_tls_count": 17,
   "applied_profiles_csv": "09 Compact Corridor Baseline/tdata_signal/location_matched_applied_signal_profiles.csv"
 }

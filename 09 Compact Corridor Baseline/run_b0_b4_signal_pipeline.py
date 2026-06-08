@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import html
 import json
 import os
@@ -48,6 +49,7 @@ from b4_runtime import (  # noqa: E402
     EXPERIMENT_RESULT_FIELDS,
     FREE_FLOW_SPEED_KMH,
     RUNTIME_EVENT_FIELDS,
+    STAGE1_DIR,
     W_E,
     W_G,
     B4RuntimeError,
@@ -67,6 +69,7 @@ from b4_runtime import (  # noqa: E402
 RUN_ROOT = PROJECT_ROOT / "runs/compact_v9_B4"
 METRICS_ROOT = PROJECT_ROOT / "results/metrics/compact_v9_B4"
 HTML_ROOT = PROJECT_ROOT / "results/html"
+DEFAULT_ACTIVE_INPUTS = PROJECT_ROOT / "configs/compact_v9_B04_B4_active_inputs.json"
 B004_FREE_REFERENCE_JSON = METRICS_ROOT / "b004_free_time_reference.json"
 B004_VEHICLE_FREE_TIMES_CSV = METRICS_ROOT / "b004_vehicle_free_times.csv"
 B004_B04_B4_COMPARISON_CSV = METRICS_ROOT / "b004_b04_b4_comparison.csv"
@@ -87,6 +90,24 @@ SCORE_FORMULA = "(10/11) * D_E_sec + (1/11) * D_G_sec"
 V_G_UNFINISHED_DELAY_CAP_SEC = 600.0
 V_G_UNFINISHED_ELIGIBILITY_GRACE_SEC = 60.0
 V_G_DEFINITION = "V_G = mainline route edges + all SUMO net incoming edges at mainline TLS; vehicles are included when their route touches any V_G edge."
+
+
+def _manifest_path(key: str, fallback: Path) -> Path:
+    if not DEFAULT_ACTIVE_INPUTS.is_file():
+        return fallback
+    with DEFAULT_ACTIVE_INPUTS.open("r", encoding="utf-8") as file:
+        payload = json.load(file)
+    value = payload.get(key)
+    if not value:
+        return fallback
+    path = Path(str(value))
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+DEFAULT_NET_FILE = _manifest_path("net_file", B04_NET)
+DEFAULT_BACKGROUND_ROUTE = _manifest_path("background_route", B04_AA_BACKGROUND_ROUTE)
+DEFAULT_FIRETRUCK_ROUTE = _manifest_path("firetruck_route", B04_FIRETRUCK_ROUTE_XML)
+DEFAULT_STAGE1_DIR = _manifest_path("stage1_dir", STAGE1_DIR)
 
 
 class B4RunnerError(RuntimeError):
@@ -125,6 +146,64 @@ def read_json(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise B4RunnerError(f"json_root_not_object:{rel(path)}")
     return payload
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def project_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def validate_active_inputs_alignment(
+    active_inputs: Path | None,
+    *,
+    net_file: Path,
+    background_route: Path,
+    firetruck_route: Path,
+    stage1_dir: Path | None,
+) -> dict[str, Any]:
+    if active_inputs is None or not active_inputs.is_file():
+        return {"status": "SKIP", "reason": "active_inputs_missing_or_disabled"}
+    payload = read_json(active_inputs)
+    expected_paths = {
+        "net_file": net_file,
+        "background_route": background_route,
+        "firetruck_route": firetruck_route,
+    }
+    if stage1_dir is not None:
+        expected_paths["stage1_dir"] = stage1_dir
+    for key, path in expected_paths.items():
+        manifest_value = payload.get(key)
+        if not manifest_value:
+            raise B4RunnerError(f"active_inputs_missing_{key}")
+        if rel(project_path(str(manifest_value))) != rel(path):
+            raise B4RunnerError(f"active_inputs_{key}_mismatch:{manifest_value} != {rel(path)}")
+    hash_keys = {
+        "net_file": "net_file_sha256",
+        "background_route": "background_route_sha256",
+        "firetruck_route": "firetruck_route_sha256",
+    }
+    hash_audit: dict[str, str] = {}
+    for path_key, hash_key in hash_keys.items():
+        manifest_hash = str(payload.get(hash_key, ""))
+        if not manifest_hash:
+            continue
+        actual_hash = sha256_file(expected_paths[path_key])
+        hash_audit[hash_key] = actual_hash
+        if actual_hash != manifest_hash:
+            raise B4RunnerError(f"active_inputs_{hash_key}_mismatch:{actual_hash} != {manifest_hash}")
+    return {
+        "status": "PASS",
+        "active_inputs": rel(active_inputs),
+        "hashes": hash_audit,
+    }
 
 
 def parse_modes(value: str) -> tuple[str, ...]:
@@ -202,6 +281,7 @@ def build_tasks(
     net_file: Path = B04_NET,
     background_route: Path = B04_AA_BACKGROUND_ROUTE,
     firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
+    b4_parameter_id: str = B4_PARAMETER_ID,
 ) -> list[B4RunTask]:
     if repeat_id != DEFAULT_REPEAT_ID:
         raise B4RunnerError("B4 Runtime MVP supports repeat_id=1 only")
@@ -220,7 +300,7 @@ def build_tasks(
             leaf = "no_control"
             task_background_route = background_route
         else:
-            leaf = B4_PARAMETER_ID
+            leaf = b4_parameter_id or B4_PARAMETER_ID
             task_background_route = background_route
         run_dir = run_root / run_id / mode / leaf / f"repeat_{repeat_id:03d}"
         tasks.append(B4RunTask(run_id, mode, leaf, repeat_id, seed, run_dir, net_file=net_file, background_route=task_background_route, firetruck_route=firetruck_route))
@@ -1588,12 +1668,13 @@ def run_pipeline(
     sumo_binary: str | None = None,
     dry_run: bool = False,
     emit_fcd: bool = False,
-    net_file: Path = B04_NET,
-    background_route: Path = B04_AA_BACKGROUND_ROUTE,
-    firetruck_route: Path = B04_FIRETRUCK_ROUTE_XML,
+    active_inputs: Path | None = DEFAULT_ACTIVE_INPUTS,
+    net_file: Path = DEFAULT_NET_FILE,
+    background_route: Path = DEFAULT_BACKGROUND_ROUTE,
+    firetruck_route: Path = DEFAULT_FIRETRUCK_ROUTE,
     hard_max_sim_time: float | None = None,
     b4_params: B4MvpParams | None = None,
-    stage1_dir: Path | None = None,
+    stage1_dir: Path | None = DEFAULT_STAGE1_DIR,
     b4_stage2_measurement_scale: float = 1.0,
     b4_stage3_measurement_scale: float = 1.5,
     b4_stage2_synthetic_demand: bool = False,
@@ -1602,6 +1683,14 @@ def run_pipeline(
     background_route = background_route if background_route.is_absolute() else (PROJECT_ROOT / background_route)
     firetruck_route = firetruck_route if firetruck_route.is_absolute() else (PROJECT_ROOT / firetruck_route)
     stage1_dir = stage1_dir.resolve() if stage1_dir is not None else None
+    active_inputs = active_inputs.resolve() if active_inputs is not None else None
+    active_input_audit = validate_active_inputs_alignment(
+        active_inputs,
+        net_file=net_file,
+        background_route=background_route,
+        firetruck_route=firetruck_route,
+        stage1_dir=stage1_dir,
+    )
     stage1 = validate_static_inputs(stage1_dir=stage1_dir, net_file=net_file, background_route=background_route, firetruck_route=firetruck_route)
     phase_config = B4RuntimePhaseConfig.from_phase(phase)
     if hard_max_sim_time is not None:
@@ -1612,7 +1701,16 @@ def run_pipeline(
         stage3_measurement_scale=max(float(b4_stage3_measurement_scale), 0.0),
         stage2_synthetic_demand=bool(b4_stage2_synthetic_demand),
     )
-    tasks = build_tasks(run_id=run_id, modes=modes, run_root=run_root, net_file=net_file, background_route=background_route, firetruck_route=firetruck_route)
+    b4_task_parameter_id = b4_params.parameter_id if b4_params is not None else B4_PARAMETER_ID
+    tasks = build_tasks(
+        run_id=run_id,
+        modes=modes,
+        run_root=run_root,
+        net_file=net_file,
+        background_route=background_route,
+        firetruck_route=firetruck_route,
+        b4_parameter_id=b4_task_parameter_id,
+    )
     for task in tasks:
         if not task.is_analytic:
             write_sumo_config(task, phase_config, emit_fcd=emit_fcd, stage1=stage1)
@@ -1626,6 +1724,7 @@ def run_pipeline(
             "free_time_method": FREE_TIME_METHOD,
             "phase": phase_config.phase,
             "emit_fcd": emit_fcd,
+            "active_inputs_audit": active_input_audit,
             "net_file": rel(net_file),
             "background_route_file": rel(background_route),
             "phase_config": phase_config.as_result_fields(),
@@ -1659,6 +1758,7 @@ def run_pipeline(
         "firetruck_route_file": rel(firetruck_route),
         "phase": phase_config.phase,
         "run_id": tasks[0].run_id if tasks else "",
+        "active_inputs_audit": active_input_audit,
         "outputs": outputs,
         "rows": rows,
     }
@@ -1674,10 +1774,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sumo-binary", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--emit-fcd", action="store_true", help="Write geo FCD output for visualization runs only.")
-    parser.add_argument("--net-file", type=Path, default=B04_NET, help="Optional B04/B4 SUMO net file override.")
-    parser.add_argument("--background-route", type=Path, default=B04_AA_BACKGROUND_ROUTE, help="Optional B04/B4 background route file override.")
-    parser.add_argument("--firetruck-route", type=Path, default=B04_FIRETRUCK_ROUTE_XML, help="Optional emergency/firetruck route XML override.")
-    parser.add_argument("--stage1-dir", type=Path, default=None, help="Optional B4 Stage1 directory generated from the same B04 inputs.")
+    parser.add_argument("--active-inputs", type=Path, default=DEFAULT_ACTIVE_INPUTS, help="Canonical B04/B4 active input manifest; hashes are verified before runtime.")
+    parser.add_argument("--net-file", type=Path, default=DEFAULT_NET_FILE, help="Optional B04/B4 SUMO net file override.")
+    parser.add_argument("--background-route", type=Path, default=DEFAULT_BACKGROUND_ROUTE, help="Optional B04/B4 background route file override.")
+    parser.add_argument("--firetruck-route", type=Path, default=DEFAULT_FIRETRUCK_ROUTE, help="Optional emergency/firetruck route XML override.")
+    parser.add_argument("--stage1-dir", type=Path, default=DEFAULT_STAGE1_DIR, help="Optional B4 Stage1 directory generated from the same B04 inputs.")
     parser.add_argument("--hard-max-sim-time", type=float, default=None, help="Optional SUMO/B4 hard max simulation time in seconds.")
     parser.add_argument("--b4-parameter-id", default=B4_PARAMETER_ID)
     parser.add_argument("--b4-alpha", type=float, default=None)
@@ -1729,6 +1830,7 @@ def main(argv: list[str] | None = None) -> int:
             sumo_binary=args.sumo_binary,
             dry_run=args.dry_run,
             emit_fcd=args.emit_fcd,
+            active_inputs=args.active_inputs,
             net_file=args.net_file,
             background_route=args.background_route,
             firetruck_route=args.firetruck_route,
