@@ -95,16 +95,34 @@ screening만 먼저 실행할 수 있습니다.
 | 파일 | 의미 |
 | --- | --- |
 | `screening/candidate_selection.csv` | 18개 후보의 screening 결과와 제외/선정 사유 |
-| `final/candidate_selection.csv` | 최종 3개 지점의 30-repeat 검증 요약 |
+| `final/candidate_selection.csv` | 최종 3개 지점의 adaptive repeat 검증 요약 |
 | `final/final_simulation_results.csv` | 제출/보고용 최종 시뮬레이션 clean CSV. B4 repeat row만 input, `output_D_E_sec`, `output_D_G_sec`, normalized weight, score, 실측값, Stage2/Stage3 on 횟수로 기록 |
 | `final/selected_route_runs.csv` | 최종 3개 지점의 B004/B04/B4 run row. 목적함수 필드는 `D_E_sec`, `D_G_sec`입니다. |
 | `final/selected_mode_averages.csv` | mode별 평균 지표. 목적함수 평균은 `D_E_mean_sec`, `D_G_mean_sec`입니다. |
 | `final/selected_destinations.json` | 실제 선택된 3개 지점과 route edge |
-| `final/spc_repeat_stability.csv` | final 30-repeat 결과의 route별 SPC 안정성 판단 |
+| `final/spc_repeat_stability.csv` | final adaptive repeat 결과의 route별 SPC 안정성 판단 |
+| `final/relative_error_sufficiency.csv` | 30회 파일럿 이후 KPI 평균의 5% 상대오차 기준으로 95% CI 반폭 충분성을 판단한 결과 |
 | `final/final_destination_validation_report.md` | 3개 지점이 무엇이고 왜 선택됐는지 설명하는 보고서 |
 | `*/task_manifest.json` | 해당 phase가 사용한 active inputs, net, demand, Stage1 경로와 planned task |
 
-SPC는 final 30-repeat 결과 안정성 판단에만 적용합니다. 보고서와 `spc_repeat_stability.csv`에는 route/metric별 `stable`, `active`, `insufficient` 상태가 기록됩니다.
+SPC는 repeat 안정성 판단에만 적용합니다. 보고서와 `spc_repeat_stability.csv`에는 route/metric별 `stable`, `active`, `insufficient` 상태가 기록됩니다.
+
+### Adaptive repeat 충분성 검증
+
+final phase는 기본 `--repeats 30`을 파일럿으로 실행한 뒤, 선택 route별 KPI에 대해 95% 신뢰구간 반폭을 계산합니다. 목표 반폭은 `0.05 × |KPI 평균|`입니다. 현재 반폭이 목표보다 크면
+
+```text
+required_n = ceil((z_0.975 × sample_std / target_half_width)^2)
+```
+
+로 필요한 반복 수를 산정하고, 부족한 repeat만 추가 실행합니다. 기본 상한은 `--adaptive-max-repeats 300`입니다. 제출용 기본 설정은 다음과 같습니다.
+
+- `--pilot-repeats 30`
+- `--relative-error-target 0.05`
+- `--confidence-level 0.95`
+- `--adaptive-max-repeats 300`
+
+`--repeats`가 `--pilot-repeats`보다 작으면 smoke/시각화 용도로 간주해 adaptive repeat를 자동으로 비활성화합니다. 필요하면 `--disable-adaptive-repeats`로 명시적으로 끌 수 있습니다.
 
 `final_simulation_results.csv`에서는 `output_D_E_sec`, `output_D_G_sec` 뒤에 `weight_E`, `weight_G`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다. `weight_E`, `weight_G`는 합이 1인 정규화 가중치이고, 원 ratio는 `weight_ratio`에 둡니다.
 

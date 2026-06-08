@@ -106,6 +106,16 @@ class FinalDestinationValidationTest(unittest.TestCase):
         final_rows = self.module.planned_task_rows(final_candidates, final_departures, PROJECT_ROOT / "runs/tmp_final", phase=self.module.PHASE_FINAL)
         self.assertEqual(len(final_rows), 3 * 61)
 
+    def test_adaptive_repeats_enabled_only_for_final_pilot_runs(self):
+        args = self.module.parse_args(["--phase", "final", "--repeats", "30"])
+        self.assertTrue(self.module.adaptive_final_repeats_enabled(args, self.module.PHASE_FINAL, args.repeats))
+
+        smoke_args = self.module.parse_args(["--phase", "final", "--repeats", "1"])
+        self.assertFalse(self.module.adaptive_final_repeats_enabled(smoke_args, self.module.PHASE_FINAL, smoke_args.repeats))
+
+        disabled_args = self.module.parse_args(["--phase", "final", "--repeats", "30", "--disable-adaptive-repeats"])
+        self.assertFalse(self.module.adaptive_final_repeats_enabled(disabled_args, self.module.PHASE_FINAL, disabled_args.repeats))
+
     def test_average_rows_are_exactly_three_modes(self):
         rows = [
             {"mode": self.module.B004_MODE, "T_free_EMV_sec": "100", "D_E_sec": "0", "objective_score": "0", "emergency_arrived": "True", "emergency_teleport": "False"},
@@ -144,6 +154,53 @@ class FinalDestinationValidationTest(unittest.TestCase):
         })
         self.assertTrue(all(row["repeat_count"] == 6 for row in stability))
         self.assertTrue(all(row["spc_status"] in {"stable", "active"} for row in stability))
+
+    def test_relative_error_metric_row_requires_more_repeats(self):
+        values = [300.0 + (100.0 if index % 2 else -100.0) for index in range(30)]
+        row = self.module.relative_error_metric_row(
+            "FINAL_DEST_A",
+            "B4_T_EMV_sec",
+            values,
+            pilot_repeat_count=30,
+            confidence_level=0.95,
+            relative_error_target=0.05,
+            max_repeats=300,
+        )
+
+        self.assertEqual(row["status"], "NEEDS_MORE")
+        self.assertGreater(int(row["required_repeats"]), 30)
+        self.assertGreater(int(row["additional_repeats_required"]), 0)
+
+    def test_relative_error_rows_include_improvement_metric(self):
+        rows = []
+        for repeat in range(1, 31):
+            rows.append({
+                "mode": self.module.B04_MODE,
+                "repeat_id": str(repeat),
+                "T_actual_EMV_sec": "300",
+            })
+            rows.append({
+                "mode": self.module.B4_MODE,
+                "repeat_id": str(repeat),
+                "T_actual_EMV_sec": "250",
+                "D_E_sec": "120",
+                "D_G_sec": "30",
+            })
+
+        precision_rows = self.module.relative_error_rows(
+            "FINAL_DEST_A",
+            rows,
+            pilot_repeat_count=30,
+            confidence_level=0.95,
+            relative_error_target=0.05,
+            max_repeats=300,
+        )
+
+        self.assertEqual(
+            {row["metric"] for row in precision_rows},
+            {"B4_T_EMV_sec", "B4_D_E_sec", "B4_D_G_sec", "B4_vs_B04_D_E_improvement_sec"},
+        )
+        self.assertTrue(all(row["status"] == "PASS" for row in precision_rows))
 
     def test_final_simulation_result_rows_keep_only_required_columns(self):
         params = self.module.B4ThetaParams.from_row({

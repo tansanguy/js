@@ -23,6 +23,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
+from statistics import NormalDist
 from typing import Any
 
 
@@ -70,6 +71,10 @@ DEFAULT_DEPART_MIN = 550.0
 DEFAULT_DEPART_MAX = 650.0
 DEFAULT_REPEATS = 30
 DEFAULT_SCREENING_REPEATS = 1
+DEFAULT_PILOT_REPEATS = 30
+DEFAULT_RELATIVE_ERROR_TARGET = 0.05
+DEFAULT_CONFIDENCE_LEVEL = 0.95
+DEFAULT_ADAPTIVE_MAX_REPEATS = 300
 DEFAULT_CANDIDATE_LIMIT = 18
 DEFAULT_FINAL_SELECTION_COUNT = 3
 DEFAULT_START_EDGE = "420331801#1"
@@ -139,6 +144,25 @@ SPC_REPEAT_FIELDS = [
     "ucl",
     "spc_status",
     "stable_round",
+]
+
+RELATIVE_ERROR_FIELDS = [
+    "route_id",
+    "metric",
+    "pilot_repeat_count",
+    "repeat_count",
+    "mean",
+    "std",
+    "confidence_level",
+    "z_critical",
+    "ci_half_width",
+    "target_relative_error",
+    "target_half_width",
+    "relative_half_width",
+    "required_repeats",
+    "additional_repeats_required",
+    "status",
+    "reason",
 ]
 
 CANDIDATE_FIELDS = [
@@ -374,8 +398,154 @@ def spc_metric_row(route_id: str, metric: str, values: list[float], *, window: i
     }
 
 
+def z_critical(confidence_level: float) -> float:
+    return NormalDist().inv_cdf(0.5 + confidence_level / 2.0)
+
+
 def sec(value: float | None) -> str:
     return "" if value is None else f"{value:.6f}"
+
+
+def repeat_count_for_rows(rows: list[dict[str, Any]], mode: str = B4_MODE) -> int:
+    return len({
+        int(safe_float(row.get("repeat_id"), 0.0))
+        for row in rows
+        if row.get("mode") == mode and safe_float(row.get("repeat_id"), 0.0) > 0
+    })
+
+
+def paired_repeat_rows(rows: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
+    b04_by_repeat = {
+        int(safe_float(row.get("repeat_id"), 0.0)): row
+        for row in rows
+        if row.get("mode") == B04_MODE and safe_float(row.get("repeat_id"), 0.0) > 0
+    }
+    b4_by_repeat = {
+        int(safe_float(row.get("repeat_id"), 0.0)): row
+        for row in rows
+        if row.get("mode") == B4_MODE and safe_float(row.get("repeat_id"), 0.0) > 0
+    }
+    return [(repeat, b04_by_repeat[repeat], b4_by_repeat[repeat]) for repeat in sorted(set(b04_by_repeat) & set(b4_by_repeat))]
+
+
+def relative_error_metric_values(rows: list[dict[str, Any]]) -> dict[str, list[float]]:
+    values: dict[str, list[float]] = {
+        "B4_T_EMV_sec": [],
+        "B4_D_E_sec": [],
+        "B4_D_G_sec": [],
+        "B4_vs_B04_D_E_improvement_sec": [],
+    }
+    for row in rows:
+        if row.get("mode") != B4_MODE:
+            continue
+        value = t_emv(row)
+        if value is not None:
+            values["B4_T_EMV_sec"].append(value)
+        if row.get("D_E_sec") not in {"", None}:
+            values["B4_D_E_sec"].append(safe_float(row.get("D_E_sec")))
+        if row.get("D_G_sec") not in {"", None}:
+            values["B4_D_G_sec"].append(safe_float(row.get("D_G_sec")))
+    for _repeat, b04, b4 in paired_repeat_rows(rows):
+        b04_time = t_emv(b04)
+        b4_time = t_emv(b4)
+        if b04_time is not None and b4_time is not None:
+            values["B4_vs_B04_D_E_improvement_sec"].append(b04_time - b4_time)
+    return values
+
+
+def relative_error_metric_row(
+    route_id: str,
+    metric: str,
+    values: list[float],
+    *,
+    pilot_repeat_count: int,
+    confidence_level: float,
+    relative_error_target: float,
+    max_repeats: int,
+) -> dict[str, Any]:
+    n = len(values)
+    z = z_critical(confidence_level)
+    avg = mean(values)
+    std = sample_std(values) if n >= 2 else 0.0
+    target_half_width = relative_error_target * abs(avg) if avg is not None else None
+    ci_half_width = z * std / math.sqrt(n) if n > 0 else None
+    relative_half_width = (ci_half_width / abs(avg)) if ci_half_width is not None and avg not in {None, 0.0} else None
+    required_repeats = n
+    status = "PASS"
+    reason = "ci_half_width_within_relative_error_target"
+    if n < 2 or avg is None or ci_half_width is None or target_half_width is None:
+        status = "INSUFFICIENT_DATA"
+        reason = "need_at_least_two_valid_repeat_values"
+    elif target_half_width == 0.0:
+        if ci_half_width == 0.0:
+            status = "PASS"
+            reason = "zero_mean_and_zero_variance"
+        else:
+            status = "UNBOUNDED_ZERO_MEAN"
+            reason = "relative_error_undefined_for_zero_mean_nonzero_variance"
+            required_repeats = max_repeats
+    else:
+        required_repeats = max(n, math.ceil((z * std / target_half_width) ** 2))
+        if ci_half_width <= target_half_width:
+            status = "PASS"
+        elif required_repeats > max_repeats:
+            status = "CAPPED"
+            reason = "required_repeats_exceeds_adaptive_max_repeats"
+        else:
+            status = "NEEDS_MORE"
+            reason = "ci_half_width_exceeds_relative_error_target"
+    additional = max(0, min(required_repeats, max_repeats) - n)
+    return {
+        "route_id": route_id,
+        "metric": metric,
+        "pilot_repeat_count": pilot_repeat_count,
+        "repeat_count": n,
+        "mean": sec(avg),
+        "std": sec(std) if n >= 2 else "",
+        "confidence_level": sec(confidence_level),
+        "z_critical": sec(z),
+        "ci_half_width": sec(ci_half_width),
+        "target_relative_error": sec(relative_error_target),
+        "target_half_width": sec(target_half_width),
+        "relative_half_width": sec(relative_half_width),
+        "required_repeats": required_repeats if status != "INSUFFICIENT_DATA" else "",
+        "additional_repeats_required": additional,
+        "status": status,
+        "reason": reason,
+    }
+
+
+def relative_error_rows(
+    route_id: str,
+    rows: list[dict[str, Any]],
+    *,
+    pilot_repeat_count: int,
+    confidence_level: float,
+    relative_error_target: float,
+    max_repeats: int,
+) -> list[dict[str, Any]]:
+    return [
+        relative_error_metric_row(
+            route_id,
+            metric,
+            values,
+            pilot_repeat_count=pilot_repeat_count,
+            confidence_level=confidence_level,
+            relative_error_target=relative_error_target,
+            max_repeats=max_repeats,
+        )
+        for metric, values in relative_error_metric_values(rows).items()
+    ]
+
+
+def required_repeats_from_relative_error(rows: list[dict[str, Any]]) -> int:
+    required = 0
+    for row in rows:
+        value = row.get("required_repeats", "")
+        if value in {"", None}:
+            continue
+        required = max(required, int(safe_float(value)))
+    return required
 
 
 def deterministic_departures(
@@ -869,6 +1039,9 @@ def run_candidate(
     params: B4ThetaParams,
     run_root: Path,
     metrics_root: Path,
+    *,
+    repeat_offset: int = 0,
+    include_reference: bool = True,
 ) -> list[dict[str, Any]]:
     stage1_summary = build_route_stage1(args, candidate)
     base_route_xml = Path(candidate["route_xml"])
@@ -889,19 +1062,20 @@ def run_candidate(
     )
     free_rows_by_id = read_free_rows(free_vehicle_csv)
     rows: list[dict[str, Any]] = []
-    b004_task = B4RunTask(
-        run_id=args.run_id,
-        mode=B004_MODE,
-        parameter_id="analytic_50kmh",
-        repeat_id=1,
-        seed=args.seed,
-        run_dir=run_root / candidate["route_id"] / B004_MODE / "reference",
-        net_file=args.net,
-        background_route=Path(""),
-        firetruck_route=base_route_xml,
-    )
-    rows.append(enrich_row(b004_result_row(b004_task, stage1, free_reference, base_phase), candidate, ""))
-    for repeat_idx, depart in enumerate(departures, start=1):
+    if include_reference:
+        b004_task = B4RunTask(
+            run_id=args.run_id,
+            mode=B004_MODE,
+            parameter_id="analytic_50kmh",
+            repeat_id=1,
+            seed=args.seed,
+            run_dir=run_root / candidate["route_id"] / B004_MODE / "reference",
+            net_file=args.net,
+            background_route=Path(""),
+            firetruck_route=base_route_xml,
+        )
+        rows.append(enrich_row(b004_result_row(b004_task, stage1, free_reference, base_phase), candidate, ""))
+    for repeat_idx, depart in enumerate(departures, start=repeat_offset + 1):
         repeat_route_xml = run_root / candidate["route_id"] / "routes" / f"firetruck_depart_{repeat_idx:03d}.rou.xml"
         write_firetruck_route_artifacts(candidate, repeat_route_xml, Path(candidate["route_csv"]), depart)
         repeat_stage1 = B4Stage1Inputs.load(stage1_dir, route_xml=repeat_route_xml)
@@ -920,18 +1094,46 @@ def run_candidate(
                 firetruck_route=repeat_route_xml,
             )
             if mode == B04_MODE:
-                row = run_b04_task(task, repeat_stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd)
+                row = run_b04_task(
+                    task,
+                    repeat_stage1,
+                    phase_config,
+                    free_reference,
+                    free_rows_by_id,
+                    args.sumo_binary,
+                    args.emit_fcd,
+                    emit_tls_states=getattr(args, "emit_tls_states", False),
+                )
             else:
-                row = run_b4_task(task, repeat_stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd, params=params)
+                row = run_b4_task(
+                    task,
+                    repeat_stage1,
+                    phase_config,
+                    free_reference,
+                    free_rows_by_id,
+                    args.sumo_binary,
+                    args.emit_fcd,
+                    params=params,
+                    emit_tls_states=getattr(args, "emit_tls_states", False),
+                )
             rows.append(enrich_row(row, candidate, depart))
     stage1_summary_path = metrics_root / candidate["route_id"] / "stage1_summary_snapshot.json"
     write_json(stage1_summary_path, stage1_summary)
     return rows
 
 
-def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path]) -> dict[str, Any]:
-    index, args, candidate, departures, params, run_root, output_root = payload
-    route_rows = run_candidate(args, candidate, departures, params, run_root, output_root)
+def run_candidate_worker(payload: tuple[int, argparse.Namespace, dict[str, Any], list[float], B4ThetaParams, Path, Path, int, bool]) -> dict[str, Any]:
+    index, args, candidate, departures, params, run_root, output_root, repeat_offset, include_reference = payload
+    route_rows = run_candidate(
+        args,
+        candidate,
+        departures,
+        params,
+        run_root,
+        output_root,
+        repeat_offset=repeat_offset,
+        include_reference=include_reference,
+    )
     route_id = str(candidate["route_id"])
     return {
         "index": index,
@@ -1195,6 +1397,14 @@ def validate_args(args: argparse.Namespace) -> None:
     args.metrics_root = Path(args.metrics_root).resolve()
     if args.repeats < 1:
         raise FinalDestinationValidationError("repeats_must_be_positive")
+    if args.pilot_repeats < 2:
+        raise FinalDestinationValidationError("pilot_repeats_must_be_at_least_2")
+    if args.adaptive_max_repeats < args.pilot_repeats:
+        raise FinalDestinationValidationError("adaptive_max_repeats_must_be_gte_pilot_repeats")
+    if not (0.0 < args.relative_error_target < 1.0):
+        raise FinalDestinationValidationError("relative_error_target_must_be_between_0_and_1")
+    if not (0.0 < args.confidence_level < 1.0):
+        raise FinalDestinationValidationError("confidence_level_must_be_between_0_and_1")
     if args.screening_repeats != 1:
         raise FinalDestinationValidationError("screening_repeats_must_be_1_for_final_protocol")
     if args.candidate_limit < 1:
@@ -1307,7 +1517,10 @@ def write_final_report(
     params: B4ThetaParams,
     params_provenance: dict[str, Any],
     spc_rows: list[dict[str, Any]] | None = None,
+    relative_error_rows_: list[dict[str, Any]] | None = None,
+    adaptive_repeat_summary: dict[str, Any] | None = None,
 ) -> Path:
+    adaptive_repeat_summary = adaptive_repeat_summary or {}
     report = [
         "# 10 Final Destination Validation Report",
         "",
@@ -1364,6 +1577,19 @@ def write_final_report(
             ["route_id", "metric", "repeat_count", "spc_status", "stable_round", "latest_value", "ewma", "lcl", "ucl"],
         ),
         "",
+        "## 95% CI Relative Error Sufficiency",
+        "",
+        f"- pilot repeats: `{adaptive_repeat_summary.get('pilot_repeats', '')}`",
+        f"- target half-width: `{adaptive_repeat_summary.get('relative_error_target', '')}` × KPI mean",
+        f"- confidence level: `{adaptive_repeat_summary.get('confidence_level', '')}`",
+        f"- adaptive max repeats: `{adaptive_repeat_summary.get('adaptive_max_repeats', '')}`",
+        f"- status: `{adaptive_repeat_summary.get('status', '')}`",
+        "",
+        markdown_table(
+            relative_error_rows_ or [],
+            ["route_id", "metric", "repeat_count", "mean", "ci_half_width", "target_half_width", "required_repeats", "status"],
+        ),
+        "",
     ]
     path = output_root / "final_destination_validation_report.md"
     path.write_text("\n".join(report), encoding="utf-8")
@@ -1405,12 +1631,27 @@ def write_task_manifest(
             "task_count": len(task_manifest_rows),
             "depart_min": args.depart_min,
             "depart_max": args.depart_max,
+            "adaptive_repeats": {
+                "enabled_for_final_phase": not args.disable_adaptive_repeats,
+                "pilot_repeats": args.pilot_repeats,
+                "relative_error_target": args.relative_error_target,
+                "confidence_level": args.confidence_level,
+                "adaptive_max_repeats": args.adaptive_max_repeats,
+            },
             "seed": args.seed,
             "bo_enabled": False,
             "b4_params": params.as_result_fields(),
             "b4_params_provenance": params_provenance,
             "tasks": task_manifest_rows,
         },
+    )
+
+
+def adaptive_final_repeats_enabled(args: argparse.Namespace, phase: str, repeats: int) -> bool:
+    return (
+        phase == PHASE_FINAL
+        and not args.disable_adaptive_repeats
+        and repeats >= args.pilot_repeats
     )
 
 
@@ -1463,6 +1704,13 @@ def run_validation_phase(
             candidate_rows=candidate_rows,
             params=params,
             params_provenance=params_provenance,
+            adaptive_repeat_summary={
+                "status": "dry_run_no_execution",
+                "pilot_repeats": args.pilot_repeats,
+                "relative_error_target": args.relative_error_target,
+                "confidence_level": args.confidence_level,
+                "adaptive_max_repeats": args.adaptive_max_repeats,
+            },
         )
         result = {
             "schema": "compact_v9_final_destination_validation_phase_dry_run.v2",
@@ -1498,7 +1746,7 @@ def run_validation_phase(
     max_workers = min(args.workers, len(runnable_candidates)) if runnable_candidates else 1
     if max_workers == 1:
         for index, candidate in enumerate(runnable_candidates):
-            result = run_candidate_worker((index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root))
+            result = run_candidate_worker((index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True))
             completed_results[index] = result
             write_csv(output_root / result["route_id"] / "route_runs.csv", result["route_rows"], RUN_FIELDS)
             write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
@@ -1509,7 +1757,7 @@ def run_validation_phase(
             futures = [
                 executor.submit(
                     run_candidate_worker,
-                    (index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root),
+                    (index, args, candidate, departures_by_route[candidate["route_id"]], params, run_root, output_root, 0, True),
                 )
                 for index, candidate in enumerate(runnable_candidates)
             ]
@@ -1520,6 +1768,129 @@ def run_validation_phase(
                 write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
                 write_candidate_partials(completed_results)
 
+    ordered_results = [completed_results[index] for index in sorted(completed_results)]
+    for result in ordered_results:
+        rows_by_route[result["route_id"]] = result["route_rows"]
+        all_rows.extend(result["route_rows"])
+        candidate_rows.append(result["candidate_row"])
+
+    adaptive_summary = {
+        "enabled": adaptive_final_repeats_enabled(args, phase, repeats),
+        "status": "disabled",
+        "pilot_repeats": args.pilot_repeats,
+        "relative_error_target": args.relative_error_target,
+        "confidence_level": args.confidence_level,
+        "adaptive_max_repeats": args.adaptive_max_repeats,
+        "initial_repeats": repeats,
+        "final_repeats_by_route": {route_id: repeat_count_for_rows(rows) for route_id, rows in rows_by_route.items()},
+    }
+    relative_rows: list[dict[str, Any]] = []
+    if adaptive_summary["enabled"]:
+        selected_for_precision = select_final_candidates(candidate_rows, args.final_selection_count)
+        candidate_by_route = {str(candidate["route_id"]): candidate for candidate in runnable_candidates}
+        selected_precision_ids = [str(row["route_id"]) for row in selected_for_precision if str(row["route_id"]) in candidate_by_route]
+        index_by_route = {str(result["route_id"]): int(result["index"]) for result in ordered_results}
+        adaptive_summary["status"] = "pilot_sufficient" if selected_precision_ids else "no_runnable_selected_routes"
+        while True:
+            relative_rows = [
+                row
+                for route_id in selected_precision_ids
+                for row in relative_error_rows(
+                    route_id,
+                    rows_by_route.get(route_id, []),
+                    pilot_repeat_count=args.pilot_repeats,
+                    confidence_level=args.confidence_level,
+                    relative_error_target=args.relative_error_target,
+                    max_repeats=args.adaptive_max_repeats,
+                )
+            ]
+            required_by_route = {
+                route_id: min(
+                    args.adaptive_max_repeats,
+                    required_repeats_from_relative_error([row for row in relative_rows if row.get("route_id") == route_id]),
+                )
+                for route_id in selected_precision_ids
+            }
+            additions = {
+                route_id: required - repeat_count_for_rows(rows_by_route.get(route_id, []))
+                for route_id, required in required_by_route.items()
+                if required > repeat_count_for_rows(rows_by_route.get(route_id, []))
+            }
+            if not additions:
+                break
+            adaptive_summary["status"] = "additional_repeats_executed"
+            extra_results: dict[int, dict[str, Any]] = {}
+            extra_payloads = []
+            for route_id, extra_count in additions.items():
+                current_count = repeat_count_for_rows(rows_by_route.get(route_id, []))
+                target_count = current_count + extra_count
+                departures_by_route[route_id] = deterministic_departures(
+                    seed=args.seed,
+                    route_id=route_id,
+                    repeats=target_count,
+                    depart_min=args.depart_min,
+                    depart_max=args.depart_max,
+                )
+                extra_departures = departures_by_route[route_id][current_count:target_count]
+                extra_payloads.append((
+                    index_by_route[route_id],
+                    args,
+                    candidate_by_route[route_id],
+                    extra_departures,
+                    params,
+                    run_root,
+                    output_root,
+                    current_count,
+                    False,
+                ))
+            extra_workers = min(args.workers, len(extra_payloads)) if extra_payloads else 1
+            if extra_workers == 1:
+                for payload in extra_payloads:
+                    result = run_candidate_worker(payload)
+                    extra_results[int(result["index"])] = result
+            else:
+                ensure_worker_imports()
+                with ProcessPoolExecutor(max_workers=extra_workers, initializer=ensure_worker_imports) as executor:
+                    futures = [executor.submit(run_candidate_worker, payload) for payload in extra_payloads]
+                    for future in as_completed(futures):
+                        result = future.result()
+                        extra_results[int(result["index"])] = result
+            for result in extra_results.values():
+                route_id = str(result["route_id"])
+                rows_by_route[route_id].extend(result["route_rows"])
+                candidate = candidate_by_route[route_id]
+                result["route_rows"] = rows_by_route[route_id]
+                result["candidate_row"] = summarize_candidate(candidate, rows_by_route[route_id])
+                result["average_rows"] = average_rows(rows_by_route[route_id], route_id)
+                completed_results[int(result["index"])] = result
+                write_csv(output_root / route_id / "route_runs.csv", rows_by_route[route_id], RUN_FIELDS)
+                write_csv(output_root / route_id / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
+            adaptive_summary["final_repeats_by_route"] = {route_id: repeat_count_for_rows(rows) for route_id, rows in rows_by_route.items()}
+            if all(count >= args.adaptive_max_repeats for count in adaptive_summary["final_repeats_by_route"].values() if count):
+                break
+
+        relative_rows = [
+            row
+            for route_id in selected_precision_ids
+            for row in relative_error_rows(
+                route_id,
+                rows_by_route.get(route_id, []),
+                pilot_repeat_count=args.pilot_repeats,
+                confidence_level=args.confidence_level,
+                relative_error_target=args.relative_error_target,
+                max_repeats=args.adaptive_max_repeats,
+            )
+        ]
+        if any(row.get("status") in {"NEEDS_MORE", "CAPPED", "UNBOUNDED_ZERO_MEAN", "INSUFFICIENT_DATA"} for row in relative_rows):
+            adaptive_summary["status"] = "insufficient_or_capped"
+        elif adaptive_summary["status"] not in {"additional_repeats_executed", "no_runnable_selected_routes"}:
+            adaptive_summary["status"] = "pilot_sufficient"
+        adaptive_summary["final_repeats_by_route"] = {route_id: repeat_count_for_rows(rows) for route_id, rows in rows_by_route.items()}
+    elif phase == PHASE_FINAL:
+        adaptive_summary["status"] = "disabled_repeats_below_pilot" if repeats < args.pilot_repeats else "disabled_by_flag"
+
+    all_rows = []
+    candidate_rows = precheck_excluded_candidate_rows(candidates)
     ordered_results = [completed_results[index] for index in sorted(completed_results)]
     for result in ordered_results:
         rows_by_route[result["route_id"]] = result["route_rows"]
@@ -1540,12 +1911,37 @@ def run_validation_phase(
         for route_id in selected_route_ids
         for row in repeat_stability_rows(route_id, rows_by_route.get(route_id, []))
     ]
+    if phase == PHASE_FINAL and not relative_rows:
+        relative_rows = [
+            row
+            for route_id in selected_route_ids
+            for row in relative_error_rows(
+                route_id,
+                rows_by_route.get(route_id, []),
+                pilot_repeat_count=args.pilot_repeats,
+                confidence_level=args.confidence_level,
+                relative_error_target=args.relative_error_target,
+                max_repeats=args.adaptive_max_repeats,
+            )
+        ]
+    task_manifest_rows = planned_task_rows(runnable_candidates, departures_by_route, run_root, phase=phase)
+    write_task_manifest(
+        output_root,
+        args=args,
+        phase=phase,
+        candidates=candidates,
+        departures_by_route=departures_by_route,
+        task_manifest_rows=task_manifest_rows,
+        params=params,
+        params_provenance=params_provenance,
+    )
     write_csv(output_root / "all_route_runs.csv", all_rows, RUN_FIELDS)
     write_csv(output_root / "candidate_selection.csv", candidate_rows, CANDIDATE_FIELDS)
     write_csv(output_root / "final_simulation_results.csv", final_simulation_rows, FINAL_SIMULATION_FIELDS)
     write_csv(output_root / "selected_route_runs.csv", selected_rows, RUN_FIELDS)
     write_csv(output_root / "selected_mode_averages.csv", selected_averages, AVERAGE_FIELDS)
     write_csv(output_root / "spc_repeat_stability.csv", spc_rows, SPC_REPEAT_FIELDS)
+    write_csv(output_root / "relative_error_sufficiency.csv", relative_rows, RELATIVE_ERROR_FIELDS)
     selected_candidate_payload = [
         next(candidate for candidate in candidates if candidate["route_id"] == route_id)
         for route_id in selected_route_ids
@@ -1575,6 +1971,8 @@ def run_validation_phase(
             for candidate in selected_candidate_payload
         ],
         "departures": {route_id: departures_by_route[route_id] for route_id in selected_route_ids},
+        "adaptive_repeat_summary": adaptive_summary,
+        "relative_error_sufficiency": relative_rows,
         "b4_params": params.as_result_fields(),
         "b4_params_provenance": params_provenance,
         "outputs": {
@@ -1584,6 +1982,7 @@ def run_validation_phase(
             "selected_route_runs_csv": rel(output_root / "selected_route_runs.csv"),
             "selected_mode_averages_csv": rel(output_root / "selected_mode_averages.csv"),
             "spc_repeat_stability_csv": rel(output_root / "spc_repeat_stability.csv"),
+            "relative_error_sufficiency_csv": rel(output_root / "relative_error_sufficiency.csv"),
         },
     }
     write_json(output_root / "selected_destinations.json", selected_payload)
@@ -1595,6 +1994,8 @@ def run_validation_phase(
         params=params,
         params_provenance=params_provenance,
         spc_rows=spc_rows,
+        relative_error_rows_=relative_rows,
+        adaptive_repeat_summary=adaptive_summary,
     )
     result = {
         "schema": "compact_v9_final_destination_validation_phase_run.v2",
@@ -1610,7 +2011,9 @@ def run_validation_phase(
             "task_manifest_json": rel(output_root / "task_manifest.json"),
             "final_destination_validation_report_md": rel(report_path),
             "spc_repeat_stability_csv": rel(output_root / "spc_repeat_stability.csv"),
+            "relative_error_sufficiency_csv": rel(output_root / "relative_error_sufficiency.csv"),
         },
+        "adaptive_repeat_summary": adaptive_summary,
     }
     write_json(output_root / "experiment_summary.json", result)
     return result
@@ -1720,6 +2123,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--selected-routes", nargs="*", default=None)
     parser.add_argument("--screening-selection-csv", type=Path, default=None)
     parser.add_argument("--repeats", type=int, default=DEFAULT_REPEATS)
+    parser.add_argument("--pilot-repeats", type=int, default=DEFAULT_PILOT_REPEATS)
+    parser.add_argument("--relative-error-target", type=float, default=DEFAULT_RELATIVE_ERROR_TARGET)
+    parser.add_argument("--confidence-level", type=float, default=DEFAULT_CONFIDENCE_LEVEL)
+    parser.add_argument("--adaptive-max-repeats", type=int, default=DEFAULT_ADAPTIVE_MAX_REPEATS)
+    parser.add_argument("--disable-adaptive-repeats", action="store_true")
     parser.add_argument("--depart-min", type=float, default=DEFAULT_DEPART_MIN)
     parser.add_argument("--depart-max", type=float, default=DEFAULT_DEPART_MAX)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
@@ -1730,6 +2138,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--hard-max-sim-time", type=float, default=DEFAULT_HARD_MAX_SIM_TIME)
     parser.add_argument("--sumo-binary", default=None)
     parser.add_argument("--emit-fcd", action="store_true")
+    parser.add_argument("--emit-tls-states", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args(argv)
 
