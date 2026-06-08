@@ -508,6 +508,19 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         first_row = next(row for row in rows if row["edgeData_observed_count"] > 0)
         self.assertAlmostEqual(first_row["edgeData_speed_kmh"], 15.0, places=3)
 
+    def test_segment_speed_range_audit_flags_out_of_range_s_segments(self):
+        audit = self.pipeline.segment_speed_range_audit([
+            {"segment_id": "S1", "direction": "upbound", "simulated_speed_kmh": 5.0, "class": "target_like"},
+            {"segment_id": "S2", "direction": "upbound", "simulated_speed_kmh": 35.0, "class": "target_like"},
+            {"segment_id": "S3", "direction": "downbound", "simulated_speed_kmh": 4.99, "class": "stop"},
+            {"segment_id": "S4", "direction": "downbound", "simulated_speed_kmh": 35.01, "class": "free"},
+        ])
+
+        self.assertEqual(audit["status"], "FAIL")
+        self.assertEqual(audit["fail_count"], 2)
+        self.assertEqual(audit["low_speed_failures"][0]["segment_key"], "S3:downbound")
+        self.assertEqual(audit["high_speed_failures"][0]["segment_key"], "S4:downbound")
+
     def test_free_flow_od_classification(self):
         self.assertEqual(self.pipeline.classify_free_flow_od(0, 10, 10, 5, 0, 3), "od_missing")
         self.assertEqual(self.pipeline.classify_free_flow_od(10, 10, 10, 5, 0, 3), "od_undercovered")
@@ -717,6 +730,50 @@ class CompactV9B04BaselineTest(unittest.TestCase):
         self.assertEqual(summary["after_status"]["status"], "PASS")
         self.assertGreaterEqual(counts["upbound"] / (counts["upbound"] + counts["downbound"]), 0.45)
         self.assertEqual(stage23.get("route"), "mainline_through_downbound_balanced00")
+
+    def test_time_direction_rebalance_limits_each_departure_bin_to_40_60(self):
+        root = self.stage23_builder.ET.fromstring(
+            "<routes>"
+            "<route id='mainline_through_upbound' edges='u0 u1 u2'/>"
+            "<route id='mainline_through_upbound_balanced00' edges='u0 u1 u2'/>"
+            "<route id='mainline_through_downbound' edges='d0 d1 d2'/>"
+            "<route id='mainline_through_downbound_balanced00' edges='d0 d1 d2'/>"
+            + "".join(f"<vehicle id='down_{idx}' route='mainline_through_downbound_balanced00' depart='{1320 + idx}'/>" for idx in range(18))
+            + "".join(f"<vehicle id='up_{idx}' route='mainline_through_upbound_balanced00' depart='{1320 + idx}'/>" for idx in range(2))
+            + "<vehicle id='stage23_caseb_m09_trigger_000' route='mainline_through_downbound_balanced00' depart='1321'/>"
+            "</routes>"
+        )
+
+        summary = self.stage23_builder.rebalance_time_direction_vehicle_counts(root)
+        status = self.stage23_builder.time_direction_balance_status(
+            self.stage23_builder.direction_vehicle_counts_by_time_bin(root)
+        )
+        stage23 = root.find("./vehicle[@id='stage23_caseb_m09_trigger_000']")
+
+        self.assertGreater(summary["changed_vehicle_count"], 0)
+        self.assertEqual(status["status"], "PASS")
+        self.assertEqual(status["fail_bin_count"], 0)
+        self.assertEqual(stage23.get("route"), "mainline_through_downbound_balanced00")
+
+    def test_time_direction_rebalance_treats_band_tune_vehicles_as_background(self):
+        root = self.stage23_builder.ET.fromstring(
+            "<routes>"
+            "<route id='mainline_through_upbound' edges='u0 u1 u2'/>"
+            "<route id='mainline_through_downbound' edges='d0 d1 d2'/>"
+            + "".join(f"<vehicle id='stage23_band_tune_{idx:04d}' route='mainline_through_upbound' depart='156{idx}'/>" for idx in range(5))
+            + "<vehicle id='stage23_caseb_m09_trigger_000' route='mainline_through_upbound' depart='1565'/>"
+            "</routes>"
+        )
+
+        summary = self.stage23_builder.rebalance_time_direction_vehicle_counts(root)
+        status = self.stage23_builder.time_direction_balance_status(
+            self.stage23_builder.direction_vehicle_counts_by_time_bin(root)
+        )
+        protected = root.find("./vehicle[@id='stage23_caseb_m09_trigger_000']")
+
+        self.assertEqual(summary["changed_vehicle_count"], 3)
+        self.assertEqual(status["status"], "PASS")
+        self.assertEqual(protected.get("route"), "mainline_through_upbound")
 
     def test_duplicate_mainroad_signal_candidates_keep_downstream_straight(self):
         candidates = [

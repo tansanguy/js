@@ -1,9 +1,13 @@
 {
   "schema": "compact_v9_B04_stage23_trigger_demand.v1",
-  "generated_at": "2026-06-08T04:54:01.581591+00:00",
+  "generated_at": "2026-06-08T10:13:02.225237+00:00",
+  "candidate": "B04_ad_stage23_trigger",
   "base_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml",
   "output_demand": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
   "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "settings": {
+    "net_profile": "global_reality_s1forced"
+  },
   "route_selection_policy": "natural_base_route_template_only_with_s1forced_bottleneck_cap",
   "s1forced_bottleneck_cap": {
     "enabled": true,
@@ -18,9 +22,9 @@
     "split_pre_bottleneck_vehicle_count": 0,
     "split_post_bottleneck_vehicle_count": 0,
     "split_dropped_bottleneck_vehicle_count": 0,
-    "final_bottleneck_vehicle_count": 186,
-    "final_stage23_bottleneck_vehicle_count": 24,
-    "final_non_stage23_bottleneck_vehicle_count": 162
+    "final_bottleneck_vehicle_count": 251,
+    "final_stage23_bottleneck_vehicle_count": 33,
+    "final_non_stage23_bottleneck_vehicle_count": 218
   },
   "speed_band_tuning": {
     "enabled": true,
@@ -188,7 +192,7 @@
   },
   "direction_balance": {
     "enabled": true,
-    "changed_vehicle_count": 304,
+    "changed_vehicle_count": 299,
     "under_direction": "upbound",
     "over_direction": "downbound",
     "target_routes_used": [
@@ -206,34 +210,651 @@
       "mainline_through_upbound_alt02"
     ],
     "before": {
-      "upbound": 365,
+      "upbound": 373,
       "downbound": 1120,
       "sideflow": 123,
       "other": 0
     },
     "after": {
-      "upbound": 669,
-      "downbound": 816,
+      "upbound": 672,
+      "downbound": 821,
       "sideflow": 123,
       "other": 0
     },
     "before_status": {
       "status": "FAIL",
-      "directional_total": 1485,
-      "upbound_share": 0.245791,
-      "downbound_share": 0.754209,
+      "directional_total": 1493,
+      "upbound_share": 0.249833,
+      "downbound_share": 0.750167,
       "min_share": 0.45,
       "max_share": 0.55
     },
     "after_status": {
       "status": "PASS",
-      "directional_total": 1485,
-      "upbound_share": 0.450505,
-      "downbound_share": 0.549495,
+      "directional_total": 1493,
+      "upbound_share": 0.4501,
+      "downbound_share": 0.5499,
       "min_share": 0.45,
       "max_share": 0.55
     },
     "policy": "reassign non-stage23 background vehicles from overrepresented direction only until the underrepresented direction reaches the 45:55 balance window"
+  },
+  "time_direction_balance": {
+    "enabled": true,
+    "changed_vehicle_count": 357,
+    "before_status": {
+      "status": "FAIL",
+      "bin_sec": 60,
+      "min_share": 0.4,
+      "max_share": 0.6,
+      "min_directional_total": 5,
+      "audited_bin_count": 46,
+      "fail_bin_count": 41,
+      "failed_bins": [
+        {
+          "bin_start_sec": 300,
+          "bin_end_sec": 359,
+          "upbound": 7,
+          "downbound": 0,
+          "sideflow": 0,
+          "other": 0,
+          "directional_total": 7,
+          "upbound_share": 1.0,
+          "downbound_share": 0.0
+        },
+        {
+          "bin_start_sec": 360,
+          "bin_end_sec": 419,
+          "upbound": 28,
+          "downbound": 0,
+          "sideflow": 1,
+          "other": 0,
+          "directional_total": 28,
+          "upbound_share": 1.0,
+          "downbound_share": 0.0
+        },
+        {
+          "bin_start_sec": 420,
+          "bin_end_sec": 479,
+          "upbound": 41,
+          "downbound": 8,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 49,
+          "upbound_share": 0.836735,
+          "downbound_share": 0.163265
+        },
+        {
+          "bin_start_sec": 480,
+          "bin_end_sec": 539,
+          "upbound": 43,
+          "downbound": 8,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 51,
+          "upbound_share": 0.843137,
+          "downbound_share": 0.156863
+        },
+        {
+          "bin_start_sec": 540,
+          "bin_end_sec": 599,
+          "upbound": 56,
+          "downbound": 9,
+          "sideflow": 4,
+          "other": 0,
+          "directional_total": 65,
+          "upbound_share": 0.861538,
+          "downbound_share": 0.138462
+        },
+        {
+          "bin_start_sec": 600,
+          "bin_end_sec": 659,
+          "upbound": 46,
+          "downbound": 8,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 54,
+          "upbound_share": 0.851852,
+          "downbound_share": 0.148148
+        },
+        {
+          "bin_start_sec": 660,
+          "bin_end_sec": 719,
+          "upbound": 39,
+          "downbound": 8,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 47,
+          "upbound_share": 0.829787,
+          "downbound_share": 0.170213
+        },
+        {
+          "bin_start_sec": 720,
+          "bin_end_sec": 779,
+          "upbound": 31,
+          "downbound": 8,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 39,
+          "upbound_share": 0.794872,
+          "downbound_share": 0.205128
+        },
+        {
+          "bin_start_sec": 780,
+          "bin_end_sec": 839,
+          "upbound": 30,
+          "downbound": 11,
+          "sideflow": 4,
+          "other": 0,
+          "directional_total": 41,
+          "upbound_share": 0.731707,
+          "downbound_share": 0.268293
+        },
+        {
+          "bin_start_sec": 840,
+          "bin_end_sec": 899,
+          "upbound": 40,
+          "downbound": 6,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 46,
+          "upbound_share": 0.869565,
+          "downbound_share": 0.130435
+        },
+        {
+          "bin_start_sec": 900,
+          "bin_end_sec": 959,
+          "upbound": 40,
+          "downbound": 10,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 50,
+          "upbound_share": 0.8,
+          "downbound_share": 0.2
+        },
+        {
+          "bin_start_sec": 960,
+          "bin_end_sec": 1019,
+          "upbound": 38,
+          "downbound": 7,
+          "sideflow": 4,
+          "other": 0,
+          "directional_total": 45,
+          "upbound_share": 0.844444,
+          "downbound_share": 0.155556
+        },
+        {
+          "bin_start_sec": 1020,
+          "bin_end_sec": 1079,
+          "upbound": 43,
+          "downbound": 10,
+          "sideflow": 3,
+          "other": 0,
+          "directional_total": 53,
+          "upbound_share": 0.811321,
+          "downbound_share": 0.188679
+        },
+        {
+          "bin_start_sec": 1140,
+          "bin_end_sec": 1199,
+          "upbound": 10,
+          "downbound": 30,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 40,
+          "upbound_share": 0.25,
+          "downbound_share": 0.75
+        },
+        {
+          "bin_start_sec": 1200,
+          "bin_end_sec": 1259,
+          "upbound": 15,
+          "downbound": 25,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 40,
+          "upbound_share": 0.375,
+          "downbound_share": 0.625
+        },
+        {
+          "bin_start_sec": 1260,
+          "bin_end_sec": 1319,
+          "upbound": 11,
+          "downbound": 37,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 48,
+          "upbound_share": 0.229167,
+          "downbound_share": 0.770833
+        },
+        {
+          "bin_start_sec": 1320,
+          "bin_end_sec": 1379,
+          "upbound": 10,
+          "downbound": 392,
+          "sideflow": 17,
+          "other": 0,
+          "directional_total": 402,
+          "upbound_share": 0.024876,
+          "downbound_share": 0.975124
+        },
+        {
+          "bin_start_sec": 1560,
+          "bin_end_sec": 1619,
+          "upbound": 14,
+          "downbound": 9,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 23,
+          "upbound_share": 0.608696,
+          "downbound_share": 0.391304
+        },
+        {
+          "bin_start_sec": 1800,
+          "bin_end_sec": 1859,
+          "upbound": 1,
+          "downbound": 6,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 7,
+          "upbound_share": 0.142857,
+          "downbound_share": 0.857143
+        },
+        {
+          "bin_start_sec": 1860,
+          "bin_end_sec": 1919,
+          "upbound": 2,
+          "downbound": 8,
+          "sideflow": 2,
+          "other": 0,
+          "directional_total": 10,
+          "upbound_share": 0.2,
+          "downbound_share": 0.8
+        }
+      ]
+    },
+    "after_status": {
+      "status": "PASS",
+      "bin_sec": 60,
+      "min_share": 0.4,
+      "max_share": 0.6,
+      "min_directional_total": 5,
+      "audited_bin_count": 46,
+      "fail_bin_count": 0,
+      "failed_bins": []
+    },
+    "changes_by_bin": [
+      {
+        "bin_start_sec": 300,
+        "bin_end_sec": 359,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 3,
+        "directional_total": 7,
+        "before_upbound_share": 1.0
+      },
+      {
+        "bin_start_sec": 360,
+        "bin_end_sec": 419,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 12,
+        "directional_total": 28,
+        "before_upbound_share": 1.0
+      },
+      {
+        "bin_start_sec": 420,
+        "bin_end_sec": 479,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 12,
+        "directional_total": 49,
+        "before_upbound_share": 0.836735
+      },
+      {
+        "bin_start_sec": 480,
+        "bin_end_sec": 539,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 13,
+        "directional_total": 51,
+        "before_upbound_share": 0.843137
+      },
+      {
+        "bin_start_sec": 540,
+        "bin_end_sec": 599,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 17,
+        "directional_total": 65,
+        "before_upbound_share": 0.861538
+      },
+      {
+        "bin_start_sec": 600,
+        "bin_end_sec": 659,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 14,
+        "directional_total": 54,
+        "before_upbound_share": 0.851852
+      },
+      {
+        "bin_start_sec": 660,
+        "bin_end_sec": 719,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 11,
+        "directional_total": 47,
+        "before_upbound_share": 0.829787
+      },
+      {
+        "bin_start_sec": 720,
+        "bin_end_sec": 779,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 8,
+        "directional_total": 39,
+        "before_upbound_share": 0.794872
+      },
+      {
+        "bin_start_sec": 780,
+        "bin_end_sec": 839,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 6,
+        "directional_total": 41,
+        "before_upbound_share": 0.731707
+      },
+      {
+        "bin_start_sec": 840,
+        "bin_end_sec": 899,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 13,
+        "directional_total": 46,
+        "before_upbound_share": 0.869565
+      },
+      {
+        "bin_start_sec": 900,
+        "bin_end_sec": 959,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 10,
+        "directional_total": 50,
+        "before_upbound_share": 0.8
+      },
+      {
+        "bin_start_sec": 960,
+        "bin_end_sec": 1019,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 11,
+        "directional_total": 45,
+        "before_upbound_share": 0.844444
+      },
+      {
+        "bin_start_sec": 1020,
+        "bin_end_sec": 1079,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 12,
+        "directional_total": 53,
+        "before_upbound_share": 0.811321
+      },
+      {
+        "bin_start_sec": 1140,
+        "bin_end_sec": 1199,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 6,
+        "directional_total": 40,
+        "before_upbound_share": 0.25
+      },
+      {
+        "bin_start_sec": 1200,
+        "bin_end_sec": 1259,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 40,
+        "before_upbound_share": 0.375
+      },
+      {
+        "bin_start_sec": 1260,
+        "bin_end_sec": 1319,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 9,
+        "directional_total": 48,
+        "before_upbound_share": 0.229167
+      },
+      {
+        "bin_start_sec": 1320,
+        "bin_end_sec": 1379,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 151,
+        "directional_total": 402,
+        "before_upbound_share": 0.024876
+      },
+      {
+        "bin_start_sec": 1560,
+        "bin_end_sec": 1619,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 23,
+        "before_upbound_share": 0.608696
+      },
+      {
+        "bin_start_sec": 1800,
+        "bin_end_sec": 1859,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 7,
+        "before_upbound_share": 0.142857
+      },
+      {
+        "bin_start_sec": 1860,
+        "bin_end_sec": 1919,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 1920,
+        "bin_end_sec": 1979,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 1980,
+        "bin_end_sec": 2039,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 2040,
+        "bin_end_sec": 2099,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 2100,
+        "bin_end_sec": 2159,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 2160,
+        "bin_end_sec": 2219,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 10,
+        "before_upbound_share": 0.2
+      },
+      {
+        "bin_start_sec": 2220,
+        "bin_end_sec": 2279,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 9,
+        "before_upbound_share": 0.333333
+      },
+      {
+        "bin_start_sec": 2340,
+        "bin_end_sec": 2399,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 5,
+        "before_upbound_share": 0.8
+      },
+      {
+        "bin_start_sec": 2400,
+        "bin_end_sec": 2459,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 5,
+        "before_upbound_share": 0.8
+      },
+      {
+        "bin_start_sec": 2460,
+        "bin_end_sec": 2519,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 5,
+        "before_upbound_share": 0.8
+      },
+      {
+        "bin_start_sec": 2520,
+        "bin_end_sec": 2579,
+        "under_direction": "downbound",
+        "over_direction": "upbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 8,
+        "before_upbound_share": 0.625
+      },
+      {
+        "bin_start_sec": 2580,
+        "bin_end_sec": 2639,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 13,
+        "before_upbound_share": 0.307692
+      },
+      {
+        "bin_start_sec": 2640,
+        "bin_end_sec": 2699,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 13,
+        "before_upbound_share": 0.307692
+      },
+      {
+        "bin_start_sec": 2700,
+        "bin_end_sec": 2759,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 1,
+        "directional_total": 14,
+        "before_upbound_share": 0.357143
+      },
+      {
+        "bin_start_sec": 2760,
+        "bin_end_sec": 2819,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 12,
+        "before_upbound_share": 0.25
+      },
+      {
+        "bin_start_sec": 2820,
+        "bin_end_sec": 2879,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 13,
+        "before_upbound_share": 0.307692
+      },
+      {
+        "bin_start_sec": 2880,
+        "bin_end_sec": 2939,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 3,
+        "directional_total": 10,
+        "before_upbound_share": 0.1
+      },
+      {
+        "bin_start_sec": 2940,
+        "bin_end_sec": 2999,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 12,
+        "before_upbound_share": 0.25
+      },
+      {
+        "bin_start_sec": 3300,
+        "bin_end_sec": 3359,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 2,
+        "directional_total": 7,
+        "before_upbound_share": 0.142857
+      },
+      {
+        "bin_start_sec": 3360,
+        "bin_end_sec": 3419,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 5,
+        "directional_total": 11,
+        "before_upbound_share": 0.0
+      },
+      {
+        "bin_start_sec": 3420,
+        "bin_end_sec": 3479,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 3,
+        "directional_total": 10,
+        "before_upbound_share": 0.1
+      },
+      {
+        "bin_start_sec": 3480,
+        "bin_end_sec": 3539,
+        "under_direction": "upbound",
+        "over_direction": "downbound",
+        "changed_vehicle_count": 4,
+        "directional_total": 9,
+        "before_upbound_share": 0.0
+      }
+    ],
+    "policy": "reassign non-trigger background vehicles within each 60-second departure bin until audited up/down demand is within the 40:60 time-window limit; Stage2/Stage3 trigger routes are preserved"
   },
   "duplicate_route_depart_stagger": {
     "enabled": true,
@@ -244,24 +865,34 @@
     "policy": "stagger vehicles that share the same route and exact depart time to avoid deterministic junction-collision teleports"
   },
   "direction_vehicle_counts": {
-    "upbound": 669,
-    "downbound": 816,
+    "upbound": 735,
+    "downbound": 758,
     "sideflow": 123,
     "other": 0
   },
   "direction_balance_status": {
     "status": "PASS",
-    "directional_total": 1485,
-    "upbound_share": 0.450505,
-    "downbound_share": 0.549495,
+    "directional_total": 1493,
+    "upbound_share": 0.492297,
+    "downbound_share": 0.507703,
     "min_share": 0.45,
     "max_share": 0.55
   },
+  "time_direction_balance_status": {
+    "status": "PASS",
+    "bin_sec": 60,
+    "min_share": 0.4,
+    "max_share": 0.6,
+    "min_directional_total": 5,
+    "audited_bin_count": 46,
+    "fail_bin_count": 0,
+    "failed_bins": []
+  },
   "mainline_terminal_sink_fail_count": 0,
   "canonical_reference_vehicle_count": 1688,
-  "total_vehicle_delta_pct": -4.739336,
-  "vehicle_count": 1608,
-  "stage23_added_count": 24,
+  "total_vehicle_delta_pct": -4.265403,
+  "vehicle_count": 1616,
+  "stage23_added_count": 32,
   "stage2_route_id": "segment_feeder_upbound_S1",
   "stage2_edges": [
     "-218684411#1",
@@ -329,19 +960,19 @@
   "stage3_target_index": 3,
   "stage3_base_vehicle_count": 61,
   "stage3_route_candidate_count": 10,
-  "stage3_vehicle_count": 0,
-  "stage3_headway_sec": 12.0,
+  "stage3_vehicle_count": 8,
+  "stage3_headway_sec": 6.0,
   "stage3_route_length": 8,
   "stage3_ev_target_arrival_sec": 746.736,
   "stage3_trigger_time_to_target_sec": 8.769,
-  "stage3_queue_prebuild_sec": 0.0,
-  "stage3_depart_base_sec": 737.967,
+  "stage3_queue_prebuild_sec": 45.0,
+  "stage3_depart_base_sec": 692.967,
   "stage3_depart_lane": "best",
   "stage3_depart_pos": "random_free",
   "stage3_depart_speed": "max",
   "stage3_depart_window_sec": [
-    737.967,
-    737.967
+    692.967,
+    734.967
   ],
   "stage2_route_candidates_top": [
     {
@@ -401,13 +1032,5 @@
       "base_vehicle_count": 1
     }
   ],
-  "notes": "Original demand is not modified; Stage2/Stage3 trigger vehicles reuse natural base route templates and computed depart windows. Non-Stage23 background demand through the S1-forced downstream bottleneck is capped so the canonical baseline can discharge without hard-max gridlock.",
-  "candidate": "B04_ad_stage23_trigger",
-  "settings": {
-    "derived_from_candidate": "B04_ad_variance_smoothed",
-    "stage23_trigger_variant": 1.0,
-    "net_profile": "global_reality_s1forced",
-    "emit_fcd": true,
-    "calibration_note": "Latest S1-forced B4 demand. Built by adding Stage2/Stage3 trigger vehicles to the variance-smoothed base route."
-  }
+  "notes": "Original demand is not modified; Stage2/Stage3 trigger vehicles reuse natural base route templates and computed depart windows. Non-Stage23 background demand through the S1-forced downstream bottleneck is capped so the canonical baseline can discharge without hard-max gridlock."
 }

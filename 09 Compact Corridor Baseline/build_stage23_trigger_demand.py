@@ -28,6 +28,7 @@ from b4_runtime import B4Stage1Inputs, DATA_ROOT, rel  # noqa: E402
 
 DEFAULT_OUTPUT = PROJECT_ROOT / "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml"
 DEFAULT_BASE_DEMAND = DATA_ROOT / "demand/background_routes_compact_v9_B04_ad_variance_smoothed.rou.xml"
+DEFAULT_NET = PIPELINE_DIR / "tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml"
 DEFAULT_STAGE2_COUNT = 24
 DEFAULT_STAGE2_HEADWAY_SEC = 2.0
 DEFAULT_STAGE3_COUNT = 8
@@ -47,6 +48,14 @@ FALLBACK_ROUTE_SPEED_MPS = 10.0
 CANONICAL_REFERENCE_VEHICLE_COUNT = 1688
 DIRECTION_BALANCE_MIN_SHARE = 0.45
 DIRECTION_BALANCE_MAX_SHARE = 0.55
+TIME_DIRECTION_BALANCE_BIN_SEC = 60
+TIME_DIRECTION_BALANCE_MIN_SHARE = 0.40
+TIME_DIRECTION_BALANCE_MAX_SHARE = 0.60
+TIME_DIRECTION_BALANCE_MIN_DIRECTIONAL_TOTAL = 5
+PROTECTED_STAGE23_TRIGGER_PREFIXES = (
+    "stage23_merge_trigger_",
+    "stage23_caseb_m09_trigger_",
+)
 SPEED_BAND_TUNING_REMOVE_ROUTE_IDS = {
     "segment_feeder_upbound_S9",
     "segment_feeder_upbound_S15",
@@ -135,6 +144,15 @@ def ensure_route(root: ET.Element, route_id: str, edges: list[str]) -> None:
         existing.set("edges", " ".join(edges))
         return
     ET.SubElement(root, "route", {"id": route_id, "edges": " ".join(edges)})
+
+
+def candidate_name_from_output(output: Path) -> str:
+    name = output.name
+    prefix = "background_routes_compact_v9_"
+    suffix = ".rou.xml"
+    if name.startswith(prefix) and name.endswith(suffix):
+        return name[len(prefix) : -len(suffix)]
+    return output.stem
 
 
 def vehicle_count_by_route(root: ET.Element) -> dict[str, int]:
@@ -304,6 +322,10 @@ def route_direction(route_id: str) -> str:
     return "other"
 
 
+def is_protected_stage23_trigger_vehicle(vehicle: ET.Element) -> bool:
+    return str(vehicle.get("id", "")).startswith(PROTECTED_STAGE23_TRIGGER_PREFIXES)
+
+
 def direction_vehicle_counts(root: ET.Element) -> dict[str, int]:
     counts = {"upbound": 0, "downbound": 0, "sideflow": 0, "other": 0}
     for vehicle in root.findall("vehicle"):
@@ -332,6 +354,69 @@ def direction_balance_status(counts: dict[str, int]) -> dict[str, Any]:
         "downbound_share": round(downbound_share, 6),
         "min_share": DIRECTION_BALANCE_MIN_SHARE,
         "max_share": DIRECTION_BALANCE_MAX_SHARE,
+    }
+
+
+def depart_time_bin(vehicle: ET.Element, bin_sec: int = TIME_DIRECTION_BALANCE_BIN_SEC) -> int:
+    return int(safe_float(vehicle.get("depart")) // max(int(bin_sec), 1)) * max(int(bin_sec), 1)
+
+
+def direction_vehicle_counts_by_time_bin(
+    root: ET.Element,
+    *,
+    bin_sec: int = TIME_DIRECTION_BALANCE_BIN_SEC,
+) -> dict[int, dict[str, int]]:
+    counts: dict[int, dict[str, int]] = {}
+    for vehicle in root.findall("vehicle"):
+        bin_start = depart_time_bin(vehicle, bin_sec)
+        direction = route_direction(str(vehicle.get("route", "")))
+        bucket = counts.setdefault(bin_start, {"upbound": 0, "downbound": 0, "sideflow": 0, "other": 0})
+        bucket[direction] = bucket.get(direction, 0) + 1
+    return counts
+
+
+def time_direction_balance_status(
+    counts_by_bin: dict[int, dict[str, int]],
+    *,
+    bin_sec: int = TIME_DIRECTION_BALANCE_BIN_SEC,
+    min_share: float = TIME_DIRECTION_BALANCE_MIN_SHARE,
+    max_share: float = TIME_DIRECTION_BALANCE_MAX_SHARE,
+    min_directional_total: int = TIME_DIRECTION_BALANCE_MIN_DIRECTIONAL_TOTAL,
+) -> dict[str, Any]:
+    audited_bins: list[dict[str, Any]] = []
+    failed_bins: list[dict[str, Any]] = []
+    for bin_start in sorted(counts_by_bin):
+        counts = counts_by_bin[bin_start]
+        upbound = counts.get("upbound", 0)
+        downbound = counts.get("downbound", 0)
+        directional_total = upbound + downbound
+        if directional_total < min_directional_total:
+            continue
+        upbound_share = upbound / directional_total if directional_total else 0.0
+        downbound_share = downbound / directional_total if directional_total else 0.0
+        row = {
+            "bin_start_sec": bin_start,
+            "bin_end_sec": bin_start + bin_sec - 1,
+            "upbound": upbound,
+            "downbound": downbound,
+            "sideflow": counts.get("sideflow", 0),
+            "other": counts.get("other", 0),
+            "directional_total": directional_total,
+            "upbound_share": round(upbound_share, 6),
+            "downbound_share": round(downbound_share, 6),
+        }
+        audited_bins.append(row)
+        if not (min_share <= upbound_share <= max_share and min_share <= downbound_share <= max_share):
+            failed_bins.append(row)
+    return {
+        "status": "PASS" if not failed_bins else "FAIL",
+        "bin_sec": bin_sec,
+        "min_share": min_share,
+        "max_share": max_share,
+        "min_directional_total": min_directional_total,
+        "audited_bin_count": len(audited_bins),
+        "fail_bin_count": len(failed_bins),
+        "failed_bins": failed_bins[:20],
     }
 
 
@@ -382,7 +467,7 @@ def rebalance_direction_vehicle_counts(root: ET.Element) -> dict[str, Any]:
     donor_vehicles = [
         vehicle
         for vehicle in root.findall("vehicle")
-        if not str(vehicle.get("id", "")).startswith("stage23_")
+        if not is_protected_stage23_trigger_vehicle(vehicle)
         and route_direction(str(vehicle.get("route", ""))) == over_direction
     ]
     changed = 0
@@ -402,6 +487,69 @@ def rebalance_direction_vehicle_counts(root: ET.Element) -> dict[str, Any]:
         "before_status": status_before,
         "after_status": direction_balance_status(after),
         "policy": "reassign non-stage23 background vehicles from overrepresented direction only until the underrepresented direction reaches the 45:55 balance window",
+    }
+
+
+def rebalance_time_direction_vehicle_counts(root: ET.Element) -> dict[str, Any]:
+    before = direction_vehicle_counts_by_time_bin(root)
+    status_before = time_direction_balance_status(before)
+    target_routes = {
+        "upbound": route_candidates_by_direction(root, "upbound"),
+        "downbound": route_candidates_by_direction(root, "downbound"),
+    }
+    vehicles_by_bin: dict[int, list[ET.Element]] = {}
+    for vehicle in root.findall("vehicle"):
+        vehicles_by_bin.setdefault(depart_time_bin(vehicle), []).append(vehicle)
+
+    changed = 0
+    changes_by_bin: list[dict[str, Any]] = []
+    for bin_start in sorted(before):
+        counts = before[bin_start]
+        upbound = counts.get("upbound", 0)
+        downbound = counts.get("downbound", 0)
+        directional_total = upbound + downbound
+        if directional_total < TIME_DIRECTION_BALANCE_MIN_DIRECTIONAL_TOTAL:
+            continue
+        upbound_share = upbound / directional_total if directional_total else 0.0
+        if TIME_DIRECTION_BALANCE_MIN_SHARE <= upbound_share <= TIME_DIRECTION_BALANCE_MAX_SHARE:
+            continue
+        under_direction = "upbound" if upbound_share < TIME_DIRECTION_BALANCE_MIN_SHARE else "downbound"
+        over_direction = "downbound" if under_direction == "upbound" else "upbound"
+        under_count = counts[under_direction]
+        target_under_count = math.ceil(directional_total * TIME_DIRECTION_BALANCE_MIN_SHARE)
+        move_count = max(0, target_under_count - under_count)
+        if move_count <= 0 or not target_routes[under_direction]:
+            continue
+        donor_vehicles = [
+            vehicle
+            for vehicle in sorted(vehicles_by_bin.get(bin_start, []), key=lambda item: (safe_float(item.get("depart")), str(item.get("id", ""))))
+            if not is_protected_stage23_trigger_vehicle(vehicle)
+            and route_direction(str(vehicle.get("route", ""))) == over_direction
+        ]
+        bin_changed = 0
+        for vehicle in donor_vehicles[:move_count]:
+            vehicle.set("route", target_routes[under_direction][(changed + bin_changed) % len(target_routes[under_direction])])
+            bin_changed += 1
+        if bin_changed:
+            changed += bin_changed
+            changes_by_bin.append({
+                "bin_start_sec": bin_start,
+                "bin_end_sec": bin_start + TIME_DIRECTION_BALANCE_BIN_SEC - 1,
+                "under_direction": under_direction,
+                "over_direction": over_direction,
+                "changed_vehicle_count": bin_changed,
+                "directional_total": directional_total,
+                "before_upbound_share": round(upbound_share, 6),
+            })
+
+    after = direction_vehicle_counts_by_time_bin(root)
+    return {
+        "enabled": True,
+        "changed_vehicle_count": changed,
+        "before_status": status_before,
+        "after_status": time_direction_balance_status(after),
+        "changes_by_bin": changes_by_bin[:50],
+        "policy": "reassign non-trigger background vehicles within each 60-second departure bin until audited up/down demand is within the 40:60 time-window limit; Stage2/Stage3 trigger routes are preserved",
     }
 
 
@@ -727,6 +875,7 @@ def build_stage23_trigger_demand(
     speed_band_tuning = apply_speed_band_tuning(root)
     direction_balance = rebalance_direction_vehicle_counts(root)
     duplicate_depart_stagger = stagger_duplicate_route_departures(root)
+    time_direction_balance = rebalance_time_direction_vehicle_counts(root)
     sort_vehicle_elements_by_depart(root)
     bottleneck_cap_summary.update(bottleneck_vehicle_counts(root, bottleneck_edge=s1forced_bottleneck_edge))
     final_vehicle_count = sum(1 for child in root if child.tag == "vehicle")
@@ -742,16 +891,22 @@ def build_stage23_trigger_demand(
     summary = {
         "schema": "compact_v9_B04_stage23_trigger_demand.v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "candidate": candidate_name_from_output(output),
         "base_demand": rel(base_demand),
         "output_demand": rel(output),
         "net_file": rel(net_file) if net_file else "",
+        "settings": {
+            "net_profile": "global_reality_s1forced" if net_file and net_file.name.endswith("_s1forced.net.xml") else "",
+        },
         "route_selection_policy": "natural_base_route_template_only_with_s1forced_bottleneck_cap",
         "s1forced_bottleneck_cap": bottleneck_cap_summary,
         "speed_band_tuning": speed_band_tuning,
         "direction_balance": direction_balance,
+        "time_direction_balance": time_direction_balance,
         "duplicate_route_depart_stagger": duplicate_depart_stagger,
         "direction_vehicle_counts": final_direction_counts,
         "direction_balance_status": direction_balance_status(final_direction_counts),
+        "time_direction_balance_status": time_direction_balance_status(direction_vehicle_counts_by_time_bin(root)),
         "mainline_terminal_sink_fail_count": terminal_sink_fail_count,
         "canonical_reference_vehicle_count": CANONICAL_REFERENCE_VEHICLE_COUNT,
         "total_vehicle_delta_pct": round(total_vehicle_delta_pct, 6),
@@ -825,7 +980,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--s1forced-bottleneck-keep-share", type=float, default=DEFAULT_S1FORCED_BOTTLENECK_KEEP_SHARE)
     parser.add_argument("--s1forced-bottleneck-strategy", choices=["remove", "split"], default=DEFAULT_S1FORCED_BOTTLENECK_STRATEGY)
     parser.add_argument("--s1forced-post-bottleneck-depart-delay-sec", type=float, default=DEFAULT_S1FORCED_POST_BOTTLENECK_DEPART_DELAY_SEC)
-    parser.add_argument("--net-file", type=Path, default=None)
+    parser.add_argument("--net-file", type=Path, default=DEFAULT_NET)
     args = parser.parse_args(argv)
     base_demand = args.base_demand if args.base_demand.is_absolute() else PROJECT_ROOT / args.base_demand
     output = args.output if args.output.is_absolute() else PROJECT_ROOT / args.output

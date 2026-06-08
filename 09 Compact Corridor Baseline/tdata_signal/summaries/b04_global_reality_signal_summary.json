@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b04_global_reality_signal.v1",
-  "generated_at": "2026-06-08T04:51:35.350780+00:00",
+  "generated_at": "2026-06-08T10:17:54.422129+00:00",
   "claim_scope": "all TLS get A008/API-informed plausible timing; not exact field reproduction",
   "timing_snapshots": [
     "09 Compact Corridor Baseline/tdata_signal/api_snapshots/timing_location_matched_20260605_210137.jsonl",
@@ -28,8 +28,8 @@
   },
   "demand_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
   "demand_source_status": "loaded",
-  "demand_vehicle_weight_total": 1608.0,
-  "demand_matched_transition_total": 7423.0,
+  "demand_vehicle_weight_total": 1616.0,
+  "demand_matched_transition_total": 7378.0,
   "demand_adjusted_tls_count": 28,
   "demand_profile_policy": "mapwide_tls_route_pair_volume_proportional_cycle_and_main_green_adjustment",
   "input_net": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_location_matched_reality_repaired_s1forced.net.xml",
@@ -78,7 +78,7 @@
   },
   "route_geometry_recall": {
     "schema": "compact_v9_b04_b0_route_geometry_lane_recall.v1",
-    "generated_at": "2026-06-08T04:51:35.042841+00:00",
+    "generated_at": "2026-06-08T10:17:52.977133+00:00",
     "reference_net": "data_prepared/expanded_v7/net/jungbu_expanded_v7_v13_b_ref_plus5.net.xml",
     "reference_route_xml": "data_prepared/expanded_v7/routes/firetruck_to_seoul_station_front_conservative_b0.rou.xml",
     "current_route_xml": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",

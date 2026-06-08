@@ -69,6 +69,8 @@ SIM_END_SEC = 4200.0
 EDGE_DATA_FREQ_SEC = 60
 FCD_MIN_SEGMENT_SAMPLE_COUNT = 3
 LOW_OBSERVATION_SPEED_WARN_COUNT = 30.0
+SEGMENT_SPEED_RANGE_MIN_KMH = 5.0
+SEGMENT_SPEED_RANGE_MAX_KMH = 35.0
 QUEUE_SAMPLE_BEGIN_SEC = 450.0
 QUEUE_SAMPLE_END_SEC = 1200.0
 QUEUE_SAMPLE_INTERVAL_SEC = 5
@@ -3807,9 +3809,9 @@ def segment_speed_rows(edge_data: dict[str, list[dict[str, float]]], fcd_metrics
             cls = "metric_invalid"
         elif primary_speed > 60.0:
             cls = "speed_sanity_fail"
-        elif primary_speed < 5.0:
+        elif primary_speed < SEGMENT_SPEED_RANGE_MIN_KMH:
             cls = "stop"
-        elif primary_speed > 35.0:
+        elif primary_speed > SEGMENT_SPEED_RANGE_MAX_KMH:
             cls = "free"
         elif abs(primary_speed - reference_speed) > 8.0:
             cls = "off_target"
@@ -3856,6 +3858,46 @@ def segment_speed_rows(edge_data: dict[str, list[dict[str, float]]], fcd_metrics
             "class": cls,
         })
     return rows
+
+
+def segment_speed_range_audit(
+    rows: list[dict[str, Any]],
+    *,
+    min_speed_kmh: float = SEGMENT_SPEED_RANGE_MIN_KMH,
+    max_speed_kmh: float = SEGMENT_SPEED_RANGE_MAX_KMH,
+) -> dict[str, Any]:
+    low_failures: list[dict[str, Any]] = []
+    high_failures: list[dict[str, Any]] = []
+    checked = 0
+
+    for row in rows:
+        segment_id = str(row.get("segment_id", "")).strip()
+        direction = str(row.get("direction", "")).strip()
+        if not segment_id or not direction:
+            continue
+        checked += 1
+        speed = safe_float(row.get("simulated_speed_kmh"), math.nan)
+        item = {
+            "segment_key": f"{segment_id}:{direction}",
+            "simulated_speed_kmh": round(speed, 3) if math.isfinite(speed) else "",
+            "class": row.get("class", ""),
+        }
+        if not math.isfinite(speed) or speed < min_speed_kmh:
+            low_failures.append(item)
+        elif speed > max_speed_kmh:
+            high_failures.append(item)
+
+    fail_count = len(low_failures) + len(high_failures)
+    return {
+        "schema": "compact_v9_B04_segment_speed_range_audit.v1",
+        "min_speed_kmh": min_speed_kmh,
+        "max_speed_kmh": max_speed_kmh,
+        "checked_segment_direction_count": checked,
+        "fail_count": fail_count,
+        "status": "PASS" if fail_count == 0 else "FAIL",
+        "low_speed_failures": low_failures,
+        "high_speed_failures": high_failures,
+    }
 
 
 def queue_audit_from_edges(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -4015,6 +4057,7 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         measurement = lightweight_segment_metrics(edge_data, lane_data, measurement_net)
     speed_rows = segment_speed_rows(edge_data, measurement.get("segments", {}))
     queue = queue_audit_from_edges(speed_rows)
+    speed_range = segment_speed_range_audit(speed_rows)
     od_audit = free_flow_od_audit(candidate_name, speed_rows)
     mae = sum(abs(safe_float(row["speed_error_kmh"])) for row in speed_rows) / max(len(speed_rows), 1)
     travel_mae = sum(abs(safe_float(row["travel_time_error_s"])) for row in speed_rows) / max(len(speed_rows), 1)
@@ -4104,13 +4147,16 @@ def validate_candidate(candidate_name: str) -> dict[str, Any]:
         "stop_count_excluding_s22": stop_count,
         "free_count": free_count,
         "speed_sanity_fail_count": speed_sanity_fail_count,
+        "speed_range_fail_count": speed_range["fail_count"],
         "metric_invalid_count": metric_invalid_count,
         "background_arrived_ratio": round(arrived_ratio, 6),
         "queue_audit": queue,
+        "speed_range_audit": speed_range,
         "free_flow_od_audit": od_audit["summary"],
         "validation_policy": {
             "queue_top10_overlap": "diagnostic_only",
             "queue_classification": "gate_requires_physical_queue_congestion",
+            "segment_speed_range_kmh": f"diagnostic: {SEGMENT_SPEED_RANGE_MIN_KMH:g} <= simulated_speed_kmh <= {SEGMENT_SPEED_RANGE_MAX_KMH:g} for each S segment direction",
             "note": "Top-10 queue overlap is retained for bottleneck-location review but does not fail B04/B4 preflight.",
         },
         "measurement_summary": {
