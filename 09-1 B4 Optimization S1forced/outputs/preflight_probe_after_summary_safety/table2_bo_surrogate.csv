@@ -1,0 +1,3 @@
+method,seed,round,round_theta_index,theta_per_round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,best_so_far,surrogate_mean,surrogate_ci_low,surrogate_ci_high,raw_ei_acquisition,acquisition,bo_selection_strategy,bo_candidate_source,bo_plateau_mode,essi_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score
+BO,20260607,1,1,1,bo_r01_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,65.22,65.22,,,,,,,,,,,,,,,,,,,,
+BO,20260607,2,1,1,bo_r02_001_tl29_dt79_ge10_qr71_tau82,29,79,10,0.71,0.82,236.17,65.22,,,,,,,,,,,,,,,,,,,,

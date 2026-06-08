@@ -1,0 +1,68 @@
+{
+  "schema": "compact_v9_B4_bo_essi_spatial_subspaces.v1",
+  "generated_at": "2026-06-08T09:08:25.514675+00:00",
+  "definition": "Stage1 route movements split by route_order; weights combine controllable movement density and Case B/bottleneck presence.",
+  "subspace_count": 6,
+  "subspaces": [
+    {
+      "subspace": 1,
+      "route_order_min": 6,
+      "route_order_max": 14,
+      "movement_count": 3,
+      "case_b_count": 0,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": false,
+      "weight": 0.375
+    },
+    {
+      "subspace": 2,
+      "route_order_min": 15,
+      "route_order_max": 23,
+      "movement_count": 2,
+      "case_b_count": 0,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": false,
+      "weight": 0.25
+    },
+    {
+      "subspace": 3,
+      "route_order_min": 24,
+      "route_order_max": 32,
+      "movement_count": 1,
+      "case_b_count": 1,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": true,
+      "weight": 0.25
+    },
+    {
+      "subspace": 4,
+      "route_order_min": 33,
+      "route_order_max": 41,
+      "movement_count": 2,
+      "case_b_count": 0,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": false,
+      "weight": 0.25
+    },
+    {
+      "subspace": 5,
+      "route_order_min": 42,
+      "route_order_max": 50,
+      "movement_count": 4,
+      "case_b_count": 1,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": true,
+      "weight": 1.0
+    },
+    {
+      "subspace": 6,
+      "route_order_min": 51,
+      "route_order_max": 59,
+      "movement_count": 4,
+      "case_b_count": 0,
+      "has_control_candidate": true,
+      "has_bottleneck_candidate": false,
+      "weight": 0.5
+    }
+  ]
+}

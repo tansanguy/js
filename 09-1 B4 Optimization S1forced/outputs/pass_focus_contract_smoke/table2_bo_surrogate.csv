@@ -1,0 +1,7 @@
+method,seed,round,round_theta_index,theta_per_round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,best_so_far,surrogate_mean,surrogate_ci_low,surrogate_ci_high,raw_ei_acquisition,acquisition,bo_selection_strategy,bo_candidate_source,bo_plateau_mode,essi_acquisition,essi_1,essi_2,essi_3,essi_4,essi_5,essi_6,essi_max,essi_mean,essi_log_max,dominant_essi_subspace,spatial_activation_score
+BO,20260607,1,1,2,bo_r01_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,65.22,65.22,,,,,,,,,,,,,,,,,,,,
+BO,20260607,1,2,2,bo_r01_002_tl80_dt143_ge18_qr17_tau79,80,143,18,0.17,0.79,65.26,65.22,,,,,,,,,,,,,,,,,,,,
+BO,20260607,2,1,2,bo_r02_001_tl50_dt211_ge40_qr62_tau90,50,211,40,0.62,0.9,65.33,65.22,65.22,65.22,65.22,944.33,944.33,pass_focus_success_lattice,pass_focus_stable,True,,,,,,,,,,,,
+BO,20260607,2,2,2,bo_r02_002_tl50_dt213_ge40_qr62_tau90,50,213,40,0.62,0.9,65.23,65.22,65.22,65.22,65.22,944.33,944.33,pass_focus_success_lattice,pass_focus_stable,True,,,,,,,,,,,,
+BO,20260607,3,1,2,bo_r03_001_tl50_dt214_ge40_qr62_tau90,50,214,40,0.62,0.9,65.24,65.22,65.19,65.18,65.19,944.32,944.32,pass_focus_success_lattice,pass_focus_stable,True,,,,,,,,,,,,
+BO,20260607,3,2,2,bo_r03_002_tl50_dt212_ge40_qr61_tau90,50,212,40,0.61,0.9,65.27,65.22,65.26,65.25,65.28,943.78,943.78,pass_focus_success_lattice,pass_focus_stable,True,,,,,,,,,,,,

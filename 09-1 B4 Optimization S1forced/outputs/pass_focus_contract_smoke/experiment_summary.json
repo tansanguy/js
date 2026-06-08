@@ -1,0 +1,79 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
+  "generated_at": "2026-06-08T12:54:49.409414+00:00",
+  "run_id": "pass_focus_contract_smoke",
+  "mock_eval": true,
+  "n": 1,
+  "m": 3,
+  "theta_per_round": 2,
+  "theta_evaluations_per_seed_method": 6,
+  "workers": 1,
+  "methods": [
+    "BO"
+  ],
+  "methods_run_this_invocation": [
+    "BO"
+  ],
+  "append_existing": false,
+  "resume": false,
+  "seeds": [
+    20260607
+  ],
+  "bo_algorithm": "GP+ESSI",
+  "objective": {
+    "score": "(w_E / (w_E + w_G)) * D_E_sec + (w_G / (w_E + w_G)) * D_G_sec",
+    "w_E": 10.0,
+    "w_G": 1.0
+  },
+  "fixed_budget_policy": "m is the number of optimization rounds; each round evaluates theta_per_round theta candidates, and best-so-far records the cumulative minimum after the full round.",
+  "pareto_protocol": {
+    "purpose": "Present weight-sweep Pareto candidates to decision makers; do not choose the policy weight inside the analysis.",
+    "weight_ratios": [
+      "1:1",
+      "5:1",
+      "10:1",
+      "15:1",
+      "20:1"
+    ],
+    "search_runs_per_weight": 1,
+    "repeat_policy": "Do not repeat the same weight unless an outlier or failed run requires verification.",
+    "spc_stop": true,
+    "spc_note": "SPC early stop uses the ESSI log-max EWMA trace to stop once the search stabilizes.",
+    "controlled_static_inputs": {
+      "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+      "net_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
+      "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+      "background_route_sha256": "61cc24bc13b0cc443045432a1425f9d8c38d47b5ab7e42be45eae4482dbc4ee9",
+      "stage1_dir": "data_prepared/compact_v9/b4_stage1_s1forced",
+      "active_inputs": "configs/compact_v9_B04_B4_active_inputs.json",
+      "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+      "firetruck_route_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8"
+    }
+  },
+  "presentation_notes": {
+    "figure1_band": "Shaded band is +/- standard deviation across seeds. With n=1, the band width is zero by design.",
+    "figure2_slice": "GP estimate uses a 1D t_lead slice through the best BO theta. The objective is not re-evaluated on the slice grid.",
+    "figure3_policy": "The orange marker is the computed knee candidate, not a final policy decision."
+  },
+  "outputs": {
+    "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/all_evaluations.csv",
+    "final_method_comparison_results_csv": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/final_method_comparison_results.csv",
+    "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/table1_best_so_far.csv",
+    "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/table2_bo_surrogate.csv",
+    "table2_bo_gp_slice_csv": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/table2_bo_gp_slice.csv",
+    "table3_pareto_csv": "",
+    "table4_sensitivity_spc_csv": "",
+    "final_sensitivity_results_csv": "",
+    "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/bo_spatial_subspaces.json",
+    "noise_check_csv": "",
+    "figure1_png": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/figure1_best_so_far.png",
+    "figure1_svg": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/figure1_best_so_far.svg",
+    "figure2_png": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/figure2_bo_surrogate.png",
+    "figure2_svg": "09-1 B4 Optimization S1forced/outputs/pass_focus_contract_smoke/figure2_bo_surrogate.svg",
+    "figure3_png": "",
+    "figure3_svg": "",
+    "figure4_png": "",
+    "figure4_svg": ""
+  },
+  "noise_check": {}
+}

@@ -1,0 +1,4 @@
+round,round_theta_index,parameter_id,score,D_E_sec,D_G_sec,t_lead,delta_T_thr,G_ext,Q_ratio,tau,bo_batch_slot,bo_candidate_source,sumo_summary_teleports,sumo_summary_collisions,background_teleported,emergency_teleport,failure_reason
+35,1,bo_r35_001_tl89_dt198_ge46_qr9_tau81,296.22,279.92,459.23,89,198,46,0.09,0.81,stable,stable_success,0,0,0,False,
+35,2,bo_r35_002_tl92_dt194_ge46_qr9_tau80,296.22,279.92,459.23,92,194,46,0.09,0.8,stable,stable_success,0,0,0,False,
+35,5,bo_r35_005_tl48_dt218_ge17_qr51_tau77,438.97,450.92,319.44,48,218,17,0.51,0.77,global_ei,global,0,0,0,False,

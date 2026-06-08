@@ -56,11 +56,28 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
         self.assertEqual(penalty, 0.0)
         self.assertEqual(penalized, score)
 
-    def test_failed_rows_are_excluded_from_bo_learning_observations(self):
+    def test_summary_collision_teleport_penalizes_otherwise_pass_row(self):
+        row = {
+            "final_status": "PASS",
+            "emergency_arrived": "True",
+            "emergency_teleport": "False",
+            "D_E_sec": "100",
+            "D_G_sec": "1000",
+            "sumo_summary_teleports": "1",
+            "sumo_summary_collisions": "1",
+        }
+
+        _D_E_sec, _D_G_sec, score, penalty, penalized = self.runner.score_delay_row(row, 10.0, 1.0)
+
+        self.assertEqual(penalty, self.runner.FAILURE_PENALTY_SEC)
+        self.assertAlmostEqual(penalized, score + self.runner.FAILURE_PENALTY_SEC)
+
+    def test_failed_rows_are_included_as_penalized_bo_learning_observations(self):
         failed = {
             "final_status": "FAIL",
             "emergency_arrived": "False",
             "emergency_teleport": "False",
+            "failure_reason": "emergency_stuck",
             "parameter_id": "bad",
             "t_lead": "10",
             "delta_T_thr": "20",
@@ -68,20 +85,28 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
             "Q_ratio": "0.40",
             "tau": "0.80",
             "score": str(self.runner.FAILURE_PENALTY_SEC),
+            "D_G_sec": "493.75",
+            "stage2_hold_count": "0",
         }
         valid = {
             **failed,
             "final_status": "PASS",
             "emergency_arrived": "True",
+            "failure_reason": "",
             "parameter_id": "good",
             "score": "91.20",
         }
 
-        self.assertIsNone(self.runner.bo_learning_observation(failed))
+        failed_observation = self.runner.bo_learning_observation(failed)
         observation = self.runner.bo_learning_observation(valid)
 
+        self.assertIsNotNone(failed_observation)
+        self.assertEqual(failed_observation["bo_score_sec"], str(self.runner.FAILURE_PENALTY_SEC))
+        self.assertEqual(failed_observation["bo_failed"], "True")
+        self.assertEqual(failed_observation["failure_reason"], "emergency_stuck")
         self.assertIsNotNone(observation)
         self.assertEqual(observation["bo_score_sec"], "91.20")
+        self.assertEqual(observation["bo_failed"], "False")
 
     def test_completed_round_count_uses_round_index_not_row_count(self):
         rows = [
@@ -107,6 +132,200 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
         self.assertEqual(args.m, 50)
         self.assertEqual(args.theta_per_round, 6)
         self.assertEqual(args.workers, 6)
+        self.assertEqual(args.ei_candidate_count, 5000)
+        self.assertEqual(args.bo_pass_focus_from_round, 0)
+
+    def test_pass_focus_bo_batch_uses_clean_success_neighborhood(self):
+        bounds = {"t_lead": {"lower": 0, "upper": 120}, "delta_T_thr": {"lower": 0, "upper": 240}, "G_ext": {"lower": 0, "upper": 50}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
+        rows = [
+            {
+                "final_status": "PASS",
+                "emergency_arrived": "True",
+                "emergency_teleport": "False",
+                "parameter_id": "best",
+                "t_lead": "90",
+                "delta_T_thr": "198",
+                "G_ext": "47",
+                "Q_ratio": "0.07",
+                "tau": "0.79",
+                "score": "277.55",
+                "D_G_sec": "453.83",
+            },
+            {
+                "final_status": "PASS",
+                "emergency_arrived": "True",
+                "emergency_teleport": "False",
+                "parameter_id": "neighbor",
+                "t_lead": "92",
+                "delta_T_thr": "196",
+                "G_ext": "47",
+                "Q_ratio": "0.08",
+                "tau": "0.80",
+                "score": "277.55",
+                "D_G_sec": "453.83",
+            },
+            {
+                "final_status": "FAIL",
+                "emergency_arrived": "False",
+                "emergency_teleport": "False",
+                "parameter_id": "fail",
+                "t_lead": "20",
+                "delta_T_thr": "20",
+                "G_ext": "2",
+                "Q_ratio": "0.99",
+                "tau": "0.70",
+                "score": str(self.runner.FAILURE_PENALTY_SEC),
+                "D_G_sec": "500",
+            },
+        ]
+        observations = [self.runner.bo_learning_observation(row) for row in rows]
+        observations = [row for row in observations if row is not None]
+        existing = {self.runner.theta_key(rows[0])}
+
+        selected = self.runner.pass_focus_bo_batch(observations, bounds, 6, seed=123, existing=existing, min_feasibility=0.0)
+
+        self.assertEqual(len(selected), 6)
+        self.assertTrue(all(row["bo_batch_slot"] == "pass_focus" for row in selected))
+        self.assertTrue(all(str(row["bo_candidate_source"]).startswith("pass_focus") for row in selected))
+        self.assertNotIn(self.runner.theta_key(rows[0]), {self.runner.theta_key(row) for row in selected})
+        self.assertTrue(all(abs(float(row["G_ext"]) - 47.0) <= 3.0 for row in selected[:4]))
+
+    def test_warm_start_csv_allows_bo_from_round_one(self):
+        original_essi = self.runner.essi_improvement_candidates
+        calls = []
+
+        def fake_essi(observations, bounds, stage1, seed, existing, candidate_count):
+            calls.append(list(observations))
+            return [{
+                "t_lead": 12,
+                "delta_T_thr": 34,
+                "G_ext": 5,
+                "Q_ratio": 0.22,
+                "tau": 0.78,
+                "raw_ei_acquisition": "10.00",
+                "acquisition": "10.00",
+                "bo_selection_strategy": "warm_start_test",
+                "bo_candidate_source": "warm_start",
+                "bo_plateau_mode": "False",
+                "_essi_acquisition_value": 10.0,
+            }]
+
+        self.runner.essi_improvement_candidates = fake_essi
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                output_dir = Path(tmp) / "outputs"
+                run_root = Path(tmp) / "runs"
+                warm_csv = Path(tmp) / "warm.csv"
+                with warm_csv.open("w", encoding="utf-8", newline="") as file:
+                    writer = csv.DictWriter(file, fieldnames=self.runner.EVALUATION_FIELDS)
+                    writer.writeheader()
+                    writer.writerow({
+                        "method": "BO",
+                        "seed": "20260607",
+                        "round": "7",
+                        "round_theta_index": "1",
+                        "parameter_id": "warm_pass",
+                        "t_lead": "58",
+                        "delta_T_thr": "81",
+                        "G_ext": "42",
+                        "Q_ratio": "0.04",
+                        "tau": "0.82",
+                        "score": "326.19",
+                        "final_status": "PASS",
+                        "emergency_arrived": "True",
+                        "emergency_teleport": "False",
+                    })
+                    writer.writerow({
+                        "method": "BO",
+                        "seed": "20260607",
+                        "round": "10",
+                        "round_theta_index": "1",
+                        "parameter_id": "warm_fail",
+                        "t_lead": "78",
+                        "delta_T_thr": "33",
+                        "G_ext": "41",
+                        "Q_ratio": "0.96",
+                        "tau": "0.79",
+                        "score": str(self.runner.FAILURE_PENALTY_SEC),
+                        "final_status": "FAIL",
+                        "failure_reason": "emergency_stuck",
+                        "emergency_arrived": "False",
+                        "emergency_teleport": "False",
+                    })
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    code = self.runner.main([
+                        "--mock-eval",
+                        "--run-id",
+                        "warm_start_contract",
+                        "--methods",
+                        "bo",
+                        "--n",
+                        "1",
+                        "--m",
+                        "2",
+                        "--theta-per-round",
+                        "1",
+                        "--bo-initial",
+                        "0",
+                        "--ei-candidate-count",
+                        "10",
+                        "--warm-start-csv",
+                        str(warm_csv),
+                        "--workers",
+                        "1",
+                        "--output-dir",
+                        str(output_dir),
+                        "--run-root",
+                        str(run_root),
+                        "--skip-pareto",
+                        "--skip-noise-check",
+                    ])
+                self.assertEqual(code, 0)
+                self.assertGreaterEqual(len(calls[0]), 2)
+                with (output_dir / "warm_start_contract" / "all_evaluations.csv").open("r", encoding="utf-8", newline="") as file:
+                    rows = list(csv.DictReader(file))
+                self.assertEqual(rows[0]["round"], "1")
+                self.assertEqual(rows[0]["bo_selection_strategy"], "warm_start_test")
+                preflight = self.runner.read_json(output_dir / "warm_start_contract" / "preflight_summary.json")
+                self.assertEqual(preflight["warm_start"]["observation_count"], 2)
+        finally:
+            self.runner.essi_improvement_candidates = original_essi
+
+    def test_diverse_bo_batch_skips_near_duplicate_candidates(self):
+        bounds = {"t_lead": {"lower": 0, "upper": 100}, "delta_T_thr": {"lower": 0, "upper": 100}, "G_ext": {"lower": 0, "upper": 50}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
+        ranked = [
+            {"t_lead": 50, "delta_T_thr": 50, "G_ext": 25, "Q_ratio": 0.50, "tau": 0.80, "_essi_acquisition_value": 10.0},
+            {"t_lead": 51, "delta_T_thr": 50, "G_ext": 25, "Q_ratio": 0.50, "tau": 0.80, "_essi_acquisition_value": 9.0},
+            {"t_lead": 80, "delta_T_thr": 20, "G_ext": 40, "Q_ratio": 0.80, "tau": 0.88, "_essi_acquisition_value": 8.0},
+        ]
+
+        selected = self.runner.diverse_bo_batch(ranked, bounds, 2, min_distance=0.08)
+
+        self.assertEqual(len(selected), 2)
+        self.assertEqual(self.runner.theta_key(selected[0]), self.runner.theta_key(ranked[0]))
+        self.assertEqual(self.runner.theta_key(selected[1]), self.runner.theta_key(ranked[2]))
+
+    def test_diverse_bo_batch_uses_smoke_methodology_slots(self):
+        bounds = {"t_lead": {"lower": 0, "upper": 100}, "delta_T_thr": {"lower": 0, "upper": 120}, "G_ext": {"lower": 0, "upper": 50}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
+        ranked = [
+            {"t_lead": 48, "delta_T_thr": 75, "G_ext": 42, "Q_ratio": 0.13, "tau": 0.88, "_essi_acquisition_value": 100.0, "bo_selection_strategy": "stable_success_lattice", "bo_candidate_source": "stable_success"},
+            {"t_lead": 49, "delta_T_thr": 76, "G_ext": 41, "Q_ratio": 0.12, "tau": 0.88, "_essi_acquisition_value": 95.0, "bo_selection_strategy": "stable_success_lattice", "bo_candidate_source": "stable_success"},
+            {"t_lead": 50, "delta_T_thr": 77, "G_ext": 42, "Q_ratio": 0.11, "tau": 0.88, "_essi_acquisition_value": 90.0, "bo_selection_strategy": "stable_success_lattice", "bo_candidate_source": "stable_success"},
+            {"t_lead": 35, "delta_T_thr": 55, "G_ext": 38, "Q_ratio": 0.25, "tau": 0.80, "_essi_acquisition_value": 70.0, "bo_candidate_source": "local"},
+            {"t_lead": 65, "delta_T_thr": 95, "G_ext": 43, "Q_ratio": 0.20, "tau": 0.86, "_essi_acquisition_value": 69.0, "bo_candidate_source": "trust_region"},
+            {"t_lead": 10, "delta_T_thr": 110, "G_ext": 5, "Q_ratio": 0.70, "tau": 0.72, "_essi_acquisition_value": 50.0, "bo_candidate_source": "global"},
+            {"t_lead": 90, "delta_T_thr": 15, "G_ext": 48, "Q_ratio": 0.90, "tau": 0.90, "_essi_acquisition_value": 20.0, "bo_candidate_source": "global"},
+        ]
+
+        selected = self.runner.diverse_bo_batch(ranked, bounds, 6, min_distance=0.04)
+        slots = [row.get("bo_batch_slot") for row in selected]
+
+        self.assertEqual(len(selected), 6)
+        self.assertEqual(slots.count("stable"), 2)
+        self.assertEqual(slots.count("local_constrained"), 2)
+        self.assertEqual(slots.count("global_ei"), 1)
+        self.assertEqual(slots.count("space_filling"), 1)
 
     def test_theta_per_round_batches_all_methods(self):
         with tempfile.TemporaryDirectory() as tmp:

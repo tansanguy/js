@@ -438,6 +438,27 @@ def write_sumo_config(
     }
 
 
+def parse_sumo_summary_safety(path: Path) -> dict[str, int]:
+    metrics = {"sumo_summary_teleports": 0, "sumo_summary_collisions": 0}
+    if not path.is_file():
+        return metrics
+    try:
+        for _event, elem in ET.iterparse(path, events=("end",)):
+            if elem.tag == "step":
+                metrics["sumo_summary_teleports"] = max(
+                    metrics["sumo_summary_teleports"],
+                    int(round(safe_float(elem.get("teleports"), 0.0))),
+                )
+                metrics["sumo_summary_collisions"] = max(
+                    metrics["sumo_summary_collisions"],
+                    int(round(safe_float(elem.get("collisions"), 0.0))),
+                )
+            elem.clear()
+    except ET.ParseError:
+        return metrics
+    return metrics
+
+
 def e2_detector_lines(stage1: B4Stage1Inputs, output_file: Path, max_movements: int = 3) -> list[str]:
     lines: list[str] = []
     ranked = sorted(
@@ -999,6 +1020,7 @@ def summarize_task(
 ) -> dict[str, Any]:
     paths = write_sumo_config(task, phase_config, emit_fcd=emit_fcd, stage1=stage1)
     tripinfo = parse_tripinfo(paths["tripinfo"])
+    summary_safety = parse_sumo_summary_safety(paths["summary"])
     emergency = tripinfo["emergency"] or {}
     background = tripinfo["background"]
     background_departed = count_background_departures(task.background_route)
@@ -1016,21 +1038,43 @@ def summarize_task(
         failure_reason = termination_reason
     if not failure_reason and task.mode == B4_MODE and not emergency_tripinfo_found:
         failure_reason = termination_reason or "missing_emergency_tripinfo"
+    summary_teleports = int(summary_safety["sumo_summary_teleports"])
+    summary_collisions = int(summary_safety["sumo_summary_collisions"])
+    summary_failure_reason = ""
+    if summary_teleports > 0 and summary_collisions > 0:
+        summary_failure_reason = "sumo_summary_teleport_collision"
+    elif summary_teleports > 0:
+        summary_failure_reason = "sumo_summary_teleport"
+    elif summary_collisions > 0:
+        summary_failure_reason = "sumo_summary_collision"
+    summary_warning_only = bool(summary_failure_reason) and task.mode == B04_MODE and not failure_reason
+    if summary_failure_reason and not failure_reason:
+        failure_reason = summary_failure_reason
     t_actual_emv = safe_float(emergency.get("duration"), 0.0) if emergency else 0.0
     t_free_emv = safe_float(free_reference.get("T_free_EMV_sec"), 0.0)
     D_E_sec = round(t_actual_emv - t_free_emv, 6) if emergency else ""
     veh_metrics = actual_v_vehicle_metrics(background, free_rows_by_id, task.background_route, phase_config.hard_max_sim_time)
     D_G_sec = veh_metrics["D_G_sec"] if veh_metrics["D_G_sec"] != "" else 0.0
     score = objective_score(safe_float(D_E_sec), safe_float(D_G_sec)) if emergency else ""
+    emergency_teleport = str(emergency.get("vaporized", "false")).lower() == "true" if emergency else False
+    failed = (
+        failure_reason in {"emergency_stuck", "hard_max_sim_time", "missing_emergency_tripinfo"}
+        or (bool(summary_failure_reason) and not summary_warning_only)
+        or sumo_exit_code != 0
+    )
+    final_status = "FAIL"
+    if sumo_exit_code == 0 and bool(emergency) and not failed:
+        final_status = "WARNING" if summary_warning_only else "PASS"
     row.update({
         "sumo_exit_code": sumo_exit_code,
         **monitor_fields,
         "emergency_departed": bool(emergency) or bool(monitor_fields.get("emergency_seen_by_controller")),
         "emergency_arrived": bool(emergency),
-        "emergency_teleport": str(emergency.get("vaporized", "false")).lower() == "true" if emergency else False,
+        "emergency_teleport": emergency_teleport,
         "background_departed": background_departed,
         "background_arrived": background_arrived,
-        "background_teleported": 0,
+        "background_teleported": max(0, summary_teleports - int(emergency_teleport)),
+        **summary_safety,
         "background_arrived_ratio": round(background_arrived / background_departed, 6) if background_departed else 0.0,
         "general_vehicle_count": background_arrived,
         "general_mean_travel_time_sec": round(sum(durations) / len(durations), 6) if durations else "",
@@ -1040,8 +1084,8 @@ def summarize_task(
         "D_E_sec": D_E_sec,
         **veh_metrics,
         "objective_score": score,
-        "final_status": "PASS" if sumo_exit_code == 0 and bool(emergency) and failure_reason not in {"emergency_stuck", "hard_max_sim_time", "missing_emergency_tripinfo"} else "FAIL",
-        "failed": failure_reason in {"emergency_stuck", "hard_max_sim_time", "missing_emergency_tripinfo"} or sumo_exit_code != 0,
+        "final_status": final_status,
+        "failed": failed,
         "failure_reason": failure_reason,
         "wall_time_sec": round(wall_time_sec, 6),
         "signal_events_csv": rel(task.run_dir / "signal_events.csv") if task.mode == B4_MODE else "",

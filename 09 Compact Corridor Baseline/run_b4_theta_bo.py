@@ -65,17 +65,43 @@ DEFAULT_SEED = 20260605
 W_E_THETA = 10.0
 W_G_THETA = 1.0
 FAILURE_PENALTY_SEC = 1_000_000.0
-DEFAULT_EI_CANDIDATE_COUNT = 600
-DEFAULT_LOCAL_EI_CANDIDATE_FRACTION = 0.45
+DEFAULT_EI_CANDIDATE_COUNT = 5000
+DEFAULT_LOCAL_EI_CANDIDATE_FRACTION = 0.75
+DEFAULT_FOCUSED_LOCAL_CANDIDATE_FRACTION = 0.65
+DEFAULT_TRUST_REGION_CANDIDATE_FRACTION = 0.35
+DEFAULT_SURROGATE_MEAN_SELECTION_FRACTION = 0.35
+SURROGATE_MEAN_ACQ_FLOOR_QUANTILE = 0.75
 GP_LENGTH_SCALE_BOUNDS = (0.08, 2.5)
 GP_NOISE_LEVEL = 1.0e-4
 GP_TARGET_CAP_ABOVE_BEST_SEC = 120.0
+PLATEAU_ROUND_WINDOW = 8
+PLATEAU_MIN_IMPROVEMENT_SEC = 1.0
 HOLD_FAILURE_D_G_THRESHOLD_SEC = 1_000.0
 HOLD_FAILURE_DISTANCE_RADIUS = 0.28
 HOLD_FAILURE_MIN_ACQ_MULTIPLIER = 0.01
-HOLD_FAILURE_EXCLUDE_MULTIPLIER = 0.85
+HOLD_FAILURE_EXCLUDE_MULTIPLIER = 0.20
 HOLD_GOOD_D_G_THRESHOLD_SEC = 500.0
 HOLD_GOOD_DISTANCE_RADIUS = 0.34
+GENERAL_FAILURE_DISTANCE_RADIUS = 0.35
+GENERAL_FAILURE_MIN_ACQ_MULTIPLIER = 0.10
+AXIS_FAILURE_MIN_ACQ_MULTIPLIER = 0.20
+SAFETY_KNN_NEIGHBORS = 12
+SAFETY_MIN_ACQ_MULTIPLIER = 0.02
+SAFETY_ACQ_POWER = 2.0
+INCUMBENT_EXPLOITATION_DISTANCE_RADIUS = 0.32
+INCUMBENT_EXPLOITATION_FAILURE_EXCLUSION_RADIUS = 0.18
+INCUMBENT_EXPLOITATION_ACQ_SEC = 80.0
+INCUMBENT_EXPLOITATION_ANCHOR_COUNT = 1
+INCUMBENT_EXPLOITATION_MIN_Q_RATIO = 0.03
+INCUMBENT_EXPLOITATION_G_TOLERANCE = 0.0
+LOCAL_FAILURE_EXCLUSION_T_LEAD_SEC = 2.0
+LOCAL_FAILURE_EXCLUSION_DELTA_T_SEC = 2.0
+LOCAL_FAILURE_EXCLUSION_Q_RATIO = 0.02
+LOCAL_FAILURE_EXCLUSION_TAU = 0.02
+STABLE_SUCCESS_LATTICE_MAX_CANDIDATES = 640
+STABLE_SUCCESS_LATTICE_ANCHOR_COUNT = 16
+STABLE_SUCCESS_LATTICE_ACQ_SEC = 70.0
+STABLE_SUCCESS_LATTICE_FAILURE_EXCLUSION_RADIUS = 0.0
 DEFAULT_SUBSPACE_COUNT = 6
 DEFAULT_SPC_WINDOW = 5
 DEFAULT_SPC_ALPHA = 0.30
@@ -104,6 +130,8 @@ SCORE_FIELDS = [
     "score_sec",
     "bo_score_sec",
     "final_status",
+    "sumo_summary_teleports",
+    "sumo_summary_collisions",
 ]
 TOP20_FIELDS = [
     "rank",
@@ -220,6 +248,13 @@ def bool_cell(value: Any) -> bool:
     return value is True or str(value).strip().lower() in {"true", "1", "yes"}
 
 
+def sumo_summary_safety_failed(row: dict[str, Any]) -> bool:
+    return (
+        safe_float(row.get("sumo_summary_teleports"), 0.0) > 0.0
+        or safe_float(row.get("sumo_summary_collisions"), 0.0) > 0.0
+    )
+
+
 def sec(value: Any) -> str:
     if value in {"", None}:
         return ""
@@ -327,6 +362,7 @@ def score_for_row(row: dict[str, Any], w_E: float = W_E_THETA, w_G: float = W_G_
         or not bool_cell(row.get("emergency_arrived"))
         or bool_cell(row.get("emergency_teleport"))
         or bool_cell(row.get("failed"))
+        or sumo_summary_safety_failed(row)
     )
     penalty = FAILURE_PENALTY_SEC if failed else 0.0
     return round(score, 6), penalty, round(score + penalty, 6)
@@ -371,6 +407,8 @@ def score_summary_row(row: dict[str, Any]) -> dict[str, Any]:
         "score_sec": row.get("score_sec", ""),
         "bo_score_sec": row.get("bo_score_sec", ""),
         "final_status": row.get("final_status", ""),
+        "sumo_summary_teleports": row.get("sumo_summary_teleports", ""),
+        "sumo_summary_collisions": row.get("sumo_summary_collisions", ""),
     }
 
 
@@ -420,6 +458,7 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "score_values": [],
             "d_g_values": [],
             "stage2_hold_counts": [],
+            "failure_count": 0,
             "repeat_count": 0,
         })
         entry["bo_scores"].append(safe_float(row.get("bo_score_sec")))
@@ -428,6 +467,8 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             entry["d_g_values"].append(safe_float(row.get("D_G_sec"), 0.0))
         if row.get("stage2_hold_count", "") != "":
             entry["stage2_hold_counts"].append(safe_float(row.get("stage2_hold_count"), 0.0))
+        if str(row.get("bo_failed", row.get("final_status", ""))).strip().lower() in {"true", "fail", "failed"}:
+            entry["failure_count"] += 1
         entry["repeat_count"] += 1
     aggregated: list[dict[str, Any]] = []
     for entry in grouped.values():
@@ -441,6 +482,8 @@ def aggregate_observations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             entry["D_G_sec"] = sum(d_g_values) / len(d_g_values)
         if hold_counts:
             entry["stage2_hold_count"] = sum(hold_counts) / len(hold_counts)
+        if entry.get("failure_count", 0) > 0:
+            entry["bo_failed"] = "True"
         aggregated.append(entry)
     return sorted(aggregated, key=lambda row: (float(row["bo_score_sec"]), theta_key(row)))
 
@@ -480,6 +523,48 @@ def clipped_bo_targets(scores: Any) -> Any:
     return np.minimum(scores, cap)
 
 
+def rank_normalized_targets(scores: Any) -> Any:
+    try:
+        import numpy as np  # type: ignore
+    except Exception:
+        return scores
+    score_array = np.asarray(scores, dtype=float)
+    if len(score_array) <= 1:
+        return np.zeros_like(score_array)
+    order = np.argsort(score_array, kind="mergesort")
+    ranks = np.empty(len(score_array), dtype=float)
+    ranks[order] = np.arange(len(score_array), dtype=float)
+    return ranks / float(max(len(score_array) - 1, 1))
+
+
+def score_from_rank_quantile(rank_value: float, score_values: Any) -> float:
+    try:
+        import numpy as np  # type: ignore
+    except Exception:
+        return float(rank_value)
+    clipped_rank = max(0.0, min(1.0, float(rank_value)))
+    return float(np.quantile(np.asarray(score_values, dtype=float), clipped_rank))
+
+
+def plateau_detected(observations: list[dict[str, Any]], window: int = PLATEAU_ROUND_WINDOW, min_improvement_sec: float = PLATEAU_MIN_IMPROVEMENT_SEC) -> bool:
+    round_best: list[tuple[int, float]] = []
+    grouped: dict[int, list[float]] = {}
+    for row in observations:
+        round_value = safe_float(row.get("bo_round", row.get("round", "")), float("nan"))
+        if not math.isfinite(round_value):
+            continue
+        score = safe_float(row.get("bo_score_sec", row.get("score_sec", row.get("score", ""))), float("inf"))
+        if math.isfinite(score):
+            grouped.setdefault(int(round_value), []).append(score)
+    for round_index in sorted(grouped):
+        round_best.append((round_index, min(grouped[round_index])))
+    if len(round_best) < window + 1:
+        return False
+    best_before = min(score for _round_index, score in round_best[: -window])
+    best_recent = min(score for _round_index, score in round_best[-window:])
+    return best_before - best_recent < min_improvement_sec
+
+
 def hold_delay_failure_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         row
@@ -504,6 +589,48 @@ def hold_good_observations(observations: list[dict[str, Any]]) -> list[dict[str,
     ]
 
 
+def failed_bo_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in observations
+        if (
+            str(row.get("bo_failed", "")).strip().lower() == "true"
+            or safe_float(row.get("bo_score_sec"), 0.0) >= FAILURE_PENALTY_SEC
+        )
+    ]
+
+
+def near_axis_aligned_failure(candidate: dict[str, Any], failures: list[dict[str, Any]]) -> bool:
+    candidate_g = round(safe_float(candidate.get("G_ext")))
+    for failure in failures:
+        if round(safe_float(failure.get("G_ext"))) != candidate_g:
+            continue
+        if abs(safe_float(candidate.get("t_lead")) - safe_float(failure.get("t_lead"))) > LOCAL_FAILURE_EXCLUSION_T_LEAD_SEC:
+            continue
+        if abs(safe_float(candidate.get("delta_T_thr")) - safe_float(failure.get("delta_T_thr"))) > LOCAL_FAILURE_EXCLUSION_DELTA_T_SEC:
+            continue
+        if abs(safe_float(candidate.get("Q_ratio")) - safe_float(failure.get("Q_ratio"))) > LOCAL_FAILURE_EXCLUSION_Q_RATIO:
+            continue
+        if abs(safe_float(candidate.get("tau")) - safe_float(failure.get("tau"))) > LOCAL_FAILURE_EXCLUSION_TAU:
+            continue
+        return True
+    return False
+
+
+def successful_bo_observations(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in observations
+        if str(row.get("bo_failed", "")).strip().lower() != "true"
+        and safe_float(row.get("bo_score_sec"), FAILURE_PENALTY_SEC) < FAILURE_PENALTY_SEC
+    ]
+
+
+def incumbent_success_observations(observations: list[dict[str, Any]], count: int = INCUMBENT_EXPLOITATION_ANCHOR_COUNT) -> list[dict[str, Any]]:
+    successes = successful_bo_observations(observations)
+    return sorted(successes, key=lambda row: (safe_float(row.get("bo_score_sec"), float("inf")), theta_key(row)))[:count]
+
+
 def nearest_theta_distance(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
     candidate_vector = theta_feature_vector(candidate, bounds)
     return min(
@@ -512,10 +639,76 @@ def nearest_theta_distance(candidate: dict[str, Any], observations: list[dict[st
     )
 
 
+def safety_success_probability(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any], k: int = SAFETY_KNN_NEIGHBORS) -> float:
+    failures = failed_bo_observations(observations)
+    successes = successful_bo_observations(observations)
+    if not failures or not successes:
+        return 1.0
+    distances: list[tuple[float, bool]] = []
+    candidate_vector = theta_feature_vector(candidate, bounds)
+    for row in observations:
+        row_vector = theta_feature_vector(row, bounds)
+        distance = math.sqrt(sum((left - right) ** 2 for left, right in zip(candidate_vector, row_vector)))
+        failed = row in failures
+        distances.append((distance, not failed))
+    nearest = sorted(distances, key=lambda item: item[0])[: max(1, min(k, len(distances)))]
+    success_weight = 0.0
+    total_weight = 0.0
+    for distance, success in nearest:
+        weight = 1.0 / max(distance, 1.0e-4)
+        total_weight += weight
+        if success:
+            success_weight += weight
+    return max(0.0, min(1.0, success_weight / max(total_weight, 1.0e-9)))
+
+
+def safety_feasibility_multiplier(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
+    probability = safety_success_probability(candidate, observations, bounds)
+    return max(SAFETY_MIN_ACQ_MULTIPLIER, probability**SAFETY_ACQ_POWER)
+
+
+def incumbent_exploitation_acquisition(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
+    if safe_float(candidate.get("Q_ratio"), 0.0) < INCUMBENT_EXPLOITATION_MIN_Q_RATIO:
+        return 0.0
+    anchors = incumbent_success_observations(observations)
+    if not anchors:
+        return 0.0
+    failures = failed_bo_observations(observations)
+    if failures and near_axis_aligned_failure(candidate, failures):
+        return 0.0
+    candidate_g = round(safe_float(candidate.get("G_ext")))
+    anchor_g = round(safe_float(anchors[0].get("G_ext")))
+    if abs(candidate_g - anchor_g) > INCUMBENT_EXPLOITATION_G_TOLERANCE:
+        return 0.0
+    nearest_anchor = nearest_theta_distance(candidate, anchors, bounds)
+    if nearest_anchor >= INCUMBENT_EXPLOITATION_DISTANCE_RADIUS:
+        return 0.0
+    if failures:
+        nearest_failure = nearest_theta_distance(candidate, failures, bounds)
+        if nearest_failure <= INCUMBENT_EXPLOITATION_FAILURE_EXCLUSION_RADIUS or nearest_failure < nearest_anchor:
+            return 0.0
+    closeness = max(0.0, 1.0 - nearest_anchor / INCUMBENT_EXPLOITATION_DISTANCE_RADIUS)
+    return INCUMBENT_EXPLOITATION_ACQ_SEC * (closeness**2)
+
+
 def hold_feasibility_multiplier(candidate: dict[str, Any], observations: list[dict[str, Any]], bounds: dict[str, Any]) -> float:
+    safety_multiplier = safety_feasibility_multiplier(candidate, observations, bounds)
+    generic_failures = failed_bo_observations(observations)
+    if generic_failures:
+        axis_failure_multiplier = AXIS_FAILURE_MIN_ACQ_MULTIPLIER if near_axis_aligned_failure(candidate, generic_failures) else 1.0
+        nearest_generic_failure = nearest_theta_distance(candidate, generic_failures, bounds)
+        if nearest_generic_failure >= GENERAL_FAILURE_DISTANCE_RADIUS:
+            generic_failure_multiplier = 1.0
+        else:
+            ratio = max(0.0, nearest_generic_failure / GENERAL_FAILURE_DISTANCE_RADIUS)
+            generic_failure_multiplier = GENERAL_FAILURE_MIN_ACQ_MULTIPLIER + (1.0 - GENERAL_FAILURE_MIN_ACQ_MULTIPLIER) * ratio
+        generic_failure_multiplier = min(axis_failure_multiplier, generic_failure_multiplier)
+    else:
+        generic_failure_multiplier = 1.0
+
     failures = hold_delay_failure_observations(observations)
     if not failures:
-        return 1.0
+        return min(safety_multiplier, generic_failure_multiplier)
     nearest_failure = nearest_theta_distance(candidate, failures, bounds)
     if nearest_failure >= HOLD_FAILURE_DISTANCE_RADIUS:
         failure_multiplier = 1.0
@@ -525,13 +718,13 @@ def hold_feasibility_multiplier(candidate: dict[str, Any], observations: list[di
 
     good = hold_good_observations(observations)
     if not good:
-        return failure_multiplier
+        return min(safety_multiplier, generic_failure_multiplier, failure_multiplier)
     nearest_good = nearest_theta_distance(candidate, good, bounds)
     if nearest_good <= HOLD_GOOD_DISTANCE_RADIUS:
         good_multiplier = 1.0
     else:
         good_multiplier = max(HOLD_FAILURE_MIN_ACQ_MULTIPLIER, HOLD_GOOD_DISTANCE_RADIUS / max(nearest_good, HOLD_GOOD_DISTANCE_RADIUS))
-    return min(failure_multiplier, good_multiplier)
+    return min(safety_multiplier, generic_failure_multiplier, failure_multiplier, good_multiplier)
 
 
 def random_theta_candidates(
@@ -575,17 +768,32 @@ def local_theta_candidates(
     blocked = set(existing or set())
     selected = set(blocked)
     centers = sorted(observations, key=lambda row: safe_float(row.get("bo_score_sec"), float("inf")))[: min(5, len(observations))]
+    focused_centers = centers[: min(3, len(centers))]
     candidates: list[dict[str, Any]] = []
     attempts = 0
     while len(candidates) < count and attempts < max(count * 120, 1000):
         attempts += 1
-        center = centers[attempts % len(centers)]
+        focused = bool(focused_centers) and rng.random() < DEFAULT_FOCUSED_LOCAL_CANDIDATE_FRACTION
+        active_centers = focused_centers if focused else centers
+        center = active_centers[attempts % len(active_centers)]
+        if focused:
+            t_sigma = 4.0
+            delta_sigma = 6.0
+            g_sigma = 2.0
+            q_sigma = 0.035
+            tau_sigma = 0.012
+        else:
+            t_sigma = max((safe_float(bounds["t_lead"]["upper"]) - safe_float(bounds["t_lead"]["lower"])) * 0.08, 2.0)
+            delta_sigma = max((safe_float(bounds["delta_T_thr"]["upper"]) - safe_float(bounds["delta_T_thr"]["lower"])) * 0.08, 4.0)
+            g_sigma = max((safe_float(bounds["G_ext"]["upper"]) - safe_float(bounds["G_ext"]["lower"])) * 0.08, 2.0)
+            q_sigma = 0.08
+            tau_sigma = 0.025
         row = {
-            "t_lead": safe_float(center.get("t_lead")) + rng.gauss(0.0, max((safe_float(bounds["t_lead"]["upper"]) - safe_float(bounds["t_lead"]["lower"])) * 0.08, 2.0)),
-            "delta_T_thr": safe_float(center.get("delta_T_thr")) + rng.gauss(0.0, max((safe_float(bounds["delta_T_thr"]["upper"]) - safe_float(bounds["delta_T_thr"]["lower"])) * 0.08, 4.0)),
-            "G_ext": safe_float(center.get("G_ext")) + rng.gauss(0.0, max((safe_float(bounds["G_ext"]["upper"]) - safe_float(bounds["G_ext"]["lower"])) * 0.08, 2.0)),
-            "Q_ratio": safe_float(center.get("Q_ratio")) + rng.gauss(0.0, 0.08),
-            "tau": safe_float(center.get("tau")) + rng.gauss(0.0, 0.025),
+            "t_lead": safe_float(center.get("t_lead")) + rng.gauss(0.0, t_sigma),
+            "delta_T_thr": safe_float(center.get("delta_T_thr")) + rng.gauss(0.0, delta_sigma),
+            "G_ext": safe_float(center.get("G_ext")) + rng.gauss(0.0, g_sigma),
+            "Q_ratio": safe_float(center.get("Q_ratio")) + rng.gauss(0.0, q_sigma),
+            "tau": safe_float(center.get("tau")) + rng.gauss(0.0, tau_sigma),
         }
         clamped = clamp_theta(row, bounds)
         key = theta_key(clamped)
@@ -593,6 +801,104 @@ def local_theta_candidates(
             continue
         selected.add(key)
         candidates.append(clamped)
+    return candidates
+
+
+def trust_region_theta_candidates(
+    bounds: dict[str, Any],
+    observations: list[dict[str, Any]],
+    count: int,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]] | None = None,
+) -> list[dict[str, Any]]:
+    if count <= 0 or not observations:
+        return []
+    rng = random.Random(seed)
+    selected = set(existing or set())
+    centers = sorted(observations, key=lambda row: safe_float(row.get("bo_score_sec"), float("inf")))[: min(3, len(observations))]
+    t_offsets = [0, -2, 2, -4, 4, -8, 8]
+    delta_offsets = [0, -2, 2, -4, 4, -8, 8, -12, 12]
+    g_offsets = [0, -1, 1, -2, 2, -3, 3]
+    q_offsets = [0.0, -0.02, 0.02, -0.04, 0.04, -0.08, 0.08]
+    tau_offsets = [0.0, -0.01, 0.01]
+    lattice: list[dict[str, Any]] = []
+    for center in centers:
+        for t_offset in t_offsets:
+            for delta_offset in delta_offsets:
+                for g_offset in g_offsets:
+                    for q_offset in q_offsets:
+                        for tau_offset in tau_offsets:
+                            row = {
+                                "t_lead": safe_float(center.get("t_lead")) + t_offset,
+                                "delta_T_thr": safe_float(center.get("delta_T_thr")) + delta_offset,
+                                "G_ext": safe_float(center.get("G_ext")) + g_offset,
+                                "Q_ratio": safe_float(center.get("Q_ratio")) + q_offset,
+                                "tau": safe_float(center.get("tau")) + tau_offset,
+                            }
+                            clamped = clamp_theta(row, bounds)
+                            key = theta_key(clamped)
+                            if key in selected:
+                                continue
+                            selected.add(key)
+                            lattice.append(clamped)
+    rng.shuffle(lattice)
+    return lattice[:count]
+
+
+def stable_success_lattice_candidates(
+    bounds: dict[str, Any],
+    observations: list[dict[str, Any]],
+    count: int,
+    existing: set[tuple[float, float, float, float, float]],
+) -> list[dict[str, Any]]:
+    successes = successful_bo_observations(observations)
+    if count <= 0 or not successes:
+        return []
+    failures = failed_bo_observations(observations)
+    conflict_free_successes = [row for row in successes if not near_axis_aligned_failure(row, failures)]
+    anchor_pool = conflict_free_successes or successes
+    best_score = min(safe_float(row.get("bo_score_sec"), float("inf")) for row in anchor_pool)
+    anchors = [
+        row
+        for row in sorted(anchor_pool, key=lambda item: (safe_float(item.get("bo_score_sec"), float("inf")), theta_key(item)))
+        if safe_float(row.get("bo_score_sec"), float("inf")) <= best_score + 1.0
+    ][:STABLE_SUCCESS_LATTICE_ANCHOR_COUNT]
+    selected = set(existing)
+    candidates: list[dict[str, Any]] = []
+    t_offsets = [0, 1, -1, 2, -2, 4]
+    delta_offsets = [0, 1, -1, 2, -2, 4]
+    g_offsets = [0, -1, 1]
+    q_offsets = [0.0, -0.01, 0.01]
+    tau_offsets = [0.0, -0.01, 0.01]
+    for anchor in anchors:
+        anchor_g = round(safe_float(anchor.get("G_ext")))
+        for t_offset in t_offsets:
+            for delta_offset in delta_offsets:
+                for g_offset in g_offsets:
+                    for q_offset in q_offsets:
+                        for tau_offset in tau_offsets:
+                            row = {
+                                "t_lead": safe_float(anchor.get("t_lead")) + t_offset,
+                                "delta_T_thr": safe_float(anchor.get("delta_T_thr")) + delta_offset,
+                                "G_ext": anchor_g + g_offset,
+                                "Q_ratio": safe_float(anchor.get("Q_ratio")) + q_offset,
+                                "tau": safe_float(anchor.get("tau")) + tau_offset,
+                            }
+                            clamped = clamp_theta(row, bounds)
+                            if safe_float(clamped.get("Q_ratio"), 0.0) < INCUMBENT_EXPLOITATION_MIN_Q_RATIO:
+                                continue
+                            if failures:
+                                nearest_anchor = nearest_theta_distance(clamped, [anchor], bounds)
+                                nearest_failure = nearest_theta_distance(clamped, failures, bounds)
+                                if nearest_failure <= STABLE_SUCCESS_LATTICE_FAILURE_EXCLUSION_RADIUS or nearest_failure < nearest_anchor * 0.60:
+                                    continue
+                            key = theta_key(clamped)
+                            if key in selected:
+                                continue
+                            selected.add(key)
+                            candidates.append(clamped)
+                            if len(candidates) >= count:
+                                return candidates
     return candidates
 
 
@@ -606,6 +912,9 @@ def expected_improvement_candidates(
     aggregated = aggregate_observations(observations)
     if len(aggregated) < 2:
         return []
+    objective_observations = successful_bo_observations(aggregated)
+    gp_observations = objective_observations if len(objective_observations) >= 2 else aggregated
+    stalled = plateau_detected(gp_observations)
     try:
         import numpy as np  # type: ignore
         from scipy.stats import norm  # type: ignore
@@ -614,14 +923,13 @@ def expected_improvement_candidates(
     except Exception:
         return []
 
-    x_train = np.array([theta_feature_vector(row, bounds) for row in aggregated], dtype=float)
-    y_raw = np.array([float(row["bo_score_sec"]) for row in aggregated], dtype=float)
-    y_model = clipped_bo_targets(y_raw) if hold_delay_failure_observations(aggregated) else y_raw
-    y_mean = float(np.mean(y_model))
-    y_std = float(np.std(y_model))
-    if not math.isfinite(y_std) or y_std < 1.0e-9:
-        y_std = 1.0
-    y_train = (y_model - y_mean) / y_std
+    x_train = np.array([theta_feature_vector(row, bounds) for row in gp_observations], dtype=float)
+    y_raw = np.array([float(row["bo_score_sec"]) for row in gp_observations], dtype=float)
+    y_model = y_raw
+    y_train = rank_normalized_targets(y_model)
+    y_range = float(np.max(y_model) - np.min(y_model))
+    if not math.isfinite(y_range) or y_range < 1.0e-9:
+        y_range = 1.0
     kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(
         length_scale=[0.35] * x_train.shape[1],
         length_scale_bounds=GP_LENGTH_SCALE_BOUNDS,
@@ -633,11 +941,19 @@ def expected_improvement_candidates(
     except Exception:
         return []
 
-    local_count = int(round(candidate_count * DEFAULT_LOCAL_EI_CANDIDATE_FRACTION))
-    local = local_theta_candidates(bounds, aggregated, local_count, seed + 503, existing)
-    blocked = set(existing) | {theta_key(row) for row in local}
-    global_candidates = random_theta_candidates(bounds, max(candidate_count - len(local), 0), seed + 1009, blocked)
-    candidates = [*local, *global_candidates]
+    stable_count = min(STABLE_SUCCESS_LATTICE_MAX_CANDIDATES, max(0, candidate_count // 8))
+    stable = stable_success_lattice_candidates(bounds, aggregated, stable_count, existing)
+    stable_keys = {theta_key(row) for row in stable}
+    trust_fraction = 0.50 if stalled else DEFAULT_TRUST_REGION_CANDIDATE_FRACTION
+    local_fraction = 0.85 if stalled else DEFAULT_LOCAL_EI_CANDIDATE_FRACTION
+    trust_count = int(round(candidate_count * trust_fraction))
+    trust = trust_region_theta_candidates(bounds, gp_observations, trust_count, seed + 211, set(existing) | stable_keys)
+    blocked = set(existing) | stable_keys | {theta_key(row) for row in trust}
+    local_count = int(round(candidate_count * local_fraction))
+    local = local_theta_candidates(bounds, gp_observations, max(local_count - len(trust), 0), seed + 503, blocked)
+    blocked |= {theta_key(row) for row in local}
+    global_candidates = random_theta_candidates(bounds, max(candidate_count - len(trust) - len(local), 0), seed + 1009, blocked)
+    candidates = [*stable, *trust, *local, *global_candidates]
     if not candidates:
         return []
     x_candidate = np.array([theta_feature_vector(row, bounds) for row in candidates], dtype=float)
@@ -646,23 +962,78 @@ def expected_improvement_candidates(
     except Exception:
         return []
     sigma = np.maximum(sigma, 1.0e-9)
+    ei_sigma = np.maximum(sigma * (0.45 if stalled else 1.0), 1.0e-9)
     best_scaled = float(np.min(y_train))
-    improvement = best_scaled - mu - 0.01
-    z = improvement / sigma
-    ei_scaled = improvement * norm.cdf(z) + sigma * norm.pdf(z)
-    ei_sec = np.maximum(ei_scaled, 0.0) * y_std
+    improvement = best_scaled - mu - 0.005
+    z = improvement / ei_sigma
+    ei_scaled = improvement * norm.cdf(z) + ei_sigma * norm.pdf(z)
+    ei_sec = np.maximum(ei_scaled, 0.0) * y_range
     ranked: list[dict[str, Any]] = []
     filtered_ranked: list[dict[str, Any]] = []
-    for row, ei in zip(candidates, ei_sec):
+    gp_mean_sec = np.array([score_from_rank_quantile(float(value), y_model) for value in mu], dtype=float)
+    gp_std_sec = sigma * y_range
+    best_score_sec = float(np.min(y_raw))
+    mean_improvement = np.maximum(best_score_sec - gp_mean_sec, 0.0)
+    lower_conf_improvement = np.maximum(best_score_sec - (gp_mean_sec - 0.35 * gp_std_sec), 0.0)
+    surrogate_acq = np.maximum(mean_improvement, 0.5 * lower_conf_improvement)
+    mean_quota = min(len(candidates), max(1, int(round(candidate_count * DEFAULT_SURROGATE_MEAN_SELECTION_FRACTION))))
+    ei_floor_values = [float(value) for value in ei_sec if math.isfinite(float(value)) and float(value) > 0.0]
+    if ei_floor_values:
+        mean_acq_floor = float(np.quantile(np.array(ei_floor_values), SURROGATE_MEAN_ACQ_FLOOR_QUANTILE))
+    else:
+        mean_acq_floor = max(float(y_range) * 0.05, 1.0e-9)
+    mean_ranked_indices = sorted(range(len(candidates)), key=lambda idx: (float(gp_mean_sec[idx]), theta_key(candidates[idx])))
+    mean_promoted: dict[int, float] = {}
+    for rank, idx in enumerate(mean_ranked_indices[:mean_quota]):
+        decay = 1.0 - 0.65 * (rank / max(mean_quota - 1, 1))
+        mean_promoted[idx] = mean_acq_floor * decay
+
+    for idx, (row, ei) in enumerate(zip(candidates, ei_sec)):
+        if idx < len(stable):
+            candidate_source = "stable_success"
+        elif idx < len(stable) + len(trust):
+            candidate_source = "trust_region"
+        elif idx < len(stable) + len(trust) + len(local):
+            candidate_source = "local"
+        else:
+            candidate_source = "global"
         feasibility = hold_feasibility_multiplier(row, aggregated, bounds)
+        if stalled:
+            source_multiplier = {"trust_region": 1.25, "local": 0.95, "global": 0.18}.get(candidate_source, 1.0)
+        else:
+            source_multiplier = 1.0
+        ei_acq = float(ei) * feasibility * source_multiplier
+        model_acq = float(surrogate_acq[idx]) * feasibility * source_multiplier
+        promoted_acq = mean_promoted.get(idx, 0.0) * feasibility * source_multiplier
+        incumbent_acq = incumbent_exploitation_acquisition(row, aggregated, bounds) * feasibility
+        stable_acq = (STABLE_SUCCESS_LATTICE_ACQ_SEC * feasibility) if candidate_source == "stable_success" else 0.0
+        acquisition = max(ei_acq, model_acq, promoted_acq, incumbent_acq, stable_acq)
+        if acquisition == stable_acq and stable_acq > max(ei_acq, model_acq, promoted_acq, incumbent_acq):
+            selection_strategy = "stable_success_lattice"
+        elif acquisition == incumbent_acq and incumbent_acq > max(ei_acq, model_acq, promoted_acq):
+            selection_strategy = "incumbent_exploitation"
+        elif acquisition == promoted_acq and promoted_acq > max(ei_acq, model_acq):
+            selection_strategy = "surrogate_mean_rank"
+        elif acquisition == model_acq and model_acq > ei_acq:
+            selection_strategy = "surrogate_mean_lcb"
+        else:
+            selection_strategy = "ei"
         candidate = {
             **row,
             "raw_acquisition": float(ei),
+            "surrogate_mean_sec": float(gp_mean_sec[idx]),
+            "surrogate_std_sec": float(gp_std_sec[idx]),
+            "surrogate_acquisition": float(surrogate_acq[idx]),
+            "incumbent_exploitation_acquisition": float(incumbent_acq),
+            "stable_success_acquisition": float(stable_acq),
             "hold_feasibility": float(feasibility),
-            "acquisition": float(ei) * feasibility,
+            "acquisition": acquisition,
+            "bo_selection_strategy": selection_strategy,
+            "bo_candidate_source": candidate_source,
+            "bo_plateau_mode": str(stalled),
         }
         ranked.append(candidate)
-        if feasibility >= HOLD_FAILURE_EXCLUDE_MULTIPLIER:
+        if feasibility >= HOLD_FAILURE_EXCLUDE_MULTIPLIER or selection_strategy in {"incumbent_exploitation", "stable_success_lattice"}:
             filtered_ranked.append(candidate)
     if filtered_ranked:
         ranked = filtered_ranked
@@ -966,7 +1337,7 @@ def prepare_real_context(run_id: str, args: argparse.Namespace) -> dict[str, Any
         )
         b04_baseline = run_b04_task(task, stage1, phase_config, free_reference, free_rows_by_id, args.sumo_binary, args.emit_fcd, emit_tls_states=getattr(args, "emit_tls_states", False))
         write_json(baseline_json, b04_baseline)
-    if b04_baseline.get("final_status") != "PASS" or str(b04_baseline.get("emergency_teleport", "")).lower() == "true":
+    if b04_baseline.get("final_status") not in {"PASS", "WARNING"} or str(b04_baseline.get("emergency_teleport", "")).lower() == "true":
         raise B4ThetaBoError("b04_baseline_validation_failed")
     route_length_m = emergency_route_length_from_tripinfo(baseline_dir / "tripinfo.xml")
     if route_length_m <= 0.0:

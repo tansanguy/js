@@ -95,6 +95,8 @@ EVALUATION_FIELDS = [
     "emergency_arrived",
     "emergency_teleport",
     "background_teleported",
+    "sumo_summary_teleports",
+    "sumo_summary_collisions",
     "signal_event_count",
     "stage2_hold_count",
     "stage3_preemption_count",
@@ -106,6 +108,8 @@ EVALUATION_FIELDS = [
     "bo_selection_strategy",
     "bo_candidate_source",
     "bo_plateau_mode",
+    "bo_batch_slot",
+    "hold_feasibility",
     *ESSI_FIELDS,
 ]
 CHECKPOINT_FIELDS = [
@@ -270,6 +274,14 @@ def project_path(value: str) -> Path:
 def validate_active_inputs(args: argparse.Namespace) -> dict[str, Any]:
     if not args.active_inputs.is_file():
         return {"status": "SKIP", "reason": "active_inputs_missing"}
+    strict = not (getattr(args, "mock_eval", False) or getattr(args, "collect_visualization_info", False))
+    warnings: list[str] = []
+
+    def audit_error(message: str) -> None:
+        if strict:
+            raise B4OptimizationError(message)
+        warnings.append(message)
+
     active_inputs = read_json(args.active_inputs)
     expected = {
         "net_file": rel(args.net_file),
@@ -278,11 +290,11 @@ def validate_active_inputs(args: argparse.Namespace) -> dict[str, Any]:
     }
     for key, value in expected.items():
         if active_inputs.get(key) != value:
-            raise B4OptimizationError(f"active_inputs_{key}_mismatch:{active_inputs.get(key)} != {value}")
+            audit_error(f"active_inputs_{key}_mismatch:{active_inputs.get(key)} != {value}")
     for key in ["signal_profile_csv", "signal_mapping_csv"]:
         source = active_inputs.get(key)
         if source and not project_path(str(source)).is_file():
-            raise B4OptimizationError(f"missing_active_inputs_{key}:{source}")
+            audit_error(f"missing_active_inputs_{key}:{source}")
     hash_audit: dict[str, str] = {}
     for path_key, hash_key in {
         "net_file": "net_file_sha256",
@@ -295,15 +307,17 @@ def validate_active_inputs(args: argparse.Namespace) -> dict[str, Any]:
             continue
         path = project_path(str(manifest_path))
         if not path.is_file():
-            raise B4OptimizationError(f"missing_active_inputs_{path_key}:{manifest_path}")
+            audit_error(f"missing_active_inputs_{path_key}:{manifest_path}")
+            continue
         actual_hash = sha256_file(path)
         hash_audit[hash_key] = actual_hash
         if actual_hash != manifest_hash:
-            raise B4OptimizationError(f"active_inputs_{hash_key}_mismatch:{actual_hash} != {manifest_hash}")
+            audit_error(f"active_inputs_{hash_key}_mismatch:{actual_hash} != {manifest_hash}")
     return {
-        "status": "PASS",
+        "status": "PASS" if not warnings else "WARN",
         "active_inputs": rel(args.active_inputs),
         "hashes": hash_audit,
+        "warnings": warnings,
     }
 
 
@@ -374,6 +388,30 @@ def load_task_prior_rows(output_dir: Path, method: str, seed: int) -> list[dict[
     return dedupe_evaluation_rows([*all_rows, *checkpoint_rows])
 
 
+def load_warm_start_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in getattr(args, "warm_start_csv", []) or []:
+        rows.extend(dict(row) for row in read_csv_rows(path))
+    return rows
+
+
+def warm_start_observations(args: argparse.Namespace) -> list[dict[str, Any]]:
+    observations: list[dict[str, Any]] = []
+    seen: set[tuple[float, float, float, float, float]] = set()
+    for row in load_warm_start_rows(args):
+        if any(row.get(field, "") in {"", None} for field in THETA_FIELDS):
+            continue
+        observation = bo_learning_observation(row)
+        if observation is None:
+            continue
+        key = theta_key(observation)
+        if key in seen:
+            continue
+        seen.add(key)
+        observations.append(observation)
+    return observations
+
+
 def existing_rows_outside_methods(output_dir: Path, methods_to_run: list[str]) -> list[dict[str, Any]]:
     return [
         dict(row)
@@ -390,6 +428,13 @@ def sec(value: Any) -> str:
 
 def bool_cell(value: Any) -> bool:
     return value is True or str(value).strip().lower() in {"true", "1", "yes"}
+
+
+def sumo_summary_safety_failed(row: dict[str, Any]) -> bool:
+    return (
+        safe_float(row.get("sumo_summary_teleports"), 0.0) > 0.0
+        or safe_float(row.get("sumo_summary_collisions"), 0.0) > 0.0
+    )
 
 
 def theta_key(row: dict[str, Any]) -> tuple[float, float, float, float, float]:
@@ -537,6 +582,8 @@ def essi_improvement_candidates(
             "bo_selection_strategy": item.get("bo_selection_strategy", "ei"),
             "bo_candidate_source": item.get("bo_candidate_source", ""),
             "bo_plateau_mode": item.get("bo_plateau_mode", ""),
+            "bo_batch_slot": item.get("bo_batch_slot", ""),
+            "hold_feasibility": item.get("hold_feasibility", ""),
             "surrogate_acquisition": item.get("surrogate_acquisition", ""),
             **essi,
         })
@@ -560,6 +607,80 @@ def diverse_bo_batch(
 ) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
     seen: set[tuple[float, float, float, float, float]] = set()
+
+    def slot_row(row: dict[str, Any], slot: str) -> dict[str, Any]:
+        out = dict(row)
+        out["bo_batch_slot"] = slot
+        return out
+
+    def append_ranked(predicate: Any, quota: int, slot: str, threshold: float = 0.0) -> None:
+        if quota <= 0 or len(selected) >= batch_size:
+            return
+        thresholds = [threshold, threshold * 0.65, threshold * 0.35, 0.0] if threshold > 0.0 else [0.0]
+        for current_threshold in thresholds:
+            for row in ranked:
+                if not predicate(row):
+                    continue
+                key = theta_key(row)
+                if key in seen:
+                    continue
+                if current_threshold > 0.0 and any(theta_distance(row, item, bounds) < current_threshold for item in selected):
+                    continue
+                selected.append(slot_row(row, slot))
+                seen.add(key)
+                if len(selected) >= batch_size or sum(1 for item in selected if item.get("bo_batch_slot") == slot) >= quota:
+                    return
+
+    def append_space_filling(quota: int) -> None:
+        for _index in range(max(0, quota)):
+            remaining = [row for row in ranked if theta_key(row) not in seen]
+            if not remaining or len(selected) >= batch_size:
+                return
+            if not selected:
+                choice = remaining[0]
+            else:
+                choice = max(
+                    remaining,
+                    key=lambda row: (
+                        min(theta_distance(row, item, bounds) for item in selected),
+                        safe_float(row.get("_essi_acquisition_value"), safe_float(row.get("acquisition"), 0.0)),
+                    ),
+                )
+            selected.append(slot_row(choice, "space_filling"))
+            seen.add(theta_key(choice))
+
+    if batch_size >= 6:
+        stable_quota, local_quota, global_quota = 2, 2, 1
+    elif batch_size >= 4:
+        stable_quota, local_quota, global_quota = 1, 2, 1
+    elif batch_size >= 3:
+        stable_quota, local_quota, global_quota = 1, 1, 1
+    else:
+        stable_quota, local_quota, global_quota = 0, 0, 0
+
+    append_ranked(
+        lambda row: row.get("bo_selection_strategy") in {"incumbent_exploitation", "stable_success_lattice"}
+        or row.get("bo_candidate_source") == "stable_success",
+        stable_quota,
+        "stable",
+        threshold=min_distance * 0.35,
+    )
+    append_ranked(
+        lambda row: row.get("bo_candidate_source") in {"trust_region", "local"},
+        local_quota,
+        "local_constrained",
+        threshold=min_distance,
+    )
+    append_ranked(
+        lambda row: row.get("bo_candidate_source") == "global",
+        global_quota,
+        "global_ei",
+        threshold=min_distance,
+    )
+    append_space_filling(batch_size - len(selected) if batch_size >= 6 else 0)
+    if len(selected) >= batch_size:
+        return selected[:batch_size]
+
     thresholds = [min_distance, min_distance * 0.65, min_distance * 0.35, 0.0]
     for threshold in thresholds:
         for row in ranked:
@@ -568,11 +689,89 @@ def diverse_bo_batch(
                 continue
             if threshold > 0.0 and any(theta_distance(row, item, bounds) < threshold for item in selected):
                 continue
-            selected.append(row)
+            selected.append(slot_row(row, row.get("bo_batch_slot", "") or "ranked_fallback"))
             seen.add(key)
             if len(selected) >= batch_size:
                 return selected
     return selected[:batch_size]
+
+
+def pass_focus_bo_batch(
+    observations: list[dict[str, Any]],
+    bounds: dict[str, Any],
+    batch_size: int,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]],
+    min_feasibility: float = 0.70,
+) -> list[dict[str, Any]]:
+    aggregated = theta_bo.aggregate_observations(observations)
+    successes = theta_bo.successful_bo_observations(aggregated)
+    if batch_size <= 0 or not successes:
+        return []
+
+    candidate_pool: list[tuple[dict[str, Any], str, int]] = []
+    stable_count = max(batch_size * 24, 60)
+    local_count = max(batch_size * 12, 36)
+    stable = theta_bo.stable_success_lattice_candidates(bounds, aggregated, stable_count, existing)
+    candidate_pool.extend((row, "pass_focus_stable", 0) for row in stable)
+
+    used = set(existing)
+    used.update(theta_key(row) for row in stable)
+    trust = theta_bo.trust_region_theta_candidates(bounds, successes, local_count, seed + 17, used)
+    candidate_pool.extend((row, "pass_focus_trust", 1) for row in trust)
+
+    used.update(theta_key(row) for row in trust)
+    local = theta_bo.local_theta_candidates(bounds, successes, local_count, seed + 29, used)
+    candidate_pool.extend((row, "pass_focus_local", 2) for row in local)
+
+    def nearest_success(candidate: dict[str, Any]) -> tuple[float, dict[str, Any]]:
+        nearest = min(
+            successes,
+            key=lambda row: (
+                theta_bo.nearest_theta_distance(candidate, [row], bounds),
+                safe_float(row.get("bo_score_sec"), float("inf")),
+            ),
+        )
+        return theta_bo.nearest_theta_distance(candidate, [nearest], bounds), nearest
+
+    selected: list[dict[str, Any]] = []
+    selected_keys = set(existing)
+    thresholds = [max(0.0, min_feasibility), max(0.0, min_feasibility * 0.8), 0.0]
+    for threshold in thresholds:
+        ranked: list[tuple[float, dict[str, Any]]] = []
+        for raw, source, source_rank in candidate_pool:
+            candidate = theta_bo.clamp_theta(raw, bounds)
+            key = theta_key(candidate)
+            if key in selected_keys:
+                continue
+            safety = theta_bo.safety_feasibility_multiplier(candidate, aggregated, bounds)
+            hold = theta_bo.hold_feasibility_multiplier(candidate, aggregated, bounds)
+            feasibility = min(safety, hold)
+            if feasibility < threshold:
+                continue
+            distance, anchor = nearest_success(candidate)
+            anchor_score = safe_float(anchor.get("bo_score_sec"), float("inf"))
+            acquisition = max(0.0, 1_000.0 - anchor_score - distance * 100.0 + feasibility * 10.0)
+            row = {
+                **candidate,
+                "raw_ei_acquisition": sec(acquisition),
+                "acquisition": sec(acquisition),
+                "bo_selection_strategy": "pass_focus_success_lattice",
+                "bo_candidate_source": source,
+                "bo_plateau_mode": "True",
+                "bo_batch_slot": "pass_focus",
+                "hold_feasibility": f"{feasibility:.6f}",
+            }
+            ranked.append((source_rank * 10_000.0 + anchor_score + distance * 100.0 - feasibility, row))
+        for _rank_key, row in sorted(ranked, key=lambda item: (item[0], theta_key(item[1]))):
+            key = theta_key(row)
+            if key in selected_keys:
+                continue
+            selected.append(row)
+            selected_keys.add(key)
+            if len(selected) >= batch_size:
+                return selected
+    return selected
 
 
 def normalize_objective_weights(w_E: float, w_G: float) -> tuple[float, float]:
@@ -592,6 +791,7 @@ def score_delay_row(row: dict[str, Any], w_E: float, w_G: float) -> tuple[float,
         or not bool_cell(row.get("emergency_arrived"))
         or bool_cell(row.get("emergency_teleport"))
         or bool_cell(row.get("failed"))
+        or sumo_summary_safety_failed(row)
     )
     penalty = FAILURE_PENALTY_SEC if failed else 0.0
     return round(D_E_sec, 6), round(D_G_sec, 6), round(score, 6), penalty, round(score + penalty, 6)
@@ -801,6 +1001,8 @@ def evaluate_theta(
         "emergency_arrived": raw.get("emergency_arrived", ""),
         "emergency_teleport": raw.get("emergency_teleport", ""),
         "background_teleported": raw.get("background_teleported", ""),
+        "sumo_summary_teleports": raw.get("sumo_summary_teleports", ""),
+        "sumo_summary_collisions": raw.get("sumo_summary_collisions", ""),
         "signal_event_count": raw.get("signal_event_count", ""),
         "stage2_hold_count": raw.get("stage2_hold_count", ""),
         "stage3_preemption_count": raw.get("stage3_preemption_count", ""),
@@ -866,15 +1068,16 @@ def surrogate_prediction(observations: list[dict[str, Any]], theta: dict[str, An
 
 
 def bo_learning_observation(row: dict[str, Any]) -> dict[str, Any] | None:
-    if row.get("final_status") not in {"PASS", "WARNING"}:
-        return None
-    if not bool_cell(row.get("emergency_arrived")):
-        return None
-    if bool_cell(row.get("emergency_teleport")):
-        return None
     score = safe_float(row.get("score"), float("inf"))
-    if not math.isfinite(score) or score >= FAILURE_PENALTY_SEC:
+    if not math.isfinite(score):
         return None
+    failed = (
+        row.get("final_status") not in {"PASS", "WARNING"}
+        or not bool_cell(row.get("emergency_arrived"))
+        or bool_cell(row.get("emergency_teleport"))
+        or sumo_summary_safety_failed(row)
+        or score >= FAILURE_PENALTY_SEC
+    )
     return {
         "mode": B4_MODE,
         "round": row.get("round", ""),
@@ -884,6 +1087,9 @@ def bo_learning_observation(row: dict[str, Any]) -> dict[str, Any] | None:
         "score": row["score"],
         "D_G_sec": row.get("D_G_sec", ""),
         "stage2_hold_count": row.get("stage2_hold_count", ""),
+        "final_status": row.get("final_status", ""),
+        "failure_reason": row.get("failure_reason", ""),
+        "bo_failed": str(failed),
     }
 
 
@@ -971,9 +1177,10 @@ def run_method(
     checkpoint_callback: Callable[[list[dict[str, Any]]], None] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    observations: list[dict[str, Any]] = []
+    observations: list[dict[str, Any]] = warm_start_observations(args) if method == "BO" else []
     round_rows: list[dict[str, Any]] = []
-    existing: set[tuple[float, float, float, float, float]] = set()
+    existing: set[tuple[float, float, float, float, float]] = {theta_key(row) for row in observations}
+    checkpoint_base_rows = [dict(row) for row in (prior_rows or [])]
     prior_by_key = {row_evaluation_key(row): dict(row) for row in (prior_rows or [])}
 
     def completed_row_for(theta: dict[str, Any], round_index: int, round_theta_index: int) -> dict[str, Any] | None:
@@ -1031,7 +1238,7 @@ def run_method(
 
     def checkpoint_partial(completed_rows: list[dict[str, Any]]) -> None:
         if checkpoint_callback is not None:
-            checkpoint_callback([*rows, *completed_rows])
+            checkpoint_callback(dedupe_evaluation_rows([*checkpoint_base_rows, *rows, *completed_rows]))
 
     def evaluate_batch_and_record(
         items: list[tuple[dict[str, Any], int, int, dict[str, Any] | None]],
@@ -1101,7 +1308,7 @@ def run_method(
             row = record_row(materialized[item_index], round_index, round_theta_index)
             ordered_rows.append(row)
         if checkpoint_callback is not None:
-            checkpoint_callback(rows)
+            checkpoint_callback(dedupe_evaluation_rows([*checkpoint_base_rows, *rows]))
         return ordered_rows
 
     if method == "Random Search":
@@ -1124,12 +1331,31 @@ def run_method(
             if round_index <= args.bo_initial or len(observations) < 2:
                 batch = theta_bo.random_theta_samples(bounds, args.theta_per_round, seed + round_index * 31, "bo_init", existing)
                 batch_fields: list[dict[str, Any]] = [{} for _theta in batch]
+            elif args.bo_pass_focus_from_round and round_index >= args.bo_pass_focus_from_round:
+                selected_ranked = pass_focus_bo_batch(
+                    observations,
+                    bounds,
+                    args.theta_per_round,
+                    seed + round_index,
+                    existing,
+                    args.bo_pass_focus_min_feasibility,
+                )
+                if len(selected_ranked) < args.theta_per_round:
+                    fallback_existing = set(existing)
+                    fallback_existing.update(theta_key(item) for item in selected_ranked)
+                    ranked = essi_improvement_candidates(observations, bounds, stage1, seed + round_index, fallback_existing, args.ei_candidate_count)
+                    selected_ranked.extend(diverse_bo_batch(ranked, bounds, args.theta_per_round - len(selected_ranked)))
+                batch = [theta_bo.clamp_theta(item, bounds) for item in selected_ranked]
+                batch_fields = [
+                    {field: item.get(field, "") for field in ["raw_ei_acquisition", "acquisition", "bo_selection_strategy", "bo_candidate_source", "bo_plateau_mode", "bo_batch_slot", "hold_feasibility", *ESSI_FIELDS]}
+                    for item in selected_ranked
+                ]
             else:
                 ranked = essi_improvement_candidates(observations, bounds, stage1, seed + round_index, existing, args.ei_candidate_count)
                 selected_ranked = diverse_bo_batch(ranked, bounds, args.theta_per_round)
                 batch = [theta_bo.clamp_theta(item, bounds) for item in selected_ranked]
                 batch_fields = [
-                    {field: item.get(field, "") for field in ["raw_ei_acquisition", "acquisition", "bo_selection_strategy", "bo_candidate_source", "bo_plateau_mode", *ESSI_FIELDS]}
+                    {field: item.get(field, "") for field in ["raw_ei_acquisition", "acquisition", "bo_selection_strategy", "bo_candidate_source", "bo_plateau_mode", "bo_batch_slot", "hold_feasibility", *ESSI_FIELDS]}
                     for item in selected_ranked
                 ]
             stop_after_round = False
@@ -1150,7 +1376,7 @@ def run_method(
 
     update_best_so_far(rows)
     if checkpoint_callback is not None:
-        checkpoint_callback(rows)
+        checkpoint_callback(dedupe_evaluation_rows([*checkpoint_base_rows, *rows]))
     return rows
 
 
@@ -1272,6 +1498,8 @@ def bo_observation_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if str(row.get("emergency_arrived", "")).lower() != "true":
             continue
         if str(row.get("emergency_teleport", "")).lower() == "true":
+            continue
+        if sumo_summary_safety_failed(row):
             continue
         score = safe_float(row.get("score"), float("inf"))
         if not math.isfinite(score) or score >= FAILURE_PENALTY_SEC:
@@ -1529,6 +1757,7 @@ def select_visualization_solution(rows: list[dict[str, Any]], solution: str) -> 
             if row.get("final_status") in {"PASS", "WARNING"}
             and str(row.get("emergency_arrived", "")).lower() == "true"
             and str(row.get("emergency_teleport", "")).lower() != "true"
+            and not sumo_summary_safety_failed(row)
         ]
         if not pass_rows:
             raise B4OptimizationError("visualization_no_pass_rows")
@@ -1862,6 +2091,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--w-E", "--w1", dest="w_E", type=float, default=10.0)
     parser.add_argument("--w-G", "--w2", dest="w_G", type=float, default=1.0)
     parser.add_argument("--ei-candidate-count", "--essi-candidate-count", dest="ei_candidate_count", type=int, default=theta_bo.DEFAULT_EI_CANDIDATE_COUNT)
+    parser.add_argument("--bo-pass-focus-from-round", type=int, default=0, help="From this BO round onward, sample only around clean PASS observations instead of using the mixed exploration slots. 0 disables this mode.")
+    parser.add_argument("--bo-pass-focus-min-feasibility", type=float, default=0.70, help="Minimum safety/hold feasibility multiplier for pass-focused BO candidates before fallback.")
     parser.add_argument("--spc-window", type=int, default=theta_bo.DEFAULT_SPC_WINDOW)
     parser.add_argument("--spc-alpha", type=float, default=theta_bo.DEFAULT_SPC_ALPHA)
     parser.add_argument("--spc-min-rounds", type=int, default=theta_bo.DEFAULT_SPC_MIN_ROUNDS)
@@ -1870,6 +2101,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--bo-first", action="store_true", help="Run BO before the other selected methods in a single invocation.")
     parser.add_argument("--append-existing", action="store_true", help="Merge selected method results into an existing run-id instead of starting from an empty comparison.")
     parser.add_argument("--resume", "--bo-resume", dest="resume", action="store_true", help="Resume an interrupted run-id from per-method/seed checkpoints and existing all_evaluations.csv rows.")
+    parser.add_argument("--warm-start-csv", nargs="+", type=Path, default=[], help="Use completed evaluation CSV rows as BO observations without copying them into the new run output.")
     parser.add_argument("--collect-visualization-info", action="store_true", help="Write a manifest for a selected solution's B04/B4 FCD and TLS logs without running optimization.")
     parser.add_argument("--materialize-visualization-logs", "--generate-visualization-bundle", dest="materialize_visualization_logs", action="store_true", help="Re-run the selected visualization solution once with FCD and TLS state logging before writing the manifest.")
     parser.add_argument("--visualization-solution", default="best", help="Solution parameter_id to collect for visualization, or 'best' for the best PASS row.")
@@ -1891,8 +2123,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("m_must_be_at_least_2")
     if args.theta_per_round < 1:
         raise B4OptimizationError("theta_per_round_must_be_positive")
-    if not 2 <= args.bo_initial < args.m:
-        raise B4OptimizationError("bo_initial_must_be_between_2_and_m_minus_1")
+    if args.warm_start_csv:
+        if not 0 <= args.bo_initial < args.m:
+            raise B4OptimizationError("bo_initial_must_be_between_0_and_m_minus_1_with_warm_start")
+    elif not 1 <= args.bo_initial < args.m:
+        raise B4OptimizationError("bo_initial_must_be_between_1_and_m_minus_1")
     if args.workers < 1:
         raise B4OptimizationError("workers_must_be_positive")
     if args.materialize_visualization_logs and args.mock_eval:
@@ -1905,6 +2140,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4OptimizationError("ei_candidate_count_must_be_at_least_2")
     if args.ei_candidate_count < args.theta_per_round:
         raise B4OptimizationError("ei_candidate_count_must_be_at_least_theta_per_round")
+    if args.bo_pass_focus_from_round < 0:
+        raise B4OptimizationError("bo_pass_focus_from_round_must_be_nonnegative")
+    if not 0.0 <= args.bo_pass_focus_min_feasibility <= 1.0:
+        raise B4OptimizationError("bo_pass_focus_min_feasibility_must_be_between_0_and_1")
     methods = selected_methods(args)
     if not methods:
         raise B4OptimizationError("at_least_one_method_required")
@@ -1915,6 +2154,10 @@ def validate_args(args: argparse.Namespace) -> None:
     args.net_file = args.net_file.resolve()
     args.background_route = args.background_route.resolve()
     args.stage1_dir = args.stage1_dir.resolve()
+    args.warm_start_csv = [path.resolve() for path in (args.warm_start_csv or [])]
+    for path in args.warm_start_csv:
+        if not path.is_file():
+            raise B4OptimizationError(f"missing_warm_start_csv:{path}")
     args.visualization_output = args.visualization_output.resolve() if args.visualization_output else None
 
 
@@ -1927,6 +2170,7 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     stage1: B4Stage1Inputs = preflight_payload["stage1"]
     bounds = preflight_payload["bounds"]
     static_inputs = pareto_static_inputs(args)
+    warm_observations = warm_start_observations(args)
     write_json(output_dir / "theta_bounds.json", bounds)
     write_json(output_dir / "preflight_summary.json", {
         "schema": "compact_v9_B4_s1forced_preflight.v1",
@@ -1944,9 +2188,19 @@ def run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "theta_evaluations_per_seed_method": args.m * args.theta_per_round,
         "workers": args.workers,
         "resume": args.resume,
+        "bo_pass_focus": {
+            "from_round": args.bo_pass_focus_from_round,
+            "min_feasibility": args.bo_pass_focus_min_feasibility,
+        },
         "active_inputs": preflight_payload["active_inputs"],
         "active_inputs_audit": preflight_payload["active_inputs_audit"],
         "controlled_static_inputs": static_inputs,
+        "warm_start": {
+            "csvs": [rel(path) for path in args.warm_start_csv],
+            "observation_count": len(warm_observations),
+            "unique_theta_count": len({theta_key(row) for row in warm_observations}),
+            "bo_initial": args.bo_initial,
+        },
     })
     spatial_subspaces = bo_spatial_subspaces(stage1)
     write_json(output_dir / "bo_spatial_subspaces.json", {

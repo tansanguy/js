@@ -170,6 +170,23 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(penalty, 0.0)
         self.assertAlmostEqual(bo_score, score)
 
+    def test_summary_collision_teleport_penalizes_otherwise_pass_row(self):
+        row = {
+            "D_E_sec": "10",
+            "D_G_sec": "2.5",
+            "final_status": "PASS",
+            "emergency_arrived": "True",
+            "emergency_teleport": "False",
+            "failed": "False",
+            "sumo_summary_teleports": "1",
+            "sumo_summary_collisions": "1",
+        }
+
+        score, penalty, bo_score = self.bo.score_for_row(row)
+
+        self.assertEqual(penalty, self.bo.FAILURE_PENALTY_SEC)
+        self.assertAlmostEqual(bo_score, score + self.bo.FAILURE_PENALTY_SEC)
+
     def test_objective_score_accepts_external_weights(self):
         row = {"D_E_sec": "10", "D_G_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
 
@@ -232,6 +249,28 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
 
         self.assertEqual(len(candidates), 20)
         self.assertTrue(any(abs(float(row["t_lead"]) - 31.0) <= 15.0 and abs(float(row["Q_ratio"]) - 0.19) <= 0.20 for row in candidates))
+
+    def test_plateau_detection_and_trust_region_candidates_focus_best_basin(self):
+        bounds = {"t_lead": {"lower": 0, "upper": 122}, "delta_T_thr": {"lower": 0, "upper": 244}, "G_ext": {"lower": 0, "upper": 50}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
+        rows = []
+        for round_index in range(1, 12):
+            rows.append({
+                "round": round_index,
+                "parameter_id": f"r{round_index}",
+                "t_lead": 55,
+                "delta_T_thr": 52,
+                "G_ext": 38,
+                "Q_ratio": 0.75,
+                "tau": 0.71,
+                "bo_score_sec": 178.0 if round_index >= 3 else 220.0 - round_index,
+            })
+
+        self.assertTrue(self.bo.plateau_detected(rows))
+        candidates = self.bo.trust_region_theta_candidates(bounds, rows, 12, 123, {self.bo.theta_key(rows[2])})
+
+        self.assertEqual(len(candidates), 12)
+        self.assertTrue(all(abs(float(row["delta_T_thr"]) - 52.0) <= 12.0 for row in candidates))
+        self.assertTrue(all(abs(float(row["tau"]) - 0.71) <= 0.021 for row in candidates))
 
     def test_mock_bo_loop_writes_full_and_score_csv(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -332,6 +371,68 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
 
         self.assertLess(self.bo.hold_feasibility_multiplier(near_failure, aggregated, bounds), 0.1)
         self.assertLess(self.bo.hold_feasibility_multiplier(far_from_failure, aggregated, bounds), 0.5)
+
+    def test_failed_observation_nearby_candidate_reduces_acquisition(self):
+        bounds = {
+            "t_lead": {"lower": 0, "upper": 100},
+            "delta_T_thr": {"lower": 0, "upper": 100},
+            "G_ext": {"lower": 0, "upper": 50},
+            "Q_ratio": {"lower": 0.0, "upper": 1.0},
+            "tau": {"lower": 0.70, "upper": 0.90},
+        }
+        observations = [
+            {"mode": self.bo.B4_MODE, "t_lead": 30, "delta_T_thr": 28, "G_ext": 30, "Q_ratio": 0.19, "tau": 0.81, "score_sec": 94.0, "bo_score_sec": 94.0},
+            {"mode": self.bo.B4_MODE, "t_lead": 78, "delta_T_thr": 150, "G_ext": 2, "Q_ratio": 0.10, "tau": 0.72, "score_sec": 1_000_000.0, "bo_score_sec": 1_000_000.0, "bo_failed": "True"},
+        ]
+        aggregated = self.bo.aggregate_observations(observations)
+        near_failure = {"t_lead": 78, "delta_T_thr": 150, "G_ext": 2, "Q_ratio": 0.10, "tau": 0.72}
+        far_from_failure = {"t_lead": 30, "delta_T_thr": 28, "G_ext": 30, "Q_ratio": 0.19, "tau": 0.81}
+
+        self.assertTrue(self.bo.failed_bo_observations(aggregated))
+        self.assertLess(self.bo.hold_feasibility_multiplier(near_failure, aggregated, bounds), 0.05)
+        self.assertGreater(self.bo.hold_feasibility_multiplier(far_from_failure, aggregated, bounds), 0.99)
+
+    def test_axis_aligned_failure_neighborhood_penalizes_candidate(self):
+        bounds = {
+            "t_lead": {"lower": 0, "upper": 100},
+            "delta_T_thr": {"lower": 0, "upper": 120},
+            "G_ext": {"lower": 0, "upper": 50},
+            "Q_ratio": {"lower": 0.0, "upper": 1.0},
+            "tau": {"lower": 0.70, "upper": 0.90},
+        }
+        observations = [
+            {"mode": self.bo.B4_MODE, "t_lead": 48, "delta_T_thr": 75, "G_ext": 42, "Q_ratio": 0.13, "tau": 0.88, "score_sec": 326.0, "bo_score_sec": 326.0},
+            {"mode": self.bo.B4_MODE, "t_lead": 48, "delta_T_thr": 73, "G_ext": 42, "Q_ratio": 0.14, "tau": 0.87, "score_sec": 1_000_000.0, "bo_score_sec": 1_000_000.0, "bo_failed": "True"},
+        ]
+        aggregated = self.bo.aggregate_observations(observations)
+        near_failure = {"t_lead": 48, "delta_T_thr": 73, "G_ext": 42, "Q_ratio": 0.13, "tau": 0.88}
+        outside_failure_cell = {"t_lead": 48, "delta_T_thr": 76, "G_ext": 42, "Q_ratio": 0.13, "tau": 0.88}
+
+        failures = self.bo.failed_bo_observations(aggregated)
+        self.assertTrue(self.bo.near_axis_aligned_failure(near_failure, failures))
+        self.assertFalse(self.bo.near_axis_aligned_failure(outside_failure_cell, failures))
+        self.assertLess(self.bo.hold_feasibility_multiplier(near_failure, aggregated, bounds), 0.25)
+
+    def test_stable_success_lattice_keeps_safe_plateau_direction(self):
+        bounds = {
+            "t_lead": {"lower": 0, "upper": 100},
+            "delta_T_thr": {"lower": 0, "upper": 120},
+            "G_ext": {"lower": 0, "upper": 50},
+            "Q_ratio": {"lower": 0.0, "upper": 1.0},
+            "tau": {"lower": 0.70, "upper": 0.90},
+        }
+        success = {"mode": self.bo.B4_MODE, "t_lead": 48, "delta_T_thr": 75, "G_ext": 42, "Q_ratio": 0.13, "tau": 0.88, "score_sec": 326.0, "bo_score_sec": 326.0}
+        failure = {"mode": self.bo.B4_MODE, "t_lead": 48, "delta_T_thr": 73, "G_ext": 42, "Q_ratio": 0.14, "tau": 0.87, "score_sec": 1_000_000.0, "bo_score_sec": 1_000_000.0, "bo_failed": "True"}
+        observations = self.bo.aggregate_observations([success, failure])
+        existing = {self.bo.theta_key(row) for row in observations}
+
+        candidates = self.bo.stable_success_lattice_candidates(bounds, observations, 20, existing)
+
+        self.assertGreater(len(candidates), 0)
+        self.assertTrue(all(abs(float(row["G_ext"]) - 42.0) <= 1.0 for row in candidates))
+        self.assertTrue(all(abs(float(row["Q_ratio"]) - 0.13) <= 0.011 for row in candidates))
+        self.assertTrue(all(abs(float(row["tau"]) - 0.88) <= 0.011 for row in candidates))
+        self.assertTrue(any(float(row["G_ext"]) in {41.0, 43.0} for row in candidates))
 
     def test_output_prefix_and_resume_latest_reuse_run_id(self):
         with tempfile.TemporaryDirectory() as tmp:

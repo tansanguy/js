@@ -140,6 +140,25 @@ class B4RuntimeContractTest(unittest.TestCase):
     def first_stage3_movement(self):
         return self.stage3_movements()[0]
 
+    def test_sumo_summary_safety_parser_counts_collision_teleports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp) / "summary.xml"
+            summary.write_text(
+                "<summary>"
+                "<step time=\"693.00\" teleports=\"0\" collisions=\"0\"/>"
+                "<step time=\"694.00\" teleports=\"1\" collisions=\"1\"/>"
+                "<step time=\"695.00\" teleports=\"1\" collisions=\"1\"/>"
+                "</summary>",
+                encoding="utf-8",
+            )
+
+            metrics = self.runner.parse_sumo_summary_safety(summary)
+
+        self.assertEqual(metrics["sumo_summary_teleports"], 1)
+        self.assertEqual(metrics["sumo_summary_collisions"], 1)
+        self.assertIn("sumo_summary_teleports", self.runtime.EXPERIMENT_RESULT_FIELDS)
+        self.assertIn("sumo_summary_collisions", self.runtime.EXPERIMENT_RESULT_FIELDS)
+
     def stage3_controller_with_fake_metrics(self, traci, *, params=None, fake_metrics=None):
         controller = self.runtime.B4RuntimeController(
             traci=traci,

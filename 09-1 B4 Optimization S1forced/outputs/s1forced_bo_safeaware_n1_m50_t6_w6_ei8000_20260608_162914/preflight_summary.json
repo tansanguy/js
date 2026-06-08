@@ -1,0 +1,91 @@
+{
+  "schema": "compact_v9_B4_s1forced_preflight.v1",
+  "generated_at": "2026-06-08T07:29:14.506950+00:00",
+  "status": "PASS",
+  "inputs": {
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+    "stage1_dir": "data_prepared/compact_v9/b4_stage1_s1forced",
+    "active_inputs": "configs/compact_v9_B04_B4_active_inputs.json"
+  },
+  "decision_variables": [
+    "t_lead",
+    "delta_T_thr",
+    "G_ext",
+    "Q_ratio",
+    "tau"
+  ],
+  "rounds_per_seed": 50,
+  "theta_per_round": 6,
+  "theta_evaluations_per_seed_method": 300,
+  "workers": 6,
+  "resume": false,
+  "active_inputs": {
+    "schema": "compact_v9_B04_B4_active_inputs.v1",
+    "canonical_profile": "B04_B4_S1_FORCED_OPTIMIZATION",
+    "policy": "B04/B4 runtime must use this canonical S1-forced CSV-real-position signal setup. Do not fall back to legacy B04_green18 or data_prepared/compact_v9/b4_stage1 unless explicitly testing old baselines.",
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "net_file_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
+    "signal_profile_csv": "09 Compact Corridor Baseline/tdata_signal/global_reality_signal_profiles.csv",
+    "signal_mapping_csv": "09 Compact Corridor Baseline/tdata_signal/global_tls_a008_itst_mapping.csv",
+    "csv_signal_candidates": "data_prepared/compact_v9/net/B04_csv_signal_candidates.csv",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+    "background_route_sha256": "777b48c8b6a9c5aaad50b38dc923e7997fc1ac9d52bf1cab9f3d31ce1b75da89",
+    "reality_background_route_candidate": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_reality_4000_sustained_s1forced.rou.xml",
+    "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "firetruck_route_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8",
+    "stage1_dir": "data_prepared/compact_v9/b4_stage1_s1forced",
+    "signal_pipeline_summary_json": "09 Compact Corridor Baseline/tdata_signal/summaries/b04_global_reality_signal_summary.json",
+    "route_geometry_recall_audit_json": "09 Compact Corridor Baseline/tdata_signal/route_geometry_recall_audit.json",
+    "mainroad_lane_recall_audit_csv": "09 Compact Corridor Baseline/tdata_signal/mainroad_lane_recall_audit.csv",
+    "route_internal_lane_alignment_audit_csv": "09 Compact Corridor Baseline/tdata_signal/route_internal_lane_alignment_audit.csv",
+    "route_tls_projection_audit_csv": "09 Compact Corridor Baseline/tdata_signal/route_tls_projection_audit.csv",
+    "decision_variables": [
+      "t_lead",
+      "delta_T_thr",
+      "G_ext",
+      "Q_ratio",
+      "tau"
+    ],
+    "optimizer_score_weights": {
+      "w_E": 10.0,
+      "w_G": 1.0
+    },
+    "optimizer_score_formula": "(10/11) * D_E_sec + (1/11) * D_G_sec",
+    "fixed_budget": {
+      "n": 1,
+      "m": 50,
+      "theta_per_round": 6,
+      "workers_runbook": 6,
+      "workers_code_default": 6
+    },
+    "visualization_html": "results/html/compact_v9_route_tls_position_audit.html",
+    "route_animation_html": "results/html/compact_v9_b04_b4_actual_route_animation.html",
+    "mainroad_signal_positions_html": "results/html/compact_v9_signal_positions_s1forced.html",
+    "notes": [
+      "Signal placement comes from toegye_ro_mainstream_segments_english.csv coordinates.",
+      "A008 is used only for signal timing/provenance mapping.",
+      "Straight signals and intersection signals are separated in B04_csv_signal_candidates.csv.",
+      "Route geometry, route internal lanes, lane recall, and route TLS projection are audited before B04/B4 runtime use."
+    ]
+  },
+  "active_inputs_audit": {
+    "status": "PASS",
+    "active_inputs": "configs/compact_v9_B04_B4_active_inputs.json",
+    "hashes": {
+      "net_file_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
+      "background_route_sha256": "777b48c8b6a9c5aaad50b38dc923e7997fc1ac9d52bf1cab9f3d31ce1b75da89",
+      "firetruck_route_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8"
+    }
+  },
+  "controlled_static_inputs": {
+    "net_file": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+    "net_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
+    "background_route": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+    "background_route_sha256": "777b48c8b6a9c5aaad50b38dc923e7997fc1ac9d52bf1cab9f3d31ce1b75da89",
+    "stage1_dir": "data_prepared/compact_v9/b4_stage1_s1forced",
+    "active_inputs": "configs/compact_v9_B04_B4_active_inputs.json",
+    "firetruck_route": "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml",
+    "firetruck_route_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8"
+  }
+}

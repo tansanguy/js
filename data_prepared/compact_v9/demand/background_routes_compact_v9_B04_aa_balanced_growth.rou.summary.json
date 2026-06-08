@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B04_demand_candidate.v1",
-  "generated_at": "2026-06-08T05:33:20.062607+00:00",
+  "generated_at": "2026-06-08T10:15:54.042749+00:00",
   "candidate": "B04_aa_balanced_growth",
   "output": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_aa_balanced_growth.rou.xml",
   "settings": {

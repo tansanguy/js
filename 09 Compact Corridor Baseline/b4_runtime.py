@@ -338,6 +338,8 @@ EXPERIMENT_RESULT_FIELDS = [
     "background_departed",
     "background_arrived",
     "background_teleported",
+    "sumo_summary_teleports",
+    "sumo_summary_collisions",
     "background_arrived_ratio",
     "general_vehicle_count",
     "general_mean_travel_time_sec",
