@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_control_queue_threshold_proposal.v1",
-  "generated_at": "2026-06-07T15:08:00.703884+00:00",
+  "generated_at": "2026-06-07T22:02:58.410010+00:00",
   "candidate": "B04_ad_stage23_trigger",
   "decision_variables": [
     "t_lead",

@@ -1,5 +1,5 @@
 {
-  "run_id": "s1forced_bo_n1_m50_t6_w4_20260608_001502",
+  "run_id": "s1forced_fixed_budget_n1_m8_t6",
   "mode": "B04",
   "scenario_name": "compact_v9_B04_AD_real_demand",
   "parameter_id": "B4_MVP_DEFAULT",
@@ -95,7 +95,7 @@
   "b4_performance_status": "",
   "failed": false,
   "failure_reason": "",
-  "wall_time_sec": 5.011806,
+  "wall_time_sec": 13.657289,
   "signal_events_csv": "",
   "route_visualization_html": "results/html/compact_v9_b004_b04_b4_route_comparison.html",
   "queue_method_primary": 0,

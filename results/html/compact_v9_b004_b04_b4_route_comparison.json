@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_b004_b04_b4_route_comparison_visualization.v1",
-  "generated_at": "2026-06-07T15:46:34.573779+00:00",
+  "generated_at": "2026-06-08T02:04:01.660714+00:00",
   "route_edges": [
     "420331801#1",
     "-174870621#8",
@@ -76,7 +76,7 @@
       "parameter_id": "free_emv_analytic_50kmh",
       "T_actual_EMV_sec": 10.0,
       "T_free_EMV_sec": 10.0,
-      "d_EMV_sec": 0.0,
+      "D_E_sec": 0.0,
       "objective_score": 0.0
     },
     {
@@ -86,8 +86,8 @@
       "parameter_id": "no_control",
       "T_actual_EMV_sec": 100.0,
       "T_free_EMV_sec": 10.0,
-      "d_EMV_sec": 90.0,
-      "d_veh_sec": 1.0,
+      "D_E_sec": 90.0,
+      "D_G_sec": 1.0,
       "objective_score": 81.909091
     },
     {
@@ -97,8 +97,8 @@
       "parameter_id": "B4_MVP_DEFAULT",
       "T_actual_EMV_sec": 90.0,
       "T_free_EMV_sec": 10.0,
-      "d_EMV_sec": 80.0,
-      "d_veh_sec": 2.0,
+      "D_E_sec": 80.0,
+      "D_G_sec": 2.0,
       "objective_score": 72.909091,
       "b0_emergency_travel_time_sec": 100.0,
       "b0_T_actual_EMV_sec": 100.0,

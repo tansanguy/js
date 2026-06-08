@@ -70,8 +70,8 @@ QUEUE_CALIBRATION_MAX = 2.0
 QUEUE_LOCAL_EXACT_FILL_TRIGGER = 0.35
 QUEUE_RUNTIME_CALL_MODE = "unique_lane_snapshot"
 QUEUE_CALIBRATION_SOURCE = "b4_bottleneck_queue_readiness.csv/b4_b0_measured_signal_params.csv"
-W_EMV = 10.0
-W_VEH = 1.0
+W_E = 10.0
+W_G = 1.0
 B4_DEFAULT_PHASE = "bo-smoke"
 B4_EV_DEPARTURE_POLICY = "fixed"
 B4_EV_DEPART_RANDOMIZED = False
@@ -309,16 +309,16 @@ EXPERIMENT_RESULT_FIELDS = [
     "emergency_tripinfo_found",
     "T_actual_EMV_sec",
     "T_free_EMV_sec",
-    "d_EMV_sec",
-    "veh_eval_count",
-    "veh_actual_mean_sec",
-    "veh_free_mean_sec",
-    "d_veh_sec",
+    "D_E_sec",
+    "V_G_vehicle_count",
+    "T_G_actual_mean_sec",
+    "T_G_free_mean_sec",
+    "D_G_sec",
     "b0_T_actual_EMV_sec",
     "b4_T_actual_EMV_sec",
     "b4_minus_b0_EMV_sec",
-    "w_EMV",
-    "w_veh",
+    "w_E",
+    "w_G",
     "objective_score",
     "score_formula",
     "final_status",

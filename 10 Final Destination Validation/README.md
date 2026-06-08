@@ -31,7 +31,7 @@
    - EV 도착 성공
    - emergency teleport 없음
    - B004/B04/B4 비교 가능
-   - `B4_vs_B04_improvement_sec > 0`
+   - `B4_vs_B04_D_E_improvement_sec > 0`
    - `stage2_hold_mean + stage3_preemption_mean > 0`
 5. 개선폭, B04 지연 크기, 실제 개입량, mainroad/spine 대표성 순서로 상위 3개를 확정한다.
 
@@ -96,9 +96,9 @@ screening만 먼저 실행할 수 있습니다.
 | --- | --- |
 | `screening/candidate_selection.csv` | 18개 후보의 screening 결과와 제외/선정 사유 |
 | `final/candidate_selection.csv` | 최종 3개 지점의 30-repeat 검증 요약 |
-| `final/final_simulation_results.csv` | 제출/보고용 최종 시뮬레이션 clean CSV. B4 repeat row만 input, 목적함수 output 2개, weight, score, 실측값, Stage2/Stage3 on 횟수로 기록 |
-| `final/selected_route_runs.csv` | 최종 3개 지점의 B004/B04/B4 run row |
-| `final/selected_mode_averages.csv` | mode별 평균 지표 |
+| `final/final_simulation_results.csv` | 제출/보고용 최종 시뮬레이션 clean CSV. B4 repeat row만 input, `output_D_E_sec`, `output_D_G_sec`, normalized weight, score, 실측값, Stage2/Stage3 on 횟수로 기록 |
+| `final/selected_route_runs.csv` | 최종 3개 지점의 B004/B04/B4 run row. 목적함수 필드는 `D_E_sec`, `D_G_sec`입니다. |
+| `final/selected_mode_averages.csv` | mode별 평균 지표. 목적함수 평균은 `D_E_mean_sec`, `D_G_mean_sec`입니다. |
 | `final/selected_destinations.json` | 실제 선택된 3개 지점과 route edge |
 | `final/spc_repeat_stability.csv` | final 30-repeat 결과의 route별 SPC 안정성 판단 |
 | `final/final_destination_validation_report.md` | 3개 지점이 무엇이고 왜 선택됐는지 설명하는 보고서 |
@@ -106,6 +106,6 @@ screening만 먼저 실행할 수 있습니다.
 
 SPC는 final 30-repeat 결과 안정성 판단에만 적용합니다. 보고서와 `spc_repeat_stability.csv`에는 route/metric별 `stable`, `active`, `insufficient` 상태가 기록됩니다.
 
-`final_simulation_results.csv`에서는 `output_delay_A_sec`, `output_delay_N_sec` 뒤에 `weight_A`, `weight_N`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다.
+`final_simulation_results.csv`에서는 `output_D_E_sec`, `output_D_G_sec` 뒤에 `weight_E`, `weight_G`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다. `weight_E`, `weight_G`는 합이 1인 정규화 가중치이고, 원 ratio는 `weight_ratio`에 둡니다.
 
 `theta_source_smoke_warning=true`이면 smoke 산출물에서 theta를 읽은 것입니다. 이 경우 제출용 최종 결과로 설명하지 말고 full fixed-budget 산출물을 지정해 다시 실행합니다.

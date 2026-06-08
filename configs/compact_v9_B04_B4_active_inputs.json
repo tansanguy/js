@@ -26,10 +26,10 @@
     "tau"
   ],
   "optimizer_score_weights": {
-    "w_emv": 10.0,
-    "w_veh": 1.0
+    "w_E": 10.0,
+    "w_G": 1.0
   },
-  "optimizer_score_formula": "(10/11) * delay_A + (1/11) * delay_N",
+  "optimizer_score_formula": "(10/11) * D_E_sec + (1/11) * D_G_sec",
   "fixed_budget": {
     "n": 1,
     "m": 50,

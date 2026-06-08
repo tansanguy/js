@@ -1,6 +1,6 @@
 {
   "schema": "compact_v9_B4_evtsp_ta_policy.v1",
-  "generated_at": "2026-06-07T15:08:00.703927+00:00",
+  "generated_at": "2026-06-07T22:02:58.410044+00:00",
   "algorithm": "B4",
   "ta_formula": "TA_sec = tE_sec - (Y_sec + R_sec + max(0, Gm_sec - elapsed_green_sec)) - tQ_sec",
   "ta_control_policy": "Stage3 executes when tE_sec <= delta_T_thr and TA_sec <= t_lead; TA < 0 is immediate maximum-intensity green.",

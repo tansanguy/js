@@ -1,0 +1,6 @@
+weight_ratio,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,delay_A,delay_N,score,rounds_completed,essi_max,essi_log_max,essi_log_max_ewma,spc_status,spc_stop_recommended,spc_stop_round,is_knee
+1:1,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,92.48,78,0.77,-0.26227271,-0.28790838,stable,True,13,True
+5:1,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,91.44,78,0.83,-0.18114193,-0.15810209,stable,True,13,False
+10:1,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,91.20,78,0.86,-0.15096890,-0.12030023,stable,True,13,False
+15:1,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,91.11,78,0.88,-0.13190556,-0.10139782,stable,True,13,False
+20:1,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,91.07,78,0.89,-0.12173724,-0.09131576,stable,True,13,False

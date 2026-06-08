@@ -157,7 +157,7 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(args.stage1_dir, self.bo.STAGE1_DIR.resolve())
 
     def test_objective_score_uses_normalized_10_to_1_delay_weights(self):
-        row = {"d_EMV_sec": "10", "d_veh_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
+        row = {"D_E_sec": "10", "D_G_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
 
         score, penalty, bo_score = self.bo.score_for_row(row)
 
@@ -166,9 +166,9 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertAlmostEqual(bo_score, score)
 
     def test_objective_score_accepts_external_weights(self):
-        row = {"d_EMV_sec": "10", "d_veh_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
+        row = {"D_E_sec": "10", "D_G_sec": "2.5", "final_status": "PASS", "emergency_arrived": "True", "emergency_teleport": "False", "failed": "False"}
 
-        score, _penalty, bo_score = self.bo.score_for_row(row, w_emv=20.0, w_veh=1.0)
+        score, _penalty, bo_score = self.bo.score_for_row(row, w_E=20.0, w_G=1.0)
 
         self.assertAlmostEqual(score, (20.0 / 21.0) * 10.0 + (1.0 / 21.0) * 2.5, places=6)
         self.assertAlmostEqual(bo_score, score)
@@ -176,16 +176,16 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
     def test_objective_score_prefers_delay_fields_over_actual_travel_time(self):
         row = {
             "T_actual_EMV_sec": "100",
-            "d_EMV_sec": "10",
+            "D_E_sec": "10",
             "general_mean_travel_time_sec": "30",
-            "d_veh_sec": "2.5",
+            "D_G_sec": "2.5",
             "final_status": "PASS",
             "emergency_arrived": "True",
             "emergency_teleport": "False",
             "failed": "False",
         }
 
-        score, _penalty, bo_score = self.bo.score_for_row(row, w_emv=10.0, w_veh=1.0)
+        score, _penalty, bo_score = self.bo.score_for_row(row, w_E=10.0, w_G=1.0)
 
         self.assertAlmostEqual(score, (10.0 / 11.0) * 10.0 + (1.0 / 11.0) * 2.5, places=6)
         self.assertAlmostEqual(bo_score, score)
@@ -217,6 +217,16 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
         self.assertEqual(len(recommendations), 2)
         for row in recommendations:
             self.assertNotIn(self.bo.theta_key(row), existing)
+
+    def test_local_candidates_sample_near_best_observation(self):
+        bounds = {"t_lead": {"lower": 0, "upper": 122}, "delta_T_thr": {"lower": 0, "upper": 244}, "G_ext": {"lower": 0, "upper": 50}, "Q_ratio": {"lower": 0.0, "upper": 1.0}, "tau": {"lower": 0.70, "upper": 0.90}}
+        best = {"parameter_id": "best", "t_lead": 31, "delta_T_thr": 28, "G_ext": 30, "Q_ratio": 0.19, "tau": 0.81, "bo_score_sec": 91.2}
+        worse = {"parameter_id": "worse", "t_lead": 120, "delta_T_thr": 200, "G_ext": 50, "Q_ratio": 1.0, "tau": 0.90, "bo_score_sec": 300.0}
+
+        candidates = self.bo.local_theta_candidates(bounds, [best, worse], 20, 123, {self.bo.theta_key(best), self.bo.theta_key(worse)})
+
+        self.assertEqual(len(candidates), 20)
+        self.assertTrue(any(abs(float(row["t_lead"]) - 31.0) <= 15.0 and abs(float(row["Q_ratio"]) - 0.19) <= 0.20 for row in candidates))
 
     def test_mock_bo_loop_writes_full_and_score_csv(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -270,7 +280,7 @@ class B4ThetaBoRunnerTest(unittest.TestCase):
                 self.assertIn(field, round_rows[0])
                 self.assertNotEqual(round_rows[-1][field], "")
             summary = self.bo.read_json(run_dir / "bo_loop_summary.json")
-            self.assertEqual(summary["weights"], {"w_emv": 10.0, "w_veh": 1.0})
+            self.assertEqual(summary["weights"], {"w_E": 10.0, "w_G": 1.0})
 
     def test_spc_min_rounds_counts_bo_rounds_not_initial_round(self):
         original_ei = self.bo.expected_improvement_candidates

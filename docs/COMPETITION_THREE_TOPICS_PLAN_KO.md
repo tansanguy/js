@@ -18,10 +18,10 @@
 | demand | `data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml` |
 | Stage1 | `data_prepared/compact_v9/b4_stage1_s1forced` |
 | 결정변수 | `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau` |
-| 기본 목적함수 | `(10/11) * delay_A + (1/11) * delay_N` |
+| 기본 목적함수 | `(10/11) * D_E_sec + (1/11) * D_G_sec` |
 | B004/B04/B4 의미 | B004 자유류 기준, B04 무제어 baseline, B4 제어 적용 |
 
-`delay_A`는 응급차 지연, `delay_N`은 일반차 지연입니다. 모든 score는 낮을수록 좋습니다.
+`D_E_sec`는 응급차 지연, `D_G_sec`은 일반차 지연입니다. 모든 score는 낮을수록 좋습니다.
 
 ## 1. 방법론 비교: Random Search vs CMA-ES vs BO
 
@@ -171,7 +171,7 @@ EWMA가 관리한계 안에서 안정화되면 `stable`, 관리한계 밖이거�
 
 | 파일 | 설명 |
 | --- | --- |
-| `table3_pareto.csv` | 가중치별 최적 theta, `delay_A`, `delay_N`, score, SPC 상태, knee 여부 |
+| `table3_pareto.csv` | 가중치별 최적 theta, `D_E_sec`, `D_G_sec`, score, SPC 상태, knee 여부 |
 | `final_sensitivity_results.csv` | 제출용 clean CSV. 각 가중치별 best row만 방법론 비교와 같은 clean 컬럼으로 기록 |
 | `table4_sensitivity_spc.csv` | 가중치별 BO round의 ESSI/SPC trace |
 | `figure3_pareto.png` | Pareto 후보와 knee point |
@@ -205,7 +205,7 @@ final phase에서 SPC를 적용하는 metric은 다음입니다.
 | metric | 의미 |
 | --- | --- |
 | `B4_vs_B04_improvement_sec` | B04 대비 B4 응급차 통행시간 개선폭 |
-| `B4_d_EMV_sec` | B4 응급차 지연 |
+| `B4_D_E_sec` | B4 응급차 지연 |
 | `B4_general_mean_travel_time_sec` | B4 일반차 평균 통행시간 |
 | `B4_intervention_count` | Stage2 hold + Stage3 preemption 개입량 |
 
@@ -243,7 +243,7 @@ results/html/compact_v9_final_destination_route_plan.html
 제출용 clean CSV 3개는 모두 score 바로 왼쪽에 weight를 둡니다.
 
 ```text
-... output_delay_A_sec, output_delay_N_sec, weight_A, weight_N, weight_ratio, score, ...
+... output_D_E_sec, output_D_G_sec, weight_E, weight_G, weight_ratio, score, ...
 ```
 
 ## 실행 명령

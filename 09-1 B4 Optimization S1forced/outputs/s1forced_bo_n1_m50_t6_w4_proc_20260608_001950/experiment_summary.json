@@ -1,0 +1,58 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
+  "generated_at": "2026-06-07T21:43:40.022477+00:00",
+  "run_id": "s1forced_bo_n1_m50_t6_w4_proc_20260608_001950",
+  "mock_eval": false,
+  "n": 1,
+  "m": 50,
+  "theta_per_round": 6,
+  "theta_evaluations_per_seed_method": 300,
+  "workers": 4,
+  "methods": [
+    "Random Search",
+    "CMA-ES",
+    "BO"
+  ],
+  "methods_run_this_invocation": [
+    "Random Search",
+    "CMA-ES"
+  ],
+  "append_existing": true,
+  "resume": true,
+  "seeds": [
+    20260607
+  ],
+  "bo_algorithm": "GP+ESSI",
+  "objective": {
+    "score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N",
+    "w_emv": 10.0,
+    "w_veh": 1.0
+  },
+  "fixed_budget_policy": "m is the number of optimization rounds; each round evaluates theta_per_round theta candidates, and best-so-far records the cumulative minimum after the full round.",
+  "presentation_notes": {
+    "figure1_band": "Shaded band is +/- standard deviation across seeds. With n=1, the band width is zero by design.",
+    "figure2_slice": "GP estimate uses a 1D t_lead slice through the best BO theta. The objective is not re-evaluated on the slice grid.",
+    "figure3_policy": "The weight sweep presents candidate Pareto solutions to decision makers; it does not choose the policy weight."
+  },
+  "outputs": {
+    "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/all_evaluations.csv",
+    "final_method_comparison_results_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/final_method_comparison_results.csv",
+    "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table1_best_so_far.csv",
+    "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table2_bo_surrogate.csv",
+    "table2_bo_gp_slice_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table2_bo_gp_slice.csv",
+    "table3_pareto_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table3_pareto.csv",
+    "table4_sensitivity_spc_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table4_sensitivity_spc.csv",
+    "final_sensitivity_results_csv": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/final_sensitivity_results.csv",
+    "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/bo_spatial_subspaces.json",
+    "noise_check_csv": "",
+    "figure1_png": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure1_best_so_far.png",
+    "figure1_svg": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure1_best_so_far.svg",
+    "figure2_png": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure2_bo_surrogate.png",
+    "figure2_svg": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure2_bo_surrogate.svg",
+    "figure3_png": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure3_pareto.png",
+    "figure3_svg": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure3_pareto.svg",
+    "figure4_png": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure4_sensitivity_spc.png",
+    "figure4_svg": "09-1 B4 Optimization S1forced/outputs/s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/figure4_sensitivity_spc.svg"
+  },
+  "noise_check": {}
+}

@@ -44,7 +44,7 @@ class B409RunConditionsAuditTest(unittest.TestCase):
         self.assertEqual(payload["route_internal_lane_alignment_audit_csv"], self.audit.CANONICAL["route_internal_lane_alignment_audit_csv"])
         self.assertEqual(payload["route_tls_projection_audit_csv"], self.audit.CANONICAL["route_tls_projection_audit_csv"])
         self.assertEqual(payload["decision_variables"], self.audit.CANONICAL_DECISION_VARIABLES)
-        self.assertEqual(payload["optimizer_score_weights"], {"w_emv": 10.0, "w_veh": 1.0})
+        self.assertEqual(payload["optimizer_score_weights"], {"w_E": 10.0, "w_G": 1.0})
         self.assertEqual(payload["fixed_budget"]["n"], 1)
         self.assertEqual(payload["fixed_budget"]["m"], 50)
         self.assertEqual(payload["fixed_budget"]["theta_per_round"], 6)

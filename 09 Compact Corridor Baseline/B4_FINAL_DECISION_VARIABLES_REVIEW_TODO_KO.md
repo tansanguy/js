@@ -69,13 +69,15 @@ provenance_status = PASS
 
 표 양식:
 
-| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| 가중치(w1:w2) | 최적 theta | D_E_sec | D_G_sec |
 | --- | --- | --- | --- |
-| 1:1 | `table3_pareto.csv` | 결과값 | 결과값 |
-| 5:1 | `table3_pareto.csv` | 결과값 | 결과값 |
-| 10:1 | `table3_pareto.csv` | 결과값 | 결과값 |
-| 15:1 | `table3_pareto.csv` | 결과값 | 결과값 |
-| 20:1 | `table3_pareto.csv` | 결과값 | 결과값 |
+| 1:1 | `bo_r04_002_tl31_dt28_ge30_qr19_tau81` | 90.92 | 94.03 |
+| 5:1 | `bo_r04_002_tl31_dt28_ge30_qr19_tau81` | 90.92 | 94.03 |
+| 10:1 | `bo_r04_002_tl31_dt28_ge30_qr19_tau81` | 90.92 | 94.03 |
+| 15:1 | `bo_r04_002_tl31_dt28_ge30_qr19_tau81` | 90.92 | 94.03 |
+| 20:1 | `bo_r04_002_tl31_dt28_ge30_qr19_tau81` | 90.92 | 94.03 |
+
+현재 `s1forced_bo_n1_m50_t6_w4_proc_20260608_001950/table3_pareto.csv` 기준으로는 5개 가중치가 모두 같은 theta를 선택합니다. 따라서 이 산출물은 "가중치 변화에 따른 응급차/일반차 지연 맞교환"을 보여주는 민감도 결과로는 미흡합니다. 재실행 또는 후보공간/목적함수 점검이 필요합니다.
 
 확인 기준:
 
@@ -83,7 +85,7 @@ provenance_status = PASS
 - 각 가중치에 대해 BO 탐색 1회가 수행되어야 합니다.
 - SPC 기반 조기 중단이 적용된 경우 `rounds_completed`, `spc_stop_recommended`, `spc_stop_round`를 같이 보고합니다.
 - 값이 튀는 경우에만 같은 가중치의 반복 탐색을 추가합니다.
-- 붉은 knee point를 “정답”이나 “채택 결론”으로 설명하지 않습니다.
+- knee point를 “정답”이나 “채택 결론”으로 설명하지 않습니다.
 
 ## 의심스러운 것
 

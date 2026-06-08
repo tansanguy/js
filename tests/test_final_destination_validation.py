@@ -108,9 +108,9 @@ class FinalDestinationValidationTest(unittest.TestCase):
 
     def test_average_rows_are_exactly_three_modes(self):
         rows = [
-            {"mode": self.module.B004_MODE, "T_free_EMV_sec": "100", "d_EMV_sec": "0", "objective_score": "0", "emergency_arrived": "True", "emergency_teleport": "False"},
-            {"mode": self.module.B04_MODE, "T_actual_EMV_sec": "200", "d_EMV_sec": "100", "objective_score": "2000", "general_mean_travel_time_sec": "30", "emergency_arrived": "True", "emergency_teleport": "False", "stage3_preemption_count": "0", "stage2_hold_count": "0"},
-            {"mode": self.module.B4_MODE, "T_actual_EMV_sec": "150", "d_EMV_sec": "50", "objective_score": "1000", "general_mean_travel_time_sec": "35", "emergency_arrived": "True", "emergency_teleport": "False", "stage3_preemption_count": "3", "stage2_hold_count": "2"},
+            {"mode": self.module.B004_MODE, "T_free_EMV_sec": "100", "D_E_sec": "0", "objective_score": "0", "emergency_arrived": "True", "emergency_teleport": "False"},
+            {"mode": self.module.B04_MODE, "T_actual_EMV_sec": "200", "D_E_sec": "100", "D_G_sec": "30", "objective_score": "2000", "emergency_arrived": "True", "emergency_teleport": "False", "stage3_preemption_count": "0", "stage2_hold_count": "0"},
+            {"mode": self.module.B4_MODE, "T_actual_EMV_sec": "150", "D_E_sec": "50", "D_G_sec": "35", "objective_score": "1000", "emergency_arrived": "True", "emergency_teleport": "False", "stage3_preemption_count": "3", "stage2_hold_count": "2"},
         ]
         averages = self.module.average_rows(rows)
         self.assertEqual([row["mode"] for row in averages], [self.module.B004_MODE, self.module.B04_MODE, self.module.B4_MODE])
@@ -128,8 +128,8 @@ class FinalDestinationValidationTest(unittest.TestCase):
                 "mode": self.module.B4_MODE,
                 "repeat_id": str(repeat),
                 "T_actual_EMV_sec": str(150 + repeat),
-                "d_EMV_sec": str(50 + repeat),
-                "general_mean_travel_time_sec": str(35 + repeat / 10),
+                "D_E_sec": str(50 + repeat),
+                "D_G_sec": str(35 + repeat / 10),
                 "stage3_preemption_count": "3",
                 "stage2_hold_count": "2",
             })
@@ -137,9 +137,9 @@ class FinalDestinationValidationTest(unittest.TestCase):
         stability = self.module.repeat_stability_rows("FINAL_DEST_A", rows)
 
         self.assertEqual({row["metric"] for row in stability}, {
-            "B4_vs_B04_improvement_sec",
-            "B4_d_EMV_sec",
-            "B4_general_mean_travel_time_sec",
+            "B4_vs_B04_D_E_improvement_sec",
+            "B4_D_E_sec",
+            "B4_D_G_sec",
             "B4_intervention_count",
         })
         self.assertTrue(all(row["repeat_count"] == 6 for row in stability))
@@ -164,16 +164,17 @@ class FinalDestinationValidationTest(unittest.TestCase):
                 "target_edge_id": "edgeA",
                 "repeat_id": "1",
                 "parameter_id": "theta_final",
-                "d_EMV_sec": "40",
-                "d_veh_sec": "12",
+                "D_E_sec": "40",
+                "D_G_sec": "12",
                 "objective_score": "37.454545",
                 "T_free_EMV_sec": "100",
                 "T_actual_EMV_sec": "140",
-                "general_mean_travel_time_sec": "52",
+                "T_G_actual_mean_sec": "52",
+                "T_G_free_mean_sec": "40",
                 "stage2_hold_count": "2",
                 "stage3_preemption_count": "3",
-                "w_EMV": "10",
-                "w_veh": "1",
+                "w_E": "10",
+                "w_G": "1",
             },
         ]
 
@@ -181,15 +182,15 @@ class FinalDestinationValidationTest(unittest.TestCase):
 
         self.assertEqual(len(final_rows), 1)
         self.assertEqual(list(final_rows[0]), self.module.FINAL_SIMULATION_FIELDS)
-        self.assertEqual(final_rows[0]["output_delay_A_sec"], "40")
-        self.assertEqual(final_rows[0]["output_delay_N_sec"], "12")
+        self.assertEqual(final_rows[0]["output_D_E_sec"], "40")
+        self.assertEqual(final_rows[0]["output_D_G_sec"], "12")
         fields = self.module.FINAL_SIMULATION_FIELDS
-        self.assertEqual(fields[fields.index("score") - 3:fields.index("score")], ["weight_A", "weight_N", "weight_ratio"])
+        self.assertEqual(fields[fields.index("score") - 3:fields.index("score")], ["weight_E", "weight_G", "weight_ratio"])
         self.assertEqual(final_rows[0]["stage2_on_count"], "2")
         self.assertEqual(final_rows[0]["stage3_on_count"], "3")
 
     def test_spc_metric_row_marks_insufficient_repeats(self):
-        row = self.module.spc_metric_row("FINAL_DEST_A", "B4_vs_B04_improvement_sec", [10.0, 11.0, 12.0])
+        row = self.module.spc_metric_row("FINAL_DEST_A", "B4_vs_B04_D_E_improvement_sec", [10.0, 11.0, 12.0])
 
         self.assertEqual(row["spc_status"], "insufficient")
         self.assertEqual(row["repeat_count"], 3)
@@ -230,8 +231,8 @@ class FinalDestinationValidationTest(unittest.TestCase):
                 "candidate_rank": "1",
                 "route_id": "A",
                 "selection_status": "CANDIDATE",
-                "B4_vs_B04_improvement_sec": "30",
-                "B04_delay_mean_sec": "50",
+                "B4_vs_B04_D_E_improvement_sec": "30",
+                "B04_D_E_mean_sec": "50",
                 "intervention_mean": "2",
                 "mainroad_length_ratio": "0.8",
                 "legacy_spine_length_ratio": "0.7",
@@ -240,8 +241,8 @@ class FinalDestinationValidationTest(unittest.TestCase):
                 "candidate_rank": "2",
                 "route_id": "B",
                 "selection_status": "EXCLUDED",
-                "B4_vs_B04_improvement_sec": "100",
-                "B04_delay_mean_sec": "100",
+                "B4_vs_B04_D_E_improvement_sec": "100",
+                "B04_D_E_mean_sec": "100",
                 "intervention_mean": "10",
                 "mainroad_length_ratio": "0.9",
                 "legacy_spine_length_ratio": "0.9",
@@ -250,8 +251,8 @@ class FinalDestinationValidationTest(unittest.TestCase):
                 "candidate_rank": "3",
                 "route_id": "C",
                 "selection_status": "CANDIDATE",
-                "B4_vs_B04_improvement_sec": "40",
-                "B04_delay_mean_sec": "45",
+                "B4_vs_B04_D_E_improvement_sec": "40",
+                "B04_D_E_mean_sec": "45",
                 "intervention_mean": "1",
                 "mainroad_length_ratio": "0.6",
                 "legacy_spine_length_ratio": "0.6",

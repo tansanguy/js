@@ -128,8 +128,8 @@ D_G = 일반차 영향권 대당평균 지연
 
 | 위치 | 현재 동작 | 판정 |
 | --- | --- | --- |
-| `run_b0_b4_signal_pipeline.py` | runtime summary용 `objective_score = 10 * d_EMV_sec + 1 * d_veh_sec` | 운영 로그용 ratio score |
-| `09-1 ... run_b4_optimization_s1forced.py` | `score_delay_row()`가 `d_EMV_sec`, `d_veh_sec`를 우선 사용하고 `w/(w_E+w_G)`로 정규화 | 최종 표/그림 정본 |
+| `run_b0_b4_signal_pipeline.py` | runtime summary용 `objective_score = 10 * D_E_sec + 1 * D_G_sec` | 운영 로그용 ratio score |
+| `09-1 ... run_b4_optimization_s1forced.py` | `score_delay_row()`가 `D_E_sec`, `D_G_sec`를 우선 사용하고 `w/(w_E+w_G)`로 정규화 | 최종 표/그림 정본 |
 | `run_b4_theta_bo.py` | `score_for_row()`가 지연 필드를 우선 사용하고 `w/(w_E+w_G)`로 정규화 | 단일 BO도 최종 목적함수와 정렬 |
 
 주의:

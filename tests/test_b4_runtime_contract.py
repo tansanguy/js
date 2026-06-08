@@ -5,6 +5,7 @@ import importlib.util
 import json
 import sys
 import tempfile
+import types
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -1752,6 +1753,9 @@ class B4RuntimeContractTest(unittest.TestCase):
             "objective_includes_recovery",
             "emergency_seen_by_controller",
             "emergency_tripinfo_found",
+            "D_E_sec",
+            "V_G_vehicle_count",
+            "D_G_sec",
         ]:
             self.assertIn(field, self.runtime.EXPERIMENT_RESULT_FIELDS)
 
@@ -1857,9 +1861,9 @@ class B4RuntimeContractTest(unittest.TestCase):
             stage1 = self.runtime.B4Stage1Inputs.load()
             self.runner.build_b004_free_reference(stage1)
             rows = [
-                {"run_id": "contract", "mode": "B004", "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front", "parameter_id": "free_emv_analytic_50kmh", "T_actual_EMV_sec": 10.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 0.0, "objective_score": 0.0},
-                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 90.0, "d_veh_sec": 1.0, "objective_score": 81.909091},
-                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "d_EMV_sec": 80.0, "d_veh_sec": 2.0, "objective_score": 72.909091},
+                {"run_id": "contract", "mode": "B004", "scenario_name": "emv_free_flow_fire_station_to_seoul_station_front", "parameter_id": "free_emv_analytic_50kmh", "T_actual_EMV_sec": 10.0, "T_free_EMV_sec": 10.0, "D_E_sec": 0.0, "objective_score": 0.0},
+                {"run_id": "contract", "mode": "B04", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "no_control", "T_actual_EMV_sec": 100.0, "T_free_EMV_sec": 10.0, "D_E_sec": 90.0, "D_G_sec": 1.0, "objective_score": 81.909091},
+                {"run_id": "contract", "mode": "B4", "scenario_name": "compact_v9_B04_AD_real_demand", "parameter_id": "B4_MVP_DEFAULT", "T_actual_EMV_sec": 90.0, "T_free_EMV_sec": 10.0, "D_E_sec": 80.0, "D_G_sec": 2.0, "objective_score": 72.909091},
             ]
             outputs = self.runner.write_metric_outputs(rows, tasks, stage1, Path(metrics_tmp))
             self.assertEqual(
@@ -1892,7 +1896,48 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(reference["target_edge"], "619147738#1")
         self.assertGreater(reference["route_length_m"], 0)
         self.assertAlmostEqual(reference["T_free_EMV_sec"], reference["route_length_m"] / (50.0 / 3.6), places=5)
-        self.assertGreaterEqual(reference["veh_eval_count"], 1)
+        self.assertGreaterEqual(reference["V_G_vehicle_count"], 1)
+
+    def test_v_g_edges_are_mainline_plus_tls_incoming_and_vehicle_routes_filter_by_v_g(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            net_file = tmp_path / "toy.net.xml"
+            route_file = tmp_path / "toy.rou.xml"
+            net_file.write_text(
+                """<net>
+  <edge id="main_a"><lane id="main_a_0" length="100"/></edge>
+  <edge id="main_b"><lane id="main_b_0" length="100"/></edge>
+  <edge id="side_x"><lane id="side_x_0" length="50"/></edge>
+  <edge id="outside"><lane id="outside_0" length="70"/></edge>
+  <connection from="main_a" to="main_b" tl="tls_main"/>
+  <connection from="side_x" to="main_b" tl="tls_main"/>
+  <connection from="outside" to="main_b" tl="other_tls"/>
+</net>""",
+                encoding="utf-8",
+            )
+            route_file.write_text(
+                """<routes>
+  <route id="r_main" edges="main_a main_b"/>
+  <route id="r_side" edges="side_x main_b"/>
+  <route id="r_out" edges="outside"/>
+  <vehicle id="veh_main" route="r_main"/>
+  <vehicle id="veh_side" route="r_side"/>
+  <vehicle id="veh_out" route="r_out"/>
+</routes>""",
+                encoding="utf-8",
+            )
+            stage1 = types.SimpleNamespace(
+                route_edges=("main_a", "main_b"),
+                movements=(types.SimpleNamespace(tls_id="tls_main"),),
+            )
+            edge_lengths = {"main_a": 100.0, "main_b": 100.0, "side_x": 50.0, "outside": 70.0}
+
+            v_g_sets = self.runner.v_g_edge_sets(stage1, net_file)
+            rows = self.runner.vehicle_free_time_rows(stage1, edge_lengths, route_file, net_file)
+
+            self.assertEqual(v_g_sets["tributary_edges"], {"side_x"})
+            self.assertEqual({row["vehicle_id"] for row in rows}, {"veh_main", "veh_side"})
+            self.assertTrue(all(row["V_G_definition"] == self.runner.V_G_DEFINITION for row in rows))
 
     def test_objective_score_formula(self):
         self.assertAlmostEqual(self.runner.objective_score(10.0, 2.5), (10.0 / 11.0) * 10.0 + (1.0 / 11.0) * 2.5, places=6)

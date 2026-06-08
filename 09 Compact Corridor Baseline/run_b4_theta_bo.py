@@ -62,10 +62,13 @@ DEFAULT_BO_ROUNDS = 8
 DEFAULT_BATCH_SIZE = 3
 DEFAULT_REPEATS = 1
 DEFAULT_SEED = 20260605
-W_EMV_THETA = 10.0
-W_VEH_THETA = 1.0
+W_E_THETA = 10.0
+W_G_THETA = 1.0
 FAILURE_PENALTY_SEC = 1_000_000.0
 DEFAULT_EI_CANDIDATE_COUNT = 600
+DEFAULT_LOCAL_EI_CANDIDATE_FRACTION = 0.45
+GP_LENGTH_SCALE_BOUNDS = (0.08, 2.5)
+GP_NOISE_LEVEL = 1.0e-4
 DEFAULT_SUBSPACE_COUNT = 6
 DEFAULT_SPC_WINDOW = 5
 DEFAULT_SPC_ALPHA = 0.30
@@ -88,9 +91,9 @@ SCORE_FIELDS = [
     "Q_ratio",
     "tau",
     "T_actual_EMV_sec",
-    "d_EMV_sec",
+    "D_E_sec",
     "general_mean_travel_time_sec",
-    "d_veh_sec",
+    "D_G_sec",
     "score_sec",
     "bo_score_sec",
     "final_status",
@@ -305,13 +308,13 @@ ROUND_FIELDS = [
 ]
 
 
-def score_for_row(row: dict[str, Any], w_emv: float = W_EMV_THETA, w_veh: float = W_VEH_THETA) -> tuple[float, float, float]:
-    delay_a = safe_float(row.get("d_EMV_sec"), safe_float(row.get("T_actual_EMV_sec"), 0.0))
-    delay_n = safe_float(row.get("d_veh_sec"), safe_float(row.get("general_mean_travel_time_sec"), 0.0))
-    total_weight = float(w_emv) + float(w_veh)
+def score_for_row(row: dict[str, Any], w_E: float = W_E_THETA, w_G: float = W_G_THETA) -> tuple[float, float, float]:
+    D_E_sec = safe_float(row.get("D_E_sec"), safe_float(row.get("T_actual_EMV_sec"), 0.0))
+    D_G_sec = safe_float(row.get("D_G_sec"))
+    total_weight = float(w_E) + float(w_G)
     if total_weight <= 0.0:
         raise B4ThetaBoError("objective_weight_sum_must_be_positive")
-    score = (float(w_emv) / total_weight) * delay_a + (float(w_veh) / total_weight) * delay_n
+    score = (float(w_E) / total_weight) * D_E_sec + (float(w_G) / total_weight) * D_G_sec
     failed = (
         row.get("final_status") not in {"PASS", "WARNING"}
         or not bool_cell(row.get("emergency_arrived"))
@@ -327,10 +330,10 @@ def append_scores(
     theta: dict[str, Any],
     round_index: int,
     phase: str,
-    w_emv: float = W_EMV_THETA,
-    w_veh: float = W_VEH_THETA,
+    w_E: float = W_E_THETA,
+    w_G: float = W_G_THETA,
 ) -> dict[str, Any]:
-    score, penalty, bo_score = score_for_row(row, w_emv, w_veh)
+    score, penalty, bo_score = score_for_row(row, w_E, w_G)
     row.update({
         "bo_round": round_index,
         "bo_phase": phase,
@@ -355,9 +358,9 @@ def score_summary_row(row: dict[str, Any]) -> dict[str, Any]:
         "Q_ratio": row.get("Q_ratio", ""),
         "tau": row.get("tau", ""),
         "T_actual_EMV_sec": row.get("T_actual_EMV_sec", ""),
-        "d_EMV_sec": row.get("d_EMV_sec", ""),
+        "D_E_sec": row.get("D_E_sec", ""),
         "general_mean_travel_time_sec": row.get("general_mean_travel_time_sec", ""),
-        "d_veh_sec": row.get("d_veh_sec", ""),
+        "D_G_sec": row.get("D_G_sec", ""),
         "score_sec": row.get("score_sec", ""),
         "bo_score_sec": row.get("bo_score_sec", ""),
         "final_status": row.get("final_status", ""),
@@ -474,6 +477,40 @@ def random_theta_candidates(
     return candidates
 
 
+def local_theta_candidates(
+    bounds: dict[str, Any],
+    observations: list[dict[str, Any]],
+    count: int,
+    seed: int,
+    existing: set[tuple[float, float, float, float, float]] | None = None,
+) -> list[dict[str, Any]]:
+    if count <= 0 or not observations:
+        return []
+    rng = random.Random(seed)
+    blocked = set(existing or set())
+    selected = set(blocked)
+    centers = sorted(observations, key=lambda row: safe_float(row.get("bo_score_sec"), float("inf")))[: min(5, len(observations))]
+    candidates: list[dict[str, Any]] = []
+    attempts = 0
+    while len(candidates) < count and attempts < max(count * 120, 1000):
+        attempts += 1
+        center = centers[attempts % len(centers)]
+        row = {
+            "t_lead": safe_float(center.get("t_lead")) + rng.gauss(0.0, max((safe_float(bounds["t_lead"]["upper"]) - safe_float(bounds["t_lead"]["lower"])) * 0.08, 2.0)),
+            "delta_T_thr": safe_float(center.get("delta_T_thr")) + rng.gauss(0.0, max((safe_float(bounds["delta_T_thr"]["upper"]) - safe_float(bounds["delta_T_thr"]["lower"])) * 0.08, 4.0)),
+            "G_ext": safe_float(center.get("G_ext")) + rng.gauss(0.0, max((safe_float(bounds["G_ext"]["upper"]) - safe_float(bounds["G_ext"]["lower"])) * 0.08, 2.0)),
+            "Q_ratio": safe_float(center.get("Q_ratio")) + rng.gauss(0.0, 0.08),
+            "tau": safe_float(center.get("tau")) + rng.gauss(0.0, 0.025),
+        }
+        clamped = clamp_theta(row, bounds)
+        key = theta_key(clamped)
+        if key in selected:
+            continue
+        selected.add(key)
+        candidates.append(clamped)
+    return candidates
+
+
 def expected_improvement_candidates(
     observations: list[dict[str, Any]],
     bounds: dict[str, Any],
@@ -499,14 +536,22 @@ def expected_improvement_candidates(
     if not math.isfinite(y_std) or y_std < 1.0e-9:
         y_std = 1.0
     y_train = (y_raw - y_mean) / y_std
-    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(nu=2.5) + WhiteKernel(noise_level=1.0e-6, noise_level_bounds="fixed")
+    kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * Matern(
+        length_scale=[0.35] * x_train.shape[1],
+        length_scale_bounds=GP_LENGTH_SCALE_BOUNDS,
+        nu=2.5,
+    ) + WhiteKernel(noise_level=GP_NOISE_LEVEL, noise_level_bounds="fixed")
     try:
-        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=False, random_state=seed, alpha=1.0e-8, n_restarts_optimizer=0)
+        gp = GaussianProcessRegressor(kernel=kernel, normalize_y=False, random_state=seed, alpha=GP_NOISE_LEVEL, n_restarts_optimizer=2)
         gp.fit(x_train, y_train)
     except Exception:
         return []
 
-    candidates = random_theta_candidates(bounds, candidate_count, seed + 1009, existing)
+    local_count = int(round(candidate_count * DEFAULT_LOCAL_EI_CANDIDATE_FRACTION))
+    local = local_theta_candidates(bounds, aggregated, local_count, seed + 503, existing)
+    blocked = set(existing) | {theta_key(row) for row in local}
+    global_candidates = random_theta_candidates(bounds, max(candidate_count - len(local), 0), seed + 1009, blocked)
+    candidates = [*local, *global_candidates]
     if not candidates:
         return []
     x_candidate = np.array([theta_feature_vector(row, bounds) for row in candidates], dtype=float)
@@ -723,7 +768,7 @@ def mock_eval_row(run_id: str, theta: dict[str, Any], seed: int, repeat_id: int)
     merge_penalty = 75.0 * max(0.0, q_ratio - 0.35)
     spillback_penalty = 120.0 * abs(tau - 0.80)
     d_emv = 420 - 5.5 * t_lead - 4.0 * g_ext + gate_penalty + merge_penalty + spillback_penalty + noise
-    d_veh = 95 + 0.35 * g_ext + 0.18 * t_lead + 18.0 * max(0.0, 0.30 - q_ratio) + 30.0 * max(0.0, 0.78 - tau) + noise / 4.0
+    D_G_sec = 95 + 0.35 * g_ext + 0.18 * t_lead + 18.0 * max(0.0, 0.30 - q_ratio) + 30.0 * max(0.0, 0.78 - tau) + noise / 4.0
     d_emv = max(60.0, d_emv)
     t_free = 218.0
     return {
@@ -740,9 +785,9 @@ def mock_eval_row(run_id: str, theta: dict[str, Any], seed: int, repeat_id: int)
         "tau": theta["tau"],
         "T_actual_EMV_sec": sec(t_free + d_emv),
         "T_free_EMV_sec": sec(t_free),
-        "d_EMV_sec": sec(d_emv),
-        "d_veh_sec": sec(d_veh),
-        "general_mean_travel_time_sec": sec(170.0 + d_veh / 10.0),
+        "D_E_sec": sec(d_emv),
+        "D_G_sec": sec(D_G_sec),
+        "general_mean_travel_time_sec": sec(170.0 + D_G_sec / 10.0),
         "final_status": "PASS",
         "failed": False,
         "emergency_arrived": True,
@@ -905,7 +950,7 @@ def evaluate_theta_batch(
                 raw = evaluate_theta_repeat(job)
             except Exception as exc:  # noqa: BLE001
                 raw = failure_row_for_worker(run_id, theta, int(job["seed"]), int(job["repeat"]), exc)
-            rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_emv, args.w_veh))
+            rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_E, args.w_G))
     else:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
             future_map = {executor.submit(evaluate_theta_repeat, job): job for job in jobs}
@@ -916,7 +961,7 @@ def evaluate_theta_batch(
                     raw = future.result()
                 except Exception as exc:  # noqa: BLE001
                     raw = failure_row_for_worker(run_id, theta, int(job["seed"]), int(job["repeat"]), exc)
-                rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_emv, args.w_veh))
+                rows.append(append_scores(raw, theta, round_index, "initial" if round_index == 0 else "bo", args.w_E, args.w_G))
     rows.sort(key=lambda row: (str(row.get("parameter_id", "")), int(safe_float(row.get("repeat_id"), 0))))
     return rows
 
@@ -944,7 +989,7 @@ def write_bo_outputs(run_dir: Path, rows: list[dict[str, Any]], round_rows: list
         "completed_round": state.get("completed_round", 0),
         "output_prefix": state.get("output_prefix", DEFAULT_OUTPUT_PREFIX),
         "workers": state.get("workers", 1),
-        "weights": state.get("weights", {"w_emv": W_EMV_THETA, "w_veh": W_VEH_THETA}),
+        "weights": state.get("weights", {"w_E": W_E_THETA, "w_G": W_G_THETA}),
         "inputs": state.get("inputs", {}),
         "best": best,
         "outputs": {
@@ -1011,7 +1056,7 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             **essi_round_fields(rows, bounds, stage1, args.seed, round_rows, best, args),
         })
         completed_round = 0
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_E": args.w_E, "w_G": args.w_G}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
 
@@ -1035,16 +1080,16 @@ def run_bo(args: argparse.Namespace) -> dict[str, Any]:
             **essi_round_fields(rows, bounds, stage1, args.seed + round_index, round_rows, best, args),
         })
         completed_round = round_index
-        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
+        state = {"status": "RUNNING", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_E": args.w_E, "w_G": args.w_G}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
         write_json(state_path, state)
         write_bo_outputs(run_dir, rows, round_rows, state)
         if args.spc_stop and bool_cell(round_rows[-1].get("essi_stop_recommended")):
             break
 
-    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_emv": args.w_emv, "w_veh": args.w_veh}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
+    state = {"status": "COMPLETE", "completed_round": completed_round, "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": {"w_E": args.w_E, "w_G": args.w_G}, "inputs": {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}}
     write_json(state_path, state)
     outputs = write_bo_outputs(run_dir, rows, round_rows, state)
-    weights = {"w_emv": args.w_emv, "w_veh": args.w_veh}
+    weights = {"w_E": args.w_E, "w_G": args.w_G}
     inputs = {"net_file": rel(args.net_file), "background_route": rel(args.background_route), "stage1_dir": rel(args.stage1_dir) if args.stage1_dir else "", "hard_max_sim_time": args.hard_max_sim_time, **structure_inputs(args)}
     write_json(latest_path, {"schema": "compact_v9_B4_theta_bo_latest.v1", "run_id": run_id, "output_prefix": args.output_prefix, "workers": args.workers, "weights": weights, "inputs": inputs, **outputs})
     return {
@@ -1089,8 +1134,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--repeats", type=int, default=DEFAULT_REPEATS)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--workers", type=int, default=default_workers())
-    parser.add_argument("--w-emv", "--w1", dest="w_emv", type=float, default=W_EMV_THETA)
-    parser.add_argument("--w-veh", "--w2", dest="w_veh", type=float, default=W_VEH_THETA)
+    parser.add_argument("--w-E", "--w1", dest="w_E", type=float, default=W_E_THETA)
+    parser.add_argument("--w-G", "--w2", dest="w_G", type=float, default=W_G_THETA)
     parser.add_argument("--ei-candidate-count", type=int, default=DEFAULT_EI_CANDIDATE_COUNT)
     parser.add_argument("--spc-window", type=int, default=DEFAULT_SPC_WINDOW)
     parser.add_argument("--spc-alpha", type=float, default=DEFAULT_SPC_ALPHA)
@@ -1151,9 +1196,9 @@ def validate_args(args: argparse.Namespace) -> None:
         raise B4ThetaBoError("repeats_must_be_1_to_3")
     if args.workers < 1:
         raise B4ThetaBoError("workers_must_be_at_least_1")
-    if args.w_emv < 0.0 or args.w_veh < 0.0:
+    if args.w_E < 0.0 or args.w_G < 0.0:
         raise B4ThetaBoError("objective_weights_must_be_nonnegative")
-    if args.w_emv + args.w_veh <= 0.0:
+    if args.w_E + args.w_G <= 0.0:
         raise B4ThetaBoError("objective_weight_sum_must_be_positive")
     if args.ei_candidate_count < args.bo_batch_size:
         raise B4ThetaBoError("ei_candidate_count_must_cover_bo_batch_size")

@@ -13,7 +13,9 @@
 | Stage1 measurement source | `B04_ad_stage23_trigger` |
 | active input manifest | `configs/compact_v9_B04_B4_active_inputs.json` |
 | 최종 최적화 runner | `09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py` |
-| 목적함수 | `Score = (10/11) * delay_A + (1/11) * delay_N` |
+| 목적함수 | `Score = (10/11) * D_E + (1/11) * D_G` |
+
+`D_E`는 응급차 자유류 대비 절대 지연입니다. `D_G`는 `V_G` 영향권 일반차의 대당 평균 지연입니다. `V_G`는 Stage1 본선 route edge와, 본선 교차로 TLS의 SUMO `.net.xml` incoming edge를 합쳐 자동 구성합니다. 차량 route가 `V_G` edge를 하나라도 지나면 집계 대상입니다.
 
 ## 최신 문서
 
@@ -215,8 +217,8 @@ B4만 실행할 때도 같은 net/demand/Stage1 묶음을 명시합니다.
 | `--repeats` | 후보 하나를 반복 실행할 횟수입니다. |
 | `--seed` | BO와 SUMO 비교에 쓰는 난수 seed입니다. |
 | `--workers` | 병렬 실행 worker 수입니다. |
-| `--w-emv`, `--w1` | 목적함수에서 EV delay에 주는 가중치입니다. |
-| `--w-veh`, `--w2` | 목적함수에서 일반차 delay에 주는 가중치입니다. |
+| `--w-E`, `--w1` | 목적함수에서 `D_E`에 주는 가중치입니다. |
+| `--w-G`, `--w2` | 목적함수에서 `D_G`에 주는 가중치입니다. |
 | `--ei-candidate-count` | Expected Improvement 후보 sampling 개수입니다. |
 | `--spc-stop` | SPC 기반 조기종료 판단을 켭니다. |
 | `--spc-window` | SPC 판단에 쓸 최근 라운드 window 크기입니다. |
@@ -261,7 +263,7 @@ B4만 실행할 때도 같은 net/demand/Stage1 묶음을 명시합니다.
 
 민감도 분석의 정본은 가중치를 바꿔가며 응급차 지연과 일반차 지연의 맞교환을 보여주는 Pareto sweep입니다. 이 결과는 가중치를 정하기 위한 자동 결론이 아니라 정책 결정자가 선택할 수 있는 후보 목록입니다.
 
-| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| 가중치(w1:w2) | 최적 theta | D_E_sec | D_G_sec |
 | --- | --- | --- | --- |
 | 1:1 | `table3_pareto.csv` | 결과값 | 결과값 |
 | 5:1 | `table3_pareto.csv` | 결과값 | 결과값 |
@@ -271,7 +273,7 @@ B4만 실행할 때도 같은 net/demand/Stage1 묶음을 명시합니다.
 
 각 가중치에서 net, demand, Stage1, 사고 위치, 출동 조건은 모두 동일해야 합니다. 하나의 가중치에는 BO 탐색 1회를 수행하고, SPC 기반으로 개선 변동이 잦아드는 지점에서 중단할 수 있습니다. 값이 튀는 경우에만 반복 탐색을 추가합니다.
 
-`figure3_pareto.png`의 붉은 점은 knee point 보조 표시입니다. 이 표시는 10:1이 정답이라는 뜻도, knee point를 반드시 채택해야 한다는 뜻도 아닙니다.
+`figure3_pareto.png`의 주황색 점은 knee point 보조 표시입니다. 이 표시는 10:1이 정답이라는 뜻도, knee point를 반드시 채택해야 한다는 뜻도 아닙니다.
 
 ## 10. Provenance 원칙
 

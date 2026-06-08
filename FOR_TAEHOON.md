@@ -387,7 +387,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 ## 3. 민감도 분석
 
-민감도 분석은 응급차 지연 `delay_A`와 일반차 지연 `delay_N`의 상대 가중치를 바꿔가며 Pareto 후보를 보는 단계입니다.
+민감도 분석은 응급차 지연 `D_E`와 일반차 지연 `D_G`의 상대 가중치를 바꿔가며 Pareto 후보를 보는 단계입니다. 산출물 표기에서 `D_E_sec`는 `D_E`, `D_G_sec`은 `D_G`에 대응합니다. `D_G`는 `V_G` 영향권 일반차 대당 평균 지연이며, `V_G`는 본선 route edge와 본선 교차로 TLS의 SUMO `.net.xml` incoming edge를 합쳐 자동 구성합니다.
 
 기본 weight ratio는 runner 내부에 고정된 아래 5개입니다.
 
@@ -439,13 +439,13 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 | 파일 | 의미 |
 | --- | --- |
-| `table3_pareto.csv` | weight ratio별 best theta, `delay_A`, `delay_N`, score, SPC 상태, knee 여부입니다. |
+| `table3_pareto.csv` | weight ratio별 best theta, `D_E_sec`, `D_G_sec`, score, 실제 완료 BO round 수, SPC 상태, knee 여부입니다. |
 | `final_sensitivity_results.csv` | 제출용 clean CSV입니다. weight ratio별 best row만 정리합니다. |
 | `table4_sensitivity_spc.csv` | weight ratio별 BO round의 `essi_log_max`, EWMA, SPC trace입니다. |
-| `figure3_pareto.png` | Pareto 후보와 knee point 그림입니다. |
+| `figure3_pareto.png` | Pareto 후보와 knee point 그림입니다. 주황색 점은 계산된 knee 후보이며 정책 채택 결론이 아닙니다. |
 | `figure4_sensitivity_spc.png` | weight ratio별 ESSI log-max EWMA trace입니다. |
 
-해석할 때 `10:1`이나 knee point를 정답이라고 쓰지 않습니다. 이 단계는 정책 결정자가 응급차 우선과 일반차 지연의 trade-off를 볼 수 있게 펼쳐 주는 분석입니다.
+해석할 때 `10:1`이나 knee point를 정답이라고 쓰지 않습니다. 이 단계는 정책 결정자가 응급차 우선과 일반차 지연의 trade-off를 볼 수 있게 펼쳐 주는 분석입니다. 가중치 외의 net, demand, Stage1 입력, 사고 위치, 출동 조건은 고정해야 하며, 하나의 weight ratio에는 BO 탐색을 1회만 수행합니다. 같은 weight ratio 반복 탐색은 값이 튀거나 실패한 경우의 검증용으로만 추가합니다.
 
 ## 4. 최종 분석
 

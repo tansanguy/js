@@ -20,9 +20,9 @@
 | Stage1 measurement source | `B04_ad_stage23_trigger` |
 | active manifest | `configs/compact_v9_B04_B4_active_inputs.json` |
 | 결정변수 | `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau` |
-| 기본 score | `(10/11) * delay_A + (1/11) * delay_N` |
+| 기본 score | `(10/11) * D_E + (1/11) * D_G` |
 
-`delay_A`는 응급차 지연, `delay_N`은 일반차 지연입니다. score는 낮을수록 좋습니다. `10:1` 가중치는 내부에서 `10/11`, `1/11`로 정규화됩니다.
+`D_E`는 응급차 자유류 대비 지연, `D_G`는 `V_G` 영향권 일반차 대당 평균 지연입니다. 산출물의 `D_E_sec`는 `D_E`, `D_G_sec`은 `D_G`에 대응합니다. `V_G`는 본선 route edge와 본선 교차로 TLS의 SUMO `.net.xml` incoming edge를 합쳐 자동 구성합니다. score는 낮을수록 좋습니다. `10:1` 가중치는 내부에서 `10/11`, `1/11`로 정규화됩니다.
 
 ## 전체 구조
 
@@ -176,7 +176,7 @@ full `n=15`, `m=50` run이 실제로 완료됐는지는 `all_evaluations.csv` ro
 
 | 파일 | 의미 |
 | --- | --- |
-| `table3_pareto.csv` | 가중치별 최적 theta, `delay_A`, `delay_N`, score, SPC 중단 여부, knee 표시 |
+| `table3_pareto.csv` | 가중치별 최적 theta, `D_E_sec`, `D_G_sec`, score, SPC 중단 여부, knee 표시 |
 | `final_sensitivity_results.csv` | 제출/보고용 민감도 clean CSV |
 | `table4_sensitivity_spc.csv` | 가중치별 BO round의 ESSI/SPC trace |
 | `figure3_pareto.png` | 가중치별 Pareto 후보와 knee point 보조 표시 |
@@ -184,8 +184,8 @@ full `n=15`, `m=50` run이 실제로 완료됐는지는 `all_evaluations.csv` ro
 
 해석 원칙:
 
-- `delay_A`가 줄면 `delay_N`이 늘 수 있고, 반대도 가능합니다.
-- 붉은 knee point는 설명 보조 표시입니다.
+- `D_E_sec`가 줄면 `D_G_sec`이 늘 수 있고, 반대도 가능합니다.
+- 주황색 knee point는 설명 보조 표시입니다.
 - knee point나 `10:1`을 정답이라고 쓰지 않습니다.
 - 최종 가중치 선택은 정책 결정 영역입니다.
 - 실제 30회 반복을 수행하지 않았다면 30회 반복 결과라고 쓰지 않습니다.
@@ -314,7 +314,7 @@ screening만 먼저 실행:
 - 10번은 theta를 읽어서 검증하는 단계입니다. 최적화 성능 비교는 9-1 산출물로 설명합니다.
 - B004는 자유류 기준, B04는 no-control, B4는 잠근 theta를 적용한 제어 run입니다.
 - final phase에서 목적지 3개가 각각 `1 B004 + 30 B04 + 30 B4` 구조로 실행됐을 때만 30-repeat 최종 검증이라고 설명합니다.
-- 제출/보고용 clean CSV는 `output_delay_A_sec`, `output_delay_N_sec`, `weight_A`, `weight_N`, `weight_ratio`, `score` 순서로 score 직전에 weight를 둡니다.
+- 제출/보고용 clean CSV는 `output_D_E_sec`, `output_D_G_sec`, `weight_E`, `weight_G`, `weight_ratio`, `score` 순서로 score 직전에 weight를 둡니다.
 - final phase SPC는 반복 결과 안정성 판단용입니다. report에는 route별 `stable`, `active`, `insufficient` 상태가 기록됩니다.
 - smoke theta 또는 dry-run 산출물은 제출용 결과가 아닙니다.
 - 최종 목적지 3개는 screening 결과에 의해 결정되므로, 실행 전 예비 후보명을 확정 결과처럼 쓰지 않습니다.

@@ -45,8 +45,8 @@ from b4_runtime import (  # noqa: E402
     B4Stage1Inputs,
     EXPERIMENT_RESULT_FIELDS,
     STAGE1_DIR,
-    W_EMV,
-    W_VEH,
+    W_E,
+    W_G,
     safe_float,
 )
 from run_b0_b4_signal_pipeline import (  # noqa: E402
@@ -116,9 +116,9 @@ AVERAGE_FIELDS = [
     "run_count",
     "T_EMV_mean_sec",
     "T_EMV_std_sec",
-    "d_EMV_mean_sec",
+    "D_E_mean_sec",
+    "D_G_mean_sec",
     "objective_score_mean",
-    "general_mean_travel_time_sec",
     "emergency_arrival_rate",
     "teleport_count",
     "fail_count",
@@ -153,8 +153,10 @@ CANDIDATE_FIELDS = [
     "B004_T_EMV_sec",
     "B04_T_EMV_mean_sec",
     "B4_T_EMV_mean_sec",
-    "B04_delay_mean_sec",
-    "B4_vs_B04_improvement_sec",
+    "B04_D_E_mean_sec",
+    "B4_vs_B04_D_E_improvement_sec",
+    "B04_D_G_mean_sec",
+    "B4_D_G_mean_sec",
     "B4_stage3_preemption_mean",
     "B4_stage2_hold_mean",
     "intervention_mean",
@@ -179,17 +181,18 @@ FINAL_SIMULATION_FIELDS = [
     "input_G_ext",
     "input_Q_ratio",
     "input_tau",
-    "output_delay_A_sec",
-    "output_delay_N_sec",
-    "weight_A",
-    "weight_N",
+    "output_D_E_sec",
+    "output_D_G_sec",
+    "weight_E",
+    "weight_G",
     "weight_ratio",
     "score",
     "measured_T_free_EMV_sec",
     "measured_T_actual_EMV_sec",
-    "measured_d_EMV_sec",
-    "measured_d_veh_sec",
-    "measured_general_mean_travel_time_sec",
+    "measured_D_E_sec",
+    "measured_D_G_sec",
+    "measured_T_G_actual_mean_sec",
+    "measured_T_G_free_mean_sec",
     "stage2_on_count",
     "stage3_on_count",
 ]
@@ -470,6 +473,10 @@ def load_stage1_module() -> Any:
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def ensure_worker_imports() -> None:
+    load_stage1_module()
 
 
 def mainroad_edge_ids(mapping_csv: Path) -> set[str]:
@@ -907,9 +914,9 @@ def average_rows(rows: list[dict[str, Any]], route_id: str = "") -> list[dict[st
     for mode in [B004_MODE, B04_MODE, B4_MODE]:
         group = [row for row in rows if row.get("mode") == mode]
         t_values = [value for value in (t_emv(row) for row in group) if value is not None]
-        d_values = [safe_float(row.get("d_EMV_sec")) for row in group if row.get("d_EMV_sec") not in {"", None}]
+        d_e_values = [safe_float(row.get("D_E_sec")) for row in group if row.get("D_E_sec") not in {"", None}]
+        d_g_values = [safe_float(row.get("D_G_sec")) for row in group if row.get("D_G_sec") not in {"", None}]
         objective_values = [safe_float(row.get("objective_score")) for row in group if row.get("objective_score") not in {"", None}]
-        general_values = [safe_float(row.get("general_mean_travel_time_sec")) for row in group if row.get("general_mean_travel_time_sec") not in {"", None}]
         stage3_values = [safe_float(row.get("stage3_preemption_count")) for row in group if row.get("stage3_preemption_count") not in {"", None}]
         stage2_values = [safe_float(row.get("stage2_hold_count")) for row in group if row.get("stage2_hold_count") not in {"", None}]
         result.append({
@@ -918,9 +925,9 @@ def average_rows(rows: list[dict[str, Any]], route_id: str = "") -> list[dict[st
             "run_count": len(group),
             "T_EMV_mean_sec": sec(mean(t_values)),
             "T_EMV_std_sec": sec(sample_std(t_values)) if t_values else "",
-            "d_EMV_mean_sec": sec(mean(d_values)),
+            "D_E_mean_sec": sec(mean(d_e_values)),
+            "D_G_mean_sec": sec(mean(d_g_values)),
             "objective_score_mean": sec(mean(objective_values)),
-            "general_mean_travel_time_sec": sec(mean(general_values)),
             "emergency_arrival_rate": sec(sum(bool_cell(row.get("emergency_arrived")) for row in group) / len(group)) if group else "",
             "teleport_count": sum(bool_cell(row.get("emergency_teleport")) for row in group),
             "fail_count": sum(row.get("final_status") == "FAIL" or bool_cell(row.get("failed")) for row in group),
@@ -942,8 +949,8 @@ def repeat_stability_rows(route_id: str, rows: list[dict[str, Any]]) -> list[dic
         if row.get("mode") == B4_MODE and safe_float(row.get("repeat_id"), 0.0) > 0
     }
     improvements: list[float] = []
-    b4_delays: list[float] = []
-    general_times: list[float] = []
+    b4_d_e_values: list[float] = []
+    b4_d_g_values: list[float] = []
     interventions: list[float] = []
     for repeat in sorted(set(b04_by_repeat) & set(b4_by_repeat)):
         b04 = b04_by_repeat[repeat]
@@ -952,28 +959,35 @@ def repeat_stability_rows(route_id: str, rows: list[dict[str, Any]]) -> list[dic
         b4_time = t_emv(b4)
         if b04_time is not None and b4_time is not None:
             improvements.append(b04_time - b4_time)
-        if b4.get("d_EMV_sec") not in {"", None}:
-            b4_delays.append(safe_float(b4.get("d_EMV_sec")))
-        if b4.get("general_mean_travel_time_sec") not in {"", None}:
-            general_times.append(safe_float(b4.get("general_mean_travel_time_sec")))
+        if b4.get("D_E_sec") not in {"", None}:
+            b4_d_e_values.append(safe_float(b4.get("D_E_sec")))
+        if b4.get("D_G_sec") not in {"", None}:
+            b4_d_g_values.append(safe_float(b4.get("D_G_sec")))
         interventions.append(safe_float(b4.get("stage2_hold_count")) + safe_float(b4.get("stage3_preemption_count")))
     return [
-        spc_metric_row(route_id, "B4_vs_B04_improvement_sec", improvements),
-        spc_metric_row(route_id, "B4_d_EMV_sec", b4_delays),
-        spc_metric_row(route_id, "B4_general_mean_travel_time_sec", general_times),
+        spc_metric_row(route_id, "B4_vs_B04_D_E_improvement_sec", improvements),
+        spc_metric_row(route_id, "B4_D_E_sec", b4_d_e_values),
+        spc_metric_row(route_id, "B4_D_G_sec", b4_d_g_values),
         spc_metric_row(route_id, "B4_intervention_count", interventions),
     ]
 
 
-def objective_score_from_row(row: dict[str, Any], w_emv: float, w_veh: float) -> str:
+def objective_score_from_row(row: dict[str, Any], w_E: float, w_G: float) -> str:
     if row.get("objective_score") not in {"", None}:
         return row.get("objective_score", "")
-    total = w_emv + w_veh
+    total = w_E + w_G
     if total <= 0.0:
         return ""
-    delay_a = safe_float(row.get("d_EMV_sec"))
-    delay_n = safe_float(row.get("d_veh_sec"), safe_float(row.get("general_mean_travel_time_sec")))
-    return sec((w_emv / total) * delay_a + (w_veh / total) * delay_n)
+    D_E_sec = safe_float(row.get("D_E_sec"))
+    D_G_sec = safe_float(row.get("D_G_sec"))
+    return sec((w_E / total) * D_E_sec + (w_G / total) * D_G_sec)
+
+
+def normalize_objective_weights(w_E: float, w_G: float) -> tuple[float, float]:
+    total = w_E + w_G
+    if total <= 0.0:
+        return 0.0, 0.0
+    return w_E / total, w_G / total
 
 
 def final_simulation_result_rows(rows: list[dict[str, Any]], params: B4ThetaParams) -> list[dict[str, Any]]:
@@ -981,9 +995,10 @@ def final_simulation_result_rows(rows: list[dict[str, Any]], params: B4ThetaPara
     for row in rows:
         if row.get("mode") != B4_MODE:
             continue
-        w_emv = safe_float(row.get("w_EMV"), W_EMV)
-        w_veh = safe_float(row.get("w_veh"), W_VEH)
-        delay_n = row.get("d_veh_sec", "") if row.get("d_veh_sec") not in {"", None} else row.get("general_mean_travel_time_sec", "")
+        w_E = safe_float(row.get("w_E"), W_E)
+        w_G = safe_float(row.get("w_G"), W_G)
+        w_E_norm, w_G_norm = normalize_objective_weights(w_E, w_G)
+        D_G_sec = row.get("D_G_sec", "")
         final_rows.append({
             "input_phase": row.get("phase", PHASE_FINAL),
             "input_route_id": row.get("route_id", ""),
@@ -996,17 +1011,18 @@ def final_simulation_result_rows(rows: list[dict[str, Any]], params: B4ThetaPara
             "input_G_ext": params.G_ext,
             "input_Q_ratio": params.Q_ratio,
             "input_tau": params.tau,
-            "output_delay_A_sec": row.get("d_EMV_sec", ""),
-            "output_delay_N_sec": delay_n,
-            "weight_A": sec(w_emv),
-            "weight_N": sec(w_veh),
-            "weight_ratio": f"{w_emv:g}:{w_veh:g}",
-            "score": objective_score_from_row(row, w_emv, w_veh),
+            "output_D_E_sec": row.get("D_E_sec", ""),
+            "output_D_G_sec": D_G_sec,
+            "weight_E": sec(w_E_norm),
+            "weight_G": sec(w_G_norm),
+            "weight_ratio": f"{w_E:g}:{w_G:g}",
+            "score": objective_score_from_row(row, w_E, w_G),
             "measured_T_free_EMV_sec": row.get("T_free_EMV_sec", ""),
             "measured_T_actual_EMV_sec": row.get("T_actual_EMV_sec", ""),
-            "measured_d_EMV_sec": row.get("d_EMV_sec", ""),
-            "measured_d_veh_sec": delay_n,
-            "measured_general_mean_travel_time_sec": row.get("general_mean_travel_time_sec", ""),
+            "measured_D_E_sec": row.get("D_E_sec", ""),
+            "measured_D_G_sec": D_G_sec,
+            "measured_T_G_actual_mean_sec": row.get("T_G_actual_mean_sec", ""),
+            "measured_T_G_free_mean_sec": row.get("T_G_free_mean_sec", ""),
             "stage2_on_count": row.get("stage2_hold_count", ""),
             "stage3_on_count": row.get("stage3_preemption_count", ""),
         })
@@ -1018,8 +1034,10 @@ def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -
     b004_time = safe_float(averages.get(B004_MODE, {}).get("T_EMV_mean_sec"))
     b04_time = safe_float(averages.get(B04_MODE, {}).get("T_EMV_mean_sec"))
     b4_time = safe_float(averages.get(B4_MODE, {}).get("T_EMV_mean_sec"))
-    b04_delay = b04_time - b004_time if b04_time and b004_time else 0.0
+    b04_d_e = b04_time - b004_time if b04_time and b004_time else 0.0
     improvement = b04_time - b4_time if b04_time and b4_time else 0.0
+    b04_d_g = safe_float(averages.get(B04_MODE, {}).get("D_G_mean_sec"))
+    b4_d_g = safe_float(averages.get(B4_MODE, {}).get("D_G_mean_sec"))
     b4_stage3 = safe_float(averages.get(B4_MODE, {}).get("stage3_preemption_mean"))
     b4_stage2 = safe_float(averages.get(B4_MODE, {}).get("stage2_hold_mean"))
     intervention = b4_stage3 + b4_stage2
@@ -1042,7 +1060,7 @@ def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -
         selection_reason = "valid_b4_improvement_with_actual_intervention"
     score = (
         10_000.0 * max(improvement, 0.0)
-        + 1_000.0 * max(b04_delay, 0.0)
+        + 1_000.0 * max(b04_d_e, 0.0)
         + 100.0 * intervention
         + 10.0 * safe_float(candidate.get("mainroad_length_ratio"))
         + 10.0 * safe_float(candidate.get("legacy_spine_length_ratio"))
@@ -1061,8 +1079,10 @@ def summarize_candidate(candidate: dict[str, Any], rows: list[dict[str, Any]]) -
         "B004_T_EMV_sec": sec(b004_time if b004_time else None),
         "B04_T_EMV_mean_sec": sec(b04_time if b04_time else None),
         "B4_T_EMV_mean_sec": sec(b4_time if b4_time else None),
-        "B04_delay_mean_sec": sec(b04_delay),
-        "B4_vs_B04_improvement_sec": sec(improvement),
+        "B04_D_E_mean_sec": sec(b04_d_e),
+        "B4_vs_B04_D_E_improvement_sec": sec(improvement),
+        "B04_D_G_mean_sec": sec(b04_d_g),
+        "B4_D_G_mean_sec": sec(b4_d_g),
         "B4_stage3_preemption_mean": sec(b4_stage3),
         "B4_stage2_hold_mean": sec(b4_stage2),
         "intervention_mean": sec(intervention),
@@ -1082,8 +1102,8 @@ def candidate_selection_sort_key(row: dict[str, Any]) -> tuple[float, float, flo
         + safe_float(row.get("legacy_spine_length_ratio"))
     )
     return (
-        -safe_float(row.get("B4_vs_B04_improvement_sec")),
-        -safe_float(row.get("B04_delay_mean_sec")),
+        -safe_float(row.get("B4_vs_B04_D_E_improvement_sec")),
+        -safe_float(row.get("B04_D_E_mean_sec")),
         -safe_float(row.get("intervention_mean")),
         -safe_float(row.get("mainroad_length_ratio")),
         -representativeness,
@@ -1266,8 +1286,9 @@ def write_final_report(
                 "route_id",
                 "source_route_id",
                 "target_edge_id",
-                "B4_vs_B04_improvement_sec",
-                "B04_delay_mean_sec",
+                "B4_vs_B04_D_E_improvement_sec",
+                "B04_D_E_mean_sec",
+                "B4_D_G_mean_sec",
                 "intervention_mean",
                 "mainroad_length_ratio",
                 "legacy_spine_length_ratio",
@@ -1285,7 +1306,8 @@ def write_final_report(
                 "target_edge_id",
                 "selection_status",
                 "selection_reason",
-                "B4_vs_B04_improvement_sec",
+                "B4_vs_B04_D_E_improvement_sec",
+                "B4_D_G_mean_sec",
                 "intervention_mean",
                 "teleport_count",
                 "fail_count",
@@ -1438,7 +1460,8 @@ def run_validation_phase(
             write_csv(output_root / result["route_id"] / "mode_averages.csv", result["average_rows"], AVERAGE_FIELDS)
             write_candidate_partials(completed_results)
     else:
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        ensure_worker_imports()
+        with ProcessPoolExecutor(max_workers=max_workers, initializer=ensure_worker_imports) as executor:
             futures = [
                 executor.submit(
                     run_candidate_worker,

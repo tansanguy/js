@@ -48,8 +48,8 @@ from b4_runtime import (  # noqa: E402
     EXPERIMENT_RESULT_FIELDS,
     FREE_FLOW_SPEED_KMH,
     RUNTIME_EVENT_FIELDS,
-    W_EMV,
-    W_VEH,
+    W_E,
+    W_G,
     B4RuntimeError,
     B4Stage1Inputs,
     load_edge_lengths,
@@ -82,8 +82,9 @@ DEFAULT_SEED = 1
 DEFAULT_REPEAT_ID = 1
 VALID_MODES = {B004_MODE, B04_MODE, B4_MODE, "B0"}
 FREE_TIME_METHOD = "analytic_50kmh"
-VEHICLE_FREE_TIME_METHOD = "analytic_50kmh_vehicle_routes_route_overlap_proxy"
-SCORE_FORMULA = "(10/11) * d_EMV_sec + (1/11) * d_veh_sec"
+VEHICLE_FREE_TIME_METHOD = "analytic_50kmh_V_G_route_based_mainstream_plus_incoming"
+SCORE_FORMULA = "(10/11) * D_E_sec + (1/11) * D_G_sec"
+V_G_DEFINITION = "V_G = mainline route edges + all SUMO net incoming edges at mainline TLS; vehicles are included when their route touches any V_G edge."
 
 
 class B4RunnerError(RuntimeError):
@@ -491,6 +492,29 @@ def parse_route_file(route_file: Path) -> tuple[dict[str, list[str]], list[dict[
     return routes, vehicles
 
 
+def mainline_tls_ids(stage1: B4Stage1Inputs) -> set[str]:
+    return {movement.tls_id for movement in stage1.movements if movement.tls_id}
+
+
+def v_g_edge_sets(stage1: B4Stage1Inputs, net_file: Path) -> dict[str, set[str]]:
+    mainline_edges = {edge for edge in stage1.route_edges if edge}
+    incoming_edges: set[str] = set()
+    tls_ids = mainline_tls_ids(stage1)
+    root = ET.parse(net_file).getroot()
+    for connection in root.findall("connection"):
+        if connection.get("tl") not in tls_ids:
+            continue
+        from_edge = connection.get("from", "")
+        if from_edge and not from_edge.startswith(":"):
+            incoming_edges.add(from_edge)
+    return {
+        "mainline_edges": mainline_edges,
+        "incoming_edges": incoming_edges,
+        "tributary_edges": incoming_edges - mainline_edges,
+        "v_g_edges": mainline_edges | incoming_edges,
+    }
+
+
 def controllable_v_edges(stage1: B4Stage1Inputs) -> set[str]:
     edges: set[str] = set()
     for movement in stage1.movements:
@@ -505,9 +529,9 @@ def controllable_v_edges(stage1: B4Stage1Inputs) -> set[str]:
     return edges
 
 
-def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float], background_route: Path = B04_AA_BACKGROUND_ROUTE) -> list[dict[str, Any]]:
+def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float], background_route: Path = B04_AA_BACKGROUND_ROUTE, net_file: Path = B04_NET) -> list[dict[str, Any]]:
     routes, vehicles = parse_route_file(background_route)
-    v_edges = controllable_v_edges(stage1)
+    v_g_edges = v_g_edge_sets(stage1, net_file)["v_g_edges"]
     rows: list[dict[str, Any]] = []
     for vehicle in vehicles:
         vehicle_id = str(vehicle.get("id", ""))
@@ -515,7 +539,7 @@ def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float
         edges = routes.get(route_id, [])
         if not vehicle_id or not edges or vehicle_id == EV_ID:
             continue
-        overlap_edges = [edge for edge in edges if edge in v_edges]
+        overlap_edges = [edge for edge in edges if edge in v_g_edges]
         if not overlap_edges:
             continue
         rows.append({
@@ -524,8 +548,8 @@ def vehicle_free_time_rows(stage1: B4Stage1Inputs, edge_lengths: dict[str, float
             "route_edge_count": len(edges),
             "route_length_m": round(route_length_m(edges, edge_lengths), 6),
             "free_time_sec": free_time_sec(edges, edge_lengths),
-            "v_overlap_edge_count": len(overlap_edges),
-            "v_definition": "B4 controllable movement route-overlap proxy",
+            "V_G_overlap_edge_count": len(overlap_edges),
+            "V_G_definition": V_G_DEFINITION,
         })
     return rows
 
@@ -543,7 +567,8 @@ def build_b004_free_reference(
     route_edges = list(route_meta["route_edges"])
     route_length = route_length_m(route_edges, edge_lengths)
     emv_free = free_time_sec(route_edges, edge_lengths)
-    vehicle_rows = vehicle_free_time_rows(stage1, edge_lengths, background_route)
+    v_g_sets = v_g_edge_sets(stage1, net_file)
+    vehicle_rows = vehicle_free_time_rows(stage1, edge_lengths, background_route, net_file)
     veh_free_values = [safe_float(row.get("free_time_sec")) for row in vehicle_rows]
     reference = {
         "schema": "compact_v9_B004_free_emv_reference.v1",
@@ -554,6 +579,11 @@ def build_b004_free_reference(
         "net_file": rel(net_file),
         "free_time_method": FREE_TIME_METHOD,
         "vehicle_free_time_method": VEHICLE_FREE_TIME_METHOD,
+        "V_G_definition": V_G_DEFINITION,
+        "V_G_mainline_edge_count": len(v_g_sets["mainline_edges"]),
+        "V_G_incoming_edge_count": len(v_g_sets["incoming_edges"]),
+        "V_G_tributary_edge_count": len(v_g_sets["tributary_edges"]),
+        "V_G_edge_count": len(v_g_sets["v_g_edges"]),
         "free_flow_speed_kmh": FREE_FLOW_SPEED_KMH,
         "start_edge": route_edges[0] if route_edges else "",
         "merge_edge": stage1.departure.mainline_target_edge,
@@ -562,15 +592,15 @@ def build_b004_free_reference(
         "route_edge_count": len(route_edges),
         "route_length_m": round(route_length, 6),
         "T_free_EMV_sec": emv_free,
-        "veh_eval_count": len(vehicle_rows),
-        "veh_free_mean_sec": round(sum(veh_free_values) / len(veh_free_values), 6) if veh_free_values else "",
-        "v_definition": "Stage 1 controllable movement approach/storage/corridor edge route-overlap background vehicles; no FCD edge-pass claim.",
+        "V_G_vehicle_count": len(vehicle_rows),
+        "T_G_free_mean_sec": round(sum(veh_free_values) / len(veh_free_values), 6) if veh_free_values else "",
+        "V_G_definition": V_G_DEFINITION,
     }
     write_json(output_json, reference)
     write_csv(
         vehicle_free_times_csv,
         vehicle_rows,
-        ["vehicle_id", "route_id", "route_edge_count", "route_length_m", "free_time_sec", "v_overlap_edge_count", "v_definition"],
+        ["vehicle_id", "route_id", "route_edge_count", "route_length_m", "free_time_sec", "V_G_overlap_edge_count", "V_G_definition"],
     )
     return reference
 
@@ -600,11 +630,11 @@ def b004_result_row(task: B4RunTask, stage1: B4Stage1Inputs, reference: dict[str
         "emergency_tripinfo_found": False,
         "T_actual_EMV_sec": reference["T_free_EMV_sec"],
         "T_free_EMV_sec": reference["T_free_EMV_sec"],
-        "d_EMV_sec": 0.0,
-        "veh_eval_count": 0,
-        "veh_actual_mean_sec": "",
-        "veh_free_mean_sec": "",
-        "d_veh_sec": "",
+        "D_E_sec": 0.0,
+        "V_G_vehicle_count": 0,
+        "T_G_actual_mean_sec": "",
+        "T_G_free_mean_sec": "",
+        "D_G_sec": "",
         "objective_score": 0.0,
         "final_status": "REFERENCE",
         "failure_reason": "",
@@ -633,8 +663,8 @@ def base_result_row(task: B4RunTask, stage1: B4Stage1Inputs, params: B4MvpParams
         "speed_trigger_kmh": runtime_thresholds.speed_trigger_kmh,
         "max_active_movements": stage1.max_active_movements,
         "stage2_dispatch_lead_sec": stage1.departure.dispatch_lead_time_sec,
-        "w_EMV": W_EMV,
-        "w_veh": W_VEH,
+        "w_E": W_E,
+        "w_G": W_G,
         "score_formula": SCORE_FORMULA,
         "final_status": "",
         "sumo_exit_code": "",
@@ -645,9 +675,9 @@ def base_result_row(task: B4RunTask, stage1: B4Stage1Inputs, params: B4MvpParams
     }
 
 
-def objective_score(d_emv_sec: float, d_veh_sec: float) -> float:
-    total_weight = W_EMV + W_VEH
-    return round((W_EMV / total_weight) * d_emv_sec + (W_VEH / total_weight) * d_veh_sec, 6)
+def objective_score(D_E_sec: float, D_G_sec: float) -> float:
+    total_weight = W_E + W_G
+    return round((W_E / total_weight) * D_E_sec + (W_G / total_weight) * D_G_sec, 6)
 
 
 def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_rows_by_id: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -665,12 +695,12 @@ def actual_v_vehicle_metrics(background_tripinfo: list[dict[str, Any]], free_row
             free_values.append(free_time)
     actual_mean = round(sum(actual_values) / len(actual_values), 6) if actual_values else ""
     free_mean = round(sum(free_values) / len(free_values), 6) if free_values else ""
-    d_veh = round(actual_mean - free_mean, 6) if actual_values and free_values else ""
+    D_G_sec = round(actual_mean - free_mean, 6) if actual_values and free_values else ""
     return {
-        "veh_eval_count": len(actual_values),
-        "veh_actual_mean_sec": actual_mean,
-        "veh_free_mean_sec": free_mean,
-        "d_veh_sec": d_veh,
+        "V_G_vehicle_count": len(actual_values),
+        "T_G_actual_mean_sec": actual_mean,
+        "T_G_free_mean_sec": free_mean,
+        "D_G_sec": D_G_sec,
     }
 
 
@@ -770,7 +800,7 @@ def write_route_visualization(stage1: B4Stage1Inputs, rows: list[dict[str, Any]]
             "<div class='card'>"
             f"<h2>{html.escape(str(row.get('mode', '')))}</h2>"
             f"<b>{html.escape(str(row.get('T_actual_EMV_sec') or row.get('T_free_EMV_sec') or ''))}s</b>"
-            f"<span>d_EMV {html.escape(str(row.get('d_EMV_sec', '')))}s</span>"
+            f"<span>D_E {html.escape(str(row.get('D_E_sec', '')))}s</span>"
             f"<span>score {html.escape(str(row.get('objective_score', '')))}</span>"
             f"<span>signals {html.escape(str(row.get('signal_event_count', '')))}</span>"
             "</div>"
@@ -862,10 +892,10 @@ def summarize_task(
         failure_reason = termination_reason or "missing_emergency_tripinfo"
     t_actual_emv = safe_float(emergency.get("duration"), 0.0) if emergency else 0.0
     t_free_emv = safe_float(free_reference.get("T_free_EMV_sec"), 0.0)
-    d_emv = round(t_actual_emv - t_free_emv, 6) if emergency else ""
+    D_E_sec = round(t_actual_emv - t_free_emv, 6) if emergency else ""
     veh_metrics = actual_v_vehicle_metrics(background, free_rows_by_id)
-    d_veh = veh_metrics["d_veh_sec"] if veh_metrics["d_veh_sec"] != "" else 0.0
-    score = objective_score(safe_float(d_emv), safe_float(d_veh)) if emergency else ""
+    D_G_sec = veh_metrics["D_G_sec"] if veh_metrics["D_G_sec"] != "" else 0.0
+    score = objective_score(safe_float(D_E_sec), safe_float(D_G_sec)) if emergency else ""
     row.update({
         "sumo_exit_code": sumo_exit_code,
         **monitor_fields,
@@ -881,7 +911,7 @@ def summarize_task(
         "general_mean_delay_sec": round(sum(delays) / len(delays), 6) if delays else "",
         "T_actual_EMV_sec": t_actual_emv if emergency else "",
         "T_free_EMV_sec": t_free_emv,
-        "d_EMV_sec": d_emv,
+        "D_E_sec": D_E_sec,
         **veh_metrics,
         "objective_score": score,
         "final_status": "PASS" if sumo_exit_code == 0 and bool(emergency) and failure_reason not in {"emergency_stuck", "hard_max_sim_time", "missing_emergency_tripinfo"} else "FAIL",
@@ -1240,11 +1270,11 @@ def comparison_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "emergency_stuck_duration_sec": row.get("emergency_stuck_duration_sec"),
             "T_EMV_sec": row.get("T_actual_EMV_sec") or row.get("T_free_EMV_sec"),
             "T_free_EMV_sec": row.get("T_free_EMV_sec"),
-            "d_EMV_sec": row.get("d_EMV_sec"),
-            "veh_eval_count": row.get("veh_eval_count"),
-            "veh_actual_mean_sec": row.get("veh_actual_mean_sec"),
-            "veh_free_mean_sec": row.get("veh_free_mean_sec"),
-            "d_veh_sec": row.get("d_veh_sec"),
+            "D_E_sec": row.get("D_E_sec"),
+            "V_G_vehicle_count": row.get("V_G_vehicle_count"),
+            "T_G_actual_mean_sec": row.get("T_G_actual_mean_sec"),
+            "T_G_free_mean_sec": row.get("T_G_free_mean_sec"),
+            "D_G_sec": row.get("D_G_sec"),
             "objective_score": row.get("objective_score"),
             "emergency_arrived": row.get("emergency_arrived"),
             "emergency_teleport": row.get("emergency_teleport"),
@@ -1293,7 +1323,7 @@ def write_ta_b0_measurement_review(stage1: B4Stage1Inputs, rows: list[dict[str, 
     ]
     result_fields = [
         "mode", "final_status", "termination_reason", "T_actual_EMV_sec",
-        "T_free_EMV_sec", "d_EMV_sec", "objective_score", "emergency_arrived",
+        "T_free_EMV_sec", "D_E_sec", "objective_score", "emergency_arrived",
         "emergency_teleport", "signal_event_count",
     ]
     measured_fields = [
@@ -1432,11 +1462,11 @@ def write_metric_outputs(
             "emergency_stuck_duration_sec",
             "T_EMV_sec",
             "T_free_EMV_sec",
-            "d_EMV_sec",
-            "veh_eval_count",
-            "veh_actual_mean_sec",
-            "veh_free_mean_sec",
-            "d_veh_sec",
+            "D_E_sec",
+            "V_G_vehicle_count",
+            "T_G_actual_mean_sec",
+            "T_G_free_mean_sec",
+            "D_G_sec",
             "objective_score",
             "emergency_arrived",
             "emergency_teleport",

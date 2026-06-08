@@ -15,7 +15,7 @@
 | active manifest | `configs/compact_v9_B04_B4_active_inputs.json` |
 | 최적화 runner | `09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py` |
 | 결정변수 | `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau` |
-| 기본 목적함수 | `Score = (10/11) * delay_A + (1/11) * delay_N` |
+| 기본 목적함수 | `Score = (10/11) * D_E_sec + (1/11) * D_G_sec` |
 
 ## 1. 환경 설정
 
@@ -210,7 +210,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 민감도 분석의 정본은 가중치별 Pareto 후보를 펼쳐 보여주는 것입니다. 목적은 가중치를 정하는 것이 아니라, 응급차 지연과 일반차 지연의 맞교환을 정책 결정자가 볼 수 있게 만드는 것입니다.
 
-| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| 가중치(w1:w2) | 최적 theta | D_E_sec | D_G_sec |
 | --- | --- | --- | --- |
 | 1:1 | `table3_pareto.csv`의 해당 행 | 결과값 | 결과값 |
 | 5:1 | `table3_pareto.csv`의 해당 행 | 결과값 | 결과값 |

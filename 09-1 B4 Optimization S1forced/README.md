@@ -13,7 +13,9 @@
 | Stage1 measurement source | `B04_ad_stage23_trigger` |
 | active inputs | `configs/compact_v9_B04_B4_active_inputs.json` |
 | decision variables | `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau` |
-| 기본 score | `(10/11) * delay_A + (1/11) * delay_N` |
+| 기본 score | `(10/11) * D_E + (1/11) * D_G` |
+
+`D_E`는 응급차 자유류 대비 지연입니다. `D_G`는 `V_G` 영향권 일반차 대당 평균 지연이며, `V_G`는 본선 route edge와 본선 교차로 TLS의 SUMO `.net.xml` incoming edge를 합쳐 자동 구성합니다. 산출물의 `D_E_sec`는 `D_E`, `D_G_sec`은 `D_G`에 대응합니다.
 
 ## 1. 실행 조건 감사
 
@@ -115,7 +117,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 
 보여줄 내용:
 
-| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| 가중치(w1:w2) | 최적 theta | D_E_sec | D_G_sec |
 | --- | --- | --- | --- |
 | 1:1 | 결과 CSV 값 | 결과 CSV 값 | 결과 CSV 값 |
 | 5:1 | 결과 CSV 값 | 결과 CSV 값 | 결과 CSV 값 |
@@ -131,7 +133,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 - 값이 튀는 경우에만 같은 가중치의 반복 탐색을 추가합니다.
 - 실제 30회 반복을 수행하지 않았다면 30회 반복 결과라고 쓰지 않습니다.
 
-`figure3_pareto.png`의 붉은 점은 knee point 보조 표시입니다. 10:1이 정답이라는 말도 아니고, knee point 가중치를 반드시 채택해야 한다는 결론도 아닙니다. 최종 결정은 정책 결정자의 몫입니다.
+`figure3_pareto.png`의 주황색 점은 knee point 보조 표시입니다. 10:1이 정답이라는 말도 아니고, knee point 가중치를 반드시 채택해야 한다는 결론도 아닙니다. 최종 결정은 정책 결정자의 몫입니다.
 
 ## 7. 주요 옵션
 
@@ -143,8 +145,8 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | `--theta-per-round`, `--solutions-per-round`, `--batch-size` | round당 theta 후보 수입니다. 총 평가는 방법/seed별 `m * theta_per_round`개입니다. |
 | `--bo-initial` | BO 초기 random observation 수입니다. |
 | `--workers` | round 내부 theta 평가 병렬 수입니다. 기본 `--theta-per-round 6 --workers 6`이면 한 round의 theta 6개가 동시에 실행됩니다. |
-| `--w-emv`, `--w1` | 응급차 delay 가중치입니다. 기본값은 10입니다. |
-| `--w-veh`, `--w2` | 일반차 delay 가중치입니다. 기본값은 1입니다. |
+| `--w-E`, `--w1` | 응급차 delay 가중치입니다. 기본값은 10입니다. |
+| `--w-G`, `--w2` | 일반차 delay 가중치입니다. 기본값은 1입니다. |
 | `--essi-candidate-count`, `--ei-candidate-count` | ESSI 후보 sampling 수입니다. 기존 호환을 위해 `--ei-candidate-count` alias도 유지합니다. |
 | `--methods` | 이번 실행에서 돌릴 방법만 지정합니다. `bo`, `random`, `cma` alias를 쓸 수 있습니다. |
 | `--bo-first` | 한 번의 실행에서 BO를 먼저 돌리고 나머지 선택 방법을 뒤에 실행합니다. |
@@ -214,7 +216,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | `final_method_comparison_results.csv` | 제출/보고용 방법론 비교 clean CSV입니다. input, 목적함수 output 2개, weight, score, 실측값, Stage2/Stage3 on 횟수만 기록합니다. |
 | `table1_best_so_far.csv` | `method, seed, R1...Rm` 형식의 누적 최솟값 표입니다. |
 | `table2_bo_surrogate.csv` | BO 관측값, best-so-far, surrogate mean/CI, ESSI acquisition 표입니다. |
-| `table3_pareto.csv` | 가중치별 `weight_ratio`, 5개 theta, `delay_A`, `delay_N`, `score`, SPC 중단 정보, knee 표시를 기록합니다. |
+| `table3_pareto.csv` | 가중치별 `weight_ratio`, 5개 theta, `D_E_sec`, `D_G_sec`, `score`, SPC 중단 정보, knee 표시를 기록합니다. |
 | `table4_sensitivity_spc.csv` | 가중치별 BO round의 ESSI/SPC trace입니다. |
 | `final_sensitivity_results.csv` | 제출/보고용 민감도 clean CSV입니다. 각 가중치별 best row만 같은 clean 컬럼 계약으로 기록합니다. |
 | `bo_spatial_subspaces.json` | ESSI용 6개 spatial subspace 정의와 weight입니다. |
@@ -231,7 +233,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 - fixed-budget 비교의 BO는 `GP+ESSI`로 실제 theta를 찾습니다.
 - fixed-budget 비교 산출물에는 SPC stop/status 필드를 넣지 않습니다. SPC는 Pareto sensitivity에서만 사용합니다.
 - `table2_bo_surrogate.csv`와 BO row의 `all_evaluations.csv`에는 `essi_acquisition`, `essi_1`부터 `essi_6`, `essi_max`, `essi_mean`, `essi_log_max`, `dominant_essi_subspace`, `spatial_activation_score`가 기록됩니다.
-- 제출/보고용 clean CSV에서는 `output_delay_A_sec`, `output_delay_N_sec` 뒤에 `weight_A`, `weight_N`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다.
+- 제출/보고용 clean CSV에서는 `output_D_E_sec`, `output_D_G_sec` 뒤에 `weight_E`, `weight_G`, `weight_ratio`를 두고 그 바로 오른쪽에 `score`를 둡니다.
 - Pareto sweep은 가중치별 trade-off를 제시하는 절차입니다. 가중치 선택은 정책 결정자의 몫입니다.
 - noise check는 실제 5회 반복 artifact입니다. 30회 반복을 수행하지 않았다면 30회라고 설명하지 않습니다.
 - full `n=1`, `m=50`, `theta_per_round=6` 결과가 제출 가능한지는 실제 run 후 CSV/PNG 존재와 row 수를 확인해야 판단합니다.

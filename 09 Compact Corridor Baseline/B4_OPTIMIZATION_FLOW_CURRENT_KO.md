@@ -20,7 +20,9 @@
 | Stage1 measurement source | `B04_ad_stage23_trigger` |
 | active manifest | `configs/compact_v9_B04_B4_active_inputs.json` |
 | 결정변수 | `t_lead`, `delta_T_thr`, `G_ext`, `Q_ratio`, `tau` |
-| 기본 score | `(10/11) * delay_A + (1/11) * delay_N` |
+| 기본 score | `(10/11) * D_E + (1/11) * D_G` |
+
+`D_E`는 응급차 자유류 대비 지연입니다. `D_G`는 `V_G` 영향권 일반차 대당 평균 지연입니다. `V_G`는 Stage1 본선 route edge와 본선 교차로 TLS의 SUMO `.net.xml` incoming edge를 합쳐 자동 구성하며, 차량 route가 `V_G` edge를 하나라도 지나면 집계 대상입니다. 표의 `D_E_sec`는 `D_E`, `D_G_sec`은 `D_G`입니다.
 
 ## 1. BO와 다른 방법론 비교
 
@@ -54,7 +56,7 @@
 
 5. `run_pareto()`
    - `1:1`, `5:1`, `10:1`, `15:1`, `20:1` 가중치 ratio별 BO 탐색을 수행합니다.
-   - 같은 net, demand, Stage1, 사고/출동 조건에서 delay_A와 delay_N의 trade-off를 기록합니다.
+   - 같은 net, demand, Stage1, 사고/출동 조건에서 D_E_sec와 D_G_sec의 trade-off를 기록합니다.
    - knee point 후보를 보조 표시합니다.
 
 6. `run_noise_check()`
@@ -85,8 +87,8 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | `--m` | seed 하나당 평가할 theta 수입니다. 기본값은 50입니다. |
 | `--bo-initial` | BO 초기 random observation 개수입니다. |
 | `--workers` | SUMO 평가 병렬 worker 수입니다. |
-| `--w-emv`, `--w1` | 응급차 delay 가중치입니다. 기본값은 10입니다. |
-| `--w-veh`, `--w2` | 일반차 delay 가중치입니다. 기본값은 1입니다. |
+| `--w-E`, `--w1` | 응급차 delay 가중치입니다. 기본값은 10입니다. |
+| `--w-G`, `--w2` | 일반차 delay 가중치입니다. 기본값은 1입니다. |
 | `--ei-candidate-count` | Expected Improvement 후보 sampling 개수입니다. |
 | `--skip-pareto` | Pareto sweep을 생략합니다. |
 | `--no-pareto-spc-stop` | Pareto sweep에서 SPC 기반 조기 중단을 끄고 round 수를 채웁니다. |
@@ -100,7 +102,7 @@ python "09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py" \
 | `all_evaluations.csv` | 전체 평가 결과입니다. |
 | `table1_best_so_far.csv` | 방법별/seed별 누적 best-so-far 표입니다. |
 | `table2_bo_surrogate.csv` | BO surrogate, CI, acquisition long-form 표입니다. |
-| `table3_pareto.csv` | 가중치별 theta, `delay_A`, `delay_N`, SPC/knee 정보를 담은 표입니다. |
+| `table3_pareto.csv` | 가중치별 theta, `D_E_sec`, `D_G_sec`, SPC/knee 정보를 담은 표입니다. |
 | `figure1_best_so_far.png` | 방법별 best-so-far 평균과 95% CI입니다. |
 | `figure2_bo_surrogate.png` | BO 관측값, best-so-far, surrogate mean/CI입니다. |
 | `figure3_pareto.png` | Pareto/knee 후보 그림입니다. |
@@ -151,7 +153,7 @@ python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
 
 ### 주의
 
-- `run_b4_theta_bo.py`의 `score_for_row()`는 `d_EMV_sec`, `d_veh_sec`를 우선 사용하고, ratio 입력을 `w/(w_E+w_G)`로 정규화합니다.
+- `run_b4_theta_bo.py`의 `score_for_row()`는 `D_E_sec`, `D_G_sec`를 우선 사용하고, 기존 호환 필드 `D_E_sec`, `D_G_sec`를 fallback으로 씁니다. ratio 입력은 `w/(w_E+w_G)`로 정규화합니다.
 - 최종 방법론 비교 표/그림에는 `09-1` fixed-budget runner 산출물을 사용합니다.
 
 ## 3. Pareto 가중치 Sweep
@@ -166,7 +168,7 @@ python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
 
 ### 표 양식
 
-| 가중치(w1:w2) | 최적 theta | delay_A | delay_N |
+| 가중치(w1:w2) | 최적 theta | D_E_sec | D_G_sec |
 | --- | --- | --- | --- |
 | 1:1 | `table3_pareto.csv` | `table3_pareto.csv` | `table3_pareto.csv` |
 | 5:1 | `table3_pareto.csv` | `table3_pareto.csv` | `table3_pareto.csv` |
@@ -186,7 +188,7 @@ python "09 Compact Corridor Baseline/run_b4_theta_bo.py" \
 
 ### 해석
 
-1. 가중치 변화에 따라 `delay_A`와 `delay_N`이 맞교환되는 정도를 봅니다.
+1. 가중치 변화에 따라 `D_E_sec`와 `D_G_sec`이 맞교환되는 정도를 봅니다.
 2. 붉은 knee point는 합리적인 후보 지점을 설명하기 위한 보조 표시입니다.
 3. knee point나 10:1을 정답으로 결론 내리지 않습니다.
 4. 최종 결정은 정책 결정자의 몫입니다.

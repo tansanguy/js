@@ -4,6 +4,7 @@ import csv
 import contextlib
 import io
 import importlib.util
+import json
 import tempfile
 import threading
 import time
@@ -43,17 +44,54 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
             "final_status": "PASS",
             "emergency_arrived": "True",
             "emergency_teleport": "False",
-            "d_EMV_sec": "100",
-            "d_veh_sec": "1000",
+            "D_E_sec": "100",
+            "D_G_sec": "1000",
         }
 
-        delay_a, delay_n, score, penalty, penalized = self.runner.score_delay_row(row, 10.0, 1.0)
+        D_E_sec, D_G_sec, score, penalty, penalized = self.runner.score_delay_row(row, 10.0, 1.0)
 
-        self.assertEqual(delay_a, 100.0)
-        self.assertEqual(delay_n, 1000.0)
+        self.assertEqual(D_E_sec, 100.0)
+        self.assertEqual(D_G_sec, 1000.0)
         self.assertAlmostEqual(score, (10.0 / 11.0) * 100.0 + (1.0 / 11.0) * 1000.0, places=6)
         self.assertEqual(penalty, 0.0)
         self.assertEqual(penalized, score)
+
+    def test_failed_rows_are_excluded_from_bo_learning_observations(self):
+        failed = {
+            "final_status": "FAIL",
+            "emergency_arrived": "False",
+            "emergency_teleport": "False",
+            "parameter_id": "bad",
+            "t_lead": "10",
+            "delta_T_thr": "20",
+            "G_ext": "30",
+            "Q_ratio": "0.40",
+            "tau": "0.80",
+            "score": str(self.runner.FAILURE_PENALTY_SEC),
+        }
+        valid = {
+            **failed,
+            "final_status": "PASS",
+            "emergency_arrived": "True",
+            "parameter_id": "good",
+            "score": "91.20",
+        }
+
+        self.assertIsNone(self.runner.bo_learning_observation(failed))
+        observation = self.runner.bo_learning_observation(valid)
+
+        self.assertIsNotNone(observation)
+        self.assertEqual(observation["bo_score_sec"], "91.20")
+
+    def test_completed_round_count_uses_round_index_not_row_count(self):
+        rows = [
+            {"round": "1", "round_theta_index": "1"},
+            {"round": "1", "round_theta_index": "2"},
+            {"round": "2", "round_theta_index": "1"},
+            {"round": "2", "round_theta_index": "2"},
+        ]
+
+        self.assertEqual(self.runner.completed_round_count(rows), 2)
 
     def test_bo_first_method_order_option(self):
         args = self.runner.parse_args(["--mock-eval", "--n", "1", "--m", "4", "--bo-initial", "2", "--bo-first"])
@@ -393,7 +431,7 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                 final_fields = final_reader.fieldnames or []
                 final_rows = list(final_reader)
             self.assertEqual(len(final_rows), 30)
-            self.assertEqual(final_fields[final_fields.index("score") - 3:final_fields.index("score")], ["weight_A", "weight_N", "weight_ratio"])
+            self.assertEqual(final_fields[final_fields.index("score") - 3:final_fields.index("score")], ["weight_E", "weight_G", "weight_ratio"])
             self.assertEqual(
                 final_fields,
                 [
@@ -406,16 +444,16 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                     "input_G_ext",
                     "input_Q_ratio",
                     "input_tau",
-                    "output_delay_A_sec",
-                    "output_delay_N_sec",
-                    "weight_A",
-                    "weight_N",
+                    "output_D_E_sec",
+                    "output_D_G_sec",
+                    "weight_E",
+                    "weight_G",
                     "weight_ratio",
                     "score",
                     "measured_T_free_EMV_sec",
                     "measured_T_actual_EMV_sec",
-                    "measured_d_EMV_sec",
-                    "measured_d_veh_sec",
+                    "measured_D_E_sec",
+                    "measured_D_G_sec",
                     "measured_general_mean_travel_time_sec",
                     "stage2_on_count",
                     "stage3_on_count",
@@ -473,7 +511,7 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                 final_rows = list(csv.DictReader(file))
             self.assertEqual(len(final_rows), 12)
 
-    def test_essi_acquisition_drives_bo_selection(self):
+    def test_ei_drives_bo_selection_with_essi_as_small_adjustment(self):
         original_ei = self.runner.theta_bo.expected_improvement_candidates
         original_subspaces = self.runner.bo_spatial_subspaces
         original_activation = self.runner.essi_activation_values
@@ -495,9 +533,9 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
 
             essi_ranked = self.runner.essi_improvement_candidates([], bounds, object(), 1, set(), 10)
 
-            self.assertEqual(float(essi_ranked[0]["t_lead"]), 9.0)
-            self.assertAlmostEqual(float(essi_ranked[0]["essi_acquisition"]), 8.0)
-            self.assertGreater(float(essi_ranked[0]["essi_acquisition"]), float(essi_ranked[1]["essi_acquisition"]))
+            self.assertEqual(float(essi_ranked[0]["t_lead"]), 1.0)
+            self.assertAlmostEqual(float(essi_ranked[0]["essi_acquisition"]), 0.0)
+            self.assertAlmostEqual(float(essi_ranked[1]["essi_acquisition"]), 8.0)
         finally:
             self.runner.theta_bo.expected_improvement_candidates = original_ei
             self.runner.bo_spatial_subspaces = original_subspaces
@@ -577,8 +615,12 @@ class B4OptimizationS1ForcedTest(unittest.TestCase):
                 final_sensitivity_fields = final_sensitivity_reader.fieldnames or []
                 final_sensitivity_rows = list(final_sensitivity_reader)
             self.assertEqual(len(final_sensitivity_rows), 5)
-            self.assertEqual(final_sensitivity_fields[final_sensitivity_fields.index("score") - 3:final_sensitivity_fields.index("score")], ["weight_A", "weight_N", "weight_ratio"])
+            self.assertEqual(final_sensitivity_fields[final_sensitivity_fields.index("score") - 3:final_sensitivity_fields.index("score")], ["weight_E", "weight_G", "weight_ratio"])
             self.assertEqual([row["weight_ratio"] for row in final_sensitivity_rows], ["1:1", "5:1", "10:1", "15:1", "20:1"])
+            with (run_dir / "experiment_summary.json").open("r", encoding="utf-8") as file:
+                summary = json.load(file)
+            self.assertEqual(summary["pareto_protocol"]["search_runs_per_weight"], 1)
+            self.assertEqual(summary["pareto_protocol"]["weight_ratios"], ["1:1", "5:1", "10:1", "15:1", "20:1"])
 
             with (run_dir / "noise_check_5repeat.csv").open("r", encoding="utf-8", newline="") as file:
                 noise_rows = list(csv.DictReader(file))

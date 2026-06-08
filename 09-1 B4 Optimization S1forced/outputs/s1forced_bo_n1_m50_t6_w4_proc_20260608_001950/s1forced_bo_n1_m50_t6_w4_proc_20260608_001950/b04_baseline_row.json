@@ -95,7 +95,7 @@
   "b4_performance_status": "",
   "failed": false,
   "failure_reason": "",
-  "wall_time_sec": 5.035829,
+  "wall_time_sec": 4.910567,
   "signal_events_csv": "",
   "route_visualization_html": "results/html/compact_v9_b004_b04_b4_route_comparison.html",
   "queue_method_primary": 0,

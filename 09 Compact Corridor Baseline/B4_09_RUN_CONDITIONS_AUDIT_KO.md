@@ -39,8 +39,10 @@
 최적화 표와 그림의 기본 목적함수:
 
 ```text
-Score = (10/11) * delay_A + (1/11) * delay_N
+Score = (10/11) * D_E + (1/11) * D_G
 ```
+
+`D_E`는 응급차 자유류 대비 지연이고, `D_G`는 `V_G` 영향권 일반차 대당 평균 지연입니다. `V_G`는 본선 route edge와 본선 교차로 TLS의 SUMO `.net.xml` incoming edge로 자동 구성합니다. 기존 표기 `D_E_sec`, `D_G_sec`은 각각 `D_E`, `D_G`에 대응합니다.
 
 낮을수록 좋은 값입니다.
 
@@ -50,8 +52,8 @@ Score = (10/11) * delay_A + (1/11) * delay_N
 | --- | --- | --- |
 | `configs/compact_v9_B04_B4_active_inputs.json` | 적용 | canonical profile, 입력 경로, 5개 결정변수, 10:1 score weight를 명시합니다. |
 | `09-1 B4 Optimization S1forced/run_b4_optimization_s1forced.py` | 적용 | Random Search, CMA-ES, BO를 같은 S1-forced 입력과 `n=15`, `m=50`으로 비교합니다. |
-| `09 Compact Corridor Baseline/b4_runtime.py` | 적용 | net, demand, Stage1, 5개 결정변수, runtime `W_EMV:W_VEH=10:1`을 사용합니다. |
-| `09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py` | 적용 | 기본 입력은 runtime에서 가져오며, `objective_score`도 `10 * d_EMV_sec + 1 * d_veh_sec`입니다. |
+| `09 Compact Corridor Baseline/b4_runtime.py` | 적용 | net, demand, Stage1, 5개 결정변수, runtime `W_E:W_G=10:1`을 사용합니다. |
+| `09 Compact Corridor Baseline/run_b0_b4_signal_pipeline.py` | 적용 | 기본 입력은 runtime에서 가져오며, `objective_score`는 정규화된 `w_E * D_E + w_G * D_G`입니다. |
 | `09 Compact Corridor Baseline/b4_stage1_pipeline.py` | 적용 | primary candidate와 B0 measurement source가 모두 `B04_ad_stage23_trigger`입니다. 출력 Stage1은 `b4_stage1_s1forced`입니다. |
 | `09 Compact Corridor Baseline/run_b4_theta_bo.py` | 적용 | 5개 변수, S1-forced 입력, 지연 우선 정규화 score를 사용합니다. 방법론 비교 표/그림 정본은 `09-1` runner입니다. |
 | `09 Compact Corridor Baseline/README.md` | 적용 | 최신 실행 순서와 Pareto sweep 해석으로 갱신했습니다. |
@@ -83,7 +85,7 @@ INFO=0
 - canonical manifest, runner default, runtime default가 틀리면 `FAIL`
 - Stage1 primary candidate와 measurement source가 `B04_ad_stage23_trigger`가 아니면 `FAIL`
 - S1-forced canonical net의 firetruck route uncontrolled connection이 minor/yield `m` 또는 `o` 상태이면 `FAIL`
-- fixed-budget runner의 Pareto 표 필드가 `weight_ratio`, 5개 theta, `delay_A`, `delay_N`, SPC/knee 정보를 포함하지 않으면 `FAIL`
+- fixed-budget runner의 Pareto 표 필드가 `weight_ratio`, 5개 theta, `D_E_sec`, `D_G_sec`, SPC/knee 정보를 포함하지 않으면 `FAIL`
 - 문서/과거 산출물 문자열 scan은 현재 정본 감사에서 제외합니다. 감사 기준은 실행 경로와 기본값입니다.
 
 ## Workers 6 실행 순서

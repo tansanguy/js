@@ -1,0 +1,6 @@
+input_method,input_seed,input_round,input_parameter_id,input_t_lead,input_delta_T_thr,input_G_ext,input_Q_ratio,input_tau,output_delay_A_sec,output_delay_N_sec,weight_A,weight_N,weight_ratio,score,measured_T_free_EMV_sec,measured_T_actual_EMV_sec,measured_d_EMV_sec,measured_d_veh_sec,measured_general_mean_travel_time_sec,stage2_on_count,stage3_on_count
+BO,20260607,4,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,1.00,1.00,1:1,92.48,219.08016,310.0,90.91984,94.031583,150.441253,1,19
+BO,20260607,4,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,5.00,1.00,5:1,91.44,219.08016,310.0,90.91984,94.031583,150.441253,1,19
+BO,20260607,4,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,10.00,1.00,10:1,91.20,219.08016,310.0,90.91984,94.031583,150.441253,1,19
+BO,20260607,4,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,15.00,1.00,15:1,91.11,219.08016,310.0,90.91984,94.031583,150.441253,1,19
+BO,20260607,4,bo_r04_002_tl31_dt28_ge30_qr19_tau81,31,28,30,0.19,0.81,90.92,94.03,20.00,1.00,20:1,91.07,219.08016,310.0,90.91984,94.031583,150.441253,1,19

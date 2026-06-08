@@ -40,7 +40,7 @@ CANONICAL_N = 1
 CANONICAL_M = 50
 CANONICAL_THETA_PER_ROUND = 6
 CANONICAL_WORKERS_DEFAULT = 6
-CANONICAL_OPTIMIZER_WEIGHTS = {"w_emv": 10.0, "w_veh": 1.0}
+CANONICAL_OPTIMIZER_WEIGHTS = {"w_E": 10.0, "w_G": 1.0}
 FIRETRUCK_ROUTE_XML = PROJECT_ROOT / "data_prepared/compact_v9/routes/firetruck_to_seoul_station_front.rou.xml"
 
 @dataclass(frozen=True)
@@ -174,7 +174,7 @@ def audit_runner_defaults(findings: list[Finding]) -> None:
     add_match(findings, module.DEFAULT_THETA_PER_ROUND == CANONICAL_THETA_PER_ROUND, "runner_default_theta_per_round", runner_path, str(module.DEFAULT_THETA_PER_ROUND))
     add_match(findings, module.DEFAULT_WORKERS == CANONICAL_WORKERS_DEFAULT, "runner_default_workers_safe", runner_path, str(module.DEFAULT_WORKERS))
     args = module.parse_args([])
-    add_match(findings, args.w_emv == 10.0 and args.w_veh == 1.0, "runner_default_score_weights", runner_path, f"{args.w_emv}:{args.w_veh}")
+    add_match(findings, args.w_E == 10.0 and args.w_G == 1.0, "runner_default_score_weights", runner_path, f"{args.w_E}:{args.w_G}")
 
 
 def audit_runtime_defaults(findings: list[Finding]) -> None:
@@ -184,7 +184,7 @@ def audit_runtime_defaults(findings: list[Finding]) -> None:
     add_match(findings, rel(module.B04_AA_BACKGROUND_ROUTE) == CANONICAL["background_route"], "runtime_default_background_route", runtime_path, rel(module.B04_AA_BACKGROUND_ROUTE))
     add_match(findings, rel(module.STAGE1_DIR) == CANONICAL["stage1_dir"], "runtime_default_stage1", runtime_path, rel(module.STAGE1_DIR))
     add_match(findings, list(module.B4_DECISION_VARIABLES) == CANONICAL_DECISION_VARIABLES, "runtime_decision_variables", runtime_path, str(module.B4_DECISION_VARIABLES))
-    add_match(findings, float(module.W_EMV) == 10.0 and float(module.W_VEH) == 1.0, "runtime_score_weight", runtime_path, f"{module.W_EMV}:{module.W_VEH}")
+    add_match(findings, float(module.W_E) == 10.0 and float(module.W_G) == 1.0, "runtime_score_weight", runtime_path, f"{module.W_E}:{module.W_G}")
 
 
 def audit_other_runner_defaults(findings: list[Finding]) -> None:
@@ -375,7 +375,7 @@ def audit() -> dict[str, Any]:
         "canonical_profile": CANONICAL_PROFILE_NAME,
         "canonical": CANONICAL,
         "decision_variables": CANONICAL_DECISION_VARIABLES,
-        "optimizer_score": "(10/11) * delay_A + (1/11) * delay_N",
+        "optimizer_score": "(10/11) * D_E_sec + (1/11) * D_G_sec",
         "n": CANONICAL_N,
         "m": CANONICAL_M,
         "theta_per_round": CANONICAL_THETA_PER_ROUND,
