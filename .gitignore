@@ -14,6 +14,11 @@ __pycache__/
 # Keep raw SUMO runs outside git. Curated final summaries can be force-added
 # only when they are intended as report snapshots.
 runs/
+# On this machine 'runs' is a symlink to an external SSD (see TAEHOON_SSD.md).
+# Ignore the symlink itself so it is never committed: it points to a local
+# /Volumes path that would be a broken link on a teammate's machine. The heavy
+# run data is already ignored by 'runs/' above regardless.
+/runs
 results/raw/
 results/metrics/*/
 #!results/metrics/parameter_input_sim/

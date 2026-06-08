@@ -1,0 +1,49 @@
+{
+  "schema": "compact_v9_B4_s1forced_optimizer_comparison.v1",
+  "generated_at": "2026-06-07T16:22:13.958116+00:00",
+  "run_id": "taehoon_methods_all_smoke",
+  "mock_eval": false,
+  "n": 1,
+  "m": 4,
+  "theta_per_round": 1,
+  "theta_evaluations_per_seed_method": 4,
+  "workers": 6,
+  "methods": [
+    "Random Search",
+    "CMA-ES",
+    "BO"
+  ],
+  "methods_run_this_invocation": [
+    "BO",
+    "Random Search",
+    "CMA-ES"
+  ],
+  "append_existing": false,
+  "resume": false,
+  "seeds": [
+    20260607
+  ],
+  "bo_algorithm": "GP+ESSI",
+  "objective": {
+    "score": "(w_emv / (w_emv + w_veh)) * delay_A + (w_veh / (w_emv + w_veh)) * delay_N",
+    "w_emv": 10.0,
+    "w_veh": 1.0
+  },
+  "fixed_budget_policy": "m is the number of optimization rounds; each round evaluates theta_per_round theta candidates, and best-so-far records the cumulative minimum after the full round.",
+  "outputs": {
+    "all_evaluations_csv": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/all_evaluations.csv",
+    "final_method_comparison_results_csv": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/final_method_comparison_results.csv",
+    "table1_best_so_far_csv": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/table1_best_so_far.csv",
+    "table2_bo_surrogate_csv": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/table2_bo_surrogate.csv",
+    "table3_pareto_csv": "",
+    "table4_sensitivity_spc_csv": "",
+    "final_sensitivity_results_csv": "",
+    "bo_spatial_subspaces_json": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/bo_spatial_subspaces.json",
+    "noise_check_csv": "",
+    "figure1_png": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/figure1_best_so_far.png",
+    "figure2_png": "09-1 B4 Optimization S1forced/outputs/taehoon_methods_all_smoke/figure2_bo_surrogate.png",
+    "figure3_png": "",
+    "figure4_png": ""
+  },
+  "noise_check": {}
+}
