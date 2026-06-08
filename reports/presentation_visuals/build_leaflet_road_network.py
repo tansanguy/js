@@ -101,9 +101,9 @@ def build_html(roads: dict, summary: dict) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --arterial: #ef5a3c;
-      --main: #1b6fd7;
-      --collector: #00a887;
+      --arterial: #123a6f;
+      --main: #123a6f;
+      --collector: #123a6f;
       --local: #7c8797;
       --focus: #f6c343;
     }}
@@ -143,10 +143,10 @@ def build_html(roads: dict, summary: dict) -> str:
   <script>
     const ROAD_DATA = {dumps(roads)};
     const classStyle = {{
-      arterial: {{ color: "#ef5a3c", weight: 4.6, opacity: 0.92 }},
-      main: {{ color: "#1b6fd7", weight: 3.5, opacity: 0.84 }},
-      collector: {{ color: "#00a887", weight: 2.7, opacity: 0.72 }},
-      local: {{ color: "#7c8797", weight: 1.25, opacity: 0.42 }}
+      arterial: {{ color: "#123a6f", weight: 4.8, opacity: 0.9 }},
+      main: {{ color: "#123a6f", weight: 4.1, opacity: 0.84 }},
+      collector: {{ color: "#123a6f", weight: 3.2, opacity: 0.72 }},
+      local: {{ color: "#7c8797", weight: 1.1, opacity: 0.34 }}
     }};
 
     const map = L.map("map", {{

@@ -1,0 +1,353 @@
+row_type,slice_parameter,slice_value,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,observed_score,gp_mean,gp_ci_low,gp_ci_high,is_best_observed,note
+gp_slice,t_lead,0.00,gp_slice_t_lead_001,0,198,47,0.07,0.79,,287.53,260.70,314.37,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,1.00,gp_slice_t_lead_002,1,198,47,0.07,0.79,,287.39,260.86,313.91,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,1.00,gp_slice_t_lead_003,1,198,47,0.07,0.79,,287.39,260.86,313.91,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,2.00,gp_slice_t_lead_004,2,198,47,0.07,0.79,,287.24,261.03,313.44,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,3.00,gp_slice_t_lead_005,3,198,47,0.07,0.79,,287.09,261.20,312.97,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,4.00,gp_slice_t_lead_006,4,198,47,0.07,0.79,,286.94,261.37,312.51,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,4.00,gp_slice_t_lead_007,4,198,47,0.07,0.79,,286.94,261.37,312.51,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,5.00,gp_slice_t_lead_008,5,198,47,0.07,0.79,,286.79,261.54,312.05,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,6.00,gp_slice_t_lead_009,6,198,47,0.07,0.79,,286.65,261.71,311.58,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,6.00,gp_slice_t_lead_010,6,198,47,0.07,0.79,,286.65,261.71,311.58,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,7.00,gp_slice_t_lead_011,7,198,47,0.07,0.79,,286.50,261.88,311.12,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,8.00,gp_slice_t_lead_012,8,198,47,0.07,0.79,,286.35,262.05,310.66,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,8.00,gp_slice_t_lead_013,8,198,47,0.07,0.79,,286.35,262.05,310.66,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,9.00,gp_slice_t_lead_014,9,198,47,0.07,0.79,,286.21,262.22,310.20,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,10.00,gp_slice_t_lead_015,10,198,47,0.07,0.79,,286.06,262.39,309.74,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,11.00,gp_slice_t_lead_016,11,198,47,0.07,0.79,,285.92,262.56,309.29,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,11.00,gp_slice_t_lead_017,11,198,47,0.07,0.79,,285.92,262.56,309.29,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,12.00,gp_slice_t_lead_018,12,198,47,0.07,0.79,,285.78,262.72,308.83,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,13.00,gp_slice_t_lead_019,13,198,47,0.07,0.79,,285.64,262.90,308.38,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,13.00,gp_slice_t_lead_020,13,198,47,0.07,0.79,,285.64,262.90,308.38,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,14.00,gp_slice_t_lead_021,14,198,47,0.07,0.79,,285.49,263.07,307.92,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,15.00,gp_slice_t_lead_022,15,198,47,0.07,0.79,,285.35,263.24,307.47,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,15.00,gp_slice_t_lead_023,15,198,47,0.07,0.79,,285.35,263.24,307.47,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,16.00,gp_slice_t_lead_024,16,198,47,0.07,0.79,,285.21,263.41,307.02,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,17.00,gp_slice_t_lead_025,17,198,47,0.07,0.79,,285.07,263.58,306.57,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,18.00,gp_slice_t_lead_026,18,198,47,0.07,0.79,,284.93,263.75,306.12,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,18.00,gp_slice_t_lead_027,18,198,47,0.07,0.79,,284.93,263.75,306.12,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,19.00,gp_slice_t_lead_028,19,198,47,0.07,0.79,,284.80,263.92,305.67,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,20.00,gp_slice_t_lead_029,20,198,47,0.07,0.79,,284.66,264.09,305.23,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,20.00,gp_slice_t_lead_030,20,198,47,0.07,0.79,,284.66,264.09,305.23,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,21.00,gp_slice_t_lead_031,21,198,47,0.07,0.79,,284.52,264.26,304.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,22.00,gp_slice_t_lead_032,22,198,47,0.07,0.79,,284.39,264.43,304.34,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,23.00,gp_slice_t_lead_033,23,198,47,0.07,0.79,,284.25,264.61,303.90,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,23.00,gp_slice_t_lead_034,23,198,47,0.07,0.79,,284.25,264.61,303.90,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,24.00,gp_slice_t_lead_035,24,198,47,0.07,0.79,,284.12,264.78,303.46,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,25.00,gp_slice_t_lead_036,25,198,47,0.07,0.79,,283.99,264.95,303.02,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,25.00,gp_slice_t_lead_037,25,198,47,0.07,0.79,,283.99,264.95,303.02,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,26.00,gp_slice_t_lead_038,26,198,47,0.07,0.79,,283.85,265.13,302.58,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,27.00,gp_slice_t_lead_039,27,198,47,0.07,0.79,,283.72,265.30,302.15,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,27.00,gp_slice_t_lead_040,27,198,47,0.07,0.79,,283.72,265.30,302.15,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,28.00,gp_slice_t_lead_041,28,198,47,0.07,0.79,,283.59,265.47,301.71,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,29.00,gp_slice_t_lead_042,29,198,47,0.07,0.79,,283.46,265.65,301.28,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,30.00,gp_slice_t_lead_043,30,198,47,0.07,0.79,,283.33,265.82,300.85,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,30.00,gp_slice_t_lead_044,30,198,47,0.07,0.79,,283.33,265.82,300.85,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,31.00,gp_slice_t_lead_045,31,198,47,0.07,0.79,,283.20,265.99,300.41,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,32.00,gp_slice_t_lead_046,32,198,47,0.07,0.79,,283.08,266.17,299.99,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,32.00,gp_slice_t_lead_047,32,198,47,0.07,0.79,,283.08,266.17,299.99,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,33.00,gp_slice_t_lead_048,33,198,47,0.07,0.79,,282.95,266.34,299.56,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,34.00,gp_slice_t_lead_049,34,198,47,0.07,0.79,,282.83,266.52,299.13,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,35.00,gp_slice_t_lead_050,35,198,47,0.07,0.79,,282.70,266.69,298.71,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,35.00,gp_slice_t_lead_051,35,198,47,0.07,0.79,,282.70,266.69,298.71,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,36.00,gp_slice_t_lead_052,36,198,47,0.07,0.79,,282.58,266.87,298.29,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,37.00,gp_slice_t_lead_053,37,198,47,0.07,0.79,,282.46,267.05,297.86,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,37.00,gp_slice_t_lead_054,37,198,47,0.07,0.79,,282.46,267.05,297.86,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,38.00,gp_slice_t_lead_055,38,198,47,0.07,0.79,,282.33,267.22,297.44,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,39.00,gp_slice_t_lead_056,39,198,47,0.07,0.79,,282.21,267.40,297.03,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,39.00,gp_slice_t_lead_057,39,198,47,0.07,0.79,,282.21,267.40,297.03,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,40.00,gp_slice_t_lead_058,40,198,47,0.07,0.79,,282.09,267.58,296.61,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,41.00,gp_slice_t_lead_059,41,198,47,0.07,0.79,,281.98,267.76,296.19,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,42.00,gp_slice_t_lead_060,42,198,47,0.07,0.79,,281.86,267.94,295.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,42.00,gp_slice_t_lead_061,42,198,47,0.07,0.79,,281.86,267.94,295.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,43.00,gp_slice_t_lead_062,43,198,47,0.07,0.79,,281.74,268.12,295.37,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,44.00,gp_slice_t_lead_063,44,198,47,0.07,0.79,,281.63,268.30,294.96,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,44.00,gp_slice_t_lead_064,44,198,47,0.07,0.79,,281.63,268.30,294.96,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,45.00,gp_slice_t_lead_065,45,198,47,0.07,0.79,,281.51,268.48,294.55,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,46.00,gp_slice_t_lead_066,46,198,47,0.07,0.79,,281.40,268.66,294.14,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,46.00,gp_slice_t_lead_067,46,198,47,0.07,0.79,,281.40,268.66,294.14,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,47.00,gp_slice_t_lead_068,47,198,47,0.07,0.79,,281.29,268.84,293.74,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,48.00,gp_slice_t_lead_069,48,198,47,0.07,0.79,,281.18,269.02,293.33,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,49.00,gp_slice_t_lead_070,49,198,47,0.07,0.79,,281.07,269.20,292.93,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,49.00,gp_slice_t_lead_071,49,198,47,0.07,0.79,,281.07,269.20,292.93,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,50.00,gp_slice_t_lead_072,50,198,47,0.07,0.79,,280.96,269.38,292.53,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,51.00,gp_slice_t_lead_073,51,198,47,0.07,0.79,,280.85,269.57,292.13,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,51.00,gp_slice_t_lead_074,51,198,47,0.07,0.79,,280.85,269.57,292.13,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,52.00,gp_slice_t_lead_075,52,198,47,0.07,0.79,,280.74,269.75,291.73,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,53.00,gp_slice_t_lead_076,53,198,47,0.07,0.79,,280.64,269.94,291.34,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,54.00,gp_slice_t_lead_077,54,198,47,0.07,0.79,,280.53,270.12,290.94,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,54.00,gp_slice_t_lead_078,54,198,47,0.07,0.79,,280.53,270.12,290.94,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,55.00,gp_slice_t_lead_079,55,198,47,0.07,0.79,,280.43,270.31,290.55,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,56.00,gp_slice_t_lead_080,56,198,47,0.07,0.79,,280.33,270.49,290.16,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,56.00,gp_slice_t_lead_081,56,198,47,0.07,0.79,,280.33,270.49,290.16,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,57.00,gp_slice_t_lead_082,57,198,47,0.07,0.79,,280.22,270.68,289.77,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,58.00,gp_slice_t_lead_083,58,198,47,0.07,0.79,,280.12,270.87,289.38,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,58.00,gp_slice_t_lead_084,58,198,47,0.07,0.79,,280.12,270.87,289.38,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,59.00,gp_slice_t_lead_085,59,198,47,0.07,0.79,,280.03,271.06,289.00,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,60.00,gp_slice_t_lead_086,60,198,47,0.07,0.79,,279.93,271.24,288.61,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,61.00,gp_slice_t_lead_087,61,198,47,0.07,0.79,,279.83,271.43,288.23,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,61.00,gp_slice_t_lead_088,61,198,47,0.07,0.79,,279.83,271.43,288.23,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,62.00,gp_slice_t_lead_089,62,198,47,0.07,0.79,,279.74,271.62,287.85,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,63.00,gp_slice_t_lead_090,63,198,47,0.07,0.79,,279.64,271.82,287.47,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,63.00,gp_slice_t_lead_091,63,198,47,0.07,0.79,,279.64,271.82,287.47,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,64.00,gp_slice_t_lead_092,64,198,47,0.07,0.79,,279.55,272.01,287.09,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,65.00,gp_slice_t_lead_093,65,198,47,0.07,0.79,,279.46,272.20,286.72,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,66.00,gp_slice_t_lead_094,66,198,47,0.07,0.79,,279.37,272.39,286.34,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,66.00,gp_slice_t_lead_095,66,198,47,0.07,0.79,,279.37,272.39,286.34,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,67.00,gp_slice_t_lead_096,67,198,47,0.07,0.79,,279.28,272.59,285.97,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,68.00,gp_slice_t_lead_097,68,198,47,0.07,0.79,,279.19,272.78,285.60,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,68.00,gp_slice_t_lead_098,68,198,47,0.07,0.79,,279.19,272.78,285.60,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,69.00,gp_slice_t_lead_099,69,198,47,0.07,0.79,,279.10,272.98,285.23,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,70.00,gp_slice_t_lead_100,70,198,47,0.07,0.79,,279.02,273.17,284.86,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,70.00,gp_slice_t_lead_101,70,198,47,0.07,0.79,,279.02,273.17,284.86,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,71.00,gp_slice_t_lead_102,71,198,47,0.07,0.79,,278.93,273.37,284.50,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,72.00,gp_slice_t_lead_103,72,198,47,0.07,0.79,,278.85,273.56,284.14,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,73.00,gp_slice_t_lead_104,73,198,47,0.07,0.79,,278.77,273.76,283.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,73.00,gp_slice_t_lead_105,73,198,47,0.07,0.79,,278.77,273.76,283.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,74.00,gp_slice_t_lead_106,74,198,47,0.07,0.79,,278.69,273.96,283.42,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,75.00,gp_slice_t_lead_107,75,198,47,0.07,0.79,,278.61,274.15,283.06,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,75.00,gp_slice_t_lead_108,75,198,47,0.07,0.79,,278.61,274.15,283.06,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,76.00,gp_slice_t_lead_109,76,198,47,0.07,0.79,,278.53,274.35,282.71,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,77.00,gp_slice_t_lead_110,77,198,47,0.07,0.79,,278.45,274.55,282.36,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,77.00,gp_slice_t_lead_111,77,198,47,0.07,0.79,,278.45,274.55,282.36,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,78.00,gp_slice_t_lead_112,78,198,47,0.07,0.79,,278.38,274.74,282.01,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,79.00,gp_slice_t_lead_113,79,198,47,0.07,0.79,,278.30,274.93,281.67,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,80.00,gp_slice_t_lead_114,80,198,47,0.07,0.79,,278.23,275.13,281.33,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,80.00,gp_slice_t_lead_115,80,198,47,0.07,0.79,,278.23,275.13,281.33,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,81.00,gp_slice_t_lead_116,81,198,47,0.07,0.79,,278.16,275.32,281.00,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,82.00,gp_slice_t_lead_117,82,198,47,0.07,0.79,,278.09,275.50,280.67,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,82.00,gp_slice_t_lead_118,82,198,47,0.07,0.79,,278.09,275.50,280.67,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,83.00,gp_slice_t_lead_119,83,198,47,0.07,0.79,,278.02,275.68,280.36,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,84.00,gp_slice_t_lead_120,84,198,47,0.07,0.79,,277.95,275.85,280.05,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,85.00,gp_slice_t_lead_121,85,198,47,0.07,0.79,,277.88,276.01,279.76,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,85.00,gp_slice_t_lead_122,85,198,47,0.07,0.79,,277.88,276.01,279.76,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,86.00,gp_slice_t_lead_123,86,198,47,0.07,0.79,,277.82,276.16,279.48,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,87.00,gp_slice_t_lead_124,87,198,47,0.07,0.79,,277.76,276.27,279.24,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,87.00,gp_slice_t_lead_125,87,198,47,0.07,0.79,,277.76,276.27,279.24,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,88.00,gp_slice_t_lead_126,88,198,47,0.07,0.79,,277.69,276.36,279.03,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,89.00,gp_slice_t_lead_127,89,198,47,0.07,0.79,,277.63,276.39,278.87,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,89.00,gp_slice_t_lead_128,89,198,47,0.07,0.79,,277.63,276.39,278.87,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,90.00,gp_slice_t_lead_129,90,198,47,0.07,0.79,,277.57,276.36,278.78,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,91.00,gp_slice_t_lead_130,91,198,47,0.07,0.79,,277.51,276.27,278.75,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,92.00,gp_slice_t_lead_131,92,198,47,0.07,0.79,,277.45,276.12,278.79,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,92.00,gp_slice_t_lead_132,92,198,47,0.07,0.79,,277.45,276.12,278.79,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,93.00,gp_slice_t_lead_133,93,198,47,0.07,0.79,,277.40,275.92,278.88,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,94.00,gp_slice_t_lead_134,94,198,47,0.07,0.79,,277.34,275.68,279.00,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,94.00,gp_slice_t_lead_135,94,198,47,0.07,0.79,,277.34,275.68,279.00,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,95.00,gp_slice_t_lead_136,95,198,47,0.07,0.79,,277.29,275.42,279.16,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,96.00,gp_slice_t_lead_137,96,198,47,0.07,0.79,,277.24,275.14,279.33,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,97.00,gp_slice_t_lead_138,97,198,47,0.07,0.79,,277.19,274.85,279.52,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,97.00,gp_slice_t_lead_139,97,198,47,0.07,0.79,,277.19,274.85,279.52,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,98.00,gp_slice_t_lead_140,98,198,47,0.07,0.79,,277.14,274.55,279.72,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,99.00,gp_slice_t_lead_141,99,198,47,0.07,0.79,,277.09,274.25,279.93,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,99.00,gp_slice_t_lead_142,99,198,47,0.07,0.79,,277.09,274.25,279.93,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,100.00,gp_slice_t_lead_143,100,198,47,0.07,0.79,,277.04,273.94,280.14,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,101.00,gp_slice_t_lead_144,101,198,47,0.07,0.79,,277.00,273.63,280.37,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,101.00,gp_slice_t_lead_145,101,198,47,0.07,0.79,,277.00,273.63,280.37,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,102.00,gp_slice_t_lead_146,102,198,47,0.07,0.79,,276.95,273.31,280.59,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,103.00,gp_slice_t_lead_147,103,198,47,0.07,0.79,,276.91,273.00,280.82,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,104.00,gp_slice_t_lead_148,104,198,47,0.07,0.79,,276.87,272.68,281.05,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,104.00,gp_slice_t_lead_149,104,198,47,0.07,0.79,,276.87,272.68,281.05,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,105.00,gp_slice_t_lead_150,105,198,47,0.07,0.79,,276.83,272.37,281.29,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,106.00,gp_slice_t_lead_151,106,198,47,0.07,0.79,,276.79,272.05,281.52,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,106.00,gp_slice_t_lead_152,106,198,47,0.07,0.79,,276.79,272.05,281.52,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,107.00,gp_slice_t_lead_153,107,198,47,0.07,0.79,,276.75,271.73,281.76,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,108.00,gp_slice_t_lead_154,108,198,47,0.07,0.79,,276.71,271.42,282.01,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,108.00,gp_slice_t_lead_155,108,198,47,0.07,0.79,,276.71,271.42,282.01,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,109.00,gp_slice_t_lead_156,109,198,47,0.07,0.79,,276.68,271.10,282.25,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,110.00,gp_slice_t_lead_157,110,198,47,0.07,0.79,,276.64,270.78,282.50,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,111.00,gp_slice_t_lead_158,111,198,47,0.07,0.79,,276.61,270.47,282.75,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,111.00,gp_slice_t_lead_159,111,198,47,0.07,0.79,,276.61,270.47,282.75,False,GP estimate only; objective was not re-evaluated on this slice.
+gp_slice,t_lead,112.00,gp_slice_t_lead_160,112,198,47,0.07,0.79,,276.58,270.15,283.00,False,GP estimate only; objective was not re-evaluated on this slice.
+observed,t_lead,50.00,bo_r01_001_tl50_dt212_ge40_qr62_tau90,50,212,40,0.62,0.9,471.25,,,,False,Observed BO evaluation.
+observed,t_lead,80.00,bo_r01_002_tl80_dt143_ge18_qr17_tau79,80,143,18,0.17,0.79,442.78,,,,False,Observed BO evaluation.
+observed,t_lead,78.00,bo_r01_004_tl78_dt142_ge10_qr0_tau80,78,142,10,0.0,0.8,339.60,,,,False,Observed BO evaluation.
+observed,t_lead,105.00,bo_r01_005_tl105_dt126_ge33_qr23_tau89,105,126,33,0.23,0.89,481.57,,,,False,Observed BO evaluation.
+observed,t_lead,78.00,bo_r02_001_tl78_dt139_ge10_qr3_tau80,78,139,10,0.03,0.8,339.60,-8196.73,-70336.22,53942.77,False,Observed BO evaluation.
+observed,t_lead,80.00,bo_r02_002_tl80_dt138_ge10_qr3_tau81,80,138,10,0.03,0.81,339.60,-10906.56,-86562.27,64749.15,False,Observed BO evaluation.
+observed,t_lead,77.00,bo_r02_003_tl77_dt153_ge10_qr3_tau81,77,153,10,0.03,0.81,339.60,44772.84,-216640.14,306185.82,False,Observed BO evaluation.
+observed,t_lead,73.00,bo_r02_004_tl73_dt144_ge10_qr5_tau82,73,144,10,0.05,0.82,339.60,8549.20,-39509.27,56607.68,False,Observed BO evaluation.
+observed,t_lead,73.00,bo_r03_001_tl73_dt145_ge10_qr5_tau82,73,145,10,0.05,0.82,339.60,-57.14,-15618.03,15503.76,False,Observed BO evaluation.
+observed,t_lead,73.00,bo_r03_002_tl73_dt142_ge10_qr4_tau81,73,142,10,0.04,0.81,339.60,1848.51,-13491.71,17188.74,False,Observed BO evaluation.
+observed,t_lead,78.00,bo_r03_003_tl78_dt151_ge10_qr3_tau81,78,151,10,0.03,0.81,339.60,-2105.65,-19313.11,15101.80,False,Observed BO evaluation.
+observed,t_lead,77.00,bo_r03_004_tl77_dt142_ge10_qr9_tau82,77,142,10,0.09,0.82,339.60,-1502.23,-26500.86,23496.40,False,Observed BO evaluation.
+observed,t_lead,74.00,bo_r04_002_tl74_dt142_ge10_qr4_tau81,74,142,10,0.04,0.81,339.60,-2168.45,-16826.90,12489.99,False,Observed BO evaluation.
+observed,t_lead,77.00,bo_r04_005_tl77_dt177_ge8_qr37_tau87,77,177,8,0.37,0.87,324.88,21081.80,-263193.27,305356.87,False,Observed BO evaluation.
+observed,t_lead,77.00,bo_r05_001_tl77_dt178_ge8_qr37_tau87,77,178,8,0.37,0.87,324.88,584.14,-16293.33,17461.61,False,Observed BO evaluation.
+observed,t_lead,79.00,bo_r05_002_tl79_dt181_ge8_qr38_tau87,79,181,8,0.38,0.87,324.88,-83260.81,-248914.02,82392.40,False,Observed BO evaluation.
+observed,t_lead,67.00,bo_r05_004_tl67_dt137_ge14_qr21_tau82,67,137,14,0.21,0.82,314.60,-286878.05,-1063382.00,489625.90,False,Observed BO evaluation.
+observed,t_lead,67.00,bo_r05_005_tl67_dt139_ge19_qr19_tau89,67,139,19,0.19,0.89,536.05,244761.19,-551185.51,1040707.90,False,Observed BO evaluation.
+observed,t_lead,67.00,bo_r06_001_tl67_dt136_ge14_qr21_tau82,67,136,14,0.21,0.82,314.60,222.65,-16549.60,16994.89,False,Observed BO evaluation.
+observed,t_lead,66.00,bo_r06_002_tl66_dt135_ge15_qr22_tau83,66,135,15,0.22,0.83,375.38,30459.75,-225565.20,286484.69,False,Observed BO evaluation.
+observed,t_lead,5.00,bo_r06_006_tl5_dt213_ge48_qr99_tau73,5,213,48,0.99,0.73,406.33,910235.87,290475.59,1529996.16,False,Observed BO evaluation.
+observed,t_lead,69.00,bo_r07_002_tl69_dt134_ge13_qr20_tau81,69,134,13,0.2,0.81,350.25,-107226.23,-294199.33,79746.86,False,Observed BO evaluation.
+observed,t_lead,69.00,bo_r08_001_tl69_dt140_ge15_qr22_tau83,69,140,15,0.22,0.83,375.38,-765702.46,-1034578.36,-496826.57,False,Observed BO evaluation.
+observed,t_lead,69.00,bo_r08_002_tl69_dt140_ge15_qr20_tau83,69,140,15,0.2,0.83,375.38,-782175.49,-1058188.32,-506162.66,False,Observed BO evaluation.
+observed,t_lead,93.00,bo_r08_004_tl93_dt169_ge14_qr33_tau86,93,169,14,0.33,0.86,288.83,311864.66,-649991.23,1273720.54,False,Observed BO evaluation.
+observed,t_lead,87.00,bo_r08_005_tl87_dt219_ge28_qr60_tau90,87,219,28,0.6,0.9,472.55,469231.28,-509486.50,1447949.07,False,Observed BO evaluation.
+observed,t_lead,93.00,bo_r09_001_tl93_dt168_ge14_qr33_tau86,93,168,14,0.33,0.86,288.83,-1242.85,-73218.77,70733.06,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r09_002_tl92_dt167_ge15_qr32_tau87,92,167,15,0.32,0.87,387.32,36573.15,-365867.15,439013.46,False,Observed BO evaluation.
+observed,t_lead,107.00,bo_r09_003_tl107_dt120_ge8_qr20_tau90,107,120,8,0.2,0.9,455.48,451199.71,-525333.78,1427733.20,False,Observed BO evaluation.
+observed,t_lead,51.00,bo_r09_005_tl51_dt201_ge28_qr52_tau90,51,201,28,0.52,0.9,415.21,449823.64,-526623.35,1426270.64,False,Observed BO evaluation.
+observed,t_lead,95.00,bo_r10_003_tl95_dt157_ge12_qr39_tau87,95,157,12,0.39,0.87,402.92,262802.67,-558307.07,1083912.42,False,Observed BO evaluation.
+observed,t_lead,95.00,bo_r10_004_tl95_dt156_ge12_qr25_tau87,95,156,12,0.25,0.87,402.92,251132.99,-643392.33,1145658.31,False,Observed BO evaluation.
+observed,t_lead,97.00,bo_r10_005_tl97_dt126_ge12_qr4_tau89,97,126,12,0.04,0.89,378.32,347505.05,-617723.53,1312733.62,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r11_001_tl92_dt172_ge15_qr34_tau86,92,172,15,0.34,0.86,387.32,-347699.41,-624642.74,-70756.08,False,Observed BO evaluation.
+observed,t_lead,91.00,bo_r11_002_tl91_dt168_ge15_qr34_tau86,91,168,15,0.34,0.86,387.32,-459251.33,-731826.14,-186676.52,False,Observed BO evaluation.
+observed,t_lead,62.00,bo_r11_004_tl62_dt163_ge10_qr43_tau90,62,163,10,0.43,0.9,339.60,441106.27,-522297.62,1404510.15,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r11_005_tl90_dt198_ge47_qr7_tau79,90,198,47,0.07,0.79,277.55,450299.29,-524774.36,1425372.94,True,Observed BO evaluation.
+observed,t_lead,90.00,bo_r12_001_tl90_dt199_ge47_qr7_tau79,90,199,47,0.07,0.79,277.55,1504.30,-70394.22,73402.82,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r12_002_tl90_dt196_ge47_qr8_tau80,90,196,47,0.08,0.8,277.55,15668.15,-239467.49,270803.80,False,Observed BO evaluation.
+observed,t_lead,108.00,bo_r12_006_tl108_dt6_ge0_qr22_tau79,108,6,0,0.22,0.79,326.04,439733.69,-533036.55,1412503.93,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r13_001_tl89_dt194_ge46_qr7_tau79,89,194,46,0.07,0.79,296.22,-48513.07,-386469.11,289442.96,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r13_002_tl89_dt200_ge46_qr7_tau79,89,200,46,0.07,0.79,296.22,-67124.59,-381965.93,247716.75,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r14_001_tl89_dt195_ge46_qr7_tau79,89,195,46,0.07,0.79,296.22,-6114.40,-36577.58,24348.78,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r14_002_tl89_dt200_ge46_qr7_tau80,89,200,46,0.07,0.8,296.22,-1858.50,-130481.41,126764.40,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r15_001_tl89_dt196_ge46_qr7_tau79,89,196,46,0.07,0.79,296.22,-3184.70,-26734.36,20364.96,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r15_002_tl89_dt194_ge46_qr7_tau81,89,194,46,0.07,0.81,296.22,20077.10,-143748.80,183902.99,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r16_001_tl89_dt198_ge46_qr7_tau79,89,198,46,0.07,0.79,296.22,-1761.98,-23081.87,19557.91,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r16_002_tl89_dt194_ge46_qr7_tau80,89,194,46,0.07,0.8,296.22,-7431.53,-39482.57,24619.51,False,Observed BO evaluation.
+observed,t_lead,61.00,bo_r16_005_tl61_dt121_ge48_qr10_tau72,61,121,48,0.1,0.72,368.06,492801.53,-486911.04,1472514.09,False,Observed BO evaluation.
+observed,t_lead,109.00,bo_r16_006_tl109_dt161_ge1_qr99_tau70,109,161,1,0.99,0.7,466.01,489256.58,-490471.51,1468984.67,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r17_001_tl89_dt197_ge46_qr7_tau79,89,197,46,0.07,0.79,296.22,-335.81,-14848.63,14177.02,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r17_002_tl89_dt195_ge46_qr7_tau81,89,195,46,0.07,0.81,296.22,-1270.80,-28058.48,25516.87,False,Observed BO evaluation.
+observed,t_lead,100.00,bo_r17_003_tl100_dt163_ge47_qr0_tau75,100,163,47,0.0,0.75,277.55,630440.04,-319426.41,1580306.48,False,Observed BO evaluation.
+observed,t_lead,99.00,bo_r17_004_tl99_dt164_ge47_qr11_tau80,99,164,47,0.11,0.8,277.55,751951.00,-132159.28,1636061.28,False,Observed BO evaluation.
+observed,t_lead,96.00,bo_r17_005_tl96_dt165_ge46_qr7_tau75,96,165,46,0.07,0.75,296.22,597318.23,-319906.39,1514542.86,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r18_001_tl89_dt195_ge46_qr7_tau80,89,195,46,0.07,0.8,296.22,-1999.60,-20597.60,16598.40,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r18_002_tl89_dt200_ge46_qr8_tau79,89,200,46,0.08,0.79,296.22,-8957.43,-120748.04,102833.19,False,Observed BO evaluation.
+observed,t_lead,86.00,bo_r18_006_tl86_dt210_ge7_qr100_tau81,86,210,7,1.0,0.81,346.85,474688.38,-501950.35,1451327.11,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r19_001_tl89_dt196_ge46_qr7_tau80,89,196,46,0.07,0.8,296.22,89.07,-12302.35,12480.50,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r19_002_tl89_dt200_ge46_qr8_tau80,89,200,46,0.08,0.8,296.22,187.39,-17135.88,17510.66,False,Observed BO evaluation.
+observed,t_lead,76.00,bo_r19_006_tl76_dt116_ge3_qr97_tau90,76,116,3,0.97,0.9,429.61,465632.86,-511638.62,1442904.35,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r20_001_tl89_dt197_ge46_qr7_tau80,89,197,46,0.07,0.8,296.22,3.13,-12773.37,12779.62,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r20_002_tl89_dt194_ge46_qr8_tau79,89,194,46,0.08,0.79,296.22,-3715.31,-78859.66,71429.05,False,Observed BO evaluation.
+observed,t_lead,72.00,bo_r20_005_tl72_dt202_ge34_qr11_tau78,72,202,34,0.11,0.78,420.66,465142.08,-512289.63,1442573.79,False,Observed BO evaluation.
+observed,t_lead,58.00,bo_r20_006_tl58_dt128_ge1_qr99_tau83,58,128,1,0.99,0.83,382.61,419966.66,-552294.91,1392228.23,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r21_001_tl88_dt196_ge46_qr8_tau80,88,196,46,0.08,0.8,296.22,42800.11,-82726.01,168326.23,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r21_002_tl90_dt194_ge46_qr7_tau79,90,194,46,0.07,0.79,296.22,-28762.96,-151478.37,93952.45,False,Observed BO evaluation.
+observed,t_lead,84.00,bo_r21_005_tl84_dt222_ge14_qr71_tau81,84,222,14,0.71,0.81,288.83,454385.73,-522122.38,1430893.84,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r22_003_tl88_dt163_ge47_qr6_tau74,88,163,47,0.06,0.74,293.47,625991.33,-37156.61,1289139.28,False,Observed BO evaluation.
+observed,t_lead,86.00,bo_r22_004_tl86_dt170_ge47_qr0_tau76,86,170,47,0.0,0.76,277.55,667992.60,-31965.57,1367950.78,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r23_001_tl92_dt200_ge46_qr9_tau80,92,200,46,0.09,0.8,296.22,-50389.85,-293950.14,193170.45,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r23_002_tl92_dt200_ge46_qr7_tau80,92,200,46,0.07,0.8,296.22,-51791.07,-265083.04,161500.90,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r24_001_tl92_dt200_ge46_qr9_tau81,92,200,46,0.09,0.81,296.22,-38.93,-17504.44,17426.59,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r24_002_tl92_dt200_ge46_qr9_tau79,92,200,46,0.09,0.79,296.22,571.00,-16896.73,18038.73,False,Observed BO evaluation.
+observed,t_lead,108.00,bo_r24_005_tl108_dt222_ge40_qr12_tau77,108,222,40,0.12,0.77,471.25,590718.94,-376580.26,1558018.13,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r25_001_tl92_dt200_ge46_qr8_tau80,92,200,46,0.08,0.8,296.22,-12092.76,-43418.45,19232.94,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r25_002_tl92_dt197_ge46_qr9_tau81,92,197,46,0.09,0.81,296.22,-27282.46,-114964.12,60399.19,False,Observed BO evaluation.
+observed,t_lead,86.00,bo_r25_004_tl86_dt146_ge39_qr2_tau75,86,146,39,0.02,0.75,595.42,369442.81,-603784.03,1342669.65,False,Observed BO evaluation.
+observed,t_lead,107.00,bo_r26_005_tl107_dt202_ge25_qr79_tau82,107,202,25,0.79,0.82,409.54,472463.11,-506642.05,1451568.27,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r27_001_tl92_dt194_ge46_qr9_tau81,92,194,46,0.09,0.81,296.22,47459.25,-27683.28,122601.79,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r27_002_tl89_dt200_ge46_qr9_tau81,89,200,46,0.09,0.81,296.22,4454.95,-45924.85,54834.74,False,Observed BO evaluation.
+observed,t_lead,71.00,bo_r27_005_tl71_dt206_ge25_qr70_tau72,71,206,25,0.7,0.72,409.54,439262.09,-537746.34,1416270.53,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r28_001_tl88_dt198_ge46_qr9_tau80,88,198,46,0.09,0.8,296.22,11210.25,-32290.04,54710.54,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r28_002_tl92_dt194_ge46_qr8_tau81,92,194,46,0.08,0.81,296.22,7503.68,-42507.11,57514.46,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r29_001_tl89_dt200_ge46_qr8_tau81,89,200,46,0.08,0.81,296.22,-1408.31,-15777.40,12960.78,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r29_002_tl92_dt194_ge46_qr8_tau80,92,194,46,0.08,0.8,296.22,1177.12,-15784.93,18139.17,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r30_001_tl92_dt194_ge46_qr9_tau79,92,194,46,0.09,0.79,296.22,1928.18,-16390.79,20247.15,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r30_002_tl89_dt200_ge46_qr9_tau79,89,200,46,0.09,0.79,296.22,135.29,-17366.47,17637.06,False,Observed BO evaluation.
+observed,t_lead,110.00,bo_r30_006_tl110_dt220_ge12_qr99_tau70,110,220,12,0.99,0.7,333.74,490951.22,-488605.65,1470508.08,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r31_001_tl92_dt194_ge46_qr8_tau79,92,194,46,0.08,0.79,296.22,4593.65,-21819.01,31006.31,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r31_002_tl88_dt198_ge46_qr9_tau81,88,198,46,0.09,0.81,296.22,-870.47,-30946.15,29205.20,False,Observed BO evaluation.
+observed,t_lead,75.00,bo_r31_003_tl75_dt224_ge47_qr1_tau80,75,224,47,0.01,0.8,277.55,619165.75,-309652.41,1547983.91,False,Observed BO evaluation.
+observed,t_lead,91.00,bo_r32_001_tl91_dt194_ge46_qr9_tau80,91,194,46,0.09,0.8,296.22,-31005.38,-70829.11,8818.34,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r32_002_tl89_dt198_ge46_qr9_tau80,89,198,46,0.09,0.8,296.22,-25754.86,-58445.71,6935.99,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r33_001_tl88_dt198_ge46_qr9_tau79,88,198,46,0.09,0.79,296.22,7801.91,-22641.69,38245.52,False,Observed BO evaluation.
+observed,t_lead,91.00,bo_r33_002_tl91_dt194_ge46_qr9_tau81,91,194,46,0.09,0.81,296.22,-4879.59,-31467.88,21708.70,False,Observed BO evaluation.
+observed,t_lead,48.00,bo_r33_006_tl48_dt206_ge1_qr71_tau71,48,206,1,0.71,0.71,350.31,515732.91,-464035.73,1495501.54,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r34_001_tl88_dt197_ge46_qr9_tau80,88,197,46,0.09,0.8,296.22,344.55,-18397.87,19086.96,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r34_002_tl92_dt194_ge46_qr7_tau81,92,194,46,0.07,0.81,296.22,21498.72,-24944.28,67941.73,False,Observed BO evaluation.
+observed,t_lead,88.00,bo_r34_006_tl88_dt153_ge0_qr100_tau81,88,153,0,1.0,0.81,334.61,552663.53,-413656.97,1518984.02,False,Observed BO evaluation.
+observed,t_lead,89.00,bo_r35_001_tl89_dt198_ge46_qr9_tau81,89,198,46,0.09,0.81,296.22,-3450.24,-23957.72,17057.24,False,Observed BO evaluation.
+observed,t_lead,92.00,bo_r35_002_tl92_dt194_ge46_qr9_tau80,92,194,46,0.09,0.8,296.22,1438.03,-14897.48,17773.54,False,Observed BO evaluation.
+observed,t_lead,48.00,bo_r35_005_tl48_dt218_ge17_qr51_tau77,48,218,17,0.51,0.77,438.97,503897.02,-475550.29,1483344.33,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_001_tl90_dt197_ge47_qr8_tau80,90,197,47,0.08,0.8,277.55,-5426.95,-28492.47,17638.57,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_002_tl90_dt200_ge47_qr7_tau79,90,200,47,0.07,0.79,277.55,16780.98,-10952.81,44514.76,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_003_tl90_dt195_ge47_qr8_tau80,90,195,47,0.08,0.8,277.55,31869.13,4961.15,58777.11,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_004_tl90_dt197_ge47_qr7_tau79,90,197,47,0.07,0.79,277.55,12871.84,-10539.35,36283.03,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_005_tl90_dt198_ge47_qr8_tau80,90,198,47,0.08,0.8,277.55,-3386.48,-37579.72,30806.76,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r36_006_tl90_dt194_ge47_qr8_tau80,90,194,47,0.08,0.8,277.55,68553.57,22672.56,114434.57,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r37_001_tl90_dt193_ge47_qr8_tau80,90,193,47,0.08,0.8,277.55,7376.58,-9359.63,24112.79,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r37_002_tl90_dt196_ge47_qr7_tau79,90,196,47,0.07,0.79,277.55,5040.47,-11083.75,21164.69,False,Observed BO evaluation.
+observed,t_lead,91.00,bo_r37_003_tl91_dt194_ge47_qr8_tau80,91,194,47,0.08,0.8,277.55,42985.03,3403.76,82566.29,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r37_004_tl90_dt192_ge47_qr8_tau80,90,192,47,0.08,0.8,277.55,11870.26,-8835.78,32576.29,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r37_005_tl90_dt195_ge47_qr7_tau79,90,195,47,0.07,0.79,277.55,8654.99,-10687.83,27997.81,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r37_006_tl90_dt196_ge47_qr9_tau80,90,196,47,0.09,0.8,277.55,32089.30,-12136.00,76314.60,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r38_001_tl90_dt191_ge47_qr8_tau80,90,191,47,0.08,0.8,277.55,4094.45,-11758.71,19947.62,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r38_002_tl90_dt194_ge47_qr7_tau79,90,194,47,0.07,0.79,277.55,4590.29,-10546.61,19727.19,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r38_003_tl90_dt190_ge47_qr8_tau80,90,190,47,0.08,0.8,277.55,7190.45,-12091.29,26472.19,False,Observed BO evaluation.
+observed,t_lead,91.00,bo_r38_004_tl91_dt192_ge47_qr8_tau80,91,192,47,0.08,0.8,277.55,5301.67,-13428.38,24031.71,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r38_005_tl90_dt194_ge47_qr9_tau80,90,194,47,0.09,0.8,277.55,683.84,-18130.60,19498.27,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r38_006_tl90_dt193_ge47_qr7_tau79,90,193,47,0.07,0.79,277.55,7532.39,-10190.68,25255.47,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_001_tl90_dt189_ge47_qr8_tau80,90,189,47,0.08,0.8,277.55,3919.52,-11335.59,19174.63,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_002_tl90_dt192_ge47_qr7_tau79,90,192,47,0.07,0.79,277.55,4478.07,-10163.05,19119.19,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_003_tl90_dt188_ge47_qr8_tau80,90,188,47,0.08,0.8,277.55,6216.54,-12030.61,24463.68,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_004_tl90_dt192_ge47_qr9_tau80,90,192,47,0.09,0.8,277.55,-937.35,-18521.51,16646.80,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_005_tl90_dt191_ge47_qr7_tau79,90,191,47,0.07,0.79,277.55,6792.37,-10197.46,23782.20,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r39_006_tl90_dt190_ge47_qr9_tau80,90,190,47,0.09,0.8,277.55,-262.33,-23691.78,23167.13,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_001_tl90_dt187_ge47_qr8_tau80,90,187,47,0.08,0.8,277.55,3687.50,-11082.28,18457.29,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_002_tl90_dt189_ge47_qr9_tau80,90,189,47,0.09,0.8,277.55,240.38,-15257.02,15737.79,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_003_tl90_dt190_ge47_qr7_tau79,90,190,47,0.07,0.79,277.55,3913.35,-10449.60,18276.29,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_004_tl90_dt186_ge47_qr8_tau80,90,186,47,0.08,0.8,277.55,5286.02,-12098.12,22670.16,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_005_tl90_dt188_ge47_qr9_tau80,90,188,47,0.09,0.8,277.55,904.25,-16799.88,18608.39,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r40_006_tl90_dt189_ge47_qr7_tau79,90,189,47,0.07,0.79,277.55,5530.00,-11010.13,22070.13,False,Observed BO evaluation.
+observed,t_lead,104.00,bo_r41_001_tl104_dt186_ge38_qr12_tau77,104,186,38,0.12,0.77,413.24,177818.73,-576849.52,932486.97,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r41_002_tl90_dt185_ge47_qr8_tau80,90,185,47,0.08,0.8,277.55,2808.76,-11693.21,17310.74,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r41_003_tl90_dt187_ge47_qr9_tau80,90,187,47,0.09,0.8,277.55,565.50,-13699.81,14830.81,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r41_004_tl90_dt188_ge47_qr7_tau79,90,188,47,0.07,0.79,277.55,3036.43,-11156.51,17229.36,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r41_005_tl90_dt184_ge47_qr8_tau80,90,184,47,0.08,0.8,277.55,3694.96,-13171.15,20561.06,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r41_006_tl90_dt186_ge47_qr9_tau80,90,186,47,0.09,0.8,277.55,1039.22,-15193.27,17271.71,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_001_tl90_dt183_ge47_qr8_tau80,90,183,47,0.08,0.8,277.55,1963.33,-12357.00,16283.65,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_002_tl90_dt185_ge47_qr9_tau80,90,185,47,0.09,0.8,277.55,542.80,-13391.40,14476.99,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_003_tl90_dt182_ge47_qr8_tau80,90,182,47,0.08,0.8,277.55,2331.04,-14185.51,18847.58,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_004_tl90_dt184_ge47_qr9_tau80,90,184,47,0.09,0.8,277.55,763.59,-15051.50,16578.67,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_005_tl90_dt186_ge47_qr7_tau79,90,186,47,0.07,0.79,277.55,2950.19,-12821.59,18721.96,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r42_006_tl90_dt184_ge47_qr7_tau80,90,184,47,0.07,0.8,277.55,30416.24,-3621.63,64454.11,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_001_tl90_dt181_ge47_qr8_tau80,90,181,47,0.08,0.8,277.55,-956.67,-14981.12,13067.79,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_002_tl90_dt183_ge47_qr9_tau80,90,183,47,0.09,0.8,277.55,984.22,-12853.14,14821.58,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_003_tl90_dt183_ge47_qr7_tau80,90,183,47,0.07,0.8,277.55,3969.25,-12522.84,20461.34,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_004_tl90_dt180_ge47_qr8_tau80,90,180,47,0.08,0.8,277.55,-1506.59,-17611.03,14597.84,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_005_tl90_dt182_ge47_qr9_tau80,90,182,47,0.09,0.8,277.55,969.61,-14731.94,16671.16,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r43_006_tl90_dt182_ge47_qr7_tau80,90,182,47,0.07,0.8,277.55,2937.77,-14890.42,20765.95,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_001_tl90_dt179_ge47_qr8_tau80,90,179,47,0.08,0.8,277.55,-1436.04,-15310.03,12437.95,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_002_tl90_dt181_ge47_qr9_tau80,90,181,47,0.09,0.8,277.55,762.06,-12936.91,14461.03,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_003_tl90_dt181_ge47_qr7_tau80,90,181,47,0.07,0.8,277.55,-55.55,-13968.84,13857.73,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_004_tl90_dt178_ge47_qr8_tau80,90,178,47,0.08,0.8,277.55,-2144.18,-18006.98,13718.62,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_005_tl90_dt180_ge47_qr9_tau80,90,180,47,0.09,0.8,277.55,587.06,-14885.13,16059.26,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r44_006_tl90_dt180_ge47_qr7_tau80,90,180,47,0.07,0.8,277.55,-1155.48,-16933.61,14622.65,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_001_tl90_dt177_ge47_qr8_tau80,90,177,47,0.08,0.8,277.55,-1353.32,-14961.94,12255.30,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_002_tl90_dt179_ge47_qr9_tau80,90,179,47,0.09,0.8,277.55,446.27,-13093.24,13985.79,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_003_tl90_dt179_ge47_qr7_tau80,90,179,47,0.07,0.8,277.55,-1045.50,-14780.72,12689.73,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_004_tl90_dt176_ge47_qr8_tau80,90,176,47,0.08,0.8,277.55,-2022.31,-17465.54,13420.92,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_005_tl90_dt178_ge47_qr9_tau80,90,178,47,0.09,0.8,277.55,166.05,-15049.19,15381.29,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r45_006_tl90_dt178_ge47_qr7_tau80,90,178,47,0.07,0.8,277.55,-1913.96,-17552.59,13724.68,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_001_tl90_dt175_ge47_qr8_tau80,90,175,47,0.08,0.8,277.55,-1130.17,-14497.52,12237.19,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_002_tl90_dt177_ge47_qr9_tau80,90,177,47,0.09,0.8,277.55,133.20,-13259.10,13525.49,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_003_tl90_dt177_ge47_qr7_tau80,90,177,47,0.07,0.8,277.55,-1092.32,-14696.07,12511.43,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_004_tl90_dt174_ge47_qr8_tau80,90,174,47,0.08,0.8,277.55,-1716.16,-16791.34,13359.02,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_005_tl90_dt176_ge47_qr9_tau80,90,176,47,0.09,0.8,277.55,-214.29,-15204.16,14775.58,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r46_006_tl90_dt176_ge47_qr7_tau80,90,176,47,0.07,0.8,277.55,-1689.32,-17024.35,13645.70,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_001_tl90_dt173_ge47_qr8_tau80,90,173,47,0.08,0.8,277.55,-936.52,-14131.50,12258.46,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_002_tl90_dt175_ge47_qr9_tau80,90,175,47,0.09,0.8,277.55,-124.21,-13386.89,13138.48,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_003_tl90_dt175_ge47_qr7_tau80,90,175,47,0.07,0.8,277.55,-831.02,-14225.58,12563.54,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_004_tl90_dt172_ge47_qr8_tau80,90,172,47,0.08,0.8,277.55,-1450.16,-16267.92,13367.60,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_005_tl90_dt174_ge47_qr9_tau80,90,174,47,0.09,0.8,277.55,-507.03,-15305.42,14291.36,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r47_006_tl90_dt174_ge47_qr7_tau80,90,174,47,0.07,0.8,277.55,-1225.85,-16194.29,13742.59,False,Observed BO evaluation.
+observed,t_lead,99.00,bo_r48_001_tl99_dt147_ge40_qr10_tau86,99,147,40,0.1,0.86,471.25,482082.55,-376211.81,1340376.91,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r48_002_tl90_dt171_ge47_qr8_tau80,90,171,47,0.08,0.8,277.55,-793.41,-13856.17,12269.35,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r48_003_tl90_dt173_ge47_qr7_tau80,90,173,47,0.07,0.8,277.55,-532.97,-13727.96,12662.02,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r48_004_tl90_dt173_ge47_qr9_tau80,90,173,47,0.09,0.8,277.55,-304.61,-13448.63,12839.41,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r48_005_tl90_dt170_ge47_qr8_tau80,90,170,47,0.08,0.8,277.55,-1250.85,-15870.77,13369.06,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r48_006_tl90_dt172_ge47_qr7_tau80,90,172,47,0.07,0.8,277.55,-800.82,-15472.55,13870.91,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r49_002_tl90_dt169_ge47_qr8_tau80,90,169,47,0.08,0.8,277.55,-747.13,-13855.61,12361.34,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r49_003_tl90_dt171_ge47_qr7_tau80,90,171,47,0.07,0.8,277.55,-274.28,-13348.07,12799.51,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r49_004_tl90_dt172_ge47_qr9_tau80,90,172,47,0.09,0.8,277.55,-278.83,-13221.24,12663.58,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r49_005_tl90_dt168_ge47_qr8_tau80,90,168,47,0.08,0.8,277.55,-1184.85,-15891.94,13522.24,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r49_006_tl90_dt170_ge47_qr7_tau80,90,170,47,0.07,0.8,277.55,-473.01,-14996.07,14050.04,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_001_tl90_dt169_ge47_qr7_tau80,90,169,47,0.07,0.8,277.55,4.94,-13181.78,13191.66,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_002_tl90_dt167_ge47_qr8_tau80,90,167,47,0.08,0.8,277.55,-642.94,-14039.85,12753.96,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_003_tl90_dt168_ge47_qr7_tau80,90,168,47,0.07,0.8,277.55,-149.56,-14919.21,14620.10,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_004_tl90_dt166_ge47_qr8_tau80,90,166,47,0.08,0.8,277.55,-1056.16,-16274.98,14162.66,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_005_tl90_dt170_ge47_qr9_tau80,90,170,47,0.09,0.8,277.55,-504.61,-14806.67,13797.45,False,Observed BO evaluation.
+observed,t_lead,90.00,bo_r50_006_tl90_dt168_ge47_qr8_tau79,90,168,47,0.08,0.79,277.55,-525.92,-54685.64,53633.79,False,Observed BO evaluation.
