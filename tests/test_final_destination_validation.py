@@ -32,19 +32,20 @@ class FinalDestinationValidationTest(unittest.TestCase):
             seed=20260606,
             route_id="FINAL_DEST_ER_ACC_019",
             repeats=30,
-            depart_min=550.0,
-            depart_max=650.0,
+            depart_min=self.module.DEFAULT_DEPART_MIN,
+            depart_max=self.module.DEFAULT_DEPART_MAX,
         )
         second = self.module.deterministic_departures(
             seed=20260606,
             route_id="FINAL_DEST_ER_ACC_019",
             repeats=30,
-            depart_min=550.0,
-            depart_max=650.0,
+            depart_min=self.module.DEFAULT_DEPART_MIN,
+            depart_max=self.module.DEFAULT_DEPART_MAX,
         )
         self.assertEqual(first, second)
         self.assertEqual(len(first), 30)
-        self.assertTrue(all(550.0 <= value <= 650.0 for value in first))
+        self.assertTrue(all(self.module.DEFAULT_DEPART_MIN <= value <= self.module.DEFAULT_DEPART_MAX for value in first))
+        self.assertTrue(all(value > self.module.DEFAULT_WARMUP_END_SEC for value in first))
 
     def test_defaults_use_s1forced_canonical_inputs(self):
         self.assertEqual(
@@ -60,6 +61,29 @@ class FinalDestinationValidationTest(unittest.TestCase):
             PROJECT_ROOT / "data_prepared/compact_v9/b4_stage1_s1forced",
         )
         self.assertEqual(self.module.parse_args([]).workers, 6)
+        self.assertGreater(self.module.parse_args([]).depart_min, self.module.parse_args([]).warmup_end_sec)
+
+    def test_validate_args_rejects_departures_inside_warmup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            theta_csv = Path(tmp) / "all_evaluations.csv"
+            theta_csv.write_text(
+                "method,seed,round,parameter_id,t_lead,delta_T_thr,G_ext,Q_ratio,tau,score,final_status\n",
+                encoding="utf-8",
+            )
+            args = self.module.parse_args([
+                "--dry-run",
+                "--theta-all-evaluations",
+                str(theta_csv),
+                "--depart-min",
+                "600",
+                "--depart-max",
+                "650",
+                "--run-id",
+                "warmup_reject_validation",
+            ])
+
+            with self.assertRaisesRegex(self.module.FinalDestinationValidationError, "depart_min_must_be_after_warmup_end"):
+                self.module.validate_args(args)
 
     def test_validate_args_allows_six_workers_for_final_validation(self):
         with tempfile.TemporaryDirectory() as tmp:

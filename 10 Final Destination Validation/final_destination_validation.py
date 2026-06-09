@@ -67,8 +67,9 @@ DEFAULT_OUTPUT_PREFIX = "compact_v9_final_destination_validation"
 DEFAULT_RUN_ROOT = PROJECT_ROOT / "runs" / DEFAULT_OUTPUT_PREFIX
 DEFAULT_METRICS_ROOT = PROJECT_ROOT / "results/metrics" / DEFAULT_OUTPUT_PREFIX
 DEFAULT_SEED = 20260606
-DEFAULT_DEPART_MIN = 550.0
-DEFAULT_DEPART_MAX = 650.0
+DEFAULT_WARMUP_END_SEC = 600.0
+DEFAULT_DEPART_MIN = 601.0
+DEFAULT_DEPART_MAX = 700.0
 DEFAULT_REPEATS = 30
 DEFAULT_SCREENING_REPEATS = 1
 DEFAULT_PILOT_REPEATS = 30
@@ -1341,7 +1342,7 @@ def build_route_stage1(
 def phase_for_depart(base_phase: B4RuntimePhaseConfig, depart: float) -> B4RuntimePhaseConfig:
     return replace(
         base_phase,
-        ev_departure_policy="deterministic_random_550_650",
+        ev_departure_policy="deterministic_random_depart_relative_after_warmup",
         ev_depart_sec=float(depart),
         ev_depart_randomized=True,
         final_validation_random_departure_implemented=True,
@@ -1877,6 +1878,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise FinalDestinationValidationError("final_selection_count_must_be_positive")
     if args.depart_min > args.depart_max:
         raise FinalDestinationValidationError("depart_min_must_be_lte_depart_max")
+    if args.warmup_end_sec < 0.0:
+        raise FinalDestinationValidationError("warmup_end_sec_must_be_nonnegative")
+    if args.depart_min <= args.warmup_end_sec:
+        raise FinalDestinationValidationError("depart_min_must_be_after_warmup_end")
     if args.workers < 1:
         raise FinalDestinationValidationError("workers_must_be_positive")
     if args.validation_mode == VALIDATION_MODE_ROBUST_THETA_SELECTION:
@@ -2118,6 +2123,8 @@ def write_task_manifest(
             "task_count": len(task_manifest_rows),
             "depart_min": args.depart_min,
             "depart_max": args.depart_max,
+            "warmup_end_sec": args.warmup_end_sec,
+            "depart_time_policy": "depart_relative_controls_after_warmup",
             "stage1_rebuild_policy": STAGE1_REBUILD_POLICY,
             "adaptive_repeats": {
                 "enabled_for_final_phase": not args.disable_adaptive_repeats,
@@ -2565,6 +2572,8 @@ def run_robust_theta_selection(args: argparse.Namespace) -> dict[str, Any]:
         "candidate_count": len(theta_candidates),
         "mini_batch_repeats": args.robust_mini_batch_repeats,
         "mini_batch_departures": departures,
+        "warmup_end_sec": args.warmup_end_sec,
+        "depart_time_policy": "depart_relative_controls_after_warmup",
         "survivor_count": args.robust_survivor_count,
         "final_top_k": args.robust_final_top_k,
         "workers": args.workers,
@@ -2842,6 +2851,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--confidence-level", type=float, default=DEFAULT_CONFIDENCE_LEVEL)
     parser.add_argument("--adaptive-max-repeats", type=int, default=DEFAULT_ADAPTIVE_MAX_REPEATS)
     parser.add_argument("--disable-adaptive-repeats", action="store_true")
+    parser.add_argument("--warmup-end-sec", type=float, default=DEFAULT_WARMUP_END_SEC)
     parser.add_argument("--depart-min", type=float, default=DEFAULT_DEPART_MIN)
     parser.add_argument("--depart-max", type=float, default=DEFAULT_DEPART_MAX)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)

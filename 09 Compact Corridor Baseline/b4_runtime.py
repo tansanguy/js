@@ -127,6 +127,9 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "ev_route_index",
     "ev_speed_kmh",
     "step",
+    "ev_depart_sec",
+    "t_rel_depart_sec",
+    "time_until_depart_sec",
     "ev_status",
     "EV_NotDeparted",
     "EV_Departed",
@@ -175,6 +178,7 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "t_clear_proxy_sec",
     "time_to_merge_sec",
     "time_to_merge_source",
+    "dispatch_detect_time_sec",
     "s_vph",
     "tS_merge_sec",
     "HOLD_MAX_sec",
@@ -189,6 +193,7 @@ RUNTIME_EVENT_FIELDS = REQUIRED_STAGE1_EVENT_FIELDS + [
     "b0_merge_n_occ_max_proxy_veh",
     "b0_background_inflow_lambda_vph",
     "stage2_formula",
+    "stage2_time_axis_policy",
     "stage2_measurement_source",
     "runtime_or_b0_fallback",
     "low_speed_count",
@@ -900,7 +905,7 @@ class B4Stage2MergeHoldParams:
     b0_merge_waiting_max_sec: float = 0.0
     b0_merge_halting_proxy_max: float = 0.0
     measurement_source: str = B4_PRIMARY_LANE_DATA_SOURCE
-    stage2_formula: str = "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec"
+    stage2_formula: str = "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec; pre-depart time_to_merge_sec = (ev_depart_sec - now) + tE_merge_sec"
     runtime_control_uses_formula_directly: bool = False
 
     @classmethod
@@ -930,7 +935,7 @@ class B4Stage2MergeHoldParams:
             b0_merge_waiting_max_sec=safe_float(params.get("b0_merge_waiting_max_sec"), 0.0),
             b0_merge_halting_proxy_max=safe_float(params.get("b0_merge_halting_proxy_max"), 0.0),
             measurement_source=str(params.get("measurement_source", payload.get("measurement_source", B4_PRIMARY_LANE_DATA_SOURCE))),
-            stage2_formula=str(payload.get("stage2_formula", "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec")),
+            stage2_formula=str(payload.get("stage2_formula", "T_hold_sec = time_to_merge_sec - t_clear_sec - tS_merge_sec; pre-depart time_to_merge_sec = (ev_depart_sec - now) + tE_merge_sec")),
             runtime_control_uses_formula_directly=truthy(payload.get("runtime_control_uses_formula_directly", False)),
         )
 
@@ -2250,8 +2255,12 @@ def stage2_time_to_merge(
     params = stage1.stage2_merge_hold
     if now is None:
         return params.tE_merge_sec, "fallback_tE_merge_no_time"
-    if ev_state is None or (not ev_state.present and now < stage1.ev_depart_sec):
-        return params.tE_merge_sec, "evtsp_fixed_tE_merge_pre_departure"
+    if ev_state is None:
+        if now < stage1.ev_depart_sec:
+            return max(stage1.ev_depart_sec - now, 0.0) + params.tE_merge_sec, "depart_relative_tE_merge_pre_departure"
+        return params.tE_merge_sec, "fallback_tE_merge_no_ev_state"
+    if not ev_state.present and now < stage1.ev_depart_sec:
+        return max(stage1.ev_depart_sec - now, 0.0) + params.tE_merge_sec, "depart_relative_tE_merge_pre_departure"
     if ev_state.arrived:
         return 0.0, "ev_arrived"
     if ev_state.present and distance_to_merge_m is not None:
@@ -2302,6 +2311,10 @@ def stage2_merge_hold_proxy_snapshot(
         distance_to_merge_m=distance_to_merge_m,
     )
     t_hold = time_to_merge - t_clear - params.tS_merge_sec
+    ev_depart_sec = round_float(stage1.ev_depart_sec)
+    t_rel_depart_sec = round_float(float(now) - stage1.ev_depart_sec) if now is not None else ""
+    time_until_depart_sec = round_float(max(stage1.ev_depart_sec - float(now), 0.0)) if now is not None else ""
+    dispatch_detect_time_sec = round_float(stage1.ev_depart_sec - params.t_dispatch_delay_sec)
     ev_departed = bool(ev_state.present or ev_state.departed) if ev_state is not None else False
     ev_arrived = bool(ev_state.arrived) if ev_state is not None else False
     ev_merged = bool(merged) if merged is not None else False
@@ -2321,6 +2334,11 @@ def stage2_merge_hold_proxy_snapshot(
         "t_clear_proxy_sec": round_float(t_clear),
         "time_to_merge_sec": round_float(time_to_merge),
         "time_to_merge_source": time_to_merge_source,
+        "ev_depart_sec": ev_depart_sec,
+        "t_rel_depart_sec": t_rel_depart_sec,
+        "time_until_depart_sec": time_until_depart_sec,
+        "dispatch_detect_time_sec": dispatch_detect_time_sec,
+        "stage2_time_axis_policy": "depart_relative_pre_depart_time_to_merge",
         "s_vph": round_float(s_vph),
         "tS_merge_sec": round_float(params.tS_merge_sec),
         "HOLD_MAX_sec": round_float(params.HOLD_MAX_sec),
@@ -2665,6 +2683,9 @@ def event_row(
         "ev_route_index": ev_state.route_index,
         "ev_speed_kmh": round_float(ev_state.speed_kmh),
         "step": step if step != "" else safe_int(time),
+        "ev_depart_sec": stage2_proxy.get("ev_depart_sec", stage3_context.get("ev_depart_sec", "")),
+        "t_rel_depart_sec": stage2_proxy.get("t_rel_depart_sec", stage3_context.get("t_rel_depart_sec", "")),
+        "time_until_depart_sec": stage2_proxy.get("time_until_depart_sec", stage3_context.get("time_until_depart_sec", "")),
         "ev_status": stage2_proxy.get("ev_status", "arrived" if ev_state.arrived else ("departed" if ev_state.departed or ev_state.present else "not_departed")),
         "EV_NotDeparted": stage2_proxy.get("EV_NotDeparted", not (ev_state.departed or ev_state.present or ev_state.arrived)),
         "EV_Departed": stage2_proxy.get("EV_Departed", ev_state.departed or ev_state.present),
@@ -2713,6 +2734,7 @@ def event_row(
         "t_clear_proxy_sec": stage2_proxy.get("t_clear_proxy_sec", ""),
         "time_to_merge_sec": stage2_proxy.get("time_to_merge_sec", ""),
         "time_to_merge_source": stage2_proxy.get("time_to_merge_source", ""),
+        "dispatch_detect_time_sec": stage2_proxy.get("dispatch_detect_time_sec", ""),
         "s_vph": stage2_proxy.get("s_vph", ""),
         "tS_merge_sec": stage2_proxy.get("tS_merge_sec", ""),
         "HOLD_MAX_sec": stage2_proxy.get("HOLD_MAX_sec", ""),
@@ -2730,6 +2752,7 @@ def event_row(
         "b0_merge_n_occ_max_proxy_veh": stage2_proxy.get("b0_merge_n_occ_max_proxy_veh", ""),
         "b0_background_inflow_lambda_vph": stage2_proxy.get("b0_background_inflow_lambda_vph", ""),
         "stage2_formula": stage2_proxy.get("stage2_formula", ""),
+        "stage2_time_axis_policy": stage2_proxy.get("stage2_time_axis_policy", ""),
         "stage2_measurement_source": stage2_proxy.get("stage2_measurement_source", ""),
         "runtime_or_b0_fallback": stage2_proxy.get("runtime_or_b0_fallback", ""),
         "low_speed_count": metrics.low_speed_count if metrics else "",
@@ -3145,6 +3168,7 @@ class B4RuntimeController:
     def stage3_log_context(
         self,
         *,
+        now: float,
         plan: Stage3CasePlan,
         metric: MovementRuntimeMetrics,
         ev_state: EVState,
@@ -3166,7 +3190,11 @@ class B4RuntimeController:
         elapsed_green = self.elapsed_green_sec(movement.tls_id) if previous_phase == movement.selected_green_phase else 0.0
         upstream_metric = plan.source_metric
         downstream_metric = plan.gate_metric
+        t_rel_depart_sec = float(now) - self.stage1.ev_depart_sec
         return {
+            "ev_depart_sec": round_float(self.stage1.ev_depart_sec),
+            "t_rel_depart_sec": round_float(t_rel_depart_sec),
+            "time_until_depart_sec": round_float(max(-t_rel_depart_sec, 0.0)),
             "intersection_index": movement.route_intersection_index,
             "junction_id": movement.tls_id,
             "is_ahead_of_ev": movement.route_order_index >= ev_state.route_index,
@@ -4052,6 +4080,7 @@ class B4RuntimeController:
                 gate_result = "PASS" if delta_gate_open else "CONTINUE_TOO_FAR"
                 selection_action = "CASE_B_SELECTED" if plan.case_type == "caseB" else "CASE_A_SELECTED"
                 stage3_context = self.stage3_log_context(
+                    now=now,
                     plan=plan,
                     metric=metric,
                     ev_state=stage3_ev_state,
@@ -4139,6 +4168,7 @@ class B4RuntimeController:
                     if safety_status == "REQUIRE_CLEARANCE":
                         self.pending_stage3_requests[movement.movement_id] = now
                     stage3_context = self.stage3_log_context(
+                        now=now,
                         plan=plan,
                         metric=metric,
                         ev_state=stage3_ev_state,
@@ -4218,6 +4248,7 @@ class B4RuntimeController:
                 if plan.case_type == "caseB":
                     self.stats.bottleneck_mode_count += 1
                 stage3_context = self.stage3_log_context(
+                    now=now,
                     plan=plan,
                     metric=metric,
                     ev_state=stage3_ev_state,

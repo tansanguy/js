@@ -293,7 +293,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(at.method, "local_exact")
         self.assertAlmostEqual(at.queue_m_est, 90.0)
 
-    def test_stage2_time_to_merge_uses_fixed_evtsp_merge_time_before_departure(self):
+    def test_stage2_time_to_merge_is_depart_relative_before_departure(self):
         ev_state = self.runtime.EVState(False, False, False, self.stage1.ev_id)
         dispatch_detect_time = self.stage1.ev_depart_sec - self.stage1.stage2_merge_hold.t_dispatch_delay_sec
         at_dispatch = self.runtime.stage2_merge_hold_proxy_snapshot(
@@ -303,8 +303,11 @@ class B4RuntimeContractTest(unittest.TestCase):
             ev_state=ev_state,
             merged=False,
         )
-        self.assertAlmostEqual(float(at_dispatch["time_to_merge_sec"]), 10.0)
-        self.assertEqual(at_dispatch["time_to_merge_source"], "evtsp_fixed_tE_merge_pre_departure")
+        expected_at_dispatch = self.stage1.stage2_merge_hold.t_dispatch_delay_sec + self.stage1.stage2_merge_hold.tE_merge_sec
+        self.assertAlmostEqual(float(at_dispatch["time_to_merge_sec"]), expected_at_dispatch)
+        self.assertEqual(at_dispatch["time_to_merge_source"], "depart_relative_tE_merge_pre_departure")
+        self.assertAlmostEqual(float(at_dispatch["time_until_depart_sec"]), self.stage1.stage2_merge_hold.t_dispatch_delay_sec)
+        self.assertAlmostEqual(float(at_dispatch["t_rel_depart_sec"]), -self.stage1.stage2_merge_hold.t_dispatch_delay_sec)
 
         just_before_depart = self.runtime.stage2_merge_hold_proxy_snapshot(
             FakeTraci(),
@@ -313,7 +316,17 @@ class B4RuntimeContractTest(unittest.TestCase):
             ev_state=ev_state,
             merged=False,
         )
-        self.assertAlmostEqual(float(just_before_depart["time_to_merge_sec"]), 10.0)
+        self.assertAlmostEqual(float(just_before_depart["time_to_merge_sec"]), self.stage1.stage2_merge_hold.tE_merge_sec + 0.25)
+
+        shifted_stage1 = replace(self.stage1, ev_depart_sec=self.stage1.ev_depart_sec + 40.0)
+        shifted = self.runtime.stage2_merge_hold_proxy_snapshot(
+            FakeTraci(),
+            shifted_stage1,
+            now=shifted_stage1.ev_depart_sec - 0.25,
+            ev_state=ev_state,
+            merged=False,
+        )
+        self.assertAlmostEqual(float(shifted["time_to_merge_sec"]), float(just_before_depart["time_to_merge_sec"]))
 
     def test_stage2_time_to_merge_uses_ev_position_after_departure(self):
         traci = FakeTraci()
@@ -465,8 +478,11 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(hold_events[0]["EV_NotDeparted"], True)
         self.assertEqual(hold_events[0]["EV_Departed"], False)
         self.assertEqual(hold_events[0]["EV_MergePassed"], False)
-        self.assertAlmostEqual(float(hold_events[0]["time_to_merge_sec"]), 10.0)
-        self.assertEqual(hold_events[0]["time_to_merge_source"], "evtsp_fixed_tE_merge_pre_departure")
+        self.assertAlmostEqual(float(hold_events[0]["time_to_merge_sec"]), self.stage1.stage2_merge_hold.tE_merge_sec + 3.0)
+        self.assertEqual(hold_events[0]["time_to_merge_source"], "depart_relative_tE_merge_pre_departure")
+        self.assertAlmostEqual(float(hold_events[0]["t_rel_depart_sec"]), -3.0)
+        self.assertAlmostEqual(float(hold_events[0]["time_until_depart_sec"]), 3.0)
+        self.assertEqual(hold_events[0]["stage2_time_axis_policy"], "depart_relative_pre_depart_time_to_merge")
         self.assertGreater(float(hold_events[0]["s_vph"]), 0.0)
         self.assertEqual(float(hold_events[0]["HOLD_MAX_sec"]), self.stage1.stage2_merge_hold.HOLD_MAX_sec)
         self.assertEqual(float(hold_events[0]["Q_ratio"]), 0.50)
@@ -533,7 +549,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         )
         traci.trafficlight.getSpentDuration = lambda _tls_id: 0.0
         merge_lanes = list(self.stage1.departure.merge_zone_lanes)
-        vehicle_ids = [f"merge_bg_{index}" for index in range(13)]
+        vehicle_ids = [f"merge_bg_{index}" for index in range(17)]
         for index, vehicle_id in enumerate(vehicle_ids):
             traci.vehicle.vehicles[vehicle_id] = {
                 "edge": "merge",
@@ -551,6 +567,7 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["action_type"], "entry_hold_clearance")
         self.assertEqual(events[0]["safety_status"], "REQUIRE_CLEARANCE")
+        self.assertAlmostEqual(float(events[0]["time_to_merge_sec"]), self.stage1.stage2_merge_hold.tE_merge_sec + 12.0)
         self.assertLessEqual(float(events[0]["T_hold_proxy_sec"]), 0.0)
         self.assertGreater(float(events[0]["tS_merge_sec"]), self.stage1.stage2_merge_hold.tS_merge_sec)
         self.assertFalse(controller.stage2_hold_active)
@@ -1918,7 +1935,7 @@ class B4RuntimeContractTest(unittest.TestCase):
             self.assertIn(field, row)
         for field in ["stage2_measurement_scale", "stage3_measurement_scale", "scaled_Lq_merge_m", "scaled_n_occ_runtime_veh", "scaled_Lq_case_b_m"]:
             self.assertIn(field, row)
-        for field in ["step", "ev_status", "EV_NotDeparted", "EV_Departed", "EV_MergePassed", "time_to_merge_sec", "time_to_merge_source"]:
+        for field in ["step", "ev_depart_sec", "t_rel_depart_sec", "time_until_depart_sec", "ev_status", "EV_NotDeparted", "EV_Departed", "EV_MergePassed", "time_to_merge_sec", "time_to_merge_source", "dispatch_detect_time_sec", "stage2_time_axis_policy"]:
             self.assertIn(field, row)
         for field in ["s_vph", "HOLD_MAX_sec", "current_phase", "current_state", "ped_state", "SafetyGate_result", "action", "deny_reason"]:
             self.assertIn(field, row)
