@@ -713,6 +713,77 @@ class B4RuntimeContractTest(unittest.TestCase):
         self.assertEqual(len(selected_bottleneck), 3)
         self.assertEqual([item.movement.route_order_index for item in selected_bottleneck], sorted(item.movement.route_order_index for item in selected_bottleneck))
 
+    def same_tls_chain_stage1(self):
+        upstream = next(movement for movement in self.stage1.movements if movement.movement_id == "B4_MOVEMENT_06")
+        downstream = next(movement for movement in self.stage1.movements if movement.movement_id == "B4_MOVEMENT_07")
+        candidate = self.runtime.B4CaseBCandidate(
+            segment_id="S10_TEST",
+            bottleneck_movement_id=downstream.movement_id,
+            upstream_movement_id=upstream.movement_id,
+            L_b0_m=214.5,
+            lane_drop_delta=0,
+            q_avg_B0=0.0,
+            q_max_B0=0.0,
+            tQ_hist_B0=0.0,
+            lambda_B0=0.0,
+            fill_B0=0.0,
+            speed_B0=0.0,
+            mapping_status="mapped_route_span_proxy",
+            same_tls_chain=True,
+            segment_route_start_index=downstream.route_order_index,
+            segment_route_end_index=downstream.route_order_index + 1,
+        )
+        return replace(self.stage1, movements=(upstream, downstream), case_b_candidates=(candidate,), max_active_movements=2)
+
+    def test_stage3_orders_same_tls_chain_downstream_before_upstream(self):
+        stage1 = self.same_tls_chain_stage1()
+        upstream, downstream = stage1.movements
+        controller = self.runtime.B4RuntimeController(traci=FakeTraci(), stage1=stage1, run_id="contract")
+        metrics = [self.metric(upstream), self.metric(downstream)]
+        metrics_by_id = {metric.movement.movement_id: metric for metric in metrics}
+
+        ordered = controller.order_same_tls_route_chain_candidates(metrics, metrics_by_id, upstream.route_order_index)
+
+        self.assertEqual([metric.movement.movement_id for metric in ordered[:2]], [downstream.movement_id, upstream.movement_id])
+
+    def test_stage3_reserves_same_tls_after_downstream_safety_deny(self):
+        stage1 = self.same_tls_chain_stage1()
+        upstream, downstream = stage1.movements
+        traci = FakeTraci()
+        traci.simulation.time = self.stage1.ev_depart_sec + 120.0
+        traci.trafficlight.phases[upstream.tls_id] = 4
+        traci.vehicle.vehicles[stage1.ev_id] = {
+            "edge": upstream.from_edge,
+            "lane": f"{upstream.from_edge}_0",
+            "route_index": upstream.route_order_index,
+            "lane_position": 0.0,
+            "speed": 8.0,
+        }
+        controller = self.runtime.B4RuntimeController(
+            traci=traci,
+            stage1=stage1,
+            params=self.runtime.B4ThetaParams(delta_T_thr=999.0, t_lead=999.0),
+            run_id="contract",
+        )
+        original = self.runtime.movement_runtime_metrics
+
+        def fake_metrics(_traci, candidate_movement, _thresholds):
+            return self.metric(candidate_movement, candidate=True)
+
+        self.runtime.movement_runtime_metrics = fake_metrics
+        try:
+            events = controller.handle_stage3(traci.simulation.time, controller.ev_state())
+        finally:
+            self.runtime.movement_runtime_metrics = original
+
+        attempts = [
+            event
+            for event in events
+            if event["action_type"] in {"phase_change_target_green", "phase_change_target_green_deferred", "phase_change_target_green_denied"}
+        ]
+        self.assertEqual([event["movement_id"] for event in attempts], [downstream.movement_id])
+        self.assertEqual(attempts[0]["safety_status"], "DENY_PEDESTRIAN_MIN_GREEN")
+
     def test_stage3_noops_before_ev_departure(self):
         traci = FakeTraci()
         traci.simulation.time = self.stage1.ev_depart_sec - 1.0
