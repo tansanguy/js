@@ -3015,43 +3015,6 @@ class B4RuntimeController:
             seen.add(movement_id)
         return ordered[:max_active]
 
-    def order_same_tls_route_chain_candidates(
-        self,
-        selected: list[MovementRuntimeMetrics],
-        metrics_by_id: dict[str, MovementRuntimeMetrics],
-        current_route_index: int,
-    ) -> list[MovementRuntimeMetrics]:
-        selected_ids = {metric.movement.movement_id for metric in selected}
-        ordered: list[MovementRuntimeMetrics] = []
-        seen: set[str] = set()
-        for candidate in sorted(self.stage1.case_b_candidates, key=lambda item: item.segment_route_start_index):
-            if not candidate.mapped or not candidate.same_tls_chain:
-                continue
-            upstream_metric = metrics_by_id.get(candidate.upstream_movement_id)
-            bottleneck_metric = metrics_by_id.get(candidate.bottleneck_movement_id)
-            if upstream_metric is None or bottleneck_metric is None:
-                continue
-            if upstream_metric.movement.movement_id not in selected_ids or bottleneck_metric.movement.movement_id not in selected_ids:
-                continue
-            if upstream_metric.movement.tls_id != bottleneck_metric.movement.tls_id:
-                continue
-            if upstream_metric.movement.selected_green_phase == bottleneck_metric.movement.selected_green_phase:
-                continue
-            if bottleneck_metric.movement.route_order_index < current_route_index:
-                continue
-            for metric in (bottleneck_metric, upstream_metric):
-                movement = metric.movement
-                if movement.movement_id in seen or movement.route_order_index < current_route_index:
-                    continue
-                ordered.append(metric)
-                seen.add(movement.movement_id)
-        for metric in selected:
-            if metric.movement.movement_id in seen:
-                continue
-            ordered.append(metric)
-            seen.add(metric.movement.movement_id)
-        return ordered
-
     def stage3_ahead_metrics(self, metrics: list[MovementRuntimeMetrics], ev_state: EVState) -> list[MovementRuntimeMetrics]:
         return sorted(
             (
@@ -4055,11 +4018,10 @@ class B4RuntimeController:
         self.stats.observe_queue_metrics(movement_metrics, tls_estimates)
         metrics_by_id = {metric.movement.movement_id: metric for metric in movement_metrics}
         selected = self.stage3_ahead_metrics(movement_metrics, stage3_ev_state)
-        selected = self.order_same_tls_route_chain_candidates(selected, metrics_by_id, stage3_ev_state.route_index)
         plans = self.stage3_case_plans(selected, metrics_by_id)
         new_stage3_action_count = 0
         max_new_stage3_actions = self.stage3_max_new_actions_per_step()
-        reserved_tls_ids = {control.tls_id for control in self.active_controls.values()}
+        active_tls_ids = {control.tls_id for control in self.active_controls.values()}
         for plan in plans:
             gate_tE = self.stage3_gate_tE(plan, ev_distances)
             gate_effective_tE, gate_tS = self.stage3_gate_effective_tE(plan, ev_distances)
@@ -4076,7 +4038,7 @@ class B4RuntimeController:
                     continue
                 if movement.movement_id in self.active_controls or movement.movement_id in self.pending_stage3_requests:
                     continue
-                if movement.tls_id in reserved_tls_ids:
+                if movement.tls_id in active_tls_ids:
                     continue
                 if not self.can_act_on_tls(movement.tls_id, now):
                     continue
@@ -4172,7 +4134,6 @@ class B4RuntimeController:
                     "GREEN",
                     now,
                 )
-                reserved_tls_ids.add(movement.tls_id)
                 if not applied:
                     preemption_state = "REQUESTED" if safety_status == "REQUIRE_CLEARANCE" else "IDLE"
                     if safety_status == "REQUIRE_CLEARANCE":
@@ -4247,6 +4208,7 @@ class B4RuntimeController:
                 )
                 self.pending_stage3_requests.pop(movement.movement_id, None)
                 new_stage3_action_count += 1
+                active_tls_ids.add(movement.tls_id)
                 self.stats.stage3_preemption_count += 1
                 self.stats.signal_burden_sec += applied_duration
                 if metric.trigger_reason in {"local_fill", "local_fill_and_low_speed"}:
