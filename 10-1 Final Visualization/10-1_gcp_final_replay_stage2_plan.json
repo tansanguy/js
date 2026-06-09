@@ -1,0 +1,147 @@
+{
+  "schema": "10-1_gcp_final_replay_plan.v1",
+  "gcp": {
+    "instance": "instance-20260608-125207",
+    "zone": "us-central1-a",
+    "cloudsdk_config": ".gcloud",
+    "remote_root": "/home/junlee/js"
+  },
+  "source": {
+    "run_id": "gcp_bo_top5_dongho_commonend_splitN_20260609_065501",
+    "route_id": "FINAL_DEST_DONGHO_001",
+    "theta_label": "top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79",
+    "theta_dir": "robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001",
+    "repeat_id": "repeat_022"
+  },
+  "selection": {
+    "rule": "best theta by mean B4 objective among strict valid pairs; best repeat by B4 objective inside that theta; stage2_hold_count > 0 required",
+    "B04": {
+      "mode": "B04",
+      "repeat_id": "22",
+      "ev_depart_sec": "633.93",
+      "final_status": "PASS",
+      "failed": "False",
+      "emergency_arrived": "True",
+      "emergency_teleport": "False",
+      "background_teleported": "0",
+      "D_E_sec": "276.07296",
+      "D_G_sec": "195.624059",
+      "objective_score": "268.759424",
+      "signal_event_count": "0",
+      "stage2_hold_count": "0",
+      "stage3_preemption_count": "0",
+      "signal_events_csv": ""
+    },
+    "B4": {
+      "mode": "B4",
+      "repeat_id": "22",
+      "ev_depart_sec": "633.93",
+      "final_status": "PASS",
+      "failed": "False",
+      "emergency_arrived": "True",
+      "emergency_teleport": "False",
+      "background_teleported": "0",
+      "D_E_sec": "100.07296",
+      "D_G_sec": "139.404598",
+      "objective_score": "103.648563",
+      "signal_event_count": "1022",
+      "stage2_hold_count": "1",
+      "stage3_preemption_count": "34",
+      "signal_events_csv": "runs/compact_v9_final_destination_validation/gcp_bo_top5_dongho_commonend_splitN_20260609_065501/robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001/B4/bo_r08_002_tl12_dt66_ge2_qr31_tau79/repeat_022/signal_events.csv"
+    },
+    "improvement_D_E_sec": 176.0,
+    "theta_summaries": [
+      {
+        "theta_label": "top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79",
+        "theta_dir": "robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001",
+        "valid_pairs": 30,
+        "display_valid_pairs": 14,
+        "mean_objective": 124.177259,
+        "mean_D_E_sec": 119.47296,
+        "best_repeat": 7,
+        "best_repeat_objective": 84.993985,
+        "best_repeat_D_E_sec": 79.07296,
+        "best_display_repeat": 22,
+        "best_display_objective": 103.648563,
+        "best_display_D_E_sec": 100.07296
+      },
+      {
+        "theta_label": "top_03_bo_r02_005_tl75_dt123_ge26_qr40_tau78",
+        "theta_dir": "robust_final/top_03_bo_r02_005_tl75_dt123_ge26_qr40_tau78/final/FINAL_DEST_DONGHO_001",
+        "valid_pairs": 30,
+        "display_valid_pairs": 14,
+        "mean_objective": 129.519529,
+        "mean_D_E_sec": 125.239627,
+        "best_repeat": 7,
+        "best_repeat_objective": 80.638736,
+        "best_repeat_D_E_sec": 74.07296,
+        "best_display_repeat": 28,
+        "best_display_objective": 96.158188,
+        "best_display_D_E_sec": 92.07296
+      },
+      {
+        "theta_label": "top_01_bo_r09_003_tl42_dt159_ge27_qr57_tau83",
+        "theta_dir": "robust_final/top_01_bo_r09_003_tl42_dt159_ge27_qr57_tau83/final/FINAL_DEST_DONGHO_001",
+        "valid_pairs": 30,
+        "display_valid_pairs": 14,
+        "mean_objective": 132.911213,
+        "mean_D_E_sec": 128.77296,
+        "best_repeat": 12,
+        "best_repeat_objective": 88.456794,
+        "best_repeat_D_E_sec": 83.07296,
+        "best_display_repeat": 27,
+        "best_display_objective": 126.079899,
+        "best_display_D_E_sec": 119.07296
+      },
+      {
+        "theta_label": "top_04_bo_r09_002_tl105_dt75_ge12_qr84_tau87",
+        "theta_dir": "robust_final/top_04_bo_r09_002_tl105_dt75_ge12_qr84_tau87/final/FINAL_DEST_DONGHO_001",
+        "valid_pairs": 30,
+        "display_valid_pairs": 3,
+        "mean_objective": 137.030888,
+        "mean_D_E_sec": 132.539627,
+        "best_repeat": 12,
+        "best_repeat_objective": 89.806012,
+        "best_repeat_D_E_sec": 84.07296,
+        "best_display_repeat": 23,
+        "best_display_objective": 133.402253,
+        "best_display_D_E_sec": 126.07296
+      },
+      {
+        "theta_label": "top_05_bo_r11_002_tl88_dt84_ge41_qr77_tau84",
+        "theta_dir": "robust_final/top_05_bo_r11_002_tl88_dt84_ge41_qr77_tau84/final/FINAL_DEST_DONGHO_001",
+        "valid_pairs": 30,
+        "display_valid_pairs": 3,
+        "mean_objective": 139.954773,
+        "mean_D_E_sec": 136.639627,
+        "best_repeat": 7,
+        "best_repeat_objective": 84.126985,
+        "best_repeat_D_E_sec": 78.07296,
+        "best_display_repeat": 27,
+        "best_display_objective": 143.151305,
+        "best_display_D_E_sec": 140.07296
+      }
+    ],
+    "found_theta_count": 5,
+    "expected_theta_count": 5,
+    "ready_for_final": true,
+    "best_theta": "top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79",
+    "repeat_selection_scope": "within_best_theta_only"
+  },
+  "remote_artifacts": {
+    "B04": "runs/compact_v9_final_destination_validation/gcp_bo_top5_dongho_commonend_splitN_20260609_065501/robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001/B04/no_control/repeat_022",
+    "B4": "runs/compact_v9_final_destination_validation/gcp_bo_top5_dongho_commonend_splitN_20260609_065501/robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001/B4/bo_r08_002_tl12_dt66_ge2_qr31_tau79/repeat_022",
+    "route_xml": "runs/compact_v9_final_destination_validation/gcp_bo_top5_dongho_commonend_splitN_20260609_065501/robust_final/top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79/final/FINAL_DEST_DONGHO_001/routes/firetruck_depart_022.rou.xml"
+  },
+  "commands": {
+    "remote_measured_rerun": "cd /home/junlee/js && python3 \"10 Final Destination Validation/final_destination_validation.py\" --validation-mode robust-theta-selection --phase final --net \"09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.sumo_compat.net.xml\" --background-route \"data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml\" --base-stage1-dir \"data_prepared/compact_v9/b4_stage1_s1forced\" --skip-active-inputs-audit --exact-route-json \"/home/junlee/js/tmp_codex_sync_post600_20260609_151458/dongho_exact_route.json\" --exact-route-id FINAL_DEST_DONGHO_001 --selected-routes FINAL_DEST_DONGHO_001 --robust-final-theta-csv \"results/metrics/compact_v9_final_destination_validation/gcp_bo_top5_dongho_final30_recovery_20260609_0514/robust_selection/selected_for_final_theta_candidates.csv\" --robust-mini-batch-repeats 0 --robust-final-top-k 1 --robust-survivor-count 1 --repeats 1 --pilot-repeats 1 --disable-adaptive-repeats --workers 1 --robust-theta-workers 1 --robust-repeat-workers 1 --hard-max-sim-time 4200 --post-arrival-measure-sec 600 --common-paired-end --depart-min 633.930 --depart-max 633.930 --emit-fcd --emit-tls-states --run-id 10_1_measured_gcp_bo_top5_dongho_commonend_splitN_20260609_065501_top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79_repeat_022",
+    "start_remote_measured_rerun": "tmux new-session -d -s 10_1_measured_replay 'cd /home/junlee/js && python3 \"10 Final Destination Validation/final_destination_validation.py\" --validation-mode robust-theta-selection --phase final --net \"09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.sumo_compat.net.xml\" --background-route \"data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml\" --base-stage1-dir \"data_prepared/compact_v9/b4_stage1_s1forced\" --skip-active-inputs-audit --exact-route-json \"/home/junlee/js/tmp_codex_sync_post600_20260609_151458/dongho_exact_route.json\" --exact-route-id FINAL_DEST_DONGHO_001 --selected-routes FINAL_DEST_DONGHO_001 --robust-final-theta-csv \"results/metrics/compact_v9_final_destination_validation/gcp_bo_top5_dongho_final30_recovery_20260609_0514/robust_selection/selected_for_final_theta_candidates.csv\" --robust-mini-batch-repeats 0 --robust-final-top-k 1 --robust-survivor-count 1 --repeats 1 --pilot-repeats 1 --disable-adaptive-repeats --workers 1 --robust-theta-workers 1 --robust-repeat-workers 1 --hard-max-sim-time 4200 --post-arrival-measure-sec 600 --common-paired-end --depart-min 633.930 --depart-max 633.930 --emit-fcd --emit-tls-states --run-id 10_1_measured_gcp_bo_top5_dongho_commonend_splitN_20260609_065501_top_02_bo_r08_002_tl12_dt66_ge2_qr31_tau79_repeat_022 2>&1 | tee logs/10_1_measured_replay.log'"
+  },
+  "contract": {
+    "simulation_truth": "selected final run metrics, signal_events.csv, fixed-depart measured rerun FCD, tls_states.csv",
+    "visual_smoothing": "allowed only after measured samples are produced",
+    "browser_traffic_decision_logic": "forbidden",
+    "same_departure_time": true,
+    "same_route": true
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema": "10-1_presentation_inputs.v1",
+  "policy": "10-1 owns presentation signal/demand inputs; upstream 09/data_prepared files are copied, then presentation-only smoothing is allowed inside 10-1.",
+  "signal_net_file": "10-1 Final Visualization/10-1_jungbu_compact_v9_B04_global_reality_s1forced_presentation.net.xml",
+  "signal_net_source": "09 Compact Corridor Baseline/tdata_signal/nets/jungbu_compact_v9_B04_global_reality_s1forced.net.xml",
+  "signal_net_source_sha256": "c23abdbba5637f0836e6d64f7c74456e26523d525a4a93bd98239cbb7cbe3d7a",
+  "signal_net_sha256": "ff0308406b6fe6a27bc8a4a8dfdf9265626b4dc3a8186f179b01183f737f2882",
+  "demand_route_file": "10-1 Final Visualization/10-1_background_routes_compact_v9_B04_ad_stage23_trigger_presentation.rou.xml",
+  "demand_route_source": "data_prepared/compact_v9/demand/background_routes_compact_v9_B04_ad_stage23_trigger.rou.xml",
+  "demand_route_source_sha256": "61cc24bc13b0cc443045432a1425f9d8c38d47b5ab7e42be45eae4482dbc4ee9",
+  "demand_route_sha256": "70172c70de6e0af31e7ceb39b7d20fa8e31fb0ad8bd07fc9dd2a6b498783f3de",
+  "demand_adjustment": {
+    "source_vehicle_count": 1616,
+    "presentation_vehicle_count": 526,
+    "depart_start_sec": 300.0,
+    "depart_headway_sec": 3.8,
+    "rule": "deterministic thinning by route class; smooth departures; preserve original route definitions"
+  },
+  "firetruck_route_file": "10-1 Final Visualization/10-1_firetruck_final_route.rou.xml",
+  "firetruck_route_source": "10-1 local final-route seed",
+  "firetruck_route_source_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8",
+  "firetruck_route_sha256": "afbe139a65927f66276a323b5b85134c00e93071334a70819cb2e9ec32d691c8",
+  "presentation_signal_policy": {
+    "mode": "10-1_suitable_signal_system",
+    "best_theta": {
+      "method": "BO",
+      "seed": 20260607,
+      "round": 27,
+      "round_theta_index": 4,
+      "theta_per_round": 6,
+      "parameter_id": "bo_r27_004_tl94_dt24_ge15_qr28_tau79",
+      "t_lead": 94.0,
+      "delta_T_thr": 24.0,
+      "G_ext": 15.0,
+      "Q_ratio": 0.28,
+      "tau": 0.79
+    },
+    "b04_red_signal_indices": [
+      1,
+      4,
+      6
+    ],
+    "b04_red_lead_sec": 18.0,
+    "b04_red_hold_sec": 36.0,
+    "b4_green_lead_sec": 94.0,
+    "b4_green_hold_sec": 15.0,
+    "yellow_sec": 2.5,
+    "forbidden_patterns": [
+      "G-Y-G",
+      "R-Y-R",
+      "Y-R-Y",
+      "R-Y-R-Y"
+    ]
+  },
+  "presentation_demand_policy": {
+    "front_queue_cap": 9,
+    "behind_queue_cap": 7,
+    "green_discharge_veh_per_sec": 2.0,
+    "downstream_queue_signal_indices": {},
+    "downstream_queue_duration_sec": 0.0,
+    "downstream_queue_count": 0.0,
+    "downstream_queue_lookahead_m": 120.0,
+    "front_queue_overflow_windows": {},
+    "queue_spacing_m": 13.0,
+    "ev_queue_gap_m": 24.0
+  },
+  "notes": [
+    "B04 and B4 use the same presentation demand profile and demand policy; only signal control and algorithm events differ.",
+    "B4 display TLS may be overridden from the smoke TLS timeline to create EV-facing green windows inside 10-1 only.",
+    "The generated HTML must disclose that traffic dots are presentation traffic, not raw individual FCD replay."
+  ]
+}

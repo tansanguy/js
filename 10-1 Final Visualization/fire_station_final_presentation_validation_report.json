@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "tls": {
+    "signals_checked": 8,
+    "missing_yellow": 0,
+    "green_yellow_green": 0,
+    "red_yellow_red": 0,
+    "yellow_red_yellow": 0,
+    "red_yellow_red_yellow": 0,
+    "short_yellow": 0,
+    "short_non_green": 0,
+    "ok": true,
+    "close_display_signal_pairs": 0
+  },
+  "display": {
+    "ev_next_signal_non_green_pass": 0,
+    "ev_front_queue_overtake": 0,
+    "vehicle_stopline_non_green_pass": 0,
+    "green_empty_stopped": 0,
+    "green_empty_slow": 0,
+    "green_blocked_moving": 0,
+    "behind_vehicle_ahead_of_ev": 0,
+    "green_blocked_without_visible_front": 0,
+    "queue_label_without_visible_queue": 0,
+    "arrived_with_queue_label": 0,
+    "downstream_label_without_moving_vehicle": 0,
+    "ev_max_step_m": 1.12,
+    "frames_checked": 4188,
+    "vehicle_stopline_non_green_examples": [],
+    "ok": true
+  },
+  "trajectory": {
+    "max_frame_gap_sec": 0.1,
+    "max_vehicle_step_m": 1.63,
+    "max_all_route_vehicle_step_m": 1.63,
+    "max_vehicle_opacity_delta": 0.05,
+    "max_vehicle_speed_kmh": 41.2,
+    "tracked_vehicle_pop_in": 0,
+    "tracked_vehicle_disappear": 0,
+    "flow_vehicle_pop_in_near_camera": 0,
+    "flow_vehicle_disappear_near_camera": 0,
+    "flow_vehicle_large_jump": 0,
+    "vehicle_reverse_steps": 0,
+    "flow_modes_checked": [
+      "B04",
+      "B4"
+    ],
+    "checked_frames": 4188
+  },
+  "visual_regression": {
+    "vehicle_color_palette_size": 1,
+    "vehicle_color_changes": 0,
+    "stage2_min_vehicle_gap_m": 17.59,
+    "front_blocked_band_frames": 301,
+    "front_moving_band_frames": 301,
+    "final_split_straight_vehicles": 2536,
+    "final_split_right_vehicles": 3470,
+    "critical_queue_disappear": 0,
+    "ok": true
+  },
+  "geometry": {
+    "vehicle_lane_distance_max_m": 0.01,
+    "vehicle_lane_distance_over_6m": 0,
+    "stage2_fallback_manual": 0,
+    "stage2_stopline_target_fail": 0,
+    "stage2_stopline_exit_fail": 0,
+    "signal_distance_over_90m": 0,
+    "ok": true
+  },
+  "algorithm": {
+    "stage1_present": true,
+    "stage2_events": 3,
+    "stage3_events": 430,
+    "case_a_events": 420,
+    "case_b_events": 10,
+    "green_active_events": 14,
+    "safety_denied_events": 4
+  },
+  "screenshot_targets": [
+    {
+      "id": "stage2_hold",
+      "mode": "B4",
+      "t": 4.0,
+      "expect": "신당역 유입 정지"
+    },
+    {
+      "id": "case_a_green",
+      "mode": "B4",
+      "t": 12.0,
+      "expect": "Stage3 Case A"
+    },
+    {
+      "id": "case_b_downstream",
+      "mode": "B4",
+      "t": 31.0,
+      "expect": "Stage3 Case B"
+    },
+    {
+      "id": "green_front_queue",
+      "mode": "B4",
+      "t": 76.2,
+      "expect": "앞 큐 과잉"
+    },
+    {
+      "id": "final_split",
+      "mode": "B4",
+      "t": 230.0,
+      "expect": "직진/우회전 분기"
+    }
+  ]
+}
